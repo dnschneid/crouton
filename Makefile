@@ -7,4 +7,5 @@ SCRIPTS=enter-chroot.sh make-chroot.sh startxfce4.sh
 
 
 $(TARGET): $(SCRIPTS) Makefile
-	tar --owner=root --group=root --mode=a=rx,u+w -cjf $(TARGET) $(SCRIPTS)
+	tar --transform='s,^,crouton/,' --owner=root --group=root --mode=a=rx,u+w \
+	    -cjf $(TARGET) $(SCRIPTS)
