@@ -77,7 +77,7 @@ cat > "$preparescript" <<EOF
 export PATH='/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin'
 
 [ -r /debootstrap ] && /debootstrap/debootstrap --second-stage
-if [ ! -f /etc/timezone ] || grep -q '^etc' /etc/timezone; then
+if [ ! -f /etc/timezone ] || grep -qi '^etc' /etc/timezone; then
     dpkg-reconfigure tzdata
 fi
 if ! grep -q ":1000:" /etc/passwd; then
