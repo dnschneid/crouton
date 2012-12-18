@@ -99,8 +99,8 @@ echo 'Ensuring system is up-to-date' 1>&2
 apt-get -y upgrade
 
 echo 'Installing additional packages' 1>&2
-apt-get -y install wget openssh-client xorg gdebi chromium-browser
-# Fix launching X11 from inside crosh
+apt-get -y install wget openssh-client xorg dmz-cursor-theme gdebi chromium-browser
+# Fix launching X11 from inside crosh (user doesn't own a TTY)
 sed -i 's/allowed_users=.*/allowed_users=anybody/' '/etc/X11/Xwrapper.config'
 # Ensure X always starts on display :1
 cat > /usr/local/bin/xinit <<EOFEOF
