@@ -114,7 +114,7 @@ for x in "\\\$@"; do
 done
 exec /usr/bin/xinit "\\\$@" \\\$dash :1
 EOFEOF
-chmod a+rx /usr/local/bin/xinit
+chmod 755 /usr/local/bin/xinit
 # Add a blank Xauthority
 touch /home/$user/.Xauthority
 chown $user:$user /home/$user/.Xauthority
@@ -137,9 +137,9 @@ fi
 
 echo 'Cleaning up' 1>&2
 apt-get clean
-rm "\$0"
+rm -f "\$0"
 EOF
-chmod +x "$preparescript"
+chmod 500 "$preparescript"
 cd "$oldpwd"
 while ! "$enterchroot" "$CHROOT" "/${preparescript##*/}"; do
     echo "Running /${preparescript##*/} inside the chroot failed." 1>&2
