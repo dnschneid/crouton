@@ -77,9 +77,11 @@ cat > "$preparescript" <<EOF
 export PATH='/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin'
 
 [ -r /debootstrap ] && /debootstrap/debootstrap --second-stage
-dpkg-reconfigure tzdata
-if ! grep -q "^$user" /etc/sudoers; then
-    adduser "$user" && echo "$user ALL=(ALL:ALL) ALL" >> /etc/sudoers
+if [ ! -f /etc/timezone ] || grep -q '^etc' /etc/timezone; then
+    dpkg-reconfigure tzdata
+fi
+if ! grep -q ":1000:" /etc/passwd; then
+    adduser "$user"
 fi
 
 echo 'Preparing software sources' 1>&2
@@ -119,6 +121,12 @@ chown $user:$user /home/$user/.Xauthority
 chmod 600 /home/$user/.Xauthority
 # Set sudo mode for gksu
 su - $user -c 'gconftool -t b -s /apps/gksu/sudo-mode t'
+# Fix group numbers to match Chromium OS (FIXME: detect this?)
+groupmod -g 28 sudo
+groupmod -g 27 video
+groupmod -g 18 audio
+# Add user to relevant groups
+usermod -a -G audio,video,sudo $user
 
 echo 'You do not yet have a desktop environment installed.' 1>&2
 echo -n 'Would you like to install Xfce? [y/N] '
