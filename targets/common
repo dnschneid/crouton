@@ -1,0 +1,63 @@
+#!/bin/sh -e
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# This isn't a real target; it's the boilerplate that the other targets source.
+# The targets are simply sourced inside of install.sh, and so can expect to have
+# access to all all-caps variables (by convention; not a technical restriction).
+
+# Additionally, this common script expects the sourcing script to set
+# DESCRIPTION with the description of the target, and REQUIRES with a
+# space-separated list of other targets it needs.
+
+# All targets must be idempotent since the user may Ctrl-C the process and run
+# it again.
+
+if [ -z "$TARGET" ]; then
+    TARGET="$0"
+fi
+
+if [ "$TARGETS" = 'help' ]; then
+    echo "$TARGET"
+    echo "\t$DESCRIPTION"
+    if [ -n "$REQUIRES" ]; then
+        echo "\tRequires: $REQUIRES"
+    fi
+else
+    # Avoid double-adding targets
+    if [ -n "$TARGETDEDUPFILE" ]; then
+        if grep -q "^$TARGET\$" "$TARGETDEDUPFILE"; then
+            exit
+        else
+            echo "$TARGET" >> "$TARGETDEDUPFILE"
+        fi
+    fi
+    # Source the prerequisites
+    for t in $REQUIRES; do
+        (TARGET="$t"; . "$TARGETSDIR/$t")
+    done
+    # Add a print to the output
+    echo ''
+    echo "echo 'Installing target $TARGET...' 1>&2"
+    # Print out the target file below the ### line.
+    # This avoids having to escape everything like with cat<<EOF
+    # All ### lines are ignored.
+    # Lines with "### append filename" will queue a file to be processed after
+    # the current file is done.
+    awk '
+        (FNR == 1) {
+            x = 0;
+        }
+        /^###/ {
+            x = 1;
+            if ($2 == "append") {
+                ARGV[ARGC++] = "'"$TARGETSDIR"'/" $3;
+            }
+            next;
+        }
+        x;
+    ' "$TARGETSDIR/$TARGET"
+fi
+# Break out of the subshell.
+exit

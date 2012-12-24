@@ -1,0 +1,33 @@
+#!/bin/sh -e
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# This is a target, but it's not selectable by the user. These are the commands
+# that get executed at the very end of the generated prepare.sh.
+# These commands are not optional and are automatically added to targets.
+
+REQUIRES=''
+DESCRIPTION=''
+. "${TARGETSDIR:="$PWD"}/common"
+
+### Append to prepare.sh:
+# Set the timezone
+if [ ! -f /etc/timezone ] || grep -qi '^etc' /etc/timezone; then
+    dpkg-reconfigure tzdata
+fi
+
+# Add the primary user
+if ! grep -q ":1000:" /etc/passwd; then
+    if [ -z "$USERNAME" ]; then
+        echo -n 'Please specify a username for the primary user: ' 1>&2
+        read USERNAME junk
+    else
+        echo "Creating primary user $USERNAME..." 1>&2
+    fi
+    adduser "$USERNAME"
+fi
+
+echo 'Cleaning up' 1>&2
+apt-get clean
+rm -f "$0"

@@ -1,0 +1,17 @@
+#!/bin/sh -e
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Adds a :1 to the xinit command line. Adds the -- if it isn't already there.
+# By putting this in /usr/local/bin, PATH will prefer it and scripts that call
+# xinit will automagically work.
+
+dash='--'
+for arg in "$@"; do
+    if [ "$arg" = '--' ]; then
+        dash=
+        break
+    fi
+done
+exec /usr/bin/xinit "$@" $dash :1

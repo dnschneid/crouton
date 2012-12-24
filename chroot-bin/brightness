@@ -1,0 +1,50 @@
+#!/bin/sh -e
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# A shortcut script to control device brightness.
+# Usage:
+#    brightness [b|k] [up|down|#]
+
+# Choose the device
+case "$1" in
+k*) for device in /sys/class/leds/*kbd_backlight; do
+        break
+    done
+    shift;;
+b*) shift;;
+esac
+
+# Grab the first backlight device
+if [ -z "$device" ]; then
+    for device in /sys/class/backlight/*; do
+        break
+    done
+fi
+if [ -z "$device" ]; then
+    echo 'No backlight device found.' 1>&2
+    exit 1
+fi
+
+# Gather data
+min=0
+max="`cat "$device/max_brightness"`"
+cur="`cat "$device/brightness"`"
+step="$((max/20))"
+new="$cur"
+
+# Handle user command
+case "$1" in
+u*) new="$((cur+step))";;
+d*) new="$((cur-step))";;
+[0-9]*) new="$(($1*max/100))";;
+*) echo "$((100*cur/max))"; exit 0;;
+esac
+
+# Clamp values
+[ "$new" -le "$max" ] || new="$max"
+[ "$new" -ge "$min" ] || new="$min"
+
+# Apply change
+[ "$new" = "$cur" ] || echo "$new" > "$device/brightness"

@@ -1,0 +1,15 @@
+#!/bin/sh -e
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+REQUIRES='x11 core'
+DESCRIPTION='Google Chrome browser, beta. Replaces Chromium if specified first.'
+# Prevent Chromium from being added if it hasn't already.
+if [ -n "$TARGETDEDUPFILE" ]; then
+    echo 'chromium' >> "$TARGETDEDUPFILE"
+fi
+. "${TARGETSDIR:="$PWD"}/common"
+
+### Append to prepare.sh:
+CHANNEL='beta'
+### append chrome-common

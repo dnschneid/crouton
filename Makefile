@@ -2,10 +2,26 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-TARGET=crouton.tar.bz2
-SCRIPTS=enter-chroot.sh make-chroot.sh startxfce4.sh
+TARGET = crouton
+TARGETTMP = .$(TARGET).tmp
+WRAPPER = build/wrapper.sh
+SCRIPTS := \
+	$(wildcard chroot-bin/*) \
+	$(wildcard host-bin/*) \
+	$(wildcard installer/*) \
+	$(wildcard targets/*)
+CHECKFORQUOTES = installer/download.sh
+SINGLEQUOTECHECK = build/singlequotecheck.awk
+TARPARAMS ?= -j
 
+$(TARGET): $(WRAPPER) $(SCRIPTS) $(SINGLEQUOTECHECK) Makefile
+	awk -f $(SINGLEQUOTECHECK) $(CHECKFORQUOTES)
+	sed -e "s/\$$TARPARAMS/$(TARPARAMS)/" $(WRAPPER) > $(TARGETTMP)
+	tar --owner=root --group=root -c $(TARPARAMS) $(SCRIPTS) >> $(TARGETTMP)
+	chmod +x $(TARGETTMP)
+	mv -f $(TARGETTMP) $(TARGET)
 
-$(TARGET): $(SCRIPTS) Makefile
-	tar --transform='s,^,crouton/,' --owner=root --group=root --mode=a=rx,u+w \
-	    -cjf $(TARGET) $(SCRIPTS)
+clean:
+	rm -f $(TARGETTMP) $(TARGET)
+
+.PHONY: clean

@@ -1,0 +1,29 @@
+#!/bin/sh -e
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# This isn't a real target; it's the common commands for installing the various
+# channels of the Google Chrome browser that the relevant targets source.
+
+# This command expects CHANNEL to be set with the requested Google Chrome
+# channel: stable, beta, or unstable.
+
+### Append to prepare.sh:
+url="https://dl.google.com/linux/direct/google-chrome-${CHANNEL}_current_$ARCH.deb"
+deb='/tmp/chrome.deb'
+rm -f "$deb"
+
+# We need wget to download, and Chrome needs xdg-utils to configure at all; the
+# rest of the dependencies we will resolve afterwards.
+apt-get -y install wget xdg-utils
+
+# We don't have the right root certificates in the bare install.
+wget --no-check-certificate "$url" -O "$deb"
+
+# This will likely have dependency problems; make them only warnings.
+dpkg --force-depends -i "$deb"
+rm -f "$deb"
+
+# Fix the dependency problems.
+apt-get install -fy
