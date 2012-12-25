@@ -97,9 +97,8 @@ mount -o remount,rw,dev,exec "$mp"
 mkdir -p "$CHROOT/etc/host-shill"
 ln -sf 'host-shill/resolv.conf' "$CHROOT/etc/resolv.conf"
 
-# Mounts; will auto-unmount when the script exits if no other commands are using
-# it as their root.
-# The space before the $mnt grep is important to avoid substring matches.
+# Mounts; will auto-unmount everything below the chroot when the script exits,
+# if no other commands are using it as their root.
 umount='
     base="`readlink -f "'"$CHROOT"'"`"
     nounmount=
@@ -110,11 +109,10 @@ umount='
         fi
     done
     if [ -z "$nounmount" ]; then
-        for mnt in dev/pts etc/host-shill proc sys tmp dev; do
-            mnt="`readlink -f "'"$CHROOT"'/$mnt"`"
-            while grep -q " $mnt" /etc/mtab && ! umount "$mnt" 2>/dev/null; do
+        while mounts="`cut -d" " -f2 /proc/mounts | grep "^$base"`"; do
+            if ! umount $mounts 2>/dev/null; then
                 sleep 1
-            done
+            fi
         done
     else
         echo "Not unmounting '"$CHROOT"' as another instance is using it." 1>&2
