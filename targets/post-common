@@ -9,6 +9,7 @@
 
 REQUIRES=''
 DESCRIPTION=''
+HOSTBIN='enter-chroot delete-chroot'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:

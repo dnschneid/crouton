@@ -4,6 +4,7 @@
 # found in the LICENSE file.
 REQUIRES='core'
 DESCRIPTION='Basic X11 install. Does not install any desktop environment.'
+CHROOTBIN='xinit'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:

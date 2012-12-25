@@ -11,6 +11,9 @@
 # DESCRIPTION with the description of the target, and REQUIRES with a
 # space-separated list of other targets it needs.
 
+# Finally, targets can set HOSTBIN and CHROOTBIN with a space-separated list of
+# files to copy from host-bin and chroot-bin into the appropriate places.
+
 # All targets must be idempotent since the user may Ctrl-C the process and run
 # it again.
 
@@ -35,11 +38,22 @@ else
     fi
     # Source the prerequisites
     for t in $REQUIRES; do
-        (TARGET="$t"; . "$TARGETSDIR/$t")
+        (TARGET="$t" HOSTBIN='' CHROOTBIN=''; . "$TARGETSDIR/$t")
     done
     # Add a print to the output
     echo ''
     echo "echo 'Installing target $TARGET...' 1>&2"
+    # Copy in requested items from host-bin and chroot-bin
+    for f in $HOSTBIN; do
+        echo "Installing $f into the host..." 1>&2
+        cp -f "$HOSTBINDIR/$f" "$BIN/"
+        chmod 755 "$BIN/$f"
+    done
+    for f in $CHROOTBIN; do
+        echo "Installing $f into the chroot..." 1>&2
+        cp -f "$CHROOTBINDIR/$f" "$CHROOT/usr/local/bin/"
+        chmod 755 "$CHROOT/usr/local/bin/$f"
+    done
     # Print out the target file below the ### line.
     # This avoids having to escape everything like with cat<<EOF
     # All ### lines are ignored.

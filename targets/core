@@ -4,6 +4,7 @@
 # found in the LICENSE file.
 REQUIRES=''
 DESCRIPTION='Performs core system configuration. Most users would want this.'
+CHROOTBIN='brightness'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:

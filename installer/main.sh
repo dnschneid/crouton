@@ -152,7 +152,7 @@ if [ -z "$DOWNLOADONLY" ]; then
         error 1 "$CHROOT already has stuff in it!
 Either delete it or specify a different name (-n)."
     fi
-    mkdir -p "$BIN" "$CHROOT"
+    mkdir -p "$BIN" "$CHROOT"/usr/local/bin
 fi
 
 # Prepare to download the tarball (or grab it locally)
@@ -195,16 +195,6 @@ echo 'Unpacking chroot environment...' 1>&2
 tar -C "$CHROOT" --strip-components=1 -xf "$TARBALL"
 # We're done with the tarball, so remove it if it's temporary
 eval "$rmtarball"
-
-# Copy in chroot-bin
-mkdir -p "$CHROOT"/usr/local/bin
-cp -v "$CHROOTBINDIR/"* "$CHROOT"/usr/local/bin/
-chmod 755 "$CHROOT"/usr/local/bin/*
-
-# Copy in the host-bin (and overwrite)
-mkdir -p "$BIN"
-cp -vf "$HOSTBINDIR/"* "$BIN/"
-chmod 755 "$BIN"/*
 
 # Create the setup script inside the chroot
 echo 'Preparing chroot environment...' 1>&2
