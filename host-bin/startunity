@@ -1,0 +1,15 @@
+#!/bin/sh -e
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+APPLICATION="${0##*/}"
+
+USAGE="$APPLICATION [options]
+
+Wraps enter-chroot to start a Unity session.
+By default, it will log into the primary user on the first chroot found.
+
+Options are directly passed to enter-chroot; run enter-chroot to list them."
+
+exec sh -e "`dirname "$0"`/enter-chroot" "$@" xinit /usr/bin/unity

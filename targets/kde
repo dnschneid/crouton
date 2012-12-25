@@ -4,12 +4,12 @@
 # found in the LICENSE file.
 REQUIRES='x11 core'
 DESCRIPTION='Installs the KDE desktop environment. (Approx. 800MB)'
+HOSTBIN='startkde'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
 apt-get -y install kde-standard network-manager-
 
 TIPS="$TIPS
-You can start KDE via xinit and the startkde command:
-enter-chroot xinit /usr/bin/startkde
+You can start KDE via the startkde host command: sudo startkde
 "

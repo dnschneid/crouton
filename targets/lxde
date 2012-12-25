@@ -4,6 +4,7 @@
 # found in the LICENSE file.
 REQUIRES='chromium gtk-extra x11 core'
 DESCRIPTION='Installs the LXDE desktop environment. (Approx. 200MB)'
+HOSTBIN='startlxde'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
@@ -15,6 +16,5 @@ else
 fi
 
 TIPS="$TIPS
-You can start LXDE via xinit and the startlxde command:
-enter-chroot xinit /usr/bin/startlxde
+You can start LXDE via the startlxde host command: sudo startlxde
 "

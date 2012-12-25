@@ -4,6 +4,7 @@
 # found in the LICENSE file.
 REQUIRES='chromium gtk-extra x11 core'
 DESCRIPTION='Installs the Unity desktop environment. (Approx. 700MB)'
+HOSTBIN='startunity'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
@@ -15,6 +16,5 @@ else
 fi
 
 TIPS="$TIPS
-You can start Unity via xinit and the unity command:
-enter-chroot xinit /usr/bin/unity
+You can start Unity via the startunity host command: sudo enter-unity
 "

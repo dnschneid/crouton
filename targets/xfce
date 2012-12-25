@@ -4,6 +4,7 @@
 # found in the LICENSE file.
 REQUIRES='chromium gtk-extra x11 core'
 DESCRIPTION='Installs the Xfce desktop environment. (Approx. 250MB)'
+HOSTBIN='startxfce4'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
@@ -24,5 +25,5 @@ fi
 apt-get -y install xfce4 xfce4-goodies shimmer-themes dictionaries-common-
 
 TIPS="$TIPS
-You can start Xfce via the startxfce4 command: enter-chroot startxfce4
+You can start Xfce via the startxfce4 host command: sudo startxfce4
 "
