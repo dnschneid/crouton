@@ -1,0 +1,20 @@
+#!/bin/sh -e
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+REQUIRES='chromium gtk-extra x11 core'
+DESCRIPTION='Installs the LXDE desktop environment. (Approx. 200MB)'
+. "${TARGETSDIR:="$PWD"}/common"
+
+### Append to prepare.sh:
+# Don't auto-include chromium-browser; let the prereqs handle that.
+if dpkg-query -s chromium-browser >/dev/null 2>&1; then
+    apt-get -y install lxde dictionaries-common-
+else
+    apt-get -y install lxde dictionaries-common- chromium-browser-
+fi
+
+TIPS="$TIPS
+You can start LXDE via xinit and the startlxde command:
+enter-chroot xinit /usr/bin/startlxde
+"

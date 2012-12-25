@@ -1,0 +1,20 @@
+#!/bin/sh -e
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+REQUIRES='chromium gtk-extra x11 core'
+DESCRIPTION='Installs the Unity desktop environment. (Approx. 700MB)'
+. "${TARGETSDIR:="$PWD"}/common"
+
+### Append to prepare.sh:
+# Don't auto-include firefox
+if dpkg-query -s firefox >/dev/null 2>&1; then
+    apt-get -y install unity light-themes network-manager- brasero-
+else
+    apt-get -y install unity light-themes network-manager- brasero- firefox-
+fi
+
+TIPS="$TIPS
+You can start Unity via xinit and the unity command:
+enter-chroot xinit /usr/bin/unity
+"

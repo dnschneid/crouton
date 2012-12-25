@@ -31,3 +31,9 @@ fi
 echo 'Cleaning up' 1>&2
 apt-get clean
 rm -f "$0"
+
+if [ -n "$TIPS" ]; then
+    echo "
+Here's some tips:
+$TIPS" 1>&2
+fi
