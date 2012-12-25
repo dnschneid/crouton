@@ -1,0 +1,100 @@
+#!/bin/sh -e
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+APPLICATION="${0##*/}"
+CHROOTS="`readlink -f "\`dirname "$0"\`/../chroots"`"
+YES=''
+
+USAGE="$APPLICATION [options] name [...]
+
+Safely deletes one or more chroots.
+
+Options:
+    -c CHROOTS  Directory the chroots are in. Default: $CHROOTS
+    -y          Delete the chroots without confirmation."
+
+# Function to exit with exit code $1, spitting out message $@ to stderr
+error() {
+    local ecode="$1"
+    shift
+    echo "$*" 1>&2
+    exit "$ecode"
+}
+
+# Process arguments
+while getopts 'c:n:y' f; do
+    case "$f" in
+    c) CHROOTS="$OPTARG";;
+    y) YES='a';;
+    \?) error 2 "$USAGE";;
+    esac
+done
+shift "$((OPTIND-1))"
+
+# Need at least one chroot listed
+if [ $# = 0 ]; then
+    error 2 "$USAGE"
+fi
+
+# We need to run as root
+if [ ! "$USER" = root -a ! "$UID" = 0 ]; then
+    error 2 "$APPLICATION must be run as root."
+fi
+
+# Unmount and delete each chroot
+ret=0
+for NAME in "$@"; do
+    if [ -z "$NAME" ]; then
+        continue
+    fi
+
+    # Check for existence
+    CHROOT="$CHROOTS/$NAME"
+    if [ ! -d "$CHROOT" ]; then
+        echo "$CHROOT not found." 1>&2
+        ret=1
+        continue
+    fi
+
+    # Check if a chroot is running with this directory
+    base="`readlink -f "$CHROOT"`"
+    nodelete=''
+    for root in /proc/*/root; do
+        if [ -r "$root" ] && [ "`readlink -f "$root"`" = "$base" ]; then
+            echo "$CHROOT is in use; not deleting." 1>&2
+            ret=1
+            nodelete=y
+            break
+        fi
+    done
+    if [ -n "$nodelete" ]; then
+        continue
+    fi
+
+    # Confirm deletion
+    if [ ! "$YES" = 'a' ]; then
+        echo -n "Delete $CHROOT? [a/y/N] " 1>&2
+        read YES junk
+        if [ ! "$YES" = 'a' -a ! "$YES" = 'y' ]; then
+            echo "Skipping deletion of $CHROOT" 1>&2
+            ret=1
+            continue
+        fi
+    fi
+
+    # Unmount all mounts
+    while mounts="`cut -d" " -f2 /proc/mounts | grep "^$base"`"; do
+        if ! umount $mounts 2>/dev/null; then
+            echo "Trying to unmount "$mounts... 1>&2
+            sleep 1
+        fi
+    done
+
+    # Delete the chroot
+    echo "Deleting $CHROOT"
+    rm -rf "$CHROOT"
+done
+
+exit $ret
