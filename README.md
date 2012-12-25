@@ -98,7 +98,7 @@ Examples
      `sudo sh -e ~/Downloads/crouton -f ~/Downloads/[the_tarball] -t xfce`
   3. Wait patiently and answer the prompts like a good person.
   4. Done! You can jump straight to your Xfce session by running
-     `sudo enter-chroot startxfce4`
+     `sudo enter-chroot startxfce4` or, as a special shortcut, `sudo startxfce4`
   5. Switch between Chromium OS and your chroot using Ctrl+Alt+Back and
      Ctrl+Alt+Refresh. Exit the chroot by logging out of Xfce.
 
