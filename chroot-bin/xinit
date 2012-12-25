@@ -3,7 +3,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# Adds a :1 to the xinit command line. Adds the -- if it isn't already there.
+# Adds a :# to the xinit command line, where # is the first available display
+# number. Also adds the -- to the command line if it isn't already there.
 # By putting this in /usr/local/bin, PATH will prefer it and scripts that call
 # xinit will automagically work.
 
@@ -14,4 +15,10 @@ for arg in "$@"; do
         break
     fi
 done
-exec /usr/bin/xinit "$@" $dash :1
+
+disp=0
+while [ -f "/tmp/.X$disp-lock" ]; do
+    disp=$((disp+1))
+done
+
+exec /usr/bin/xinit "$@" $dash ":$disp"
