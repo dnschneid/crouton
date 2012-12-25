@@ -139,6 +139,10 @@ Examples
         sudo sh -e host-bin/enter-chroot -c /tmp/chroots -n crazychrooty \
                 -u root vi
 
+### Help! I've created a monster that must be slain!
+  1. The delete-chroot command is your sword, shield, and only true friend.
+     `sudo delete-chroot evilchroot`
+
 
 Tips
 ----
