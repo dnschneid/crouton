@@ -135,14 +135,13 @@ umount='
 '
 trap "$umount" 0
 mount --bind /dev "$CHROOT/dev"
-mount --bind /tmp "$CHROOT/tmp"
+mount --bind /dev/pts "$CHROOT/dev/pts"
+mount --bind /dev/shm "$CHROOT/dev/shm"
 mount --bind /sys "$CHROOT/sys"
+mount --bind /sys/fs/fuse/connections "$CHROOT/sys/fs/fuse/connections"
+mount --bind /tmp "$CHROOT/tmp"
 mount --bind /proc "$CHROOT/proc"
 mount --bind /var/run/shill "$CHROOT/etc/host-shill"
-mount -t devpts none "$CHROOT/dev/pts"
-
-# Fix launching chrome/chromium
-chmod 1777 "$CHROOT/dev/shm"
 
 # Disable screen dimming (TODO: create script to poke it instead)
 initctl stop powerd 2>/dev/null || nopowerd=1
