@@ -1,0 +1,147 @@
+#!/bin/sh -e
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+APPLICATION="${0##*/}"
+CHROOTS="`readlink -f "\`dirname "$0"\`/../chroots"`"
+SIGNAL='TERM'
+TRIES=5
+YES=''
+
+USAGE="$APPLICATION [options] name [...]
+
+Unmounts one or more chroots, optionally killing any processes still running
+inside them.
+
+By default, it will run in interactive mode where it will ask to kill any
+remaining processes if unable to unmount the chroot within 5 seconds.
+
+Options:
+    -c CHROOTS  Directory the chroots are in. Default: $CHROOTS
+    -k KILL     Send the processes SIGKILL instead of SIGTERM.
+    -t TRIES    Number of seconds to try before signalling the processes.
+                Use -t inf to be exceedingly patient. Default: $TRIES
+    -y          Signalling any remaining processes without confirmation."
+
+# Function to exit with exit code $1, spitting out message $@ to stderr
+error() {
+    local ecode="$1"
+    shift
+    echo "$*" 1>&2
+    exit "$ecode"
+}
+
+# Process arguments
+while getopts 'c:kt:y' f; do
+    case "$f" in
+    c) CHROOTS="$OPTARG";;
+    k) SIGNAL="KILL";;
+    t) TRIES="$OPTARG";;
+    y) YES='a';;
+    \?) error 2 "$USAGE";;
+    esac
+done
+shift "$((OPTIND-1))"
+
+# Need at least one chroot listed
+if [ $# = 0 ]; then
+    error 2 "$USAGE"
+fi
+
+# Make sure TRIES is valid
+if [ "$TRIES" = inf ]; then
+    TRIES=-1
+elif [ "$TRIES" -lt -1 ]; then
+    error 2 "$USAGE"
+fi
+
+# We need to run as root
+if [ ! "$USER" = root -a ! "$UID" = 0 ]; then
+    error 2 "$APPLICATION must be run as root."
+fi
+
+# Unmount each chroot
+ret=0
+for NAME in "$@"; do
+    if [ -z "$NAME" ]; then
+        continue
+    fi
+
+    # Check for existence
+    CHROOT="$CHROOTS/$NAME"
+    if [ ! -d "$CHROOT" ]; then
+        echo "$CHROOT not found." 1>&2
+        ret=1
+        continue
+    fi
+
+    # Check if a chroot is running with this directory. We detect the
+    # appropriate commands by checking if the command's parent root is not equal
+    # to the pid's root. This avoids not unmounting due to a lazy-quitting
+    # background application within the chroot. We also don't consider processes
+    # that have a parent PID of 1 (which would mean an orphaned process in this
+    # case), as enter-chroot never orphans its children.
+    base="`readlink -f "$CHROOT"`"
+    nounmount=''
+    for root in /proc/*/root; do
+        if [ -r "$root" ] && [ "`readlink -f "$root"`" = "$base" ]; then
+            pid="${root#/proc/}"
+            pid="${pid%/root}"
+            ppid="`ps -p "$pid" -o ppid= 2>/dev/null`"
+            if [ -z "$ppid" ] || [ "$ppid" -eq 1 ]; then
+                continue;
+            fi
+            proot="/proc/$ppid/root"
+            if [ -r "$proot" ] && [ "`readlink -f "$proot"`" = "$base" ]; then
+                continue;
+            fi
+            nounmount=y
+            break
+        fi
+    done
+    if [ -n "$nounmount" ]; then
+        echo "Not unmounting $CHROOT as another instance is using it." 1>&2
+        ret=1
+        continue
+    fi
+
+    # Unmount all mounts
+    ntries=0
+    echo "Unmounting $CHROOT..."
+    while mounts="`cut -d" " -f2 /proc/mounts | grep "^$base"`"; do
+        if umount $mounts 2>/dev/null; then
+            break;
+        fi
+        if [ "$ntries" -eq "$TRIES" ]; then
+            # Send signal to all processes running under the chroot
+            # ...but confirm first.
+            if [ ! "$YES" = 'a' ]; then
+                echo -n "Failed to unmount $CHROOT. Kill processes? [a/k/y/N] " 1>&2
+                read YES junk
+                if [ "$YES" = 'k' ]; then
+                    SIGNAL='KILL'
+                elif [ ! "$YES" = 'a' -a ! "$YES" = 'y' ]; then
+                    echo "Skipping unmounting of $CHROOT" 1>&2
+                    ret=1
+                    break
+                fi
+            fi
+            echo "Sending SIG$SIGNAL to processes under $CHROOT..." 1>&2
+            for root in /proc/*/root; do
+                if [ -r "$root" ] && [ "`readlink -f "$root"`" = "$base" ]; then
+                    pid="${root#/proc/}"
+                    pid="${pid%/root}"
+                    kill "-$SIGNAL" "$pid" 2>/dev/null || true
+                fi
+            done
+
+            ntries=0
+        else
+            ntries="$((ntries+1))"
+        fi
+        sleep 1
+    done
+done
+
+exit $ret

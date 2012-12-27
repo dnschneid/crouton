@@ -43,6 +43,12 @@ if [ ! "$USER" = root -a ! "$UID" = 0 ]; then
     error 2 "$APPLICATION must be run as root."
 fi
 
+# Unmount tool
+uc="`dirname "$0"`/unmount-chroot"
+if [ ! -r "$uc" ]; then
+    error 2 "$uc could not be found."
+fi
+
 # Unmount and delete each chroot
 ret=0
 for NAME in "$@"; do
@@ -58,18 +64,9 @@ for NAME in "$@"; do
         continue
     fi
 
-    # Check if a chroot is running with this directory
-    base="`readlink -f "$CHROOT"`"
-    nodelete=''
-    for root in /proc/*/root; do
-        if [ -r "$root" ] && [ "`readlink -f "$root"`" = "$base" ]; then
-            echo "$CHROOT is in use; not deleting." 1>&2
-            ret=1
-            nodelete=y
-            break
-        fi
-    done
-    if [ -n "$nodelete" ]; then
+    # Unmount the chroot. If it's in use, this will fail.
+    if ! sh -e "$uc" -c "$CHROOTS" "$NAME"; then
+        ret=1
         continue
     fi
 
@@ -83,14 +80,6 @@ for NAME in "$@"; do
             continue
         fi
     fi
-
-    # Unmount all mounts
-    while mounts="`cut -d" " -f2 /proc/mounts | grep "^$base"`"; do
-        if ! umount $mounts 2>/dev/null; then
-            echo "Trying to unmount "$mounts... 1>&2
-            sleep 1
-        fi
-    done
 
     # Delete the chroot
     echo "Deleting $CHROOT"

@@ -97,43 +97,9 @@ mount -o remount,rw,dev,exec "$mp"
 mkdir -p "$CHROOT/etc/host-shill"
 ln -sf 'host-shill/resolv.conf' "$CHROOT/etc/resolv.conf"
 
-# Mounts; will auto-unmount everything below the chroot when the script exits,
-# if no other commands are using it as their root. We detect the appropriate
-# commands by checking if the command's parent root is not equal to the pid's
-# root. This avoids not unmounting due to a lazy-quitting background application
-# within the chroot. We also don't consider processes that have a parent PID of
-# 1 (which would mean an orphaned process in this case), as enter-chroot never
-# orphans its children.
-umount='
-    base="`readlink -f "'"$CHROOT"'"`"
-    nounmount=
-    for root in /proc/*/root; do
-        if [ -r "$root" ] && [ "`readlink -f "$root"`" = "$base" ]; then
-            pid="${root#/proc/}"
-            pid="${pid%/root}"
-            ppid="`ps -p "$pid" -o ppid= 2>/dev/null`"
-            if [ -z "$ppid" ] || [ "$ppid" -eq 1 ]; then
-                continue;
-            fi
-            proot="/proc/$ppid/root"
-            if [ -r "$proot" ] && [ "`readlink -f "$proot"`" = "$base" ]; then
-                continue;
-            fi
-            nounmount=y
-            break
-        fi
-    done
-    if [ -z "$nounmount" ]; then
-        while mounts="`cut -d" " -f2 /proc/mounts | grep "^$base"`"; do
-            if ! umount $mounts 2>/dev/null; then
-                sleep 1
-            fi
-        done
-    else
-        echo "Not unmounting '"$CHROOT"' as another instance is using it." 1>&2
-    fi
-'
-trap "$umount" 0
+# Mounts; will auto-unmount everything below the chroot when the script exits.
+TRAP="sh -e \"`dirname "$0"`/unmount-chroot\" -c \"$CHROOTS\" \"$NAME\";$TRAP"
+trap "$TRAP" INT HUP 0
 mount --bind /dev "$CHROOT/dev"
 mount --bind /dev/pts "$CHROOT/dev/pts"
 mount --bind /dev/shm "$CHROOT/dev/shm"
