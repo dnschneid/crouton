@@ -10,9 +10,11 @@ INSTALLERDIR="$SCRIPTDIR/installer"
 HOSTBINDIR="$SCRIPTDIR/host-bin"
 TARGETSDIR="$SCRIPTDIR/targets"
 
-ARCH="`uname -m | sed -e 's/x86_64/amd64/' -e 's/arm.*/arm/'`"
+ARCH="`uname -m | sed -e 's/x86_64/amd64/' -e 's/arm.*/armhf/'`"
 DOWNLOADONLY=''
-MIRROR='http://archive.ubuntu.com/ubuntu/'
+MIRROR=''
+MIRROR86='http://archive.ubuntu.com/ubuntu/'
+MIRRORARM='http://ports.ubuntu.com/ubuntu-ports/'
 NAME=''
 PREFIX='/usr/local'
 RELEASE='precise'
@@ -40,7 +42,9 @@ Options:
     -d          Downloads the bootstrap tarball but does not prepare the chroot.
     -f TARBALL  The tarball to use, or download to in the case of -d.
                 When using a prebuilt tarball, -a and -r are ignored.
-    -m MIRROR   Mirror to use for apt-get. Default: $MIRROR
+    -m MIRROR   Mirror to use for bootstrapping and apt-get.
+                Default for i386/amd64: $MIRROR86
+                Default for armhl/others: $MIRRORARM
     -n NAME     Name of the chroot. Default is the release name.
     -p PREFIX   The root directory in which to install the bin and chroot
                 subdirectories and data. Default: $PREFIX
@@ -80,6 +84,15 @@ while getopts 'a:df:m:n:p:r:s:t:u:' f; do
     esac
 done
 shift "$((OPTIND-1))"
+
+# If MIRROR wasn't specified, choose it based on ARCH.
+if [ -z "$MIRROR" ]; then
+    if [ "$ARCH" = 'amd64' -o "$ARCH" = 'i386' ]; then
+        MIRROR="$MIRROR86"
+    else
+        MIRROR="$MIRRORARM"
+    fi
+fi
 
 # If a tarball isn't specified, we need ssh parameters
 if [ $# = 0 -a -z "$TARBALL" ]; then
@@ -166,7 +179,7 @@ if [ -z "$DOWNLOADONLY" ]; then
         trap "$TRAP" INT HUP 0
     fi
 else
-    echo "Downloading $RELEASE to $TARBALL" 1>&2
+    echo "Downloading $RELEASE-$ARCH bootstrap to $TARBALL" 1>&2
     if [ $# = 0 ]; then
         . "$INSTALLERDIR/download.sh"
         exit
