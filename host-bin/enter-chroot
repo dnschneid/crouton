@@ -82,6 +82,8 @@ if [ -z "$NOLOGIN" ]; then
             error 1 "UID $uid not found in $NAME"
         fi
     esac
+    # Detect the home directory for the user
+    CHROOTHOME="`awk -F: '$1=="'"$USERNAME"'"{print $6}' "$CHROOT/etc/passwd"`"
 fi
 
 # Ensure the chroot is executable and writable
@@ -108,6 +110,13 @@ mount --bind /sys/fs/fuse/connections "$CHROOT/sys/fs/fuse/connections"
 mount --bind /tmp "$CHROOT/tmp"
 mount --bind /proc "$CHROOT/proc"
 mount --bind /var/run/shill "$CHROOT/etc/host-shill"
+
+# Bind-mount ~/Downloads if we're logged in as a user
+localdownloads='/home/chronos/user/Downloads'
+if [ -z "$NOLOGIN" -a -n "$CHROOTHOME" -a -d "$localdownloads" ]; then
+    mkdir -p "$CHROOT/$CHROOTHOME/Downloads"
+    mount --bind "$localdownloads" "$CHROOT/$CHROOTHOME/Downloads"
+fi
 
 # Disable screen dimming (TODO: create script to poke it instead)
 initctl stop powerd 2>/dev/null || nopowerd=1
