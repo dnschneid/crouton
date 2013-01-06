@@ -19,7 +19,7 @@ NAME=''
 PREFIX='/usr/local'
 RELEASE='precise'
 TARBALL=''
-TARGETS='help'
+TARGETS=''
 USERNAME=''
 
 USAGE="$APPLICATION [options] -t targets
@@ -46,7 +46,7 @@ Options:
                 subdirectories and data. Default: $PREFIX
     -r RELEASE  Name of the distribution release. Default: $RELEASE
     -t TARGETS  Comma-separated list of environment targets to install.
-                Specify help (or omit) to print out potential targets.
+                Specify help to print out potential targets.
     -u USERNAME Username of the primary user to add to the chroot.
                 If unspecified, you will be asked for it later.
 
@@ -79,6 +79,11 @@ while getopts 'a:df:m:n:p:r:s:t:u:' f; do
 done
 shift "$((OPTIND-1))"
 
+# If targets weren't specified, we should just print help text.
+if [ -z "$DOWNLOADONLY" -a -z "$TARGETS" ]; then
+    error 2 "$USAGE"
+fi
+
 # There should never be any extra parameters.
 if [ ! $# = 0 ]; then
     error 2 "$USAGE"
@@ -99,7 +104,7 @@ if [ -z "$DOWNLOADONLY" ]; then
     while [ -n "$t" ]; do
         TARGET="${t%%,*}"
         t="${t#*,}"
-        if [ "$TARGET" = 'help' ]; then
+        if [ "$TARGET" = 'help' -o "$TARGET" = 'list' ]; then
             TARGETS='help'
             echo "Available targets:" 1>&2
             for t in "$TARGETSDIR/"*; do
