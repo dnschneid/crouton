@@ -73,6 +73,94 @@ dogetdeps() {
     return 0
 }
 
+
+# Searches a package list for a set of packages that have a field that matches
+# the specified data.
+# $1: unique; set to y to exit once all items have been found once.
+# $2: fieldname
+# $3: mirror
+# $4: pkgsfile
+# $5+: packages
+# Outputs matching package data on stdout.
+dopkgmirrorpkgs() {
+    local unique="$1" targetfield="$2" mirror="$3" pkgsfile="$4"
+    local checksumfield="${DEBOOTSTRAP_CHECKSUM_FIELD:-"MD5sum"}"
+    shift 4
+    local pkgs="$*" newpkgs skip='n'
+    local curfield='' curpkg='' curver='' curarch=''
+    local cursize='' curchecksum='' curfilename=''
+
+    while IFS=":" read field data; do
+        # Empty lines mark the start of new packages.
+        if [ -z "$field" ]; then
+            if [ ! "$skip" = 'y' -a -n "$curfield" ]; then
+                echo $curpkg $curver $curarch $mirror \
+                     $curfilename $curchecksum $cursize
+                if [ -z "$pkgs" ]; then
+                    break
+                fi
+            fi
+            curfield=''
+            skip='n'
+            continue
+        elif [ -z "$data" ]; then
+            # Optimization: ignore lines with no data
+            continue
+        fi
+        # Do a case-insensitive search on the field name
+        if echo "$field:" | grep -qi "^$targetfield:*$"; then
+            curfield="$data"
+            # See if it's in our list, and for unique queries, remove the item.
+            # Otherwise, mark the item as skip so that we don't have to parse
+            # remaining fields.
+            newpkgs=''
+            skip='y'
+            for pkg in $pkgs; do
+                if [ $curfield = "$pkg" ]; then
+                    skip='n'
+                else
+                    newpkgs="$newpkgs $pkg"
+                fi
+            done
+            if [ "$unique" = 'y' ]; then
+                pkgs="$newpkgs"
+            fi
+        fi
+        # If we already know we don't care about this one, skip it.
+        if [ "$skip" = 'y' ]; then
+            continue
+        fi
+        # Case-insensitive search on the checksum field name
+        if echo "$field:" | grep -qi "^$checksumfield:*$"; then
+            curchecksum="$data"
+        else
+            # It might be one of the other fields
+            case "$field" in
+                [Pp][Aa][Cc][Kk][Aa][Gg][Ee])
+                    curpkg="$data";;
+                [Vv][Ee][Rr][Ss][Ii][Oo][Nn])
+                    curver="$data";;
+                [Aa][Rr][Cc][Hh][Ii][Tt][Ee][Cc][Tt][Uu][Rr][Ee])
+                    curarch="$data";;
+                [Ss][Ii][Zz][Ee])
+                    cursize="$data";;
+                [Ff][Ii][Ll][Ee][Nn][Aa][Mm][Ee])
+                    curfilename="$data";;
+            esac
+        fi
+    done < "$pkgsfile"
+
+    # In unique mode, any that weren't found are returned as "pkg -"
+    if [ "$unique" = 'y' ]; then
+        for pkg in $pkgs; do
+            echo $pkg -
+        done
+    fi
+
+    return 0
+}
+
+
 # print out anything that looks like a % on its own line, appropriately scaled
 # $1: int low
 # $2: int high
@@ -122,8 +210,8 @@ extraparam=''
 case "$1" in
     WGET%)   minparams=3; cmd=dotranslatewgetpercent;;
     GETDEPS) minparams=2; cmd=dogetdeps;;
-    PKGS)    minparams=3; cmd=dopkgmirrorpkgs; extraparam='Package:';;
-    FIELD)   minparams=4; cmd=dopkgmirrorpkgs;;
+    PKGS)    minparams=3; cmd=dopkgmirrorpkgs; extraparam='y Package:';;
+    FIELD)   minparams=4; cmd=dopkgmirrorpkgs; extraparam='n';;
     STANZAS) minparams=2; cmd=dopkgstanzas;;
     *)       minparams=0; cmd='';;
 esac
@@ -136,5 +224,5 @@ fi
 
 # Dispatch
 shift
-"$cmd" "$@" "$extraparam"
+"$cmd" $extraparam "$@"
 exit $?
