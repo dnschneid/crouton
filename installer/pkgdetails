@@ -117,7 +117,7 @@ dopkgmirrorpkgs() {
     local unique="$1" targetfield="$2" mirror="$3" pkgsfile="$4"
     local checksumfield="${DEBOOTSTRAP_CHECKSUM_FIELD:-"MD5sum"}"
     shift 4
-    local pkgs="$*" newpkgs skip='n'
+    local pkgs="$*" newpkgs skip='x'
     local curfield='' curpkg='' curver='' curarch=''
     local cursize='' curchecksum='' curfilename='' output=''
 
@@ -125,12 +125,11 @@ dopkgmirrorpkgs() {
         while IFS=":" read field data; do
             # Empty lines mark the start of new packages.
             if [ -z "$field" ]; then
-                if [ ! "$skip" = 'y' -a -n "$curfield" ]; then
+                if [ "$skip" = 'n' ]; then
                     output="$curpkg $curver $curarch $mirror \
                             $curfilename $curchecksum $cursize"
                 fi
-                curfield=''
-                skip='n'
+                skip='x'
                 continue
             elif [ -z "$data" ]; then
                 # Optimization: ignore lines with no data
@@ -138,6 +137,14 @@ dopkgmirrorpkgs() {
             fi
             # Do a case-insensitive search on the field name
             if echo "$field:" | grep -qi "^$targetfield:*$"; then
+                if [ "$unique" = 'y' -a ! "$data" = "$curfield" ]; then
+                    if [ -n "$curfield" ]; then
+                        pkgs="$newpkgs"
+                    fi
+                    if [ -z "$pkgs" ]; then
+                        break
+                    fi
+                fi
                 curfield="$data"
                 # See if it's in our list, and for unique queries, remove the
                 # item. Otherwise, mark the item as skip so that we don't have
@@ -166,12 +173,6 @@ dopkgmirrorpkgs() {
                         if [ -n "$output" -a ! "$data" = "$curpkg" ]; then
                             echo $output
                             output=''
-                            if [ "$unique" = 'y' ]; then
-                                pkgs="$newpkgs"
-                                if [ -z "$pkgs" ]; then
-                                    break
-                                fi
-                            fi
                         fi
                         curpkg="$data";;
                     [Vv][Ee][Rr][Ss][Ii][Oo][Nn])
