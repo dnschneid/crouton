@@ -34,7 +34,7 @@
 # and then runs installer/main.sh with the parameters passed to it.
 
 # Make a temporary directory and auto-remove it when the script ends.
-SCRIPTDIR="`mktemp -d --tmpdir=/tmp chroot-installer.XXX`"
+SCRIPTDIR="`mktemp -d --tmpdir=/tmp "${0##*/}.XXX"`"
 TRAP="rm -rf \"$SCRIPTDIR\"; $TRAP"
 trap "$TRAP" INT HUP 0
 
