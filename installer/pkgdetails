@@ -13,6 +13,66 @@ usage: $APPLICATION PKGS mirror packagesfile pkgs..
    or: $APPLICATION STANZAS packagesfile pkgs..
    or: $APPLICATION WGET% low high end reason"
 
+
+# Parses a dependency list, spitting out the packages that are required, one per
+# line. If multiple packages fulfil a dependency (as in, | is used), spits out
+# the first one in the list.
+# $*: dependency list
+# Outputs to stdout.
+outputdeps() {
+    # Add an extra comma to remain to avoid special-casing
+    local remain="${*%,}," dep ignore
+    while [ -n "$remain" ]; do
+        # Split at commas, and let shell strip out whitespace on dep
+        dep=${remain%%,*}
+        remain="${remain#*,}"
+        [ -n "$dep" ] || continue
+        # Grab the first item, ignoring anything else
+        echo "$dep" | {
+            IFS="$IFS|(" read dep ignore
+            if [ -n "$dep" ]; then
+                echo "$dep"
+            fi
+        }
+    done
+    return 0
+}
+
+# Parses a packages file to extract the dependencies for a set of packages.
+# $1: pkgsfile
+# $2+: packages
+# Outputs a list of dependencies to stdout.
+dogetdeps() {
+    local pkgsfile="$1"
+    shift
+    local pkgs="$*" skip=y field data newpkgs
+    while IFS=":" read field data; do
+        case "$field" in
+            [Pp][Aa][Cc][Kk][Aa][Gg][Ee])
+                skip=y
+                if [ -z "$pkgs" ]; then
+                    return 0
+                elif [ -z "$data" ]; then
+                    continue
+                fi
+                newpkgs=''
+                for pkg in $pkgs; do
+                    if [ $data = "$pkg" ]; then
+                        skip=n
+                    else
+                        newpkgs="$newpkgs $pkg"
+                    fi
+                done
+                pkgs="$newpkgs";;
+            *[Dd][Ee][Pp][Ee][Nn][Dd][Ss])
+                if [ ! "$skip" = 'y' ]; then
+                    outputdeps $data
+                fi;;
+        esac
+    done < "$pkgsfile"
+    return 0
+}
+
 # print out anything that looks like a % on its own line, appropriately scaled
 # $1: int low
 # $2: int high
