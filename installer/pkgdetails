@@ -14,6 +14,23 @@ usage: $APPLICATION PKGS mirror packagesfile pkgs..
    or: $APPLICATION WGET% low high end reason"
 
 
+# Massively accelerates picking packages out of the package list by using grep
+# to find packages that have the requested field-value pair and print out
+# sufficient context to parse normally. The resulting output can be parsed in
+# the same way as the input file.
+# $1: pkgsfile
+# $2: the field to check
+# $3+: pkgs
+# Outputs context to stdout.
+grepfields() {
+    local pkgsfile="$1" field="$2"
+    shift
+    for pkg in $*; do
+        echo "^$field:*[ \t]*$pkg$"
+    done | grep -if /dev/stdin -B 5 -A 50 "$pkgsfile"
+}
+
+
 # Parses a dependency list, spitting out the packages that are required, one per
 # line. If multiple packages fulfil a dependency (as in, | is used), spits out
 # the first one in the list.
@@ -46,42 +63,44 @@ dogetdeps() {
     local pkgsfile="$1"
     shift
     local pkgs="$*" curpkg='' field data newpkgs output=''
-    while IFS=":" read field data; do
-        case "$field" in
-            [Pp][Aa][Cc][Kk][Aa][Gg][Ee])
-                if [ -z "$data" ]; then
-                    continue
-                fi
-                if [ -n "$output" -a ! $data = "$curpkg" ]; then
-                    echo "$output"
-                    pkgs="$newpkgs"
-                fi
-                output=''
-                curpkg=''
-                if [ -z "$pkgs" ]; then
-                    break
-                fi
-                newpkgs=''
-                for pkg in $pkgs; do
-                    if [ $data = "$pkg" ]; then
-                        curpkg="$pkg"
-                    else
-                        newpkgs="$newpkgs $pkg"
+    grepfields "$pkgsfile" "Package:" "$pkgs" | {
+        while IFS=":" read field data; do
+            case "$field" in
+                [Pp][Aa][Cc][Kk][Aa][Gg][Ee])
+                    if [ -z "$data" ]; then
+                        continue
                     fi
-                done;;
-            *[Dd][Ee][Pp][Ee][Nn][Dd][Ss])
-                if [ -n "$curpkg" ]; then
-                    if [ -n "$output" ]; then
-                        output="$output
+                    if [ -n "$output" -a ! $data = "$curpkg" ]; then
+                        echo "$output"
+                        pkgs="$newpkgs"
+                    fi
+                    output=''
+                    curpkg=''
+                    if [ -z "$pkgs" ]; then
+                        break
+                    fi
+                    newpkgs=''
+                    for pkg in $pkgs; do
+                        if [ $data = "$pkg" ]; then
+                            curpkg="$pkg"
+                        else
+                            newpkgs="$newpkgs $pkg"
+                        fi
+                    done;;
+                *[Dd][Ee][Pp][Ee][Nn][Dd][Ss])
+                    if [ -n "$curpkg" ]; then
+                        if [ -n "$output" ]; then
+                            output="$output
 "
-                    fi
-                    output="$output`outputdeps $data`"
-                fi;;
-        esac
-    done < "$pkgsfile"
-    if [ -n "$output" ]; then
-        echo "$output"
-    fi
+                        fi
+                        output="$output`outputdeps $data`"
+                    fi;;
+            esac
+        done
+        if [ -n "$output" ]; then
+            echo "$output"
+        fi
+    }
     return 0
 }
 
@@ -102,80 +121,82 @@ dopkgmirrorpkgs() {
     local curfield='' curpkg='' curver='' curarch=''
     local cursize='' curchecksum='' curfilename='' output=''
 
-    while IFS=":" read field data; do
-        # Empty lines mark the start of new packages.
-        if [ -z "$field" ]; then
-            if [ ! "$skip" = 'y' -a -n "$curfield" ]; then
-                output="$curpkg $curver $curarch $mirror \
-                        $curfilename $curchecksum $cursize"
-            fi
-            curfield=''
-            skip='n'
-            continue
-        elif [ -z "$data" ]; then
-            # Optimization: ignore lines with no data
-            continue
-        fi
-        # Do a case-insensitive search on the field name
-        if echo "$field:" | grep -qi "^$targetfield:*$"; then
-            curfield="$data"
-            # See if it's in our list, and for unique queries, remove the item.
-            # Otherwise, mark the item as skip so that we don't have to parse
-            # remaining fields.
-            newpkgs=''
-            skip='y'
-            for pkg in $pkgs; do
-                if [ $curfield = "$pkg" ]; then
-                    skip='n'
-                else
-                    newpkgs="$newpkgs $pkg"
+    grepfields "$pkgsfile" "$targetfield" "$pkgs" | {
+        while IFS=":" read field data; do
+            # Empty lines mark the start of new packages.
+            if [ -z "$field" ]; then
+                if [ ! "$skip" = 'y' -a -n "$curfield" ]; then
+                    output="$curpkg $curver $curarch $mirror \
+                            $curfilename $curchecksum $cursize"
                 fi
-            done
-        fi
-        # If we already know we don't care about this one, skip it.
-        if [ "$skip" = 'y' ]; then
-            continue
-        fi
-        # Case-insensitive search on the checksum field name
-        if echo "$field:" | grep -qi "^$checksumfield:*$"; then
-            curchecksum="$data"
-        else
-            # It might be one of the other fields
-            case "$field" in
-                [Pp][Aa][Cc][Kk][Aa][Gg][Ee])
-                    if [ -n "$output" -a ! "$data" = "$curpkg" ]; then
-                        echo $output
-                        output=''
-                        if [ "$unique" = 'y' ]; then
-                            pkgs="$newpkgs"
-                            if [ -z "$pkgs" ]; then
-                                break
+                curfield=''
+                skip='n'
+                continue
+            elif [ -z "$data" ]; then
+                # Optimization: ignore lines with no data
+                continue
+            fi
+            # Do a case-insensitive search on the field name
+            if echo "$field:" | grep -qi "^$targetfield:*$"; then
+                curfield="$data"
+                # See if it's in our list, and for unique queries, remove the
+                # item. Otherwise, mark the item as skip so that we don't have
+                # to parse remaining fields.
+                newpkgs=''
+                skip='y'
+                for pkg in $pkgs; do
+                    if [ $curfield = "$pkg" ]; then
+                        skip='n'
+                    else
+                        newpkgs="$newpkgs $pkg"
+                    fi
+                done
+            fi
+            # If we already know we don't care about this one, skip it.
+            if [ "$skip" = 'y' ]; then
+                continue
+            fi
+            # Case-insensitive search on the checksum field name
+            if echo "$field:" | grep -qi "^$checksumfield:*$"; then
+                curchecksum="$data"
+            else
+                # It might be one of the other fields
+                case "$field" in
+                    [Pp][Aa][Cc][Kk][Aa][Gg][Ee])
+                        if [ -n "$output" -a ! "$data" = "$curpkg" ]; then
+                            echo $output
+                            output=''
+                            if [ "$unique" = 'y' ]; then
+                                pkgs="$newpkgs"
+                                if [ -z "$pkgs" ]; then
+                                    break
+                                fi
                             fi
                         fi
-                    fi
-                    curpkg="$data";;
-                [Vv][Ee][Rr][Ss][Ii][Oo][Nn])
-                    curver="$data";;
-                [Aa][Rr][Cc][Hh][Ii][Tt][Ee][Cc][Tt][Uu][Rr][Ee])
-                    curarch="$data";;
-                [Ss][Ii][Zz][Ee])
-                    cursize="$data";;
-                [Ff][Ii][Ll][Ee][Nn][Aa][Mm][Ee])
-                    curfilename="$data";;
-            esac
-        fi
-    done < "$pkgsfile"
-
-    if [ -n "$output" ]; then
-        echo $output
-    fi
-
-    # In unique mode, any that weren't found are returned as "pkg -"
-    if [ "$unique" = 'y' ]; then
-        for pkg in $pkgs; do
-            echo $pkg -
+                        curpkg="$data";;
+                    [Vv][Ee][Rr][Ss][Ii][Oo][Nn])
+                        curver="$data";;
+                    [Aa][Rr][Cc][Hh][Ii][Tt][Ee][Cc][Tt][Uu][Rr][Ee])
+                        curarch="$data";;
+                    [Ss][Ii][Zz][Ee])
+                        cursize="$data";;
+                    [Ff][Ii][Ll][Ee][Nn][Aa][Mm][Ee])
+                        curfilename="$data";;
+                esac
+            fi
         done
-    fi
+
+        if [ -n "$output" ]; then
+            echo $output
+        fi
+
+        # In unique mode, any that weren't found are returned as "pkg -"
+        if [ "$unique" = 'y' ]; then
+            for pkg in $pkgs; do
+                echo $pkg -
+            done
+        fi
+    }
 
     return 0
 }
@@ -189,45 +210,47 @@ dopkgstanzas() {
     shift
     local pkgs="$*" accum='' curpkg='' skip='n' output=''
 
-    while IFS='' read data; do
-        if [ -z "$data" ]; then
-            if [ ! "$skip" = 'y' -a -n "$accum" ]; then
-                output="$accum"
-            fi
-            accum=''
-            skip='n'
-        else
-            case "$data" in
-                [Pp][Aa][Cc][Kk][Aa][Gg][Ee]:*)
-                    if [ -n "$output" -a ! "${data#*:}" = "$curpkg" ]; then
-                        echo "$output"
-                        output=''
-                        pkgs="$newpkgs"
-                        if [ -z "$pkgs" ]; then
-                            break
+    grepfields "$pkgsfile" "Package:" "$pkgs" | {
+        while IFS='' read data; do
+            if [ -z "$data" ]; then
+                if [ ! "$skip" = 'y' -a -n "$accum" ]; then
+                    output="$accum"
+                fi
+                accum=''
+                skip='n'
+            else
+                case "$data" in
+                    [Pp][Aa][Cc][Kk][Aa][Gg][Ee]:*)
+                        if [ -n "$output" -a ! "${data#*:}" = "$curpkg" ]; then
+                            echo "$output"
+                            output=''
+                            pkgs="$newpkgs"
+                            if [ -z "$pkgs" ]; then
+                                break
+                            fi
                         fi
-                    fi
-                    curpkg="${data#*:}"
-                    newpkgs=''
-                    skip='y'
-                    for pkg in $pkgs; do
-                        if [ $curpkg = "$pkg" ]; then
-                            skip='n'
-                        else
-                            newpkgs="$newpkgs $pkg"
-                        fi
-                    done;;
-            esac
-            if [ ! "$skip" = 'y' ]; then
-                accum="$accum$data
+                        curpkg="${data#*:}"
+                        newpkgs=''
+                        skip='y'
+                        for pkg in $pkgs; do
+                            if [ $curpkg = "$pkg" ]; then
+                                skip='n'
+                            else
+                                newpkgs="$newpkgs $pkg"
+                            fi
+                        done;;
+                esac
+                if [ ! "$skip" = 'y' ]; then
+                    accum="$accum$data
 "
+                fi
             fi
-        fi
-    done < "$pkgsfile"
+        done < "$pkgsfile"
 
-    if [ -n "$output" ]; then
-        echo "$output"
-    fi
+        if [ -n "$output" ]; then
+            echo "$output"
+        fi
+    }
 }
 
 
