@@ -161,11 +161,54 @@ dopkgmirrorpkgs() {
 }
 
 
-# print out anything that looks like a % on its own line, appropriately scaled
-# $1: int low
-# $2: int high
-# $3: int end
-# $4: char *reason
+# Spits out the complete package info for the specified packages.
+# $1: pkgsfile
+# $2+: packages
+dopkgstanzas() {
+    local pkgsfile="$1"
+    shift
+    local pkgs="$*" accum='' curpkg='' skip='n'
+
+    while IFS='' read data; do
+        if [ -z "$data" ]; then
+            if [ ! "$skip" = 'y' -a -n "$curpkg" ]; then
+                echo "${accum}"
+                if [ -z "$pkgs" ]; then
+                    break
+                fi
+            fi
+            accum=''
+            curpkg=''
+            skip='n'
+        else
+            case "$data" in
+                [Pp][Aa][Cc][Kk][Aa][Gg][Ee]:*)
+                    curpkg=${data#*:}
+                    newpkgs=''
+                    skip='y'
+                    for pkg in $pkgs; do
+                        if [ $curpkg = "$pkg" ]; then
+                            skip='n'
+                        else
+                            newpkgs="$newpkgs $pkg"
+                        fi
+                    done
+                    pkgs="$newpkgs";;
+            esac
+            if [ ! "$skip" = 'y' ]; then
+                accum="$accum$data
+"
+            fi
+        fi
+    done < "$pkgsfile"
+}
+
+
+# Print out anything that looks like a % on its own line, appropriately scaled
+# $1: low percent
+# $2: high percent
+# $3: end
+# $4: reason
 dotranslatewgetpercent() {
     local input char lastval=0 val=0 low="$1" high="$2" ret=0
     local suffix="$3${4:+" "}$4"
@@ -174,12 +217,12 @@ dotranslatewgetpercent() {
         stdbuf -oL tr -sc '[:digit:]%' '
 ' | {
             while read input; do
-                    val="${input%"%"}"
-                    if [ "$input" = "$val" ]; then
-                        continue
-                    fi
-                    lastval="$val"
-                    echo "P: $((val*(high-low)/100+low)) $suffix"
+                val="${input%"%"}"
+                if [ "$input" = "$val" ]; then
+                    continue
+                fi
+                lastval="$val"
+                echo "P: $((val*(high-low)/100+low)) $suffix"
             done
             [ "$lastval" -eq 100 ]
         } || ret=1
