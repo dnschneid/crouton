@@ -1,0 +1,80 @@
+#!/bin/sh -e
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# An adaption of pkgdetails.c from debootstrap into shell.
+
+APPLICATION="${0##*/}"
+USAGE="\
+usage: $APPLICATION PKGS mirror packagesfile pkgs..
+   or: $APPLICATION FIELD field mirror packagesfile pkgs..
+   or: $APPLICATION GETDEPS packagesfile pkgs..
+   or: $APPLICATION STANZAS packagesfile pkgs..
+   or: $APPLICATION WGET% low high end reason"
+
+# print out anything that looks like a % on its own line, appropriately scaled
+# $1: int low
+# $2: int high
+# $3: int end
+# $4: char *reason
+dotranslatewgetpercent() {
+    local input char lastval=0 val=0 low="$1" high="$2" ret=0
+    local suffix="$3${4:+" "}$4"
+    # Use the tr method if we have stdbuf, as it is way faster.
+    if hash stdbuf 2>/dev/null; then
+        stdbuf -oL tr -sc '[:digit:]%' '
+' | {
+            while read input; do
+                    val="${input%"%"}"
+                    if [ "$input" = "$val" ]; then
+                        continue
+                    fi
+                    lastval="$val"
+                    echo "P: $((val*(high-low)/100+low)) $suffix"
+            done
+            [ "$lastval" -eq 100 ]
+        } || ret=1
+    else
+        # Otherwise we have to use the head method, which is CPU intensive.
+        # Input may not have newlines, so process each character at a time.
+        # Grabbing one byte at a time is terribly slow, so we grab batches.
+        while input="`head -c8`"; do
+            while [ -n "$input" ]; do
+                char="${input%"${input#?}"}"
+                input="${input#"$char"}"
+                case "$char" in      
+                    [0-9]) val=$((val*10+char));;
+                    %) lastval="$val"
+                       echo "P: $((val*(high-low)/100+low)) $suffix";;
+                    *) val=0;;
+                esac
+            done
+        done
+        [ "$lastval" -eq 100 ] || ret=1
+    fi
+    return "$ret"
+}
+
+
+# Process command
+extraparam=''
+case "$1" in
+    WGET%)   minparams=3; cmd=dotranslatewgetpercent;;
+    GETDEPS) minparams=2; cmd=dogetdeps;;
+    PKGS)    minparams=3; cmd=dopkgmirrorpkgs; extraparam='Package:';;
+    FIELD)   minparams=4; cmd=dopkgmirrorpkgs;;
+    STANZAS) minparams=2; cmd=dopkgstanzas;;
+    *)       minparams=0; cmd='';;
+esac
+
+# Use -le to check number of parameters, since one parameter is the command.
+if [ -z "$cmd" -o "$#" -le "$minparams" ]; then
+    echo "$USAGE" 1>&2
+    exit 1
+fi
+
+# Dispatch
+shift
+"$cmd" "$@" "$extraparam"
+exit $?
