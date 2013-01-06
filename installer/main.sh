@@ -174,6 +174,10 @@ Either delete it, specify a different name (-n), or specify -u to update it."
         else
             NODOWNLOAD='y'
             echo "$CHROOT already exists; updating it..." 1>&2
+            # Sanity-check the release
+            if ! grep -q "=$RELEASE\$" "$CHROOT/etc/lsb-release"; then
+                error 1 "Release doesn't match! Please correct the -r option."
+            fi
         fi
     fi
     mkdir -p "$BIN" "$CHROOT"
