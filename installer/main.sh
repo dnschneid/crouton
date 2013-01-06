@@ -18,24 +18,20 @@ MIRRORARM='http://ports.ubuntu.com/ubuntu-ports/'
 NAME=''
 PREFIX='/usr/local'
 RELEASE='precise'
-SSH='ssh'
 TARBALL=''
 TARGETS='help'
 USERNAME=''
 
-USAGE="$APPLICATION [options] -t targets [user@]host
-$APPLICATION [options] -f tarball
+USAGE="$APPLICATION [options] -t targets
+$APPLICATION [options] -d -f tarball
 
 Constructs a Debian-based chroot for running alongside Chromium OS.
 
-If run without -f, a hostname of a Debian/Ubuntu machine must be specified in
-order to bootstrap. You do not need root on the remote machine unless
-debootstrap is not installed, in which case you will need to either have root to
-install it or manually install it yourself.
-
 If run with -f, a tarball is used to bootstrap the chroot. If specified with -d,
-the tarball is created (either via a remote machine or a local copy of
-debootstrap) for later use with -f.
+the tarball is created for later use with -f.
+
+This must be run as root unless -d is specified AND fakeroot is installed AND
+/tmp is mounted exec and dev.
 
 Options:
     -a ARCH     The architecture to prepare the chroot for. Default: $ARCH
@@ -49,7 +45,6 @@ Options:
     -p PREFIX   The root directory in which to install the bin and chroot
                 subdirectories and data. Default: $PREFIX
     -r RELEASE  Name of the distribution release. Default: $RELEASE
-    -s SSH      SSH command to use. Default: $SSH
     -t TARGETS  Comma-separated list of environment targets to install.
                 Specify help (or omit) to print out potential targets.
     -u USERNAME Username of the primary user to add to the chroot.
@@ -77,13 +72,17 @@ while getopts 'a:df:m:n:p:r:s:t:u:' f; do
     n) NAME="$OPTARG";;
     p) PREFIX="$OPTARG";;
     r) RELEASE="$OPTARG";;
-    s) SSH="$OPTARG";;
     t) TARGETS="$OPTARG";;
     u) USERNAME="$OPTARG";;
     \?) error 2 "$USAGE";;
     esac
 done
 shift "$((OPTIND-1))"
+
+# There should never be any extra parameters.
+if [ ! $# = 0 ]; then
+    error 2 "$USAGE"
+fi
 
 # If MIRROR wasn't specified, choose it based on ARCH.
 if [ -z "$MIRROR" ]; then
@@ -92,16 +91,6 @@ if [ -z "$MIRROR" ]; then
     else
         MIRROR="$MIRRORARM"
     fi
-fi
-
-# If a tarball isn't specified, we need ssh parameters
-if [ $# = 0 -a -z "$TARBALL" ]; then
-    error 2 "$USAGE"
-fi
-
-# It's invalid to specify tarball and ssh parameters but not -d
-if [ -z "$DOWNLOADONLY" -a -n "$TARBALL" -a ! $# = 0 ]; then
-    error 2 "$USAGE"
 fi
 
 # Confirm or list targets if requested (and download only isn't chosen)
@@ -127,13 +116,24 @@ if [ -z "$DOWNLOADONLY" ]; then
     done
 fi
 
-# We need to run as root if we're actually installing
-if [ -z "$DOWNLOADONLY" ]; then
-    if [ ! "$USER" = root -a ! "$UID" = 0 ]; then
+# If we're not running as root, we must be downloading and have fakeroot and
+# have an exec and dev /tmp
+if grep -q '.* /tmp .*\(nodev\|noexec\)' /proc/mounts; then
+    NOEXECTMP=y
+else
+    NOEXECTMP=n
+fi
+FAKEROOT=''
+if [ ! "$USER" = root -a ! "$UID" = 0 ]; then
+    FAKEROOT=fakeroot
+    if [ "$NOEXECTMP" = y -o -z "$DOWNLOADONLY" ] \
+            || ! hash "$FAKEROOT" 2>/dev/null; then
         error 2 "$APPLICATION must be run as root."
     fi
+fi
+
 # If we are only downloading, we need a destination tarball
-elif [ -z "$TARBALL" ]; then
+if [ -n "$DOWNLOADONLY" -a -z "$TARBALL" ]; then
     error 2 "$USAGE"
 fi
 
@@ -165,49 +165,70 @@ if [ -z "$DOWNLOADONLY" ]; then
         error 1 "$CHROOT already has stuff in it!
 Either delete it or specify a different name (-n)."
     fi
-    mkdir -p "$BIN" "$CHROOT"/usr/local/bin
+    mkdir -p "$BIN" "$CHROOT"
 fi
 
-# Prepare to download the tarball (or grab it locally)
-rmtarball=''
+# Unpack the tarball if appropriate
 if [ -z "$DOWNLOADONLY" ]; then
     echo "Installing $RELEASE-$ARCH chroot to $CHROOT" 1>&2
-    if [ -z "$TARBALL" ]; then
-        TARBALL="`mktemp --tmpdir=/tmp install-chroot.XXX`"
-        rmtarball="rm -f \"$TARBALL\""
-        TRAP="$rmtarball; $TRAP"
-        trap "$TRAP" INT HUP 0
+    if [ -n "$TARBALL" ]; then
+        # Unpack the chroot
+        echo 'Unpacking chroot environment...' 1>&2
+        tar -C "$CHROOT" --strip-components=1 -xf "$TARBALL"
     fi
 else
     echo "Downloading $RELEASE-$ARCH bootstrap to $TARBALL" 1>&2
-    if [ $# = 0 ]; then
-        . "$INSTALLERDIR/download.sh"
-        exit
-    fi
 fi
 
-# Grab the tarball over ssh if we need it
-if [ ! $# = 0 ]; then
-    echo "Bootstrapping using $SSH $*" 1>&2
-    # If we have to install debootstrap, we'll be passing the password over
-    # STDIN. Make sure we won't be exposing it on the terminal.
-    stty -echo 2>/dev/null || true
-    $SSH "$@" sh -ec \'"`cat "$INSTALLERDIR/download.sh"`"\' \
-        download-chroot \'"$RELEASE"\' \'"$ARCH"\' \'"$MIRROR"\' \
-        - > "$TARBALL"
-    # Vim's syntax highlighting really has troubles with the above...
-    stty echo 2>/dev/null || true
-    # If we're just downloading, we're done!
+# Download the bootstrap data if appropriate
+if [ -n "$DOWNLOADONLY" -o -z "$TARBALL" ]; then
+    # Ensure that /tmp is mounted exec and dev
+    if [ "$NOEXECTMP" = 'y' ]; then
+        echo 'Remounting /tmp with dev+exec...' 1>&2
+        mount -o remount,dev,exec /tmp
+    fi
+
+    # Create the temporary directory and delete it upon exit
+    tmp="`mktemp -d --tmpdir=/tmp "$APPLICATION.XXX"`"
+    subdir="$RELEASE-$ARCH"
+    TRAP="rm -rf \"$tmp\"; $TRAP"
+    trap "$TRAP" INT HUP 0
+
+    # Grab the latest release of debootstrap
+    echo 'Downloading debootstrap...' 1>&2
+    wget 'http://anonscm.debian.org/gitweb/?p=d-i/debootstrap.git;a=snapshot;h=HEAD;sf=tgz' \
+        -qO- | tar -C "$tmp" --strip-components=1 -zx
+
+    # Add the necessary debootstrap executables
+    newpath="$PATH:$tmp"
+    cp "$INSTALLERDIR/ar" "$INSTALLERDIR/pkgdetails" "$tmp/"
+    chmod 755 "$INSTALLERDIR/ar" "$INSTALLERDIR/pkgdetails" 
+
+    # debootstrap wants a file to initialize /dev with, but we don't actually
+    # want any files there. Create an empty tarball that it can extract.
+    tar -czf "$tmp/devices.tar.gz" -T /dev/null
+
+    # Grab the release and drop it into the subdirectory
+    echo 'Downloading bootstrap files...' 1>&2
+    PATH="$newpath" DEBOOTSTRAP_DIR="$tmp" $FAKEROOT \
+        "$tmp/debootstrap" --foreign --arch="$ARCH" "$RELEASE" \
+                           "$tmp/$subdir" "$MIRROR" 1>&2
+
+    # Tar it up if we're only downloading
     if [ -n "$DOWNLOADONLY" ]; then
-        exit
+        echo 'Compressing bootstrap files...' 1>&2
+        $FAKEROOT tar -C "$tmp" -cajf "$TARBALL" "$subdir"
+        echo 'Done!' 1>&2
+        exit 0
     fi
+
+    # Move it to the right place
+    echo 'Moving bootstrap files into the chroot...' 1>&2
+    mv -f "$tmp/$subdir/"* "$CHROOT"
 fi
 
-# Unpack the chroot
-echo 'Unpacking chroot environment...' 1>&2
-tar -C "$CHROOT" --strip-components=1 -xf "$TARBALL"
-# We're done with the tarball, so remove it if it's temporary
-eval "$rmtarball"
+# Ensure that /usr/local/bin exists
+mkdir -p "$CHROOT/usr/local/bin"
 
 # Create the setup script inside the chroot
 echo 'Preparing chroot environment...' 1>&2
@@ -215,7 +236,7 @@ VAREXPAND="s #ARCH $ARCH ;s #MIRROR $MIRROR ;
            s #RELEASE $RELEASE ;s #USERNAME $USERNAME ;"
 sed -e "$VAREXPAND" "$INSTALLERDIR/prepare.sh" > "$CHROOT/prepare.sh"
 # Create a file for target deduplication
-TARGETDEDUPFILE="`mktemp --tmpdir=/tmp prepare-chroot.XXX`"
+TARGETDEDUPFILE="`mktemp --tmpdir=/tmp "$APPLICATION.XXX"`"
 rmtargetdedupfile="rm -f \"$TARGETDEDUPFILE\""
 TRAP="$rmtargetdedupfile; $TRAP"
 trap "$TRAP" INT HUP 0

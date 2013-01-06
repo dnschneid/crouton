@@ -10,12 +10,9 @@ SCRIPTS := \
 	$(wildcard host-bin/*) \
 	$(wildcard installer/*) \
 	$(wildcard targets/*)
-CHECKFORQUOTES = installer/download.sh
-SINGLEQUOTECHECK = build/singlequotecheck.awk
 TARPARAMS ?= -j
 
-$(TARGET): $(WRAPPER) $(SCRIPTS) $(SINGLEQUOTECHECK) Makefile
-	awk -f $(SINGLEQUOTECHECK) $(CHECKFORQUOTES)
+$(TARGET): $(WRAPPER) $(SCRIPTS) Makefile
 	sed -e "s/\$$TARPARAMS/$(TARPARAMS)/" $(WRAPPER) > $(TARGETTMP)
 	tar --owner=root --group=root -c $(TARPARAMS) $(SCRIPTS) >> $(TARGETTMP)
 	chmod +x $(TARGETTMP)
