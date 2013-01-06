@@ -50,17 +50,7 @@ Note that developer mode, in its default configuration, is *completely
 insecure*, so don't expect a password in your chroot to keep anyone from your
 data. Consider this your warning.
 
-The second requirement is that you either need a pre-built bootstrap archive or
-a Debian-based machine (including Ubuntu) with which to generate one. If you
-have ssh access to the machine, even better, as crouton will happily automate
-the process of generating and downloading the archive for you from the
-convenience of your Chromium OS device and comfy beach chair. The machine does
-not need to have the same architecture as your device.
-
-You can acquire some pre-built packages from
-[goo.gl/lfUVM](http://goo.gl/lfUVM), but if your device is a different
-architecture or you want other releases (or just want to do things the cool
-way), you should use crouton to generate them.
+That's it!  Surprised?
 
 
 Usage
@@ -92,37 +82,33 @@ Examples
 --------
 
 ### The easy way (assuming you want Xfce)
-  1. Download `crouton` and the appropriate pre-built bootstrap tarball from
-     [goo.gl/lfUVM](http://goo.gl/lfUVM) to your Chromium OS device.
+  1. Download `crouton`.
   2. Open a shell and run
-     `sudo sh -e ~/Downloads/crouton -f ~/Downloads/[the_tarball] -t xfce`
+     `sudo sh -e ~/Downloads/crouton -t xfce`
   3. Wait patiently and answer the prompts like a good person.
   4. Done! You can jump straight to your Xfce session by running
      `sudo enter-chroot startxfce4` or, as a special shortcut, `sudo startxfce4`
   5. Switch between Chromium OS and your chroot using Ctrl+Alt+Back and
      Ctrl+Alt+Refresh. Exit the chroot by logging out of Xfce.
 
-### The dynamic way (assuming you have SSH on a server and want Ubuntu 12.10)
+### You want to make a bootstrap tarball and create a chroot from that
   1. Download `crouton`.
   2. Open a shell and run
-     `sudo sh -e ~/Downloads/crouton -r quantal -t xfce username@sshserver.com`
-  3. Done! Launch Xfce by running `sudo enter-chroot startxfce4`
+     `sudo sh -e ~/Downloads/crouton -d -f ~/Downloads/mybootstrap.tar.bz2`
+  3. You can then create chroots using the tarball by running
+     `sudo sh -e ~/Downloads/crouton -f ~/Downloads/mybootstrap.tar.bz2`
 
-### You want to create a bootstrap tarball of a specific release or architecture
-  1. Download `crouton` on an Ubuntu machine.
-  2. Open a shell, find your downloaded crouton, and run
-     `./crouton -d -f mybootstrap.tar.bz2`
+*This is the quickest way to create multiple chroots at once, since you won't
+have to determine and download the bootstrap files every time.*
 
 ### You're crazy and want to play with all of the features of crouton
   1. Download the source snapshot tarball to your Chromium OS device.
   2. Extract it and cd into the source directory.
   3. Create a tarball of an old Ubuntu with perhaps the wrong architecture on a
-     different mirror using the unbundled scripts and a different machine with
-     an unusual ssh port to bootstrap:
+     different mirror using the unbundled scripts:
 
         sh -e installer/main.sh -d -a i386 -r hardy \
-           -m 'http://mirrors.us.kernel.org/ubuntu/' -f iamcrazy.tar.bz2 \
-           -s 'ssh -p 666' crazyuser@crazyhost.whatsupwithgtldstheyarecrazy
+           -m 'http://mirrors.us.kernel.org/ubuntu/' -f iamcrazy.tar.bz2
 
   4. Install the chroot with a custom name to a subdirectory in /tmp, choose the
      primary username ahead of time, and install just cli-extra since you may be
@@ -171,7 +157,7 @@ Great! Make your own scripts. Call it "chroagh!!"
 
 License
 -------
-crouton (including this eloquently-written README) is copyright &copy; 2012 The
+crouton (including this eloquently-written README) is copyright &copy; 2013 The
 Chromium OS Authors. All rights reserved. Use of the source code included here
 is governed by a BSD-style license that can be found in the LICENCE file in the
 source tree.
