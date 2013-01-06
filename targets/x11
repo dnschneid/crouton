@@ -14,3 +14,5 @@ sed -i 's/allowed_users=.*/allowed_users=anybody/' '/etc/X11/Xwrapper.config'
 # Add a blank Xauthority to all users' home directories
 touch /etc/skel/.Xauthority
 chmod 600 /etc/skel/.Xauthority
+# Create /usr/share/desktop-directories to avoid issues with xdg-desktop-menu
+mkdir -p /usr/share/desktop-directories
