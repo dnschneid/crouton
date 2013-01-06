@@ -66,6 +66,24 @@ else
     fi
 fi
 
+# Offer to run /prepare.sh if it exists and yet we're logging in.
+if [ -z "$NOLOGIN" -a -f "$CHROOT/prepare.sh" ]; then
+    echo 'A chroot preparation script still exists inside the chroot.' 1>&2
+    echo 'The chroot may not be fully set up.' 1>&2
+    runprepare='y'
+    if tty -s; then
+        echo -n 'Would you like to finish the setup? [Y/n] ' 1>&2
+        read runprepare
+    fi
+    if [ -z "$runprepare" -o ! "${runprepare#y}" = "$runprepare" ]; then
+        echo 'Preparing chroot environment...' 1>&2
+        "$0" -c "$CHROOTS" -n "$NAME" -x '/prepare.sh'
+        echo 'Setup completed. Entering chroot...' 1>&2
+    else
+        echo 'Skipping setup. You will be prompted again next time.' 1>&2
+    fi
+fi
+
 # Resolve USERNAME if it is a UID (and we're logging in)
 if [ -z "$NOLOGIN" ]; then
     case "$USERNAME" in
