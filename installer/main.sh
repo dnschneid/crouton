@@ -20,7 +20,7 @@ PREFIX='/usr/local'
 RELEASE='precise'
 TARBALL=''
 TARGETS=''
-USERNAME=''
+UPDATE=''
 
 USAGE="$APPLICATION [options] -t targets
 $APPLICATION [options] -d -f tarball
@@ -47,8 +47,8 @@ Options:
     -r RELEASE  Name of the distribution release. Default: $RELEASE
     -t TARGETS  Comma-separated list of environment targets to install.
                 Specify help to print out potential targets.
-    -u USERNAME Username of the primary user to add to the chroot.
-                If unspecified, you will be asked for it later.
+    -u          If the chroot exists, runs the preparation step again.
+                You can use this to install new targets or update old ones.
 
 Be aware that dev mode is inherently insecure, even if you have a strong
 password in your chroot! Anyone can simply switch VTs and gain root access
@@ -63,7 +63,7 @@ error() {
 }
 
 # Process arguments
-while getopts 'a:df:m:n:p:r:s:t:u:' f; do
+while getopts 'a:df:m:n:p:r:s:t:u' f; do
     case "$f" in
     a) ARCH="$OPTARG";;
     d) DOWNLOADONLY='y';;
@@ -73,7 +73,7 @@ while getopts 'a:df:m:n:p:r:s:t:u:' f; do
     p) PREFIX="$OPTARG";;
     r) RELEASE="$OPTARG";;
     t) TARGETS="$OPTARG";;
-    u) USERNAME="$OPTARG";;
+    u) UPDATE='y';;
     \?) error 2 "$USAGE";;
     esac
 done
@@ -159,34 +159,40 @@ fi
 TRAP="stty echo 2>/dev/null || true; $TRAP"
 trap "$TRAP" INT HUP 0
 
-# Deterime directories
+# Deterime directories, and fix NAME if it was not specified.
 BIN="$PREFIX/bin"
 CHROOTS="$PREFIX/chroots"
-CHROOT="$CHROOTS/${NAME:-"$RELEASE"}"
+CHROOT="$CHROOTS/${NAME:="$RELEASE"}"
 
 # Confirm we have write access to the directory before starting.
+NODOWNLOAD=''
 if [ -z "$DOWNLOADONLY" ]; then
     if [ -d "$CHROOT" ] && ! rmdir "$CHROOT" 2>/dev/null; then
-        error 1 "$CHROOT already has stuff in it!
-Either delete it or specify a different name (-n)."
+        if [ -z "$UPDATE" ]; then
+            error 1 "$CHROOT already has stuff in it!
+Either delete it, specify a different name (-n), or specify -u to update it."
+        else
+            NODOWNLOAD='y'
+            echo "$CHROOT already exists; updating it..." 1>&2
+        fi
     fi
     mkdir -p "$BIN" "$CHROOT"
 fi
 
 # Unpack the tarball if appropriate
-if [ -z "$DOWNLOADONLY" ]; then
+if [ -z "$NODOWNLOAD" -a -z "$DOWNLOADONLY" ]; then
     echo "Installing $RELEASE-$ARCH chroot to $CHROOT" 1>&2
     if [ -n "$TARBALL" ]; then
         # Unpack the chroot
         echo 'Unpacking chroot environment...' 1>&2
         tar -C "$CHROOT" --strip-components=1 -xf "$TARBALL"
     fi
-else
+elif [ -z "$NODOWNLOAD" ]; then
     echo "Downloading $RELEASE-$ARCH bootstrap to $TARBALL" 1>&2
 fi
 
 # Download the bootstrap data if appropriate
-if [ -n "$DOWNLOADONLY" -o -z "$TARBALL" ]; then
+if [ -z "$NODOWNLOAD" ] && [ -n "$DOWNLOADONLY" -o -z "$TARBALL" ]; then
     # Ensure that /tmp is mounted exec and dev
     if [ "$NOEXECTMP" = 'y' ]; then
         echo 'Remounting /tmp with dev+exec...' 1>&2
@@ -237,8 +243,7 @@ mkdir -p "$CHROOT/usr/local/bin"
 
 # Create the setup script inside the chroot
 echo 'Preparing chroot environment...' 1>&2
-VAREXPAND="s #ARCH $ARCH ;s #MIRROR $MIRROR ;
-           s #RELEASE $RELEASE ;s #USERNAME $USERNAME ;"
+VAREXPAND="s #ARCH $ARCH ;s #MIRROR $MIRROR ;s #RELEASE $RELEASE ;"
 sed -e "$VAREXPAND" "$INSTALLERDIR/prepare.sh" > "$CHROOT/prepare.sh"
 # Create a file for target deduplication
 TARGETDEDUPFILE="`mktemp --tmpdir=/tmp "$APPLICATION.XXX"`"

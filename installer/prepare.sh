@@ -3,11 +3,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# Usage: prepare.sh arch mirror release username
+# Usage: prepare.sh arch mirror release
 ARCH="${1:-"#ARCH"}"
 MIRROR="${2:-"#MIRROR"}"
 RELEASE="${3:-"#RELEASE"}"
-USERNAME="${4:-"#USERNAME"}"
 
 # We need all paths to do administrative things
 export PATH='/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin'

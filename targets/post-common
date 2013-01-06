@@ -20,13 +20,9 @@ fi
 
 # Add the primary user
 if ! grep -q ":1000:" /etc/passwd; then
-    if [ -z "$USERNAME" ]; then
-        echo -n 'Please specify a username for the primary user: ' 1>&2
-        read USERNAME junk
-    else
-        echo "Creating primary user $USERNAME..." 1>&2
-    fi
-    adduser "$USERNAME"
+    echo -n 'Please specify a username for the primary user: ' 1>&2
+    read username junk
+    adduser "$username"
 fi
 
 echo 'Cleaning up' 1>&2

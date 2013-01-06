@@ -101,6 +101,10 @@ Examples
 *This is the quickest way to create multiple chroots at once, since you won't
 have to determine and download the bootstrap files every time.*
 
+### A new version of crouton came out, and you want to update your chroot
+  1. Download the new `crouton`.
+  2. Open a shell and run `sudo sh -e ~/Downloads/crouton -t xfce -u`
+
 ### You're crazy and want to play with all of the features of crouton
   1. Download the source snapshot tarball to your Chromium OS device.
   2. Extract it and cd into the source directory.
@@ -110,14 +114,13 @@ have to determine and download the bootstrap files every time.*
         sh -e installer/main.sh -d -a i386 -r hardy \
            -m 'http://mirrors.us.kernel.org/ubuntu/' -f iamcrazy.tar.bz2
 
-  4. Install the chroot with a custom name to a subdirectory in /tmp, choose the
-     primary username ahead of time, and install just cli-extra since you may be
-     crazy but at least you recognize that /tmp is backed by RAM on Chromium OS and
-     you'll quickly exhaust the available space if you install X11:
+  4. Install the chroot with a custom name to a subdirectory in /tmp, and
+     install just cli-extra since you may be crazy but at least you recognize
+     that /tmp is backed by RAM on Chromium OS and you'll quickly exhaust the
+     available space if you install X11:
 
         sudo sh -e installer/main.sh -m 'http://mirrors.us.kernel.org/ubuntu/' \
-                -f iamcrazy.tar.bz2 -p /tmp -n crazychrooty -t core,cli-extra \
-                -u stillcrazy
+                -f iamcrazy.tar.bz2 -p /tmp -n crazychrooty -t core,cli-extra
 
   5. If that command actually worked, enter the chroot and login as root
      straight into vi because, well, you're crazy:
