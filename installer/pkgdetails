@@ -23,8 +23,8 @@ outputdeps() {
     # Add an extra comma to remain to avoid special-casing
     local remain="${*%,}," dep ignore
     while [ -n "$remain" ]; do
-        # Split at commas, and let shell strip out whitespace on dep
-        dep=${remain%%,*}
+        # Split at commas
+        dep="${remain%%,*}"
         remain="${remain#*,}"
         [ -n "$dep" ] || continue
         # Grab the first item, ignoring anything else
@@ -45,31 +45,43 @@ outputdeps() {
 dogetdeps() {
     local pkgsfile="$1"
     shift
-    local pkgs="$*" skip=y field data newpkgs
+    local pkgs="$*" curpkg='' field data newpkgs output=''
     while IFS=":" read field data; do
         case "$field" in
             [Pp][Aa][Cc][Kk][Aa][Gg][Ee])
-                skip=y
-                if [ -z "$pkgs" ]; then
-                    return 0
-                elif [ -z "$data" ]; then
+                if [ -z "$data" ]; then
                     continue
+                fi
+                if [ -n "$output" -a ! $data = "$curpkg" ]; then
+                    echo "$output"
+                    pkgs="$newpkgs"
+                fi
+                output=''
+                curpkg=''
+                if [ -z "$pkgs" ]; then
+                    break
                 fi
                 newpkgs=''
                 for pkg in $pkgs; do
                     if [ $data = "$pkg" ]; then
-                        skip=n
+                        curpkg="$pkg"
                     else
                         newpkgs="$newpkgs $pkg"
                     fi
-                done
-                pkgs="$newpkgs";;
+                done;;
             *[Dd][Ee][Pp][Ee][Nn][Dd][Ss])
-                if [ ! "$skip" = 'y' ]; then
-                    outputdeps $data
+                if [ -n "$curpkg" ]; then
+                    if [ -n "$output" ]; then
+                        output="$output
+"
+                    fi
+                    output="$output`outputdeps $data`"
                 fi;;
         esac
     done < "$pkgsfile"
+    if [ -n "$output" ]; then
+        echo "$output"
+    fi
     return 0
 }
 
@@ -88,17 +100,14 @@ dopkgmirrorpkgs() {
     shift 4
     local pkgs="$*" newpkgs skip='n'
     local curfield='' curpkg='' curver='' curarch=''
-    local cursize='' curchecksum='' curfilename=''
+    local cursize='' curchecksum='' curfilename='' output=''
 
     while IFS=":" read field data; do
         # Empty lines mark the start of new packages.
         if [ -z "$field" ]; then
             if [ ! "$skip" = 'y' -a -n "$curfield" ]; then
-                echo $curpkg $curver $curarch $mirror \
-                     $curfilename $curchecksum $cursize
-                if [ -z "$pkgs" ]; then
-                    break
-                fi
+                output="$curpkg $curver $curarch $mirror \
+                        $curfilename $curchecksum $cursize"
             fi
             curfield=''
             skip='n'
@@ -122,9 +131,6 @@ dopkgmirrorpkgs() {
                     newpkgs="$newpkgs $pkg"
                 fi
             done
-            if [ "$unique" = 'y' ]; then
-                pkgs="$newpkgs"
-            fi
         fi
         # If we already know we don't care about this one, skip it.
         if [ "$skip" = 'y' ]; then
@@ -137,6 +143,16 @@ dopkgmirrorpkgs() {
             # It might be one of the other fields
             case "$field" in
                 [Pp][Aa][Cc][Kk][Aa][Gg][Ee])
+                    if [ -n "$output" -a ! "$data" = "$curpkg" ]; then
+                        echo $output
+                        output=''
+                        if [ "$unique" = 'y' ]; then
+                            pkgs="$newpkgs"
+                            if [ -z "$pkgs" ]; then
+                                break
+                            fi
+                        fi
+                    fi
                     curpkg="$data";;
                 [Vv][Ee][Rr][Ss][Ii][Oo][Nn])
                     curver="$data";;
@@ -149,6 +165,10 @@ dopkgmirrorpkgs() {
             esac
         fi
     done < "$pkgsfile"
+
+    if [ -n "$output" ]; then
+        echo $output
+    fi
 
     # In unique mode, any that weren't found are returned as "pkg -"
     if [ "$unique" = 'y' ]; then
@@ -167,23 +187,27 @@ dopkgmirrorpkgs() {
 dopkgstanzas() {
     local pkgsfile="$1"
     shift
-    local pkgs="$*" accum='' curpkg='' skip='n'
+    local pkgs="$*" accum='' curpkg='' skip='n' output=''
 
     while IFS='' read data; do
         if [ -z "$data" ]; then
-            if [ ! "$skip" = 'y' -a -n "$curpkg" ]; then
-                echo "${accum}"
-                if [ -z "$pkgs" ]; then
-                    break
-                fi
+            if [ ! "$skip" = 'y' -a -n "$accum" ]; then
+                output="$accum"
             fi
             accum=''
-            curpkg=''
             skip='n'
         else
             case "$data" in
                 [Pp][Aa][Cc][Kk][Aa][Gg][Ee]:*)
-                    curpkg=${data#*:}
+                    if [ -n "$output" -a ! "${data#*:}" = "$curpkg" ]; then
+                        echo "$output"
+                        output=''
+                        pkgs="$newpkgs"
+                        if [ -z "$pkgs" ]; then
+                            break
+                        fi
+                    fi
+                    curpkg="${data#*:}"
                     newpkgs=''
                     skip='y'
                     for pkg in $pkgs; do
@@ -192,8 +216,7 @@ dopkgstanzas() {
                         else
                             newpkgs="$newpkgs $pkg"
                         fi
-                    done
-                    pkgs="$newpkgs";;
+                    done;;
             esac
             if [ ! "$skip" = 'y' ]; then
                 accum="$accum$data
@@ -201,6 +224,10 @@ dopkgstanzas() {
             fi
         fi
     done < "$pkgsfile"
+
+    if [ -n "$output" ]; then
+        echo "$output"
+    fi
 }
 
 
