@@ -1,0 +1,14 @@
+#!/bin/sh -e
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# This isn't a real target; it's the common commands for installing various
+# forms of X11.
+
+### Append to prepare.sh:
+# Add a blank Xauthority to all users' home directories
+touch /etc/skel/.Xauthority
+chmod 600 /etc/skel/.Xauthority
+# Create /usr/share/desktop-directories to avoid issues with xdg-desktop-menu
+mkdir -p /usr/share/desktop-directories

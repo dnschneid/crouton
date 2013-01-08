@@ -2,6 +2,11 @@
 # Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+if [ ! "$TARGETS" = 'help' -a ! "${ARCH#arm}" = "$ARCH" ]; then
+    echo 'x11 target does not work on ARM. Substituting in xephyr.' 1>&2
+    TARGET=xephyr
+    . "${TARGETSDIR:="$PWD"}/$TARGET"
+fi
 REQUIRES='core'
 DESCRIPTION='Basic X11 install. Does not install any desktop environment.'
 CHROOTBIN='xinit'
@@ -11,8 +16,11 @@ CHROOTBIN='xinit'
 apt-get -y install xorg dmz-cursor-theme
 # Fix launching X11 from inside crosh (user doesn't own a TTY)
 sed -i 's/allowed_users=.*/allowed_users=anybody/' '/etc/X11/Xwrapper.config'
-# Add a blank Xauthority to all users' home directories
-touch /etc/skel/.Xauthority
-chmod 600 /etc/skel/.Xauthority
-# Create /usr/share/desktop-directories to avoid issues with xdg-desktop-menu
-mkdir -p /usr/share/desktop-directories
+
+TIPS="$TIPS
+You can switch to your running chroot desktops by hitting Ctrl+Alt+Refresh
+through Ctrl+Alt+VolumeUp (each additional running chroot will be one key to the
+right), and switch back to Chromium OS by hitting Ctrl+Alt+Back.
+"
+
+### append x11-common

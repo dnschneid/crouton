@@ -1,0 +1,60 @@
+#!/bin/sh -e
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+REQUIRES='core'
+DESCRIPTION='Nested X11 install. Replaces X11 if specified first.'
+CHROOTBIN='xinit'
+# Prevent X11 from being added if it hasn't already.
+echo 'x11' >> "${TARGETDEDUPFILE:-/dev/null}"
+. "${TARGETSDIR:="$PWD"}/common"
+
+### Append to prepare.sh:
+if [ "$RELEASE" = 'quantal' ]; then
+    # As of 2013-01-08, Quantal's Xephyr lacks GLX. Download one manually.
+    apt-get -y install wget
+    xvers='1.11.4-0ubuntu10.10'
+    url="$MIRROR/pool/universe/x/xorg-server/xserver-xephyr_${xvers}_$ARCH.deb"
+    deb='/tmp/xephyr.deb'
+    rm -f "$deb"
+    wget --no-check-certificate "$url" -O "$deb"
+    # This will likely have dependency problems; make them only warnings.
+    dpkg --force-depends -i "$deb"
+    rm -f "$deb"
+    # Add the apt preference to avoid immediate upgrade
+    cat > /etc/apt/preferences.d/xserver-xephyr <<EOF
+Package: xserver-xephyr
+Pin: version <1.13.0-0ubuntu7
+Pin-Priority: -1
+EOF
+    # Fix the dependency problems.
+    apt-get install -fy
+fi
+
+# xserver-xephyr won't auto replace the manually-downloaded version.
+apt-get -y --no-install-recommends install \
+    xserver-xephyr ratpoison dmz-cursor-theme libgl1-mesa-dri
+
+# Add a host Xauthority sentinel file
+hostxauthority='/etc/X11/host-Xauthority'
+touch "$hostxauthority"
+chmod 444 "$hostxauthority"
+
+# Modify xserverrc
+cat > /etc/X11/xinit/xserverrc <<EOF
+#!/bin/sh
+if [ -r "$hostxauthority" ]; then
+	export DISPLAY=':0' XAUTHORITY="$hostxauthority"
+	/usr/bin/ratpoison -c 'set padding 0 0 1 0'
+	exec /usr/bin/Xephyr -fullscreen -nolisten tcp "\$@"
+else
+	exec /usr/bin/X -nolisten tcp "\$@"
+fi
+EOF
+
+TIPS="$TIPS
+You can flip through your running chroot desktops and Chromium OS by hitting
+Ctrl+Alt+Shift+Back and Ctrl+Alt+Shift+Forward.
+"
+
+### append x11-common

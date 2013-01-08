@@ -112,6 +112,52 @@ while ! mountpoint -q "$mp"; do
 done
 mount -o remount,rw,dev,exec "$mp"
 
+# Launch the WM (outside the chroot) and copy Xauthority if the chroot requests
+chrootxauth="/etc/X11/host-Xauthority"
+if [ -z "$NOLOGIN" -a -f "$CHROOT/$chrootxauth" -a -n "$XAUTHORITY" ]; then
+    # Copy the latest Xauthority into the chroot
+    cp -f "$XAUTHORITY" "$CHROOT/$chrootxauth"
+    chmod 444 "$CHROOT/$chrootxauth"
+    # Check if the global WM is already running
+    wmrunning=''
+    for wmpid in `ps -C ratpoison -opid=`; do
+        if grep -q 'CROUTON=CORE' "/proc/$wmpid/environ"; then
+            wmrunning='y'
+            break
+        fi
+    done
+    # Launch it if it's not running
+    wmexecutable="/usr/bin/ratpoison"
+    if [ -z "$wmrunning" ]; then
+        if [ ! -x "$CHROOT/$wmexecutable" ]; then
+            echo -n \
+'Global WM is not installed. Would you like to install it (Y), remove the
+requirement (r), or just ignore it for now (n)?  [Y/r/n] '
+            read response
+            if [ -z "$response" -o ! "${response#[Yy]}" = "$response" ]; then
+                sh -e "$0" -c "$CHROOTS" -n "$NAME" -x apt-get install ratpoison
+            elif [ ! "${response#[Rr]}" = "$response" ]; then
+                rm -f "$CHROOT/$chrootxauth"
+            fi
+        fi
+        if [ -x "$CHROOT/$wmexecutable" ]; then
+            env -i chroot "$CHROOT" su -c \
+                "DISPLAY='$DISPLAY' XAUTHORITY='$chrootxauth' CROUTON='CORE' \
+                '$wmexecutable' -f /dev/stdin <<WMRC &
+                    escape C-S-M-Escape
+                    bind C-S-M-Escape set padding 0 0 0 0
+                    definekey top C-S-M-F1 prev
+                    definekey top C-S-M-F2 next
+                    set border 0
+                    addhook key set padding 0 0 1 0
+                    addhook switchwin set padding 0 0 0 0
+                    addhook quit set padding 0 0 0 0
+                    startup_message off
+WMRC" - "$USERNAME"
+        fi
+    fi
+fi
+
 # Prepare chroot filesystem
 # Soft-link resolv.conf so that updates are automatically propagated
 mkdir -p "$CHROOT/etc/host-shill"

@@ -81,7 +81,8 @@ for NAME in "$@"; do
     # to the pid's root. This avoids not unmounting due to a lazy-quitting
     # background application within the chroot. We also don't consider processes
     # that have a parent PID of 1 (which would mean an orphaned process in this
-    # case), as enter-chroot never orphans its children.
+    # case), as enter-chroot never orphans its children, and we don't consider
+    # processes that have CROUTON=CORE in the environment.
     base="`readlink -f "$CHROOT"`"
     nounmount=''
     for root in /proc/*/root; do
@@ -90,11 +91,14 @@ for NAME in "$@"; do
             pid="${pid%/root}"
             ppid="`ps -p "$pid" -o ppid= 2>/dev/null`"
             if [ -z "$ppid" ] || [ "$ppid" -eq 1 ]; then
-                continue;
+                continue
             fi
             proot="/proc/$ppid/root"
             if [ -r "$proot" ] && [ "`readlink -f "$proot"`" = "$base" ]; then
-                continue;
+                continue
+            fi
+            if grep -q 'CROUTON=CORE' "/proc/$pid/environ"; then
+                continue
             fi
             nounmount=y
             break
@@ -129,11 +133,15 @@ for NAME in "$@"; do
             fi
             echo "Sending SIG$SIGNAL to processes under $CHROOT..." 1>&2
             for root in /proc/*/root; do
-                if [ -r "$root" ] && [ "`readlink -f "$root"`" = "$base" ]; then
-                    pid="${root#/proc/}"
-                    pid="${pid%/root}"
-                    kill "-$SIGNAL" "$pid" 2>/dev/null || true
+                if [ ! -r "$root" ] || [ ! "`readlink -f "$root"`" = "$base" ]; then
+                    continue
                 fi
+                pid="${root#/proc/}"
+                pid="${pid%/root}"
+                if grep -q 'CROUTON=CORE' "/proc/$pid/environ"; then
+                    continue
+                fi
+                kill "-$SIGNAL" "$pid" 2>/dev/null || true
             done
 
             ntries=0
