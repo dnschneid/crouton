@@ -137,7 +137,14 @@ if [ -z "$NOLOGIN" -a -n "$CHROOTHOME" -a -d "$localdownloads" ]; then
 fi
 
 # Disable screen dimming (TODO: create script to poke it instead)
-initctl stop powerd 2>/dev/null || nopowerd=1
+if [ -z "$DISABLE_POWERD_CONTROL" ]; then
+    if initctl stop powerd 2>/dev/null; then
+        TRAP="initctl start powerd;$TRAP"
+        trap "$TRAP" INT HUP 0
+    else
+        DISABLE_POWERD_CONTROL=1
+    fi
+fi
 
 # Start the chroot and any specified command
 ret=0
@@ -154,6 +161,5 @@ else
     env -i TERM="$TERM" chroot "$CHROOT" su -c "$cmd" - "$USERNAME" || ret=$?
 fi
 
-# Post-run; clean up
-[ "$nopowerd" ] || initctl start powerd
+# Cleanup all happens in the exit trap
 exit $ret
