@@ -5,9 +5,7 @@
 REQUIRES='x11 core'
 DESCRIPTION='Google Chrome browser. Replaces Chromium if specified first.'
 # Prevent Chromium from being added if it hasn't already.
-if [ -n "$TARGETDEDUPFILE" ]; then
-    echo 'chromium' >> "$TARGETDEDUPFILE"
-fi
+echo 'chromium' >> "${TARGETDEDUPFILE:-/dev/null}"
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:

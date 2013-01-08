@@ -29,12 +29,10 @@ if [ "$TARGETS" = 'help' ]; then
     fi
 else
     # Avoid double-adding targets
-    if [ -n "$TARGETDEDUPFILE" ]; then
-        if grep -q "^$TARGET\$" "$TARGETDEDUPFILE"; then
-            exit
-        else
-            echo "$TARGET" >> "$TARGETDEDUPFILE"
-        fi
+    if grep -q "^$TARGET\$" "${TARGETDEDUPFILE:-/dev/null}"; then
+        exit
+    else
+        echo "$TARGET" >> "${TARGETDEDUPFILE:-/dev/null}"
     fi
     # Source the prerequisites
     for t in $REQUIRES; do
