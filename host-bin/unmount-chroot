@@ -116,12 +116,12 @@ for NAME in "$@"; do
         if [ "$ntries" -eq "$TRIES" ]; then
             # Send signal to all processes running under the chroot
             # ...but confirm first.
-            if [ ! "$YES" = 'a' ]; then
+            if [ "${YES#[Aa]}" = "$YES" ]; then
                 echo -n "Failed to unmount $CHROOT. Kill processes? [a/k/y/N] " 1>&2
-                read YES junk
-                if [ "$YES" = 'k' ]; then
+                read YES
+                if [ ! "${YES#[Kk]}" = "$YES" ]; then
                     SIGNAL='KILL'
-                elif [ ! "$YES" = 'a' -a ! "$YES" = 'y' ]; then
+                elif [ "${YES#[AaYy]}" = "$YES" ]; then
                     echo "Skipping unmounting of $CHROOT" 1>&2
                     ret=1
                     break

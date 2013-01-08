@@ -71,10 +71,10 @@ for NAME in "$@"; do
     fi
 
     # Confirm deletion
-    if [ ! "$YES" = 'a' ]; then
+    if [ "${YES#[Aa]}" = "$YES" ]; then
         echo -n "Delete $CHROOT? [a/y/N] " 1>&2
-        read YES junk
-        if [ ! "$YES" = 'a' -a ! "$YES" = 'y' ]; then
+        read YES
+        if [ "${YES#[AaYy]}" = "$YES" ]; then
             echo "Skipping deletion of $CHROOT" 1>&2
             ret=1
             continue
