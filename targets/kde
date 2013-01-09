@@ -8,7 +8,7 @@ HOSTBIN='startkde'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
-apt-get -y install kde-standard network-manager-
+apt-get -y install kde-standard `noauto network-manager`
 
 TIPS="$TIPS
 You can start KDE via the startkde host command: sudo startkde

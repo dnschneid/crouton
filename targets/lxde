@@ -8,12 +8,7 @@ HOSTBIN='startlxde'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
-# Don't auto-include chromium-browser; let the prereqs handle that.
-if dpkg-query -s chromium-browser >/dev/null 2>&1; then
-    apt-get -y install lxde dictionaries-common-
-else
-    apt-get -y install lxde dictionaries-common- chromium-browser-
-fi
+apt-get -y install lxde `noauto dictionaries-common chromium-browser`
 
 TIPS="$TIPS
 You can start LXDE via the startlxde host command: sudo startlxde

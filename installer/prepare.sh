@@ -8,6 +8,18 @@ ARCH="${1:-"#ARCH"}"
 MIRROR="${2:-"#MIRROR"}"
 RELEASE="${3:-"#RELEASE"}"
 
+# noauto: For the specified packages, echos out "pkg-" for each package in the
+# list that isn't already installed. Targets use this to avoid installing
+# packages that really aren't needed, or should have been covered by prereq
+# targets; e.g. apt-get install xfce4 `noauto xorg`
+noauto() {
+    for pkg in "$@"; do
+        if ! dpkg-query -s "$pkg" 2>/dev/null >/dev/null; then
+            echo -n "$pkg- "
+        fi
+    done
+}
+
 # We need all paths to do administrative things
 export PATH='/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin'
 

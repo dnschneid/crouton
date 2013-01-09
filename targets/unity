@@ -8,12 +8,7 @@ HOSTBIN='startunity'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
-# Don't auto-include firefox
-if dpkg-query -s firefox >/dev/null 2>&1; then
-    apt-get -y install unity light-themes network-manager- brasero-
-else
-    apt-get -y install unity light-themes network-manager- brasero- firefox-
-fi
+apt-get -y install unity light-themes `noauto network-manager brasero firefox`
 
 TIPS="$TIPS
 You can start Unity via the startunity host command: sudo enter-unity
