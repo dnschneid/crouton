@@ -9,7 +9,7 @@ HOSTBIN='startxfce4'
 
 ### Append to prepare.sh:
 # Ubuntu 12.04 has an old version of Xfce, but there's a PPA for Xfce 4.10.
-if [ "$RELEASE" = 'precise' ]; then
+if [ "$RELEASE" = 'precise' ] && [ "$ARCH" = 'amd64' -o "$ARCH" = 'i386' ]; then
     # Pull in the signing key
     apt-key adv --keyserver 'keyserver.ubuntu.com' \
                 --recv-keys '07D44A5424C7C12A4BAB1E80EB563F93142986CE'
