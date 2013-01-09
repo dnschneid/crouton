@@ -149,7 +149,7 @@ requirement (r), or just ignore it for now (n)?  [Y/r/n] '
                     definekey top C-S-M-F1 prev
                     definekey top C-S-M-F2 next
                     set border 0
-                    addhook key set padding 0 0 1 0
+                    addhook key set padding 0 0 -1 0
                     addhook switchwin set padding 0 0 0 0
                     addhook quit set padding 0 0 0 0
                     startup_message off

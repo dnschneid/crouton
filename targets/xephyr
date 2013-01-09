@@ -45,7 +45,7 @@ cat > /etc/X11/xinit/xserverrc <<EOF
 #!/bin/sh
 if [ -r "$hostxauthority" ]; then
 	export DISPLAY=':0' XAUTHORITY="$hostxauthority"
-	/usr/bin/ratpoison -c 'set padding 0 0 1 0'
+	/usr/bin/ratpoison -c 'set padding 0 0 -1 0'
 	exec /usr/bin/Xephyr -fullscreen -nolisten tcp "\$@"
 else
 	exec /usr/bin/X -nolisten tcp "\$@"
