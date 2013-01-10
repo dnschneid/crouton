@@ -4,7 +4,7 @@
 # found in the LICENSE file.
 REQUIRES='core'
 DESCRIPTION='Nested X11 install. Replaces X11 if specified first.'
-CHROOTBIN='xinit'
+CHROOTBIN='xinit croutonwm'
 # Prevent X11 from being added if it hasn't already.
 echo 'x11' >> "${TARGETDEDUPFILE:-/dev/null}"
 . "${TARGETSDIR:="$PWD"}/common"
@@ -36,21 +36,19 @@ apt-get -y --no-install-recommends install \
     xserver-xephyr ratpoison dmz-cursor-theme libgl1-mesa-dri
 
 # Add a host Xauthority sentinel file
-hostxauthority='/etc/X11/host-Xauthority'
-touch "$hostxauthority"
-chmod 444 "$hostxauthority"
+hostxauth='/etc/X11/host-Xauthority'
+touch "$hostxauth"
+chmod 444 "$hostxauth"
 
 # Modify xserverrc
-cat > /etc/X11/xinit/xserverrc <<EOF
-#!/bin/sh
-if [ -r "$hostxauthority" ]; then
-	export DISPLAY=':0' XAUTHORITY="$hostxauthority"
-	/usr/bin/ratpoison -c 'set padding 0 0 -1 0'
-	exec /usr/bin/Xephyr -fullscreen -nolisten tcp "\$@"
+echo '#!/bin/sh -e
+if [ -r "'"$hostxauth"'" ]; then
+	export DISPLAY=":0" XAUTHORITY="'"$hostxauth"'"
+	exec /usr/bin/Xephyr -fullscreen -nolisten tcp "$@"
 else
-	exec /usr/bin/X -nolisten tcp "\$@"
+	exec /usr/bin/X -nolisten tcp "$@"
 fi
-EOF
+' > /etc/X11/xinit/xserverrc
 
 TIPS="$TIPS
 You can flip through your running chroot desktops and Chromium OS by hitting

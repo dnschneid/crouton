@@ -8,6 +8,11 @@
 # By putting this in /usr/local/bin, PATH will prefer it and scripts that call
 # xinit will automagically work.
 
+croutonwm='/usr/local/bin/croutonwm'
+if [ -x "$croutonwm" ]; then
+    . "$croutonwm"
+fi
+
 dash='--'
 for arg in "$@"; do
     if [ "$arg" = '--' ]; then
