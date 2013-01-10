@@ -33,7 +33,7 @@ fi
 
 # xserver-xephyr won't auto replace the manually-downloaded version.
 apt-get -y --no-install-recommends install \
-    xserver-xephyr ratpoison dmz-cursor-theme libgl1-mesa-dri
+    xserver-xephyr xinit ratpoison dmz-cursor-theme libgl1-mesa-dri
 
 # Add a host Xauthority sentinel file
 hostxauth='/etc/X11/host-Xauthority'
