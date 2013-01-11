@@ -110,7 +110,9 @@ while ! mountpoint -q "$mp"; do
     mp="${mp%/*}"
     [ -z "$mp" ] && mp=/
 done
-mount -o remount,rw,dev,exec "$mp"
+if grep -q "^[^ ]* $mp [^ ]* [^ ]*\(noexec\|nodev\|nosuid\)" /proc/mounts; then
+    mount -o remount,rw,dev,exec,suid "$mp"
+fi
 
 # Copy Xauthority if the chroot requests
 chrootxauth="$CHROOT/etc/X11/host-Xauthority"
@@ -128,20 +130,28 @@ ln -sf 'host-shill/resolv.conf' "$CHROOT/etc/resolv.conf"
 # Mounts; will auto-unmount everything below the chroot when the script exits.
 TRAP="sh -e \"`dirname "$0"`/unmount-chroot\" -c \"$CHROOTS\" \"$NAME\";$TRAP"
 trap "$TRAP" INT HUP 0
-mount --bind /dev "$CHROOT/dev"
-mount --bind /dev/pts "$CHROOT/dev/pts"
-mount --bind /dev/shm "$CHROOT/dev/shm"
-mount --bind /sys "$CHROOT/sys"
-mount --bind /sys/fs/fuse/connections "$CHROOT/sys/fs/fuse/connections"
-mount --bind /tmp "$CHROOT/tmp"
-mount --bind /proc "$CHROOT/proc"
-mount --bind /var/run/shill "$CHROOT/etc/host-shill"
+
+# Bind-mounts $1 into $CHROOT/${2:-"$1"} if $2 is not already mounted
+bindmount() {
+    local target="`readlink -f "$CHROOT/${2:-"$1"}"`"
+    if ! grep -q "^[^ ]* $target " /proc/mounts; then
+        mount --bind "$1" "$target"
+    fi
+}
+bindmount /dev
+bindmount /dev/pts
+bindmount /dev/shm
+bindmount /sys
+bindmount /sys/fs/fuse/connections
+bindmount /tmp
+bindmount /proc
+bindmount /var/run/shill /etc/host-shill
 
 # Bind-mount ~/Downloads if we're logged in as a user
 localdownloads='/home/chronos/user/Downloads'
 if [ -z "$NOLOGIN" -a -n "$CHROOTHOME" -a -d "$localdownloads" ]; then
     mkdir -p "$CHROOT/$CHROOTHOME/Downloads"
-    mount --bind "$localdownloads" "$CHROOT/$CHROOTHOME/Downloads"
+    bindmount "$localdownloads" "$CHROOTHOME/Downloads"
 fi
 
 # Disable screen dimming (TODO: create script to poke it instead)
