@@ -12,6 +12,7 @@ TARGETSDIR="$SCRIPTDIR/targets"
 
 ARCH="`uname -m | sed -e 's/x86_64/amd64/' -e 's/arm.*/armhf/'`"
 DOWNLOADONLY=''
+ENCRYPT=''
 MIRROR=''
 MIRROR86='http://archive.ubuntu.com/ubuntu/'
 MIRRORARM='http://ports.ubuntu.com/ubuntu-ports/'
@@ -36,6 +37,7 @@ This must be run as root unless -d is specified AND fakeroot is installed AND
 Options:
     -a ARCH     The architecture to prepare the chroot for. Default: $ARCH
     -d          Downloads the bootstrap tarball but does not prepare the chroot.
+    -e          Encrypt the chroot with ecryptfs using a passphrase.
     -f TARBALL  The tarball to use, or download to in the case of -d.
                 When using a prebuilt tarball, -a and -r are ignored.
     -m MIRROR   Mirror to use for bootstrapping and apt-get.
@@ -63,10 +65,11 @@ error() {
 }
 
 # Process arguments
-while getopts 'a:df:m:n:p:r:s:t:u' f; do
+while getopts 'a:def:m:n:p:r:s:t:u' f; do
     case "$f" in
     a) ARCH="$OPTARG";;
     d) DOWNLOADONLY='y';;
+    e) ENCRYPT='-e';;
     f) TARBALL="$OPTARG";;
     m) MIRROR="$OPTARG";;
     n) NAME="$OPTARG";;
@@ -167,20 +170,40 @@ CHROOT="$CHROOTS/${NAME:="$RELEASE"}"
 # Confirm we have write access to the directory before starting.
 NODOWNLOAD=''
 if [ -z "$DOWNLOADONLY" ]; then
-    if [ -d "$CHROOT" ] && ! rmdir "$CHROOT" 2>/dev/null; then
+    chrootsrc="$CHROOT"
+    if [ ! -d "$chrootsrc" ]; then
+        for chrootsrc in "$CHROOT:ecryptfs="*; do
+            if [ -d "$chrootsrc" ]; then
+                break
+            fi
+        done
+    fi
+    create='-n'
+    if [ -d "$chrootsrc" ] && ! rmdir "$chrootsrc" 2>/dev/null; then
         if [ -z "$UPDATE" ]; then
             error 1 "$CHROOT already has stuff in it!
 Either delete it, specify a different name (-n), or specify -u to update it."
-        else
-            NODOWNLOAD='y'
-            echo "$CHROOT already exists; updating it..." 1>&2
-            # Sanity-check the release
-            if ! grep -q "=$RELEASE\$" "$CHROOT/etc/lsb-release"; then
-                error 1 "Release doesn't match! Please correct the -r option."
-            fi
         fi
+        NODOWNLOAD='y'
+        create=''
+        echo "$CHROOT already exists; updating it..." 1>&2
     fi
-    mkdir -p "$BIN" "$CHROOT"
+
+    # Mount the chroot and update CHROOT path
+    CHROOT="`sh -e "$HOSTBINDIR/mount-chroot" \
+                        $create $ENCRYPT -p -c "$CHROOTS" "$NAME"`"
+
+    # Auto-unmount the chroot when the script exits
+    TRAP="sh -e \"$HOSTBINDIR/unmount-chroot\" -c \"$CHROOTS\" \"$NAME\";$TRAP"
+    trap "$TRAP" INT HUP 0
+
+    # Sanity-check the release if we're updating
+    if [ -n "$NODOWNLOAD" ] \
+            && ! grep -q "=$RELEASE\$" "$CHROOT/etc/lsb-release"; then
+        error 1 "Release doesn't match! Please correct the -r option."
+    fi
+
+    mkdir -p "$BIN"
 fi
 
 # Unpack the tarball if appropriate
