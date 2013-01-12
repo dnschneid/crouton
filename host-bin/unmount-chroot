@@ -22,7 +22,8 @@ Options:
     -k KILL     Send the processes SIGKILL instead of SIGTERM.
     -t TRIES    Number of seconds to try before signalling the processes.
                 Use -t inf to be exceedingly patient. Default: $TRIES
-    -y          Signalling any remaining processes without confirmation."
+    -y          Signal any remaining processes without confirmation.
+                Automatically escalates from SIGTERM to SIGKILL."
 
 # Function to exit with exit code $1, spitting out message $@ to stderr
 error() {
@@ -143,6 +144,11 @@ for NAME in "$@"; do
                 fi
                 kill "-$SIGNAL" "$pid" 2>/dev/null || true
             done
+
+            # Escalate
+            if [ ! "${YES#[Aa]}" = "$YES" ]; then
+                SIGNAL='KILL'
+            fi
 
             ntries=0
         else
