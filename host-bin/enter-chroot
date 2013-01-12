@@ -48,31 +48,17 @@ if [ ! "$USER" = root -a ! "$UID" = 0 ]; then
     error 2 "$APPLICATION must be run as root."
 fi
 
-# Determine the chroot path and detect encrypted chroots
-ENCRYPTSRC=''
-if [ -n "$NAME" ]; then
-    CHROOT="$CHROOTS/$NAME"
-    if [ ! -d "$CHROOT" ]; then
-        for ENCRYPTSRC in "$CHROOT:ecryptfs="*; do
-            if [ -d "$ENCRYPTSRC" ]; then
-                break
-            fi
-        done
-    fi
-    if [ ! -d "$ENCRYPTSRC" -a ! -d "$CHROOT" ]; then
-        error 1 "$CHROOT not found."
-    fi
-else
+# Select the first chroot available if one hasn't been specified
+if [ -z "$NAME" ]; then
     for CHROOT in "$CHROOTS"/*; do
         for encfile in "$CHROOT/ECRYPTFS_FNEK_ENCRYPTED"*; do
             if [ -r "$encfile" ]; then
-                ENCRYPTSRC="$CHROOT"
-                NAME="${ENCRYPTSRC##*/}"
-                NAME="${ENCRYPTSRC%:ecryptfs=*}"
+                NAME="${CHROOT##*/}"
+                NAME="${CHROOT%:ecryptfs=*}"
                 break
             fi
         done
-        if [ -z "$ENCRYPTSRC" -a -d "$CHROOT/etc" ]; then
+        if [ -z "$NAME" -a -d "$CHROOT/etc" ]; then
             NAME="${CHROOT##*/}"
             break
         fi
@@ -86,37 +72,8 @@ fi
 TRAP="stty echo 2>/dev/null || true;$TRAP"
 trap "$TRAP" INT HUP 0
 
-# If we're encrypted, ensure the root password is set and mount the chroot
-if [ -n "$ENCRYPTSRC" ]; then
-    # Ensure that there's a root password set before decrypting the chroot
-    if [ ! -f '/mnt/stateful_partition/etc/devmode.passwd' ]; then
-        echo 'You must have a root password in ChromeOS to mount encrypted chroots.' 1>&2
-        chromeos-setdevpasswd
-    fi
-
-    CHROOT="$CHROOTS/.secure/$NAME"
-    ENCRYPTSRC="`readlink -f "$ENCRYPTSRC"`"
-    # Check if we actually need to mount
-    if ! grep -q "^$ENCRYPTSRC " /proc/mounts; then
-        # Create a root-only mount directory and mount in there
-        mkdir -m 700 -p "$CHROOT"
-        chown root:root "$CHROOTS/.secure"
-        chmod 700 "$CHROOTS/.secure"
-        sig="${ENCRYPTSRC##*:ecryptfs=}"
-        mnt="ecryptfs_sig=$sig,ecryptfs_fnek_sig=$sig,no_sig_cache"
-        mnt="$mnt,ecryptfs_cipher=aes,ecryptfs_key_bytes=16"
-        mnt="$mnt,ecryptfs_enable_filename_crypto=y,ecryptfs_passthrough=n"
-        # ecryptfs tries to write to something in / on success, but it can't, so
-        # it will always fail. Check ourselves whether it was successful or not.
-        # Eat the error message and only display it if we failed.
-        echo -n 'Encryption passphrase: ' 1>&2
-        err="`mount -t ecryptfs -o "$mnt" "$ENCRYPTSRC" "$CHROOT" 2>&1 || true`"
-        if ! grep -q "^$ENCRYPTSRC " /proc/mounts; then
-            exit 1 "${err#Passphrase:}"
-        fi
-        echo 1>&2
-    fi
-fi
+# Mount the chroot and update our CHROOT path
+CHROOT="`sh -e "\`dirname "$0"\`/mount-chroot" -p -c "$CHROOTS" "$NAME"`"
 
 # Auto-unmount everything below and including the chroot when the script exits.
 TRAP="sh -e \"`dirname "$0"`/unmount-chroot\" -c \"$CHROOTS\" \"$NAME\";$TRAP"

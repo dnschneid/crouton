@@ -1,0 +1,242 @@
+#!/bin/sh -e
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+APPLICATION="${0##*/}"
+CHROOTS="`readlink -f "\`dirname "$0"\`/../chroots"`"
+CREATE=''
+PRINT=''
+
+USAGE="$APPLICATION [options] name [...]
+
+Mounts one or more encrypted chroots into a root-only directory.
+
+Options:
+    -c CHROOTS  Directory the chroots are in. Default: $CHROOTS
+    -n          Create the chroot if it doesn't exist.
+    -m          Create the chroot if it doesn't exist.
+                If the chroot does exist and is not encrypted, encrypt it.
+    -p          Prints out the path to the mounted directory on stdout."
+
+# Function to exit with exit code $1, spitting out message $@ to stderr
+error() {
+    local ecode="$1"
+    shift
+    echo "$*" 1>&2
+    exit "$ecode"
+}
+
+# Process arguments
+while getopts 'c:nmp' f; do
+    case "$f" in
+    c) CHROOTS="$OPTARG";;
+    n) CREATE='y';;
+    m) CREATE='m';;
+    p) PRINT='y';;
+    \?) error 2 "$USAGE";;
+    esac
+done
+shift "$((OPTIND-1))"
+
+# Need at least one chroot listed
+if [ $# = 0 ]; then
+    error 2 "$USAGE"
+fi
+
+# We need to run as root
+if [ ! "$USER" = root -a ! "$UID" = 0 ]; then
+    error 2 "$APPLICATION must be run as root."
+fi
+
+# Make sure we always exit with echo on the tty.
+TRAP="stty echo 2>/dev/null || true;$TRAP"
+trap "$TRAP" INT HUP 0
+
+# Mount each chroot
+ret=0
+for NAME in "$@"; do
+    if [ -z "$NAME" ]; then
+        continue
+    fi
+
+    # Check for existence
+    CHROOT="$CHROOTS/$NAME"
+    movesrc=''
+    if [ ! -d "$CHROOT" ]; then
+        for CHROOTSRC in "$CHROOT:ecryptfs="*; do
+            if [ -d "$CHROOTSRC" ]; then
+                break
+            fi
+        done
+    elif [ "${CHROOT%:ecrypt=*}" = "$CHROOT" ]; then
+        if [ ! "$CREATE" = 'm' ]; then
+            if [ -n "$PRINT" ]; then
+                echo "$CHROOT"
+            else
+                echo "$CHROOT is not encrypted." 1>&2
+            fi
+            continue
+        fi
+        movesrc="$CHROOT"
+        # If we were in the middle of a move, continue it
+        for CHROOTSRC in "$CHROOT:ecryptfs="*; do
+            if [ -d "$CHROOTSRC" ]; then
+                break
+            fi
+        done
+        CHROOTSRC="${CHROOTSRC%"*"}"
+    fi
+    if [ ! -d "$CHROOTSRC" -a ! -d "$CHROOT" ]; then
+        if [ -z "$CREATE" ]; then
+            echo "$CHROOT not found." 1>&2
+            if [ -n "$PRINT" ]; then
+                echo "/dev/null"
+            fi
+            ret=1
+            continue
+        fi
+        CHROOTSRC="$CHROOTS/$NAME:ecrypt="
+    fi
+
+    CHROOT="$CHROOTS/.secure/$NAME"
+    mkdir -p "$CHROOTSRC"
+    CHROOTSRC="`readlink -f "$CHROOTSRC"`"
+    if [ -n "$PRINT" ]; then
+        echo "$CHROOT"
+    fi
+
+    # Check if we actually need to mount
+    if ! grep -q "^$CHROOTSRC " /proc/mounts; then
+        # We must be on a terminal.
+        if ! tty -s; then
+            echo 'STDIN is not a terminal; cannot request passwords.' 1>&2
+            ret=1
+            continue
+        fi
+
+        # Ensure that there's a root password set before decrypting the chroot
+        if [ ! -f '/mnt/stateful_partition/etc/devmode.passwd' ]; then
+            echo 'You must have a root password in ChromeOS to mount encrypted chroots.' 1>&2
+            chromeos-setdevpasswd
+        fi
+
+        # Create a root-only mount directory and mount in there
+        mkdir -m 700 -p "$CHROOT"
+        chown root:root "$CHROOTS/.secure"
+        chmod 700 "$CHROOTS/.secure"
+
+        # Grab the signature and construct the mount arguments
+        sig="${CHROOTSRC##*:ecryptfs=}"
+
+        # If we just created it, choose and append the sig to the file name.
+        passphrase=''
+        if [ -z "$sig" ]; then
+            echo -n "Choose an encryption passphrase for $NAME: " 1>&2
+            stty -echo
+            while [ -z "$passphrase" ]; do
+                read passphrase
+                if [ -z "$passphrase" ]; then
+                    echo 1>&2
+                    echo -n 'You must specify a passphrase: ' 1>&2
+                    continue
+                fi
+                echo 1>&2
+                echo -n 'Please confirm your passphrase: ' 1>&2
+                read confirmation
+                if [ ! "$confirmation" = "$passphrase" ]; then
+                    passphrase=''
+                    echo 1>&2
+                    echo -n 'Passphrases do not match; try again: ' 1>&2
+                fi
+                confirmation=''
+            done
+            echo 1>&2
+            stty echo
+            sig="`echo -n "$passphrase" | ecryptfs-add-passphrase - | sed 's/.*\[\(.*\)\].*/\1/'`"
+            if [ -z "$sig" ]; then
+                echo 'Failed to get ecryptfs passphrase signature.' 1>&2
+                ret=1
+                continue
+            fi
+            oldsrc="$CHROOTSRC"
+            CHROOTSRC="$CHROOTSRC$sig"
+            if [ "$oldsrc" = "$CHROOTSRC" ] \
+                    || ! mv -f "$oldsrc" "$CHROOTSRC"; then
+                ret=1
+                echo "Failed to record encryption signature for $NAME." 1>&2
+                continue
+            fi
+        fi
+
+        mnt="ecryptfs_sig=$sig,ecryptfs_fnek_sig=$sig"
+        mnt="$mnt,no_sig_cache,ecryptfs_cipher=aes,ecryptfs_key_bytes=16"
+        mnt="$mnt,ecryptfs_enable_filename_crypto=y,ecryptfs_passthrough=n"
+        # Key must be last so that we can append options to it.
+        mnt="$mnt,key=passphrase"
+
+        # On ecryptfs versions prior to 94, the passphrase_passwd_fd option did
+        # not properly handle pipes, so we can't safely pass the passphrase
+        # automatically when the chroot was just created. Instead, reset
+        # passphrase and let ecryptfs ask for it again.
+        if [ -n "$passphrase" ] \
+                && ecryptfsd -V | (read _ _ v; [ "$v" -lt 94 ]); then
+            echo 'Encrypted directory created; continuing with mount...' 1>&2
+            passphrase=''
+        fi
+
+        # ecryptfs tries to write to something in / on success, but it can't, so
+        # it will always fail. Check ourselves whether it was successful or not.
+        # Eat the error message and only display it if we failed.
+        if [ -n "$passphrase" ]; then
+            # We already have the passphrase, so pass it in via an FD
+            mnt="$mnt:passphrase_passwd_fd=0"
+            err="`echo "passphrase_passwd=$passphrase" \
+                  | mount -t ecryptfs -o "$mnt" "$CHROOTSRC" "$CHROOT" 2>&1 \
+                    || true`"
+            passphrase=''
+        else
+            echo -n "Encryption passphrase for $NAME: " 1>&2
+            err="`mount -t ecryptfs -o "$mnt" "$CHROOTSRC" "$CHROOT" 2>&1 \
+                    || true`"
+            echo 1>&2
+        fi
+        if ! grep -q "^$CHROOTSRC " /proc/mounts; then
+            ret=1
+            echo "Failed to mount $NAME:" 1>&2
+            echo "${err#Passphrase:}" 1>&2
+            continue
+        fi
+    fi
+
+    # Perform the move
+    if [ -n "$movesrc" ]; then
+        echo -n "Encrypting $NAME; please wait..." 1>&2
+        failedmove=''
+        for dir in "$movesrc/"* "$movesrc/".*; do
+            if [ -z "${dir#"$movesrc/."}" -o -z "${dir#"$movesrc/.."}" ] \
+                    || [ ! -e "$dir" ]; then
+                continue
+            fi
+            if ! mv -f "$dir" "$CHROOT/"; then
+                failedmove=1
+                break
+            fi
+            echo -n . 1>&2
+        done
+        if [ -z "$failedmove" ] && ! rmdir "$movesrc"; then
+            echo 1>&2
+            echo -n "Unable to remove old $NAME directory." 1>&2
+            failedmove=1
+        fi
+        if [ -n "$failedmove" ]; then
+            err=1
+            echo 1>&2
+            echo "Encrypting $NAME failed. Please try again." 1>&2
+            continue
+        fi
+        echo 'done!' 1>&2
+    fi
+done
+
+exit $ret
