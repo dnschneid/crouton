@@ -6,6 +6,7 @@
 APPLICATION="${0##*/}"
 CHROOTS="`readlink -f "\`dirname "$0"\`/../chroots"`"
 CREATE=''
+ENCRYPT=''
 PRINT=''
 
 USAGE="$APPLICATION [options] name [...]
@@ -14,9 +15,8 @@ Mounts one or more encrypted chroots into a root-only directory.
 
 Options:
     -c CHROOTS  Directory the chroots are in. Default: $CHROOTS
+    -e          If the chroot is not encrypted, encrypt it.
     -n          Create the chroot if it doesn't exist.
-    -m          Create the chroot if it doesn't exist.
-                If the chroot does exist and is not encrypted, encrypt it.
     -p          Prints out the path to the mounted directory on stdout."
 
 # Function to exit with exit code $1, spitting out message $@ to stderr
@@ -28,11 +28,11 @@ error() {
 }
 
 # Process arguments
-while getopts 'c:nmp' f; do
+while getopts 'c:enp' f; do
     case "$f" in
     c) CHROOTS="$OPTARG";;
+    e) ENCRYPT='y';;
     n) CREATE='y';;
-    m) CREATE='m';;
     p) PRINT='y';;
     \?) error 2 "$USAGE";;
     esac
@@ -69,8 +69,8 @@ for NAME in "$@"; do
                 break
             fi
         done
-    elif [ "${CHROOT%:ecrypt=*}" = "$CHROOT" ]; then
-        if [ ! "$CREATE" = 'm' ]; then
+    elif [ "${CHROOT%:ecryptfs=*}" = "$CHROOT" ]; then
+        if [ -z "$ENCRYPT" ]; then
             if [ -n "$PRINT" ]; then
                 echo "$CHROOT"
             else
@@ -96,7 +96,7 @@ for NAME in "$@"; do
             ret=1
             continue
         fi
-        CHROOTSRC="$CHROOTS/$NAME:ecrypt="
+        CHROOTSRC="$CHROOTS/$NAME:ecryptfs="
     fi
 
     CHROOT="$CHROOTS/.secure/$NAME"
@@ -188,6 +188,7 @@ for NAME in "$@"; do
         # ecryptfs tries to write to something in / on success, but it can't, so
         # it will always fail. Check ourselves whether it was successful or not.
         # Eat the error message and only display it if we failed.
+        stty -echo
         if [ -n "$passphrase" ]; then
             # We already have the passphrase, so pass it in via an FD
             mnt="$mnt:passphrase_passwd_fd=0"
@@ -201,6 +202,7 @@ for NAME in "$@"; do
                     || true`"
             echo 1>&2
         fi
+        stty echo
         if ! grep -q "^$CHROOTSRC " /proc/mounts; then
             ret=1
             echo "Failed to mount $NAME:" 1>&2
