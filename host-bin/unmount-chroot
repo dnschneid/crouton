@@ -123,7 +123,7 @@ for NAME in "$@"; do
 
     # Unmount all mounts
     ntries=0
-    echo "Unmounting $CHROOT..."
+    echo "Unmounting $CHROOT..." 1>&2
     while mounts="`cut -d" " -f2 /proc/mounts | grep "^$base"`"; do
         if umount $mounts 2>/dev/null; then
             break;
