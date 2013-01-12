@@ -54,7 +54,6 @@ TRAP="stty echo 2>/dev/null || true;$TRAP"
 trap "$TRAP" INT HUP 0
 
 # Mount each chroot
-ret=0
 for NAME in "$@"; do
     if [ -z "$NAME" ]; then
         continue
@@ -73,8 +72,6 @@ for NAME in "$@"; do
         if [ -z "$ENCRYPT" ]; then
             if [ -n "$PRINT" ]; then
                 echo "$CHROOT"
-            else
-                echo "$CHROOT is not encrypted." 1>&2
             fi
             continue
         fi
@@ -89,11 +86,12 @@ for NAME in "$@"; do
     fi
     if [ ! -d "$CHROOTSRC" -a ! -d "$CHROOT" ]; then
         if [ -z "$CREATE" ]; then
-            echo "$CHROOT not found." 1>&2
+            error 1 "$CHROOT not found."
+        elif [ -z "$ENCRYPT" ]; then
+            mkdir -p "$CHROOT"
             if [ -n "$PRINT" ]; then
-                echo "/dev/null"
+                echo "$CHROOT"
             fi
-            ret=1
             continue
         fi
         CHROOTSRC="$CHROOTS/$NAME:ecryptfs="
@@ -110,9 +108,7 @@ for NAME in "$@"; do
     if ! grep -q "^$CHROOTSRC " /proc/mounts; then
         # We must be on a terminal.
         if ! tty -s; then
-            echo 'STDIN is not a terminal; cannot request passwords.' 1>&2
-            ret=1
-            continue
+            error 2 'STDIN is not a terminal; cannot request passwords.'
         fi
 
         # Ensure that there's a root password set before decrypting the chroot
@@ -155,17 +151,13 @@ for NAME in "$@"; do
             stty echo
             sig="`echo -n "$passphrase" | ecryptfs-add-passphrase - | sed 's/.*\[\(.*\)\].*/\1/'`"
             if [ -z "$sig" ]; then
-                echo 'Failed to get ecryptfs passphrase signature.' 1>&2
-                ret=1
-                continue
+                error 1 'Failed to get ecryptfs passphrase signature.'
             fi
             oldsrc="$CHROOTSRC"
             CHROOTSRC="$CHROOTSRC$sig"
             if [ "$oldsrc" = "$CHROOTSRC" ] \
                     || ! mv -f "$oldsrc" "$CHROOTSRC"; then
-                ret=1
-                echo "Failed to record encryption signature for $NAME." 1>&2
-                continue
+                error 1 "Failed to record encryption signature for $NAME."
             fi
         fi
 
@@ -204,10 +196,7 @@ for NAME in "$@"; do
         fi
         stty echo
         if ! grep -q "^$CHROOTSRC " /proc/mounts; then
-            ret=1
-            echo "Failed to mount $NAME:" 1>&2
-            echo "${err#Passphrase:}" 1>&2
-            continue
+            error 1 "Failed to mount $NAME:${err#Passphrase:}"
         fi
     fi
 
@@ -232,13 +221,11 @@ for NAME in "$@"; do
             failedmove=1
         fi
         if [ -n "$failedmove" ]; then
-            err=1
             echo 1>&2
-            echo "Encrypting $NAME failed. Please try again." 1>&2
-            continue
+            error 1 "Encrypting $NAME failed. Please try again." 1>&2
         fi
         echo 'done!' 1>&2
     fi
 done
 
-exit $ret
+exit 0
