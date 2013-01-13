@@ -4,6 +4,7 @@
 # found in the LICENSE file.
 
 APPLICATION="${0##*/}"
+BACKGROUND=''
 CHROOTS="`readlink -f "\`dirname "$0"\`/../chroots"`"
 NAME=''
 USERNAME='1000'
@@ -17,6 +18,7 @@ By default, it will log into the primary user on the first chroot found.
 You can specify a command and parameters to run instead of an interactive shell.
 
 Options:
+    -b          Fork and run the specified command silently in the background.
     -c CHROOTS  Directory the chroots are in. Default: $CHROOTS
     -n NAME     Name of the chroot to enter. Default: first one found in CHROOTS
     -u USERNAME Username (or UID) to log into. Default: 1000 (the primary user)
@@ -32,8 +34,9 @@ error() {
 }
 
 # Process arguments
-while getopts 'c:n:u:x' f; do
+while getopts 'bc:n:u:x' f; do
     case "$f" in
+    b) BACKGROUND='-y';;
     c) CHROOTS="$OPTARG";;
     n) NAME="$OPTARG";;
     u) USERNAME="$OPTARG";;
@@ -46,6 +49,11 @@ shift "$((OPTIND-1))"
 # We need to run as root
 if [ ! "$USER" = root -a ! "$UID" = 0 ]; then
     error 2 "$APPLICATION must be run as root."
+fi
+
+# We need a command if we specified to run in the background
+if [ -n "$BACKGROUND" -a $# = 0 ]; then
+    error 2 "A command must be specified in order to run in the background."
 fi
 
 # Select the first chroot available if one hasn't been specified
@@ -76,7 +84,8 @@ trap "$TRAP" INT HUP 0
 CHROOT="`sh -e "\`dirname "$0"\`/mount-chroot" -p -c "$CHROOTS" "$NAME"`"
 
 # Auto-unmount everything below and including the chroot when the script exits.
-TRAP="sh -e \"`dirname "$0"`/unmount-chroot\" -c \"$CHROOTS\" \"$NAME\";$TRAP"
+TRAP="sh -e \"`dirname "$0"`/unmount-chroot\" \
+                                $BACKGROUND -c \"$CHROOTS\" \"$NAME\";$TRAP"
 trap "$TRAP" INT HUP 0
 
 # Offer to run /prepare.sh if it exists and yet we're logging in.
@@ -173,6 +182,18 @@ if [ -z "$DISABLE_POWERD_CONTROL" ]; then
     fi
 fi
 
+# To run silently, we override the env command to launch a background process,
+# and move the trap code to happen there.
+if [ -n "$BACKGROUND" ]; then
+    env() {
+        (
+            trap '' INT HUP
+            trap "$TRAP" 0
+            /usr/bin/env "$@"
+        ) </dev/null >/dev/null 2>/dev/null &
+    }
+fi
+
 # Start the chroot and any specified command
 ret=0
 if [ -n "$NOLOGIN" ]; then
@@ -186,6 +207,11 @@ else
         cmd="$cmd\"$param\" "
     done
     env -i TERM="$TERM" chroot "$CHROOT" su -c "$cmd" - "$USERNAME" || ret=$?
+fi
+
+# We don't want to trap for this proccess if we're running in the background
+if [ -n "$BACKGROUND" ]; then
+    trap - INT HUP 0
 fi
 
 # Cleanup all happens in the exit trap
