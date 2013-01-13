@@ -54,7 +54,9 @@ Options:
 
 Be aware that dev mode is inherently insecure, even if you have a strong
 password in your chroot! Anyone can simply switch VTs and gain root access
-unless you've permanently assigned a ChromiumOS root password."
+unless you've permanently assigned a Chromium OS root password. Encrypted
+chroots require you to set a Chromium OS root password, but are still only as
+secure as the passphrases you assign to them."
 
 # Function to exit with exit code $1, spitting out message $@ to stderr
 error() {

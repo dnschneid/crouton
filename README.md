@@ -48,7 +48,8 @@ Prerequisites
 You need a device running Chromium OS that has been switched to developer mode.
 Note that developer mode, in its default configuration, is *completely
 insecure*, so don't expect a password in your chroot to keep anyone from your
-data. Consider this your warning.
+data. crouton does support encrypting chroots, but the encryption is only as
+strong as the quality of your passphrase. Consider this your warning.
 
 That's it!  Surprised?
 
@@ -94,6 +95,12 @@ Examples
      and Ctrl+Alt+Shift+Forward to cycle through the chroots.
   6. Exit the chroot by logging out of Xfce.
 
+### With encryption!
+  1. Add the -e parameter when you run crouton to create an encrypted chroot.
+  2. Note that this is only as secure as the passphrase and root password you
+     choose. Certainly this is nowhere near as secure as Chromium OS is normal
+     (non-dev) mode, so don't be misled by the word "encryption."
+
 ### You want to make a bootstrap tarball and create a chroot from that
   1. Download `crouton`.
   2. Open a shell and run
@@ -107,6 +114,8 @@ have to determine and download the bootstrap files every time.*
 ### A new version of crouton came out, and you want to update your chroot
   1. Download the new `crouton`.
   2. Open a shell and run `sudo sh -e ~/Downloads/crouton -t xfce -u`
+  3. You can use this with -e to encrypt a non-encrypted chroot, but make sure
+     you don't interrupt the operation.
 
 ### You're crazy and want to play with all of the features of crouton
   1. Download the source snapshot tarball to your Chromium OS device.
@@ -117,13 +126,13 @@ have to determine and download the bootstrap files every time.*
         sh -e installer/main.sh -d -a i386 -r hardy \
            -m 'http://mirrors.us.kernel.org/ubuntu/' -f iamcrazy.tar.bz2
 
-  4. Install the chroot with a custom name to a subdirectory in /tmp, and
-     install just cli-extra since you may be crazy but at least you recognize
-     that /tmp is backed by RAM on Chromium OS and you'll quickly exhaust the
-     available space if you install X11:
+  4. Install the chroot with a custom name to an encrypted subdirectory in /tmp,
+     and install just cli-extra since you may be crazy but at least you
+     recognize that /tmp is backed by RAM on Chromium OS and you'll quickly
+     exhaust the available space if you install X11:
 
         sudo sh -e installer/main.sh -m 'http://mirrors.us.kernel.org/ubuntu/' \
-                -f iamcrazy.tar.bz2 -p /tmp -n crazychrooty -t core,cli-extra
+                -f iamcrazy.tar.bz2 -p /tmp -n crazychrooty -t core,cli-extra -e
 
   5. If that command actually worked, enter the chroot and login as root
      straight into vi because, well, you're crazy:
