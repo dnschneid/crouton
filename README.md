@@ -155,6 +155,9 @@ Tips
     `brightness up`) or keyboard (e.g. `brightness k down`).
   * Multiple monitors will work fine in the chroot, but you may have to switch
     to Chromium OS and back to enable them.
+  * You can make commands run in the background so that you can close the
+    terminal. This is particularly useful for desktop environments: try running
+    `sudo startxfce4 -b`
 
 
 Issues?
