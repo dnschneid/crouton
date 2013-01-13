@@ -62,7 +62,7 @@ if [ -z "$NAME" ]; then
         for encfile in "$CHROOT/ECRYPTFS_FNEK_ENCRYPTED"*; do
             if [ -r "$encfile" ]; then
                 NAME="${CHROOT##*/}"
-                NAME="${CHROOT%:ecryptfs=*}"
+                NAME="${NAME%:ecryptfs=*}"
                 break
             fi
         done
