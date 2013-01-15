@@ -1,0 +1,91 @@
+#!/bin/sh -e
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+USAGE="${0##*/} [-x] [-r]
+Runs the mousewheel daemon.
+Options:
+    -x Enable horizontal scrolling.
+    -r Reverse the direction of scrolling."
+
+# Default button numbers
+u=4
+d=5
+l=6
+r=7
+# Don't do horizontal scrolling by default
+x='0'
+
+# Process options
+while getopts 'rx' opt; do
+    case "$opt" in
+        r) z=$u; u=$d; d=$z; z=$l; l=$r; r=$z;;
+        x) x='1';;
+        \?) echo "$USAGE" 1>&2; exit 1;;
+    esac
+done
+if [ $# -gt 0 ]; then
+    echo "$USAGE" 1>&2
+    exit 1;
+fi
+
+# Operate on the Chromium OS X11 server
+export DISPLAY=:0 XAUTHORITY=/etc/X11/host-Xauthority
+
+# If we launched this from a terminal, release return just in case; if the
+# xinput window appears before return is pressed, the release will get eaten.
+if tty -s; then
+    xdotool keyup Return
+fi
+
+# Fork a process that hides the xinput window as soon as possible.
+(
+    while [ -n "`xdotool getwindowfocus getwindowname`" ]; do :; done;
+    xdotool getwindowfocus windowunmap
+) &
+
+# Monitor xinput2 events, reacting only to scroll events (axes 2 and 3).
+# Accumulate the x and y scrolls, but reduce the acceleration so it doesn't go
+# crazy. After a threshold, simulate the right mouse press the right number of
+# times.
+stdbuf -oL xinput test-xi2 | awk -W interactive '
+    /^EVENT type 17/ {
+        a = 1
+    }
+    a && '$x' && ($1 == "2:") && ($2 != 0) {
+        if ($2 > 0) {
+            x += log($2) * 5 + 1
+        } else {
+            x -= log(-$2) * 5 + 1
+        }
+        if (x >= 10) {
+            system("xdotool getwindowfocus getwindowname | grep -q \"^Xephyr\" \
+                   && xdotool click --delay 1 --repeat " int(x / 10) " '$l' &")
+            x = 0
+        } else if (x <= -10) {
+            system("xdotool getwindowfocus getwindowname | grep -q \"^Xephyr\" \
+                   && xdotool click --delay 1 --repeat " int(-x / 10) " '$r' &")
+            x = 0
+        }
+    }
+    a && ($1 == "3:") && ($2 != 0) {
+        if ($2 > 0) {
+            y += log($2) * 5 + 1
+        } else {
+            y -= log(-$2) * 5 + 1
+        }
+        if (y >= 10) {
+            system("xdotool getwindowfocus getwindowname | grep -q \"^Xephyr\" \
+                   && xdotool click --delay 1 --repeat " int(y / 10) " '$u' &")
+            y = 0
+        } else if (y <= -10) {
+            system("xdotool getwindowfocus getwindowname | grep -q \"^Xephyr\" \
+                   && xdotool click --delay 1 --repeat " int(-y / 10) " '$d' &")
+            y = 0
+        }
+    }
+    a && /^$/ {
+        a = 0
+    }
+'
+exit 0
