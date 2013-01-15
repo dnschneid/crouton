@@ -60,11 +60,11 @@ stdbuf -oL xinput test-xi2 | awk -W interactive '
         }
         if (x >= 10) {
             system("xdotool getwindowfocus getwindowname | grep -q \"^Xephyr\" \
-                   && xdotool click --delay 1 --repeat " int(x / 10) " '$l' &")
+                   && xdotool click --delay 1 --repeat " int(x / 10) " '$r' &")
             x = 0
         } else if (x <= -10) {
             system("xdotool getwindowfocus getwindowname | grep -q \"^Xephyr\" \
-                   && xdotool click --delay 1 --repeat " int(-x / 10) " '$r' &")
+                   && xdotool click --delay 1 --repeat " int(-x / 10) " '$l' &")
             x = 0
         }
     }
@@ -76,11 +76,11 @@ stdbuf -oL xinput test-xi2 | awk -W interactive '
         }
         if (y >= 10) {
             system("xdotool getwindowfocus getwindowname | grep -q \"^Xephyr\" \
-                   && xdotool click --delay 1 --repeat " int(y / 10) " '$u' &")
+                   && xdotool click --delay 1 --repeat " int(y / 10) " '$d' &")
             y = 0
         } else if (y <= -10) {
             system("xdotool getwindowfocus getwindowname | grep -q \"^Xephyr\" \
-                   && xdotool click --delay 1 --repeat " int(-y / 10) " '$d' &")
+                   && xdotool click --delay 1 --repeat " int(-y / 10) " '$u' &")
             y = 0
         }
     }
