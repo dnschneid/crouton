@@ -60,8 +60,8 @@ There are three ways to acquire and run crouton. Two of which have cyclical
 dependencies.
 
 If you're just here to use crouton, you can grab the latest release from
-[goo.gl/lfUVM](http://goo.gl/lfUVM).  Download it, pop open a shell, and run `sh
--e ~/Downloads/crouton` to see the help text. See the "examples" section for
+[goo.gl/fd3zc](http://goo.gl/fd3zc).  Download it, pop open a shell, and run
+`sh -e ~/Downloads/crouton` to see the help text. See the "examples" section for
 some usage examples.
 
 The other two involve cloning this repo and either running `installer/main.sh`
