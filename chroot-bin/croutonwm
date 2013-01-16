@@ -24,7 +24,7 @@ if [ -r "$hostxauth" ]; then
         param='/dev/stdin'
         croutonwheel="`dirname "$0"`/croutonwheel"
         if [ -e "$croutonwheel" ]; then
-            env -i CROUTON="CORE" "$croutonwheel" $CROUTON_WHEEL_PARAMS &
+            env -i CROUTON="CORE" "$croutonwheel" $CROUTON_WHEEL_PARAMS <&- &
             killwheel="kill $! 2>/dev/null || true;"
         fi
     else
@@ -32,7 +32,7 @@ if [ -r "$hostxauth" ]; then
         param="$setpadding"
     fi
     env -i DISPLAY=":0" XAUTHORITY="$hostxauth" CROUTON="CORE" \
-        "/usr/bin/ratpoison" "$cmd" "$param" <<WMRC &
+        "/usr/bin/ratpoison" "$cmd" "$param" <&- <<WMRC &
             escape C-S-M-Escape
             bind C-S-M-Escape set padding 0 0 0 0
             definekey top C-S-M-F1 prev

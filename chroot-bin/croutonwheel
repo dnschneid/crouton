@@ -64,7 +64,7 @@ aura="`xwininfo -root -children | awk '/aura_root/ {print $1}'`"
         name="`xdotool getwindowfocus getwindowname`" || name='a'
     done
     xdotool getwindowfocus windowunmap
-) 2>/dev/null &
+) <&- 2>&- &
 
 # Monitor xinput2 events, reacting only to scroll events (axes 2 and 3).
 # Accumulate the x and y scrolls, but reduce the acceleration so it doesn't go
@@ -75,12 +75,18 @@ aura="`xwininfo -root -children | awk '/aura_root/ {print $1}'`"
 # per-event basis, both to improve latency and performance as well as handle the
 # case where this script outlives the chroot.
 {
-    stdbuf -oL xinput test-xi2 &
+    stdbuf -oL xinput test-xi2 <&- &
     xi="$!"
-    xev -root &
-    trap "kill $! $xi 2>/dev/null || true" INT TERM HUP 0
-    wait
-} | awk -W interactive '
+    xev -root <&- &
+    trap "kill $! $xi 2>&- || true" INT TERM HUP 0
+    # Ping every 5 seconds to get SIGPIPE when xte is killed.
+    while sleep 5; do
+        echo 'ping'
+    done
+} <&- | awk -W interactive '
+    /^ping$/ {
+        print "sleep 0"
+    }
     m {
         if ($4 == "'"$aura"',") {
             if (m == "MapNotify") {
@@ -138,6 +144,6 @@ aura="`xwininfo -root -children | awk '/aura_root/ {print $1}'`"
         a = 0
     }
 ' | xte &
-trap "kill $! 2>/dev/null || true" INT TERM HUP 0
+trap "kill $! 2>&- || true" INT TERM HUP 0
 wait
 exit 0
