@@ -10,7 +10,7 @@ INSTALLERDIR="$SCRIPTDIR/installer"
 HOSTBINDIR="$SCRIPTDIR/host-bin"
 TARGETSDIR="$SCRIPTDIR/targets"
 
-ARCH="`uname -m | sed -e 's/x86_64/amd64/' -e 's/arm.*/armhf/'`"
+ARCH="`uname -m | sed -e 's i.86 i386 ;s x86_64 amd64 ;s arm.* armhf ;'`"
 DOWNLOADONLY=''
 ENCRYPT=''
 MIRROR=''
