@@ -39,6 +39,6 @@ if [ -r "$hostxauth" ]; then
             addhook quit set padding 0 0 0 0
             addhook deletewindow exec \
                 [ "\`"/usr/bin/ratpoison" -c "windows %%"\`" = % ] \
-                && "/usr/bin/ratpoison" -c quit
+                && "/usr/bin/ratpoison" -c quit || true
 WMRC
 fi
