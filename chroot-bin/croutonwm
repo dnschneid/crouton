@@ -12,15 +12,21 @@ if [ -r "$hostxauth" ]; then
     wmrunning=""
     for wmpid in `ps -C ratpoison -opid=`; do
         if grep -q "CROUTON=CORE" "/proc/$wmpid/environ"; then
-    	wmrunning="y"
-    	break
+            wmrunning="y"
+            break
         fi
     done
     # Launch it if it is not running; otherwise, just adjust padding
     setpadding='set padding 0 0 -1 0'
+    killwheel=''
     if [ -z "$wmrunning" ]; then
         cmd='-f'
         param='/dev/stdin'
+        croutonwheel="`dirname "$0"`/croutonwheel"
+        if [ -e "$croutonwheel" ]; then
+            env -i CROUTON="CORE" "$croutonwheel" $CROUTON_WHEEL_PARAMS &
+            killwheel="kill $! 2>/dev/null || true;"
+        fi
     else
         cmd='-c'
         param="$setpadding"
@@ -39,6 +45,6 @@ if [ -r "$hostxauth" ]; then
             addhook quit set padding 0 0 0 0
             addhook deletewindow exec \
                 [ "\`"/usr/bin/ratpoison" -c "windows %%"\`" = % ] \
-                && "/usr/bin/ratpoison" -c quit || true
+                && { "/usr/bin/ratpoison" -c quit || true; $killwheel } || true
 WMRC
 fi

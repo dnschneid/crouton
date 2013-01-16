@@ -45,7 +45,7 @@ if [ $# -ge "$OPTIND" ]; then
 fi
 
 # Operate on the Chromium OS X11 server
-export DISPLAY=:0 XAUTHORITY=/etc/X11/host-Xauthority
+export DISPLAY=':0' XAUTHORITY='/etc/X11/host-Xauthority'
 
 # If we launched this from a terminal, release return just in case; if the
 # xinput window appears before return is pressed, the release will get eaten.
@@ -64,7 +64,7 @@ aura="`xwininfo -root -children | awk '/aura_root/ {print $1}'`"
         name="`xdotool getwindowfocus getwindowname`" || name='a'
     done
     xdotool getwindowfocus windowunmap
-) &
+) 2>/dev/null &
 
 # Monitor xinput2 events, reacting only to scroll events (axes 2 and 3).
 # Accumulate the x and y scrolls, but reduce the acceleration so it doesn't go
