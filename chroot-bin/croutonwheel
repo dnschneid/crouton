@@ -61,9 +61,10 @@ aura="`xwininfo -root -children | awk '/aura_root/ {print $1}'`"
 (
     name='a'
     while [ -n "$name" ]; do
-        name="`xdotool getwindowfocus getwindowname`" || name='a'
+        id="`xdotool getwindowfocus`" || continue
+        name="`xdotool getwindowname "$id"`" || name='a'
     done
-    xdotool getwindowfocus windowunmap
+    xdotool windowunmap "$id"
 ) <&- 2>&- &
 
 # Monitor xinput2 events, reacting only to scroll events (axes 2 and 3).
