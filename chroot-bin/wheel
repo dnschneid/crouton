@@ -78,7 +78,7 @@ aura="`xwininfo -root -children | awk '/aura_root/ {print $1}'`"
     stdbuf -oL xinput test-xi2 &
     xi="$!"
     xev -root &
-    trap "kill $! $xi" INT TERM HUP 0
+    trap "kill $! $xi 2>/dev/null || true" INT TERM HUP 0
     wait
 } | awk -W interactive '
     m {
