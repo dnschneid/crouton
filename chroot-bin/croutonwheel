@@ -8,34 +8,34 @@ u=4
 d=5
 l=6
 r=7
-# Don't do horizontal scrolling by default
-x=0
+# Do horizontal scrolling by default
+x=1
 # Set the default scaling and constant values
-xs='0.5'
-xc='0.1'
-ys='0.5'
-yc='0.1'
+xs='0.2'
+xc='0.01'
+ys='0.2'
+yc='0.05'
 
 #
 USAGE="${0##*/} [-x] [-r] [-a #.#] [-b #.#] [-c #.#] [-d #.#]
 Runs the mousewheel daemon.
 Options:
-    -x Enable horizontal scrolling.
     -r Reverse the direction of scrolling.
-    -a Sets the X scrolling scaling factor (default: $xs). Implies -x.
-    -b Sets the X scrolling constant additive (default: $xc). Implies -x.
+    -x Disable horizontal scrolling.
+    -a Sets the X scrolling scaling factor (default: $xs).
+    -b Sets the X scrolling constant additive (default: $xc).
     -c Sets the Y scrolling scaling factor (default: $ys).
     -d Sets the Y scrolling constant additive (default: $yc)."
 
 # Process options
 while getopts 'a:b:c:d:rx' opt; do
     case "$opt" in
-        a) x='1'; xs="$OPTARG";;
-        b) x='1'; xc="$OPTARG";;
+        a) xs="$OPTARG";;
+        b) xc="$OPTARG";;
         c) ys="$OPTARG";;
         d) yc="$OPTARG";;
         r) z=$u; u=$d; d=$z; z=$l; l=$r; r=$z;;
-        x) x='1';;
+        x) x='0';;
         \?) echo "$USAGE" 1>&2; exit 1;;
     esac
 done
@@ -54,7 +54,7 @@ if tty -s; then
 fi
 
 # Wait for ratpoison to come up
-while ! xprop -root _NET_WM_NAME | grep -q 'ratpoison'; do :; done 2>&-
+while ! xprop -root _NET_WM_NAME | grep -q 'ratpoison'; do sleep .1; done 2>&-
 
 # Fork a process that hides the xinput window as soon as possible.
 # The xinput window is the only focusable window with no name.
