@@ -24,6 +24,9 @@ if [ -r "$hostxauth" ]; then
         param='/dev/stdin'
         croutonwheel="`dirname "$0"`/croutonwheel"
         if [ -e "$croutonwheel" ]; then
+            if [ -f "$HOME/.croutonwheel" ]; then
+                CROUTON_WHEEL_PARAMS="`head -n1 "$HOME/.croutonwheel"`"
+            fi
             env -i CROUTON="CORE" "$croutonwheel" $CROUTON_WHEEL_PARAMS <&- &
             killwheel="kill $! 2>/dev/null || true;"
         fi
