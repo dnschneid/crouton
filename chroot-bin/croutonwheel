@@ -53,19 +53,28 @@ if tty -s; then
     xte 'keyup Return'
 fi
 
-# Get the aura root window number (hex)
-aura="`xwininfo -root -children | awk '/aura_root/ {print $1}'`"
+# Wait for ratpoison to come up
+while ! xprop -root _NET_WM_NAME | grep -q 'ratpoison'; do :; done 2>&-
 
 # Fork a process that hides the xinput window as soon as possible.
 # The xinput window is the only focusable window with no name.
-(
-    name='a'
-    while [ -n "$name" ]; do
-        id="`xdotool getwindowfocus`" || continue
-        name="`xdotool getwindowname "$id"`" || name='a'
-    done
-    xdotool windowunmap "$id"
-) <&- 2>&- &
+xev -root <&- | awk -W interactive '
+    m {
+        id = substr($4, 1, length($4) - 1)
+        if (system("xprop WM_NAME _NET_WM_NAME -id " id " \
+                    | grep -vq \"not found\"")) {
+            system("xdotool windowunmap " id)
+            exit
+        }
+        m = 0
+    }
+    /^MapNotify/ {
+        m = 1
+    }
+' &
+
+# Get the aura root window number (hex)
+aura="`xwininfo -root -children | awk '/aura_root/ {print $1}'`"
 
 # Monitor xinput2 events, reacting only to scroll events (axes 2 and 3).
 # Accumulate the x and y scrolls, but reduce the acceleration so it doesn't go
@@ -76,6 +85,8 @@ aura="`xwininfo -root -children | awk '/aura_root/ {print $1}'`"
 # per-event basis, both to improve latency and performance as well as handle the
 # case where this script outlives the chroot.
 {
+    # Sleep before launching xinput to make sure that our xev is up monitoring.
+    sleep .5
     stdbuf -oL xinput test-xi2 <&- &
     xi="$!"
     xev -root <&- &
