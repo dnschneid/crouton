@@ -98,7 +98,7 @@ Examples
 ### With encryption!
   1. Add the -e parameter when you run crouton to create an encrypted chroot.
   2. Note that this is only as secure as the passphrase and root password you
-     choose. Certainly this is nowhere near as secure as Chromium OS is normal
+     choose. Certainly this is nowhere near as secure as Chromium OS in normal
      (non-dev) mode, so don't be misled by the word "encryption."
 
 ### You want to make a bootstrap tarball and create a chroot from that
