@@ -99,13 +99,12 @@ for NAME in "$@"; do
 
     CHROOT="$CHROOTS/.secure/$NAME"
     mkdir -p "$CHROOTSRC"
-    CHROOTSRC="`readlink -f "$CHROOTSRC"`"
     if [ -n "$PRINT" ]; then
         echo "$CHROOT"
     fi
 
     # Check if we actually need to mount
-    if ! grep -q "^$CHROOTSRC " /proc/mounts; then
+    if ! mountpoint -q "$CHROOT"; then
         # We must be on a terminal.
         if ! tty -s; then
             error 2 'STDIN is not a terminal; cannot request passwords.'
@@ -195,7 +194,7 @@ for NAME in "$@"; do
             echo 1>&2
         fi
         stty echo
-        if ! grep -q "^$CHROOTSRC " /proc/mounts; then
+        if ! mountpoint -q "$CHROOT"; then
             error 1 "Failed to mount $NAME:${err#Passphrase:}"
         fi
     fi

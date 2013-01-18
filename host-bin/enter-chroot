@@ -127,12 +127,14 @@ if [ -z "$NOLOGIN" ]; then
 fi
 
 # Ensure the chroot is executable and writable
-mp="$CHROOT"
+mp="`readlink -f "$CHROOT"`"
 while ! mountpoint -q "$mp"; do
     mp="${mp%/*}"
     [ -z "$mp" ] && mp=/
 done
-if grep -q "^[^ ]* $mp [^ ]* [^ ]*\(noexec\|nodev\|nosuid\)" /proc/mounts; then
+escapedmp="`echo "$mp" | sed 's= =//='`"
+if sed "s=\\\\040=//=" /proc/mounts \
+        | grep -q "^[^ ]* $escapedmp [^ ]* [^ ]*\(noexec\|nodev\|nosuid\)"; then
     mount -o remount,rw,dev,exec,suid "$mp"
 fi
 
@@ -151,8 +153,8 @@ ln -sf 'host-shill/resolv.conf' "$CHROOT/etc/resolv.conf"
 
 # Bind-mounts $1 into $CHROOT/${2:-"$1"} if $2 is not already mounted
 bindmount() {
-    local target="`readlink -f "$CHROOT/${2:-"$1"}"`"
-    if ! grep -q "^[^ ]* $target " /proc/mounts; then
+    local target="$CHROOT/${2:-"$1"}"
+    if ! mountpoint -q "$target"; then
         mount --bind "$1" "$target"
     fi
 }
