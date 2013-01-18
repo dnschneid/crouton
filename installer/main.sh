@@ -71,7 +71,8 @@ while getopts 'a:def:m:n:p:r:s:t:u' f; do
     case "$f" in
     a) ARCH="$OPTARG";;
     d) DOWNLOADONLY='y';;
-    e) ENCRYPT='-e';;
+    e) ENCRYPT='-e'
+       error 255 'Creating encrypted chroots temporarily disabled; please wait for future release.';;
     f) TARBALL="$OPTARG";;
     m) MIRROR="$OPTARG";;
     n) NAME="$OPTARG";;
