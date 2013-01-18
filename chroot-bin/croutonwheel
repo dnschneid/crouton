@@ -73,6 +73,12 @@ xev -root <&- | awk -W interactive '
     }
 ' &
 
+# Wait for ratpoison to have more than one window (so that ratpoison doesn't
+# quit when we kill the xinput window)
+while ! windows="`/usr/bin/ratpoison -c 'windows %%'`" || [ "$windows" = % ]; do
+    sleep .1
+done
+
 # Get the aura root window number (hex)
 aura="`xwininfo -root -children | awk '/aura_root/ {print $1}'`"
 
@@ -85,8 +91,6 @@ aura="`xwininfo -root -children | awk '/aura_root/ {print $1}'`"
 # per-event basis, both to improve latency and performance as well as handle the
 # case where this script outlives the chroot.
 {
-    # Sleep before launching xinput to make sure that our xev is up monitoring.
-    sleep .5
     stdbuf -oL xinput test-xi2 <&- &
     xi="$!"
     xev -root <&- &
