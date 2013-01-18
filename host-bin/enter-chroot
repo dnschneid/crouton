@@ -85,7 +85,7 @@ CHROOT="`sh -e "\`dirname "$0"\`/mount-chroot" -p -c "$CHROOTS" "$NAME"`"
 
 # Auto-unmount everything below and including the chroot when the script exits.
 TRAP="sh -e \"`dirname "$0"`/unmount-chroot\" \
-                                $BACKGROUND -c \"$CHROOTS\" \"$NAME\";$TRAP"
+                            $BACKGROUND -c \"$CHROOTS\" \"$NAME\" || true;$TRAP"
 trap "$TRAP" INT HUP 0
 
 # Offer to run /prepare.sh if it exists and yet we're logging in.
@@ -177,7 +177,7 @@ fi
 # Disable screen dimming (TODO: create script to poke it instead)
 if [ -z "$DISABLE_POWERD_CONTROL" ]; then
     if initctl stop powerd 2>/dev/null; then
-        TRAP="initctl start powerd;$TRAP"
+        TRAP="initctl start powerd || true;$TRAP"
         trap "$TRAP" INT HUP 0
     else
         DISABLE_POWERD_CONTROL=1

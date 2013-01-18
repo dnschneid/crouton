@@ -197,7 +197,7 @@ Either delete it, specify a different name (-n), or specify -u to update it."
 
     # Auto-unmount the chroot when the script exits
     TRAP="sh -e \"$HOSTBINDIR/unmount-chroot\" \
-                    -y -c \"$CHROOTS\" \"$NAME\" 2>/dev/null;$TRAP"
+                    -y -c \"$CHROOTS\" \"$NAME\" 2>/dev/null || true;$TRAP"
     trap "$TRAP" INT HUP 0
 
     # Sanity-check the release if we're updating
