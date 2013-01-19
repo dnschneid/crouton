@@ -97,9 +97,11 @@ Examples
 
 ### With encryption!
   1. Add the -e parameter when you run crouton to create an encrypted chroot.
-  2. Note that this is only as secure as the passphrase and root password you
-     choose. Certainly this is nowhere near as secure as Chromium OS in normal
-     (non-dev) mode, so don't be misled by the word "encryption."
+  2. You can get some extra protection on your chroot by storing the decryption
+     key separately from the place the chroot is stored. Use the -k parameter to
+     specify a file or directory to store the keys in (such as a USB drive or SD
+     card) when you create the chroot. Beware that if you lose this file, your
+     chroot will not be decryptable.
 
 ### You want to make a bootstrap tarball and create a chroot from that
   1. Download `crouton`.
@@ -126,13 +128,15 @@ have to determine and download the bootstrap files every time.*
         sh -e installer/main.sh -d -a i386 -r hardy \
            -m 'http://mirrors.us.kernel.org/ubuntu/' -f iamcrazy.tar.bz2
 
-  4. Install the chroot with a custom name to an encrypted subdirectory in /tmp,
-     and install just cli-extra since you may be crazy but at least you
-     recognize that /tmp is backed by RAM on Chromium OS and you'll quickly
-     exhaust the available space if you install X11:
+  4. Install the chroot with a custom name to an encrypted subdirectory in /tmp
+     with the key stored on a removable disk, and install just cli-extra since
+     you may be crazy but at least you recognize that /tmp is backed by RAM on
+     Chromium OS and you'll quickly exhaust the available space if you install
+     X11:
 
         sudo sh -e installer/main.sh -m 'http://mirrors.us.kernel.org/ubuntu/' \
-                -f iamcrazy.tar.bz2 -p /tmp -n crazychrooty -t core,cli-extra -e
+                -f iamcrazy.tar.bz2 -p /tmp -n crazychrooty -t core,cli-extra \
+                -e -k '/media/removable/External Drive/chrootkeys/'
 
   5. If that command actually worked, enter the chroot and login as root
      straight into vi because, well, you're crazy:
