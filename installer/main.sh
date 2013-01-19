@@ -13,6 +13,7 @@ TARGETSDIR="$SCRIPTDIR/targets"
 ARCH="`uname -m | sed -e 's i.86 i386 ;s x86_64 amd64 ;s arm.* armhf ;'`"
 DOWNLOADONLY=''
 ENCRYPT=''
+KEYFILE=''
 MIRROR=''
 MIRROR86='http://archive.ubuntu.com/ubuntu/'
 MIRRORARM='http://ports.ubuntu.com/ubuntu-ports/'
@@ -40,6 +41,9 @@ Options:
     -e          Encrypt the chroot with ecryptfs using a passphrase.
     -f TARBALL  The tarball to use, or download to in the case of -d.
                 When using a prebuilt tarball, -a and -r are ignored.
+    -k KEYFILE  File or directory to store the (encrypted) encryption keys in.
+                If unspecified, the keys will be stored in the chroot if doing a
+                first encryption, or auto-detected on existing chroots.
     -m MIRROR   Mirror to use for bootstrapping and apt-get.
                 Default for i386/amd64: $MIRROR86
                 Default for armhl/others: $MIRRORARM
@@ -67,13 +71,13 @@ error() {
 }
 
 # Process arguments
-while getopts 'a:def:m:n:p:r:s:t:u' f; do
+while getopts 'a:def:k:m:n:p:r:s:t:u' f; do
     case "$f" in
     a) ARCH="$OPTARG";;
     d) DOWNLOADONLY='y';;
-    e) ENCRYPT='-e'
-       error 255 'Creating encrypted chroots temporarily disabled; please wait for future release.';;
+    e) ENCRYPT='-e';;
     f) TARBALL="$OPTARG";;
+    k) KEYFILE="$OPTARG";;
     m) MIRROR="$OPTARG";;
     n) NAME="$OPTARG";;
     p) PREFIX="$OPTARG";;
@@ -193,8 +197,13 @@ Either delete it, specify a different name (-n), or specify -u to update it."
     fi
 
     # Mount the chroot and update CHROOT path
-    CHROOT="`sh -e "$HOSTBINDIR/mount-chroot" \
-                        $create $ENCRYPT -p -c "$CHROOTS" "$NAME"`"
+    if [ -n "$KEYFILE" ]; then
+        CHROOT="`sh -e "$HOSTBINDIR/mount-chroot" -k "$KEYFILE" \
+                            $create $ENCRYPT -p -c "$CHROOTS" "$NAME"`"
+    else
+        CHROOT="`sh -e "$HOSTBINDIR/mount-chroot" \
+                            $create $ENCRYPT -p -c "$CHROOTS" "$NAME"`"
+    fi
 
     # Auto-unmount the chroot when the script exits
     TRAP="sh -e \"$HOSTBINDIR/unmount-chroot\" \

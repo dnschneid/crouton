@@ -72,19 +72,14 @@ for NAME in "$@"; do
     # Check for existence
     CHROOT="$CHROOTS/$NAME"
     if [ ! -d "$CHROOT" ]; then
-        for CHROOTSRC in "$CHROOT:ecryptfs="*; do
-            if [ -d "$CHROOTSRC" ]; then
-                CHROOT="$CHROOTS/.secure/$NAME"
-                break
-            fi
-        done
-    else
-        CHROOTSRC="$CHROOT"
-    fi
-    if [ ! -d "$CHROOTSRC" -a ! -d "$CHROOT" ]; then
         echo "$CHROOT not found." 1>&2
         ret=1
         continue
+    fi
+
+    # Switch to the unencrypted mount for encrypted chroots.
+    if [ -f "$CHROOT/.ecryptfs" ]; then
+        CHROOT="$CHROOTS/.secure/$NAME"
     fi
 
     # Check if a chroot is running with this directory. We detect the

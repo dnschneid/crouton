@@ -59,15 +59,6 @@ for NAME in "$@"; do
     # Check for existence
     CHROOT="$CHROOTS/$NAME"
     if [ ! -d "$CHROOT" ]; then
-        for CHROOTSRC in "$CHROOT:ecryptfs="*; do
-            if [ -d "$CHROOTSRC" ]; then
-                break
-            fi
-        done
-    else
-        CHROOTSRC="$CHROOT"
-    fi
-    if [ ! -d "$CHROOTSRC" ]; then
         echo "$CHROOT not found." 1>&2
         ret=1
         continue
@@ -81,18 +72,18 @@ for NAME in "$@"; do
 
     # Confirm deletion
     if [ "${YES#[Aa]}" = "$YES" ]; then
-        echo -n "Delete $CHROOTSRC? [a/y/N] " 1>&2
+        echo -n "Delete $CHROOT? [a/y/N] " 1>&2
         read YES
         if [ "${YES#[AaYy]}" = "$YES" ]; then
-            echo "Skipping deletion of $CHROOTSRC" 1>&2
+            echo "Skipping deletion of $CHROOT" 1>&2
             ret=1
             continue
         fi
     fi
 
     # Delete the chroot
-    echo "Deleting $CHROOTSRC"
-    rm -rf "$CHROOTSRC"
+    echo "Deleting $CHROOT"
+    rm -rf "$CHROOT"
 done
 
 exit $ret

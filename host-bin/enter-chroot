@@ -6,6 +6,7 @@
 APPLICATION="${0##*/}"
 BACKGROUND=''
 CHROOTS="`readlink -f "\`dirname "$0"\`/../chroots"`"
+KEYFILE=''
 NAME=''
 USERNAME='1000'
 NOLOGIN=''
@@ -20,6 +21,7 @@ You can specify a command and parameters to run instead of an interactive shell.
 Options:
     -b          Fork and run the specified command silently in the background.
     -c CHROOTS  Directory the chroots are in. Default: $CHROOTS
+    -k KEYFILE  Override the auto-detected encryption key location.
     -n NAME     Name of the chroot to enter. Default: first one found in CHROOTS
     -u USERNAME Username (or UID) to log into. Default: 1000 (the primary user)
     -x          Does not log in, but directly executes the command instead.
@@ -34,10 +36,11 @@ error() {
 }
 
 # Process arguments
-while getopts 'bc:n:u:x' f; do
+while getopts 'bc:k:n:u:x' f; do
     case "$f" in
     b) BACKGROUND='-y';;
     c) CHROOTS="$OPTARG";;
+    k) KEYFILE="$OPTARG";;
     n) NAME="$OPTARG";;
     u) USERNAME="$OPTARG";;
     x) NOLOGIN='y';;
@@ -59,14 +62,7 @@ fi
 # Select the first chroot available if one hasn't been specified
 if [ -z "$NAME" ]; then
     for CHROOT in "$CHROOTS"/*; do
-        for encfile in "$CHROOT/ECRYPTFS_FNEK_ENCRYPTED"*; do
-            if [ -r "$encfile" ]; then
-                NAME="${CHROOT##*/}"
-                NAME="${NAME%:ecryptfs=*}"
-                break
-            fi
-        done
-        if [ -z "$NAME" -a -d "$CHROOT/etc" ]; then
+        if [ -d "$CHROOT/etc" -o -f "$CHROOT/.ecryptfs" ]; then
             NAME="${CHROOT##*/}"
             break
         fi
@@ -81,7 +77,12 @@ TRAP="stty echo 2>/dev/null || true;$TRAP"
 trap "$TRAP" INT HUP 0
 
 # Mount the chroot and update our CHROOT path
-CHROOT="`sh -e "\`dirname "$0"\`/mount-chroot" -p -c "$CHROOTS" "$NAME"`"
+if [ -n "$KEYFILE" ]; then
+    CHROOT="`sh -e "\`dirname "$0"\`/mount-chroot" \
+                                     -k "$KEYFILE" -p -c "$CHROOTS" "$NAME"`"
+else
+    CHROOT="`sh -e "\`dirname "$0"\`/mount-chroot" -p -c "$CHROOTS" "$NAME"`"
+fi
 
 # Auto-unmount everything below and including the chroot when the script exits.
 TRAP="sh -e \"`dirname "$0"`/unmount-chroot\" \
