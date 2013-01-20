@@ -1,0 +1,21 @@
+#!/bin/sh -e
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Launches Unity or Unity-2D depending on the X server.
+
+hostxauth='/etc/X11/host-Xauthority'
+if [ -r "$hostxauth" ]; then
+    # We're on Xephyr, so use Unity-2D
+    exec xinit /bin/sh -c '
+        unity-2d-panel & p="$!"
+        unity-2d-shell & p="$p $!"
+        unity-2d-spread & p="$p $!"
+        metacity & p="$p $!"
+        trap "kill $p 2>&-" INT TERM HUP 0
+        wait
+    '
+else
+    exec xinit /usr/bin/unity
+fi

@@ -5,11 +5,13 @@
 REQUIRES='chromium gtk-extra x11 core'
 DESCRIPTION='Installs the Unity desktop environment. (Approx. 700MB)'
 HOSTBIN='startunity'
+CHROOTBIN='startunity'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
-apt-get -y install unity light-themes `noauto network-manager brasero firefox`
+apt-get -y install unity unity-2d light-themes \
+                   `noauto network-manager brasero firefox`
 
 TIPS="$TIPS
-You can start Unity via the startunity host command: sudo enter-unity
+You can start Unity via the startunity host command: sudo startunity
 "
