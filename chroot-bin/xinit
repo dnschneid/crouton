@@ -4,20 +4,26 @@
 # found in the LICENSE file.
 
 # Adds a :# to the xinit command line, where # is the first available display
-# number. Also adds the -- to the command line if it isn't already there.
-# By putting this in /usr/local/bin, PATH will prefer it and scripts that call
-# xinit will automagically work.
+# number. Also adds the -- to the command line and references the global
+# xserverrc if it isn't already there.  By putting this in /usr/local/bin, PATH
+# will prefer it and scripts that call xinit will automagically work.
 
 croutonwm='/usr/local/bin/croutonwm'
 if [ -x "$croutonwm" ]; then
     . "$croutonwm"
 fi
 
+xserverrc='/etc/X11/xinit/xserverrc'
 dash='--'
 for arg in "$@"; do
-    if [ "$arg" = '--' ]; then
-        dash=
+    if [ -z "$dash" ]; then
+        # Check if there's a xserverrc specified.
+        if [ ! "${arg#/}" = "$arg" ]; then
+            xserverrc=''
+        fi
         break
+    elif [ "$arg" = '--' ]; then
+        dash=
     fi
 done
 
@@ -26,4 +32,4 @@ while [ -f "/tmp/.X$disp-lock" ]; do
     disp=$((disp+1))
 done
 
-exec /usr/bin/xinit "$@" $dash ":$disp"
+exec /usr/bin/xinit "$@" $dash $xserverrc ":$disp"
