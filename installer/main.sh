@@ -177,16 +177,8 @@ CHROOT="$CHROOTS/${NAME:="$RELEASE"}"
 # Confirm we have write access to the directory before starting.
 NODOWNLOAD=''
 if [ -z "$DOWNLOADONLY" ]; then
-    chrootsrc="$CHROOT"
-    if [ ! -d "$chrootsrc" ]; then
-        for chrootsrc in "$CHROOT:ecryptfs="*; do
-            if [ -d "$chrootsrc" ]; then
-                break
-            fi
-        done
-    fi
     create='-n'
-    if [ -d "$chrootsrc" ] && ! rmdir "$chrootsrc" 2>/dev/null; then
+    if [ -d "$CHROOT" ] && ! rmdir "$CHROOT" 2>/dev/null; then
         if [ -z "$UPDATE" ]; then
             error 1 "$CHROOT already has stuff in it!
 Either delete it, specify a different name (-n), or specify -u to update it."
