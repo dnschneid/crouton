@@ -6,6 +6,7 @@
 APPLICATION="${0##*/}"
 ALLCHROOTS=''
 CHROOTS="`readlink -f "\`dirname "$0"\`/../chroots"`"
+PRINT=''
 SIGNAL='TERM'
 TRIES=5
 YES=''
@@ -22,6 +23,7 @@ Options:
     -a          Unmount all chroots in the CHROOTS directory.
     -c CHROOTS  Directory the chroots are in. Default: $CHROOTS
     -k KILL     Send the processes SIGKILL instead of SIGTERM.
+    -p          Print to STDOUT the processes stopping a chroot from unmounting.
     -t TRIES    Number of seconds to try before signalling the processes.
                 Use -t inf to be exceedingly patient. Default: $TRIES
     -y          Signal any remaining processes without confirmation.
@@ -36,11 +38,12 @@ error() {
 }
 
 # Process arguments
-while getopts 'ac:kt:y' f; do
+while getopts 'ac:kpt:y' f; do
     case "$f" in
     a) ALLCHROOTS='y';;
     c) CHROOTS="$OPTARG";;
     k) SIGNAL="KILL";;
+    p) PRINT='y';;
     t) TRIES="$OPTARG";;
     y) YES='a';;
     \?) error 2 "$USAGE";;
@@ -89,6 +92,9 @@ checkusage() {
             fi
             if grep -q 'CROUTON=CORE' "/proc/$pid/environ"; then
                 continue
+            fi
+            if [ -n "$PRINT" ]; then
+                ps -p "$pid" -o pid= -o cmd= || true
             fi
             return 1
         fi
@@ -141,18 +147,23 @@ for NAME in "$@"; do
         if [ "$ntries" -eq "$TRIES" ]; then
             # Send signal to all processes running under the chroot
             # ...but confirm first.
+            printonly=''
             if [ "${YES#[Aa]}" = "$YES" ]; then
-                echo -n "Failed to unmount $CHROOT. Kill processes? [a/k/y/N] " 1>&2
+                echo -n "Failed to unmount $CHROOT. Kill processes? [a/k/y/p/N] " 1>&2
                 read YES
                 if [ ! "${YES#[Kk]}" = "$YES" ]; then
                     SIGNAL='KILL'
+                elif [ ! "${YES#[Pp]}" = "$YES" ]; then
+                    printonly=y
                 elif [ "${YES#[AaYy]}" = "$YES" ]; then
                     echo "Skipping unmounting of $CHROOT" 1>&2
                     ret=1
                     break
                 fi
             fi
-            echo "Sending SIG$SIGNAL to processes under $CHROOT..." 1>&2
+            if [ -z "$printonly" ]; then
+                echo "Sending SIG$SIGNAL to processes under $CHROOT..." 1>&2
+            fi
             for root in /proc/*/root; do
                 if [ ! -r "$root" ] || [ ! "`readlink -f "$root"`" = "$base" ]; then
                     continue
@@ -162,7 +173,12 @@ for NAME in "$@"; do
                 if grep -q 'CROUTON=CORE' "/proc/$pid/environ"; then
                     continue
                 fi
-                kill "-$SIGNAL" "$pid" 2>/dev/null || true
+                if [ -n "${printonly:-"$PRINT"}" ]; then
+                    ps -p "$pid" -o pid= -o cmd= || true
+                fi
+                if [ -z "$printonly" ]; then
+                    kill "-$SIGNAL" "$pid" 2>/dev/null || true
+                fi
             done
 
             # Escalate
@@ -170,7 +186,9 @@ for NAME in "$@"; do
                 SIGNAL='KILL'
             fi
 
-            ntries=0
+            if [ -z "$printonly" ]; then
+                ntries=0
+            fi
         else
             ntries="$((ntries+1))"
         fi
