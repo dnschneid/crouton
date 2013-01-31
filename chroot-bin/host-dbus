@@ -1,0 +1,7 @@
+#!/bin/sh
+export DBUS_SYSTEM_BUS_ADDRESS='unix:path=/var/run/host-dbus/system_bus_socket'
+if [ "$#" = 0 ]; then
+    echo "export DBUS_SYSTEM_BUS_ADDRESS='$DBUS_SYSTEM_BUS_ADDRESS'"
+else
+    exec "$@"
+fi
