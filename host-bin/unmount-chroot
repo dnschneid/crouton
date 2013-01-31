@@ -62,6 +62,37 @@ if [ ! "$USER" = root -a ! "$UID" = 0 ]; then
     error 2 "$APPLICATION must be run as root."
 fi
 
+# Check if a chroot is running with this directory. We detect the
+# appropriate commands by checking if the command's parent root is not equal
+# to the pid's root. This avoids not unmounting due to a lazy-quitting
+# background application within the chroot. We also don't consider processes
+# that have a parent PID of 1 (which would mean an orphaned process in this
+# case), as enter-chroot never orphans its children, and we don't consider
+# processes that have CROUTON=CORE in the environment.
+# $1: $base; the canonicalized base path of the chroot
+# Returns: non-zero if the chroot is in use.
+checkusage() {
+    for root in /proc/*/root; do
+        if [ -r "$root" ] && [ "`readlink -f "$root"`" = "$base" ]; then
+            pid="${root#/proc/}"
+            pid="${pid%/root}"
+            ppid="`ps -p "$pid" -o ppid= 2>/dev/null`"
+            if [ -z "$ppid" ] || [ "$ppid" -eq 1 ]; then
+                continue
+            fi
+            proot="/proc/$ppid/root"
+            if [ -r "$proot" ] && [ "`readlink -f "$proot"`" = "$base" ]; then
+                continue
+            fi
+            if grep -q 'CROUTON=CORE' "/proc/$pid/environ"; then
+                continue
+            fi
+            return 1
+        fi
+    done
+    return 0
+}
+
 # Unmount each chroot
 ret=0
 for NAME in "$@"; do
@@ -82,35 +113,9 @@ for NAME in "$@"; do
         CHROOT="$CHROOTS/.secure/$NAME"
     fi
 
-    # Check if a chroot is running with this directory. We detect the
-    # appropriate commands by checking if the command's parent root is not equal
-    # to the pid's root. This avoids not unmounting due to a lazy-quitting
-    # background application within the chroot. We also don't consider processes
-    # that have a parent PID of 1 (which would mean an orphaned process in this
-    # case), as enter-chroot never orphans its children, and we don't consider
-    # processes that have CROUTON=CORE in the environment.
     base="`readlink -f "$CHROOT"`"
-    nounmount=''
-    for root in /proc/*/root; do
-        if [ -r "$root" ] && [ "`readlink -f "$root"`" = "$base" ]; then
-            pid="${root#/proc/}"
-            pid="${pid%/root}"
-            ppid="`ps -p "$pid" -o ppid= 2>/dev/null`"
-            if [ -z "$ppid" ] || [ "$ppid" -eq 1 ]; then
-                continue
-            fi
-            proot="/proc/$ppid/root"
-            if [ -r "$proot" ] && [ "`readlink -f "$proot"`" = "$base" ]; then
-                continue
-            fi
-            if grep -q 'CROUTON=CORE' "/proc/$pid/environ"; then
-                continue
-            fi
-            nounmount=y
-            break
-        fi
-    done
-    if [ -n "$nounmount" ]; then
+
+    if ! checkusage "$base"; then
         echo "Not unmounting $CHROOT as another instance is using it." 1>&2
         ret=1
         continue
@@ -160,6 +165,11 @@ for NAME in "$@"; do
             ntries="$((ntries+1))"
         fi
         sleep 1
+        if ! checkusage "$base"; then
+            echo "Aborting unmounting $CHROOT as another instance has begun using it." 1>&2
+            ret=1
+            break
+        fi
     done
 done
 
