@@ -177,7 +177,6 @@ bindmount /var/run/shill /var/run/host-shill
 # Bind-mount ~/Downloads if we're logged in as a user
 localdownloads='/home/chronos/user/Downloads'
 if [ -z "$NOLOGIN" -a -n "$CHROOTHOME" -a -d "$localdownloads" ]; then
-    mkdir -p "$CHROOT/$CHROOTHOME/Downloads"
     bindmount "$localdownloads" "$CHROOTHOME/Downloads"
 fi
 
