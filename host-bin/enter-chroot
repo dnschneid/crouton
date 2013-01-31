@@ -149,13 +149,18 @@ fi
 
 # Prepare chroot filesystem
 # Soft-link resolv.conf so that updates are automatically propagated
-mkdir -p "$CHROOT/etc/host-shill"
-ln -sf 'host-shill/resolv.conf' "$CHROOT/etc/resolv.conf"
+ln -sf '/var/run/host-shill/resolv.conf' "$CHROOT/etc/resolv.conf"
 
 # Bind-mounts $1 into $CHROOT/${2:-"$1"} if $2 is not already mounted
 bindmount() {
-    local target="$CHROOT/${2:-"$1"}"
+    local target="$CHROOT/${2:-"$1"}" targetcanon
+    # Follow and fix dangerous absolute symlinks
+    while targetcanon="`readlink -m "$target"`" \
+            && [ ! "$targetcanon" = "$target" ]; do
+        target="$CHROOT${targetcanon#"$CHROOT"}"
+    done
     if ! mountpoint -q "$target"; then
+        mkdir -p "$target"
         mount --bind "$1" "$target"
     fi
 }
@@ -166,7 +171,8 @@ bindmount /sys
 bindmount /sys/fs/fuse/connections
 bindmount /tmp
 bindmount /proc
-bindmount /var/run/shill /etc/host-shill
+bindmount /var/run/dbus /var/run/host-dbus
+bindmount /var/run/shill /var/run/host-shill
 
 # Bind-mount ~/Downloads if we're logged in as a user
 localdownloads='/home/chronos/user/Downloads'
