@@ -4,6 +4,7 @@
 # found in the LICENSE file.
 
 APPLICATION="${0##*/}"
+ALLCHROOTS=''
 CHROOTS="`readlink -f "\`dirname "$0"\`/../chroots"`"
 SIGNAL='TERM'
 TRIES=5
@@ -18,6 +19,7 @@ By default, it will run in interactive mode where it will ask to kill any
 remaining processes if unable to unmount the chroot within 5 seconds.
 
 Options:
+    -a          Unmount all chroots in the CHROOTS directory.
     -c CHROOTS  Directory the chroots are in. Default: $CHROOTS
     -k KILL     Send the processes SIGKILL instead of SIGTERM.
     -t TRIES    Number of seconds to try before signalling the processes.
@@ -34,8 +36,9 @@ error() {
 }
 
 # Process arguments
-while getopts 'c:kt:y' f; do
+while getopts 'ac:kt:y' f; do
     case "$f" in
+    a) ALLCHROOTS='y';;
     c) CHROOTS="$OPTARG";;
     k) SIGNAL="KILL";;
     t) TRIES="$OPTARG";;
@@ -45,8 +48,8 @@ while getopts 'c:kt:y' f; do
 done
 shift "$((OPTIND-1))"
 
-# Need at least one chroot listed
-if [ $# = 0 ]; then
+# Need at least one chroot listed, or -a; not both.
+if [ $# = 0 -a -z "$ALLCHROOTS" ] || [ ! $# = 0 -a -n "$ALLCHROOTS" ]; then
     error 2 "$USAGE"
 fi
 
@@ -93,12 +96,19 @@ checkusage() {
     return 0
 }
 
+# If we specified all chroots, bring in all chroots.
+if [ -n "$ALLCHROOTS" ]; then
+    set -- "$CHROOTS/"*
+fi
+
 # Unmount each chroot
 ret=0
 for NAME in "$@"; do
     if [ -z "$NAME" ]; then
         continue
     fi
+
+    NAME="${NAME#"$CHROOTS/"}"
 
     # Check for existence
     CHROOT="$CHROOTS/$NAME"
