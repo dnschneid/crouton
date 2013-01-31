@@ -206,15 +206,32 @@ fi
 ret=0
 if [ -n "$NOLOGIN" ]; then
     env -i TERM="$TERM" chroot "$CHROOT" "$@" || ret=$?
-elif [ $# = 0 ]; then
-    env -i TERM="$TERM" chroot "$CHROOT" su - "$USERNAME" || ret=$?
 else
-    # Escape out the command
-    cmd=''
-    for param in "$@"; do
-        cmd="$cmd\"$param\" "
-    done
-    env -i TERM="$TERM" chroot "$CHROOT" su -c "$cmd" - "$USERNAME" || ret=$?
+    # Launch the system dbus
+    if [ -x "$CHROOT/bin/dbus-daemon" ]; then
+        env -i chroot "$CHROOT" su -c '
+            pidfile="/var/run/dbus/pid"
+            if [ -f "$pidfile" ]; then
+                if grep -q "^dbus-daemon" "/proc/`cat "$pidfile"`/cmdline" 2>/dev/null; then
+                    exit 0
+                fi
+                rm -f "$pidfile"
+            fi
+            mkdir -p /var/run/dbus
+            chown messagebus:messagebus /var/run/dbus
+            dbus-daemon --system --fork' - root
+    fi
+
+    if [ $# = 0 ]; then
+        env -i TERM="$TERM" chroot "$CHROOT" su - "$USERNAME" || ret=$?
+    else
+        # Escape out the command
+        cmd=''
+        for param in "$@"; do
+            cmd="$cmd\"$param\" "
+        done
+        env -i TERM="$TERM" chroot "$CHROOT" su -c "$cmd" - "$USERNAME" || ret=$?
+    fi
 fi
 
 # We don't want to trap for this proccess if we're running in the background
