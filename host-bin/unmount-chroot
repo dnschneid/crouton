@@ -6,6 +6,7 @@
 APPLICATION="${0##*/}"
 ALLCHROOTS=''
 CHROOTS="`readlink -f "\`dirname "$0"\`/../chroots"`"
+FORCE=''
 PRINT=''
 SIGNAL='TERM'
 TRIES=5
@@ -22,6 +23,8 @@ remaining processes if unable to unmount the chroot within 5 seconds.
 Options:
     -a          Unmount all chroots in the CHROOTS directory.
     -c CHROOTS  Directory the chroots are in. Default: $CHROOTS
+    -f          Forces a chroot to unmount, potentially breaking or killing
+                other instances of the same chroot.
     -k KILL     Send the processes SIGKILL instead of SIGTERM.
     -p          Print to STDOUT the processes stopping a chroot from unmounting.
     -t TRIES    Number of seconds to try before signalling the processes.
@@ -38,10 +41,11 @@ error() {
 }
 
 # Process arguments
-while getopts 'ac:kpt:y' f; do
+while getopts 'ac:fkpt:y' f; do
     case "$f" in
     a) ALLCHROOTS='y';;
     c) CHROOTS="$OPTARG";;
+    f) FORCE='y';;
     k) SIGNAL="KILL";;
     p) PRINT='y';;
     t) TRIES="$OPTARG";;
@@ -78,6 +82,10 @@ fi
 # $1: $base; the canonicalized base path of the chroot
 # Returns: non-zero if the chroot is in use.
 checkusage() {
+    if [ -n "$FORCE" ]; then
+        return 0
+    fi
+    local pid ppid proot root
     for root in /proc/*/root; do
         if [ -r "$root" ] && [ "`readlink -f "$root"`" = "$base" ]; then
             pid="${root#/proc/}"
@@ -170,7 +178,7 @@ for NAME in "$@"; do
                 fi
                 pid="${root#/proc/}"
                 pid="${pid%/root}"
-                if grep -q 'CROUTON=CORE' "/proc/$pid/environ"; then
+                if [ -z "$FORCE" ] && grep -q 'CROUTON=CORE' "/proc/$pid/environ"; then
                     continue
                 fi
                 if [ -n "${printonly:-"$PRINT"}" ]; then
