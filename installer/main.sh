@@ -82,7 +82,7 @@ while getopts 'a:def:k:m:n:p:r:s:t:u' f; do
     n) NAME="$OPTARG";;
     p) PREFIX="$OPTARG";;
     r) RELEASE="$OPTARG";;
-    t) TARGETS="$OPTARG";;
+    t) TARGETS="$TARGETS${TARGETS:+","}$OPTARG";;
     u) UPDATE='y';;
     \?) error 2 "$USAGE";;
     esac
