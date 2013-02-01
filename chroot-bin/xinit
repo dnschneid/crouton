@@ -44,4 +44,12 @@ queuelaunch() {
 # Launch the powerd poker daemon
 queuelaunch croutonpowerd --daemon
 
+# Launch touchegg if it is requested.
+toucheggconf='/etc/touchegg.conf'
+if [ -f "$toucheggconf" ]; then
+    mkdir -p "$HOME/.config/touchegg"
+    ln -sf "$toucheggconf" "$HOME/.config/touchegg/"
+    queuelaunch touchegg
+fi
+
 exec /usr/bin/xinit "$@" $dash $xserverrc ":$disp"
