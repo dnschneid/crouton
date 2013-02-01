@@ -149,7 +149,7 @@ fi
 
 # Prepare chroot filesystem
 # Soft-link resolv.conf so that updates are automatically propagated
-ln -sf '/var/run/host-shill/resolv.conf' "$CHROOT/etc/resolv.conf"
+ln -sf '/var/host/shill/resolv.conf' "$CHROOT/etc/resolv.conf"
 
 # Bind-mounts $1 into $CHROOT/${2:-"$1"} if $2 is not already mounted
 bindmount() {
@@ -171,8 +171,8 @@ bindmount /sys
 bindmount /sys/fs/fuse/connections
 bindmount /tmp
 bindmount /proc
-bindmount /var/run/dbus /var/run/host-dbus
-bindmount /var/run/shill /var/run/host-shill
+bindmount /var/run/dbus /var/host/dbus
+bindmount /var/run/shill /var/host/shill
 
 # Bind-mount ~/Downloads if we're logged in as a user
 localdownloads='/home/chronos/user/Downloads'
