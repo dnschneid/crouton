@@ -30,10 +30,12 @@ if [ -r /debootstrap ]; then
     # we don't need to explicitly remount anything. We also can't detect the
     # mounts properly due to the chroot, so we have to hardcode the mounts.
     umount '/sys/fs/fuse/connections'
+    # Our custom /etc/resolv.conf link gets clobbered after bootstrap; save it
+    mv -f /etc/resolv.conf /etc/resolv.conf.save
     # Start the bootstrap
     /debootstrap/debootstrap --second-stage
-    # Our custom /etc/resolv.conf link gets clobbered after bootstrap; fix it
-    ln -sf host-shill/resolv.conf /etc/resolv.conf
+    # Fix the /etc/resolv.conf
+    mv -f /etc/resolv.conf.save /etc/resolv.conf
 fi
 
 # The rest is dictated by the selected targets.
