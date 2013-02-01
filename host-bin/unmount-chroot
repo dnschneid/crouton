@@ -145,7 +145,7 @@ for NAME in "$@"; do
         continue
     fi
 
-    # Kill the chroot's system dbus if one is running
+    # Kill the chroot's system dbus if one is running; failure is fine
     env -i chroot "$CHROOT" su -c '
         pidfile="/var/run/dbus/pid"
         if [ ! -f "$pidfile" ]; then
@@ -155,7 +155,7 @@ for NAME in "$@"; do
         if ! grep -q "^dbus-daemon" "/proc/$pid/cmdline" 2>/dev/null; then
             exit 0
         fi
-        kill $pid' - root
+        kill $pid' - root 2>/dev/null || true
 
     # Unmount all mounts
     ntries=0
