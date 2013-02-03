@@ -60,9 +60,9 @@ There are three ways to acquire and run crouton. Two of which have cyclical
 dependencies.
 
 If you're just here to use crouton, you can grab the latest release from
-[goo.gl/fd3zc](http://goo.gl/fd3zc).  Download it, pop open a shell, and run
-`sh -e ~/Downloads/crouton` to see the help text. See the "examples" section for
-some usage examples.
+[goo.gl/fd3zc](http://goo.gl/fd3zc).  Download it, pop open a shell
+(Ctrl+Alt+T), and run `sh -e ~/Downloads/crouton` to see the help text. See the
+"examples" section for some usage examples.
 
 The other two involve cloning this repo and either running `installer/main.sh`
 directly, or using `make` to build your very own `crouton`. Of course, you won't
@@ -84,7 +84,7 @@ Examples
 
 ### The easy way (assuming you want Xfce)
   1. Download `crouton`.
-  2. Open a shell and run
+  2. Open a shell (Ctrl+Alt+T) and run
      `sudo sh -e ~/Downloads/crouton -t xfce`
   3. Wait patiently and answer the prompts like a good person.
   4. Done! You can jump straight to your Xfce session by running
@@ -107,7 +107,7 @@ Examples
 
 ### You want to make a bootstrap tarball and create a chroot from that
   1. Download `crouton`.
-  2. Open a shell and run
+  2. Open a shell (Ctrl+Alt+T) and run
      `sudo sh -e ~/Downloads/crouton -d -f ~/Downloads/mybootstrap.tar.bz2`
   3. You can then create chroots using the tarball by running
      `sudo sh -e ~/Downloads/crouton -f ~/Downloads/mybootstrap.tar.bz2`
@@ -117,7 +117,8 @@ have to determine and download the bootstrap files every time.*
 
 ### A new version of crouton came out, and you want to update your chroot
   1. Download the new `crouton`.
-  2. Open a shell and run `sudo sh -e ~/Downloads/crouton -t xfce -u`
+  2. Open a shell (Ctrl+Alt+T) and run
+     `sudo sh -e ~/Downloads/crouton -t xfce -u`
   3. You can use this with -e to encrypt a non-encrypted chroot, but make sure
      you don't interrupt the operation.
 
