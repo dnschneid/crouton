@@ -7,4 +7,4 @@ DESCRIPTION='Basic CLI tools such as wget and ssh.'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
-apt-get -y install wget openssh-client
+apt-get -y install wget openssh-client bash-completion
