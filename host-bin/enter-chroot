@@ -5,7 +5,8 @@
 
 APPLICATION="${0##*/}"
 BACKGROUND=''
-CHROOTS="`readlink -f "\`dirname "$0"\`/../chroots"`"
+BINDIR="`dirname "$0"`"
+CHROOTS="`readlink -f "$BINDIR/../chroots"`"
 KEYFILE=''
 NAME=''
 USERNAME='1000'
@@ -78,14 +79,14 @@ trap "$TRAP" INT HUP 0
 
 # Mount the chroot and update our CHROOT path
 if [ -n "$KEYFILE" ]; then
-    CHROOT="`sh -e "\`dirname "$0"\`/mount-chroot" \
+    CHROOT="`sh -e "$BINDIR/mount-chroot"
                                      -k "$KEYFILE" -p -c "$CHROOTS" "$NAME"`"
 else
-    CHROOT="`sh -e "\`dirname "$0"\`/mount-chroot" -p -c "$CHROOTS" "$NAME"`"
+    CHROOT="`sh -e "$BINDIR/mount-chroot" -p -c "$CHROOTS" "$NAME"`"
 fi
 
 # Auto-unmount everything below and including the chroot when the script exits.
-TRAP="sh -e \"`dirname "$0"`/unmount-chroot\" \
+TRAP="sh -e \"$BINDIR/unmount-chroot\" \
                             $BACKGROUND -c \"$CHROOTS\" \"$NAME\" || true;$TRAP"
 trap "$TRAP" INT HUP 0
 
@@ -100,7 +101,7 @@ if [ -z "$NOLOGIN" -a -f "$CHROOT/prepare.sh" ]; then
     fi
     if [ -z "$response" -o ! "${response#[Yy]}" = "$response" ]; then
         echo 'Preparing chroot environment...' 1>&2
-        "$0" -c "$CHROOTS" -n "$NAME" -x '/prepare.sh'
+        sh -e "$BINDIR/enter-chroot" -c "$CHROOTS" -n "$NAME" -x '/prepare.sh'
         echo 'Setup completed. Entering chroot...' 1>&2
     else
         echo 'Skipping setup. You will be prompted again next time.' 1>&2
