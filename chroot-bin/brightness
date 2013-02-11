@@ -5,46 +5,37 @@
 
 # A shortcut script to control device brightness.
 # Usage:
-#    brightness [b|k] [up|down|#]
+#    brightness [b|k] [up|down|# [instant]]
 
 # Choose the device
+device='Screen'
+nokbd=''
 case "$1" in
-k*) for device in /sys/class/leds/*kbd_backlight; do
-        break
-    done
+k*) device='Keyboard'
+    nokbd='echo "Command not supported with keyboard backlight." 1>&2; exit 1' 
     shift;;
 b*) shift;;
 esac
 
-# Grab the first backlight device
-if [ -z "$device" ]; then
-    for device in /sys/class/backlight/*; do
-        break
-    done
-fi
-if [ -z "$device" ]; then
-    echo 'No backlight device found.' 1>&2
-    exit 1
-fi
-
-# Gather data
-min=0
-max="`cat "$device/max_brightness"`"
-cur="`cat "$device/brightness"`"
-step="$((max/20))"
-new="$cur"
-
 # Handle user command
+print=''
+postcmd=''
 case "$1" in
-u*) new="$((cur+step))";;
-d*) new="$((cur-step))";;
-[0-9]*) new="$(($1*max/100))";;
-*) echo "$((100*cur/max))"; exit 0;;
+u*) precmd='Increase';;
+d*) precmd='Decrease';;
+[0-9]*) eval $nokbd;
+    precmd='Set'; postcmd="Percent double:$1 int32:${2:-"1"}${2:+"2"}";;
+*) eval $nokbd; precmd='Get'; postcmd='Percent'; print='--print-reply';;
 esac
 
-# Clamp values
-[ "$new" -le "$max" ] || new="$max"
-[ "$new" -ge "$min" ] || new="$min"
+host-dbus dbus-send --system --dest=org.chromium.PowerManager \
+          --type=method_call $print /org/chromium/PowerManager \
+          org.chromium.PowerManager.${precmd}${device}Brightness${postcmd} | {
+    read junk
+    read double percent
+    if [ -n "$print" ]; then
+        echo "${percent%.*}"
+    fi
+}
 
-# Apply change
-[ "$new" = "$cur" ] || echo "$new" > "$device/brightness"
+exit 0
