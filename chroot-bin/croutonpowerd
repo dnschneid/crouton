@@ -43,17 +43,25 @@ case "$1" in
 esac
 
 # Generate the executable that outputs the equivalent of base::TimeTicks::Now()
+if hash tcc 2>/dev/null; then
+    cc='tcc'
+    ccparams='-w'
+else
+    cc='gcc'
+    ccparams='-xc'
+fi
 TIMETICKSNOW="`mktemp --tmpdir="$HOME" ".${0##*/}.XXXXXX"`"
 TRAP="rm -f '$TIMETICKSNOW'"
 trap "$TRAP" INT HUP 0
-tcc - -w -lrt -o "$TIMETICKSNOW" <<EOF
+"$cc" "$ccparams" - -lrt -o "$TIMETICKSNOW" <<EOF
     #include <time.h>
+    #include <stdio.h>
 
     int main() {
         struct timespec t;
         if (clock_gettime(CLOCK_MONOTONIC, &t))
             return 1;
-        uint64_t micros = t.tv_sec * 1000000ULL + t.tv_nsec / 1000;
+        unsigned long long micros = t.tv_sec * 1000000ULL + t.tv_nsec / 1000;
         printf("%llu\n", micros);
         return 0;
     }
