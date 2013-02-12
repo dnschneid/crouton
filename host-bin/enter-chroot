@@ -181,16 +181,6 @@ if [ -z "$NOLOGIN" -a -n "$CHROOTHOME" -a -d "$localdownloads" ]; then
     bindmount "$localdownloads" "$CHROOTHOME/Downloads"
 fi
 
-# Disable screen dimming (TODO: create script to poke it instead)
-if [ -z "$DISABLE_POWERD_CONTROL" ]; then
-    if initctl stop powerd 2>/dev/null; then
-        TRAP="initctl start powerd || true;$TRAP"
-        trap "$TRAP" INT HUP 0
-    else
-        DISABLE_POWERD_CONTROL=1
-    fi
-fi
-
 # To run silently, we override the env command to launch a background process,
 # and move the trap code to happen there.
 if [ -n "$BACKGROUND" ]; then

@@ -1,0 +1,107 @@
+#!/bin/sh -e
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+USAGE="${0##*/} -p|--poke|-deactivate|--daemon
+${0##*/} -i|--inhibit [command [params ...]]
+Interfaces with Chromium OS's powerd to prevent the system from suspending.
+
+Passes parameters to the appropriate command if called as xscreensaver-command
+or gnome-screensaver-command. 
+
+Options:
+    -i --inhibit           Inhibits powerd for the duration of the command, or
+                           forever if no command is specified.
+    -p --poke -deactivate  Pings powerd to prevent activation.
+    --daemon               Enters daemon mode where idleness and screensaver
+                           inhibition are passed on to Chromium OS's powerd."
+
+INHIBITSLEEP='30'
+DAEMONSLEEP='2'
+
+# Check if we need to pass through to another command
+EXEC="${0##*/}"
+case "$EXEC" in
+gnome-screensaver-command|xscreensaver-command) EXEC="/usr/bin/$EXEC";;
+*) EXEC='';;
+esac
+
+# Check what command we need to run, or immediately pass through if unrecognized
+case "$1" in
+-i|--inhibit) CMD='i';;
+-p|--poke|-deactivate) CMD='p';;
+--daemon) CMD='d'
+    if [ -n "$EXEC" ]; then
+        exec "$EXEC" "$@"
+    fi;;
+*)  if [ -z "$EXEC" ]; then
+        echo "$USAGE" 1>&2
+        exit 2
+    fi
+    exec "$EXEC" "$@";;
+esac
+
+# Generate the executable that outputs the equivalent of base::TimeTicks::Now()
+TIMETICKSNOW="`mktemp --tmpdir="$HOME" ".${0##*/}.XXXXXX"`"
+TRAP="rm -f '$TIMETICKSNOW'"
+trap "$TRAP" INT HUP 0
+tcc - -w -lrt -o "$TIMETICKSNOW" <<EOF
+    #include <time.h>
+
+    int main() {
+        struct timespec t;
+        if (clock_gettime(CLOCK_MONOTONIC, &t))
+            return 1;
+        uint64_t micros = t.tv_sec * 1000000ULL + t.tv_nsec / 1000;
+        printf("%llu\n", micros);
+        return 0;
+    }
+EOF
+
+pingpowerd() {
+    host-dbus dbus-send --system --dest=org.chromium.PowerManager \
+                        --type=method_call /org/chromium/PowerManager \
+                        org.chromium.PowerManager.HandleUserActivity \
+                        "int64:`"$TIMETICKSNOW"`" || true
+}
+
+if [ "$CMD" = 'p' ]; then
+    # Ping
+    pingpowerd
+    exec "${EXEC:-"true"}" "$@"
+elif [ "$CMD" = 'i' ]; then
+    # Inhibit
+    pid=''
+    if [ -n "$EXEC" ]; then
+        "$EXEC" "$@" &
+        pid=$!
+    elif [ -n "$2" ]; then
+        shift
+        "$@" &
+        pid=$!
+    fi
+    if [ -n "$pid" ]; then
+        TRAP="kill $pid 2>/dev/null || true;$TRAP"
+        trap "$TRAP" INT HUP 0
+    fi
+    while [ -z "$pid" -o -d "/proc/$pid" ]; do
+        pingpowerd
+        sleep "$INHIBITSLEEP"
+    done
+else
+    # Daemon
+    idlethresh="$(($DAEMONSLEEP * 1000 - 100))"
+    lastidle=0
+    xdgs='/usr/bin/xdg-screensaver'
+    while idle="`xprintidle`"; do
+        if [ "$idle" -lt "$(($lastidle + $idlethresh))" ] \
+                || [ "`"$xdgs" status 2>/dev/null`" = 'disabled' ]; then
+            pingpowerd
+        fi
+        lastidle="$idle"
+        sleep "$DAEMONSLEEP"
+    done
+fi
+
+exit 0

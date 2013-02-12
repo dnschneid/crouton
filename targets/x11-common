@@ -7,6 +7,10 @@
 # forms of X11.
 
 ### Append to prepare.sh:
+# Install tcc and links for powerd-poking daemon
+apt-get -y --no-install-recommends install tcc libc-dev xprintidle dbus
+ln -sf croutonpowerd /usr/local/bin/gnome-screensaver-command
+ln -sf croutonpowerd /usr/local/bin/xscreensaver-command
 # Add a blank Xauthority to all users' home directories
 touch /etc/skel/.Xauthority
 chmod 600 /etc/skel/.Xauthority

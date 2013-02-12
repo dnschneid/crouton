@@ -165,6 +165,7 @@ Tips
   * You can make commands run in the background so that you can close the
     terminal. This is particularly useful for desktop environments: try running
     `sudo startxfce4 -b`
+  * Want to disable Chromium OS's power management? Run `croutonpowerd -i`
 
 
 Issues?
