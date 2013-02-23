@@ -171,9 +171,13 @@ if [ -z "$DOWNLOADONLY" -a -n "$TARBALL" ]; then
     fi
     echo 'Detecting archive release and architecture...' 1>&2
     releasearch="`tar -tf "$TARBALL" 2>/dev/null | head -n 1`"
-    ARCH="${releasearch#*-}"
-    ARCH="${ARCH%/}"
-    RELEASE="${releasearch%-*}"
+    releasearch="${releasearch%%/*}"
+    if [ ! "${releasearch#*-}" = "$releasearch" ]; then
+        ARCH="${releasearch#*-}"
+        RELEASE="${releasearch%-*}"
+    else
+        echo 'Unable to detect archive release and architecture. Using flags.' 1>&2
+    fi
 fi
 
 # Done with parameter processing!
