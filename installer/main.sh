@@ -35,6 +35,8 @@ the tarball is created for later use with -f.
 This must be run as root unless -d is specified AND fakeroot is installed AND
 /tmp is mounted exec and dev.
 
+It is highly recommended to run this from a crosh shell (Ctrl+Alt+T), not VT2.
+
 Options:
     -a ARCH     The architecture to prepare the chroot for. Default: $ARCH
     -d          Downloads the bootstrap tarball but does not prepare the chroot.
@@ -150,6 +152,16 @@ fi
 # If we are only downloading, we need a destination tarball
 if [ -n "$DOWNLOADONLY" -a -z "$TARBALL" ]; then
     error 2 "$USAGE"
+fi
+
+# Check if we're running from a tty, which does not interact well with X11
+if [ -z "$DOWNLOADONLY" ] && \
+        readlink -f "/proc/$$/fd/0" | grep -q '^/dev/tty'; then
+    echo \
+"WARNING: It is highly recommended that you run $APPLICATION from a crosh shell
+(Ctrl+Alt+T in Chromium OS), not from a VT. If you continue to run this from a
+VT, you're gonna have a bad time. Press Ctrl-C at any point to abort." 1>&2
+    sleep 5
 fi
 
 # If we specified a tarball, we need to detect the ARCH and RELEASE
