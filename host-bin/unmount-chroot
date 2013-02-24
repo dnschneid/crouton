@@ -161,6 +161,10 @@ for NAME in "$@"; do
     ntries=0
     echo "Unmounting $CHROOT..." 1>&2
     baseesc="`echo "$base" | sed 's= =//='`"
+
+    # Sync for safety
+    sync
+
     while ! sed "s=\\\\040=//=" /proc/mounts | cut -d" " -f2 \
                | grep "^$baseesc" | sed 's=//= =' | xargs --no-run-if-empty -d '
 ' -n 50 umount 2>/dev/null; do
@@ -219,6 +223,9 @@ for NAME in "$@"; do
             break
         fi
     done
+
+    # More sync for more safety
+    sync
 done
 
 exit $ret
