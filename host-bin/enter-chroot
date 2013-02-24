@@ -116,22 +116,23 @@ fi
 
 # Resolve USERNAME if it is a UID (and we're logging in)
 if [ -z "$NOLOGIN" ]; then
+    passwd="$CHROOT/etc/passwd"
     case "$USERNAME" in
     ''|*[!0-9]*)
         # Make sure the username exists
-        if ! grep -q "^$USERNAME:" "$CHROOT/etc/passwd"; then
+        if ! grep -q "^$USERNAME:" "$passwd"; then
             error 1 "User $USERNAME not found in $NAME"
         fi;;
-     *) 
+     *)
         # Resolve the UID
         uid="$USERNAME"
-        USERNAME="`awk -F: '$3=='"$uid"'{print $1}' "$CHROOT/etc/passwd"`"
+        USERNAME="`awk -F: '$3=='"$uid"'{print $1; exit}' "$passwd"`"
         if [ -z "$USERNAME" ]; then
             error 1 "UID $uid not found in $NAME"
         fi
     esac
     # Detect the home directory for the user
-    CHROOTHOME="`awk -F: '$1=="'"$USERNAME"'"{print $6}' "$CHROOT/etc/passwd"`"
+    CHROOTHOME="`awk -F: '$1=="'"$USERNAME"'"{print $6; exit}' "$passwd"`"
 fi
 
 # Ensure the chroot is executable and writable
