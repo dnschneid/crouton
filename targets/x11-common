@@ -7,12 +7,22 @@
 # forms of X11.
 
 ### Append to prepare.sh:
-# Install tcc/gcc and links for powerd-poking daemon
-cc=tcc
-if [ ! "${ARCH#arm}" = "$ARCH" ]; then
-    cc=gcc
-fi
-apt-get -y --no-install-recommends install "$cc" libc-dev xprintidle dbus
+# Generate the executable that outputs the equivalent of base::TimeTicks::Now()
+compile /usr/local/bin/croutonticks -lrt <<EOF
+    #include <time.h>
+    #include <stdio.h>
+
+    int main() {
+        struct timespec t;
+        if (clock_gettime(CLOCK_MONOTONIC, &t))
+            return 1;
+        unsigned long long micros = t.tv_sec * 1000000ULL + t.tv_nsec / 1000;
+        printf("%llu\n", micros);
+        return 0;
+    }
+EOF
+# Install utilities and links for powerd-poking daemon
+apt-get -y --no-install-recommends install xprintidle dbus
 ln -sf croutonpowerd /usr/local/bin/gnome-screensaver-command
 ln -sf croutonpowerd /usr/local/bin/xscreensaver-command
 # Add a blank Xauthority to all users' home directories

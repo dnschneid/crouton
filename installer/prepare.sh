@@ -20,6 +20,28 @@ noauto() {
     done
 }
 
+# compile: Grabs the necessary dependencies and then compiles stdin as a C file
+# to the specified output and strips it. Finally, removes whatever it installed.
+# This allows targets to provide on-demand binaries without increasing the size
+# of the chroot after install.
+# $1: the output file
+# $2: linker flags
+# $3+: any package dependencies other than gcc and libc-dev.
+compile() {
+    local out="$1" linker="$2"
+    echo "Compiling $out..." 1>&2
+    shift 2
+    local pkgs="gcc libc-dev $*"
+    local remove="`noauto $pkgs`"
+    apt-get -y --no-install-recommends install $pkgs
+    ret=0
+    if ! gcc -xc -Os - "$linker" -o "$out" || ! strip "$out"; then
+        ret=1
+    fi
+    apt-get -y --purge autoremove $remove
+    return $ret
+}
+
 # We need all paths to do administrative things
 export PATH='/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin'
 

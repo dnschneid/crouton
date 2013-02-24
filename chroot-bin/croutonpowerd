@@ -8,7 +8,7 @@ ${0##*/} -i|--inhibit [command [params ...]]
 Interfaces with Chromium OS's powerd to prevent the system from suspending.
 
 Passes parameters to the appropriate command if called as xscreensaver-command
-or gnome-screensaver-command. 
+or gnome-screensaver-command.
 
 Options:
     -i --inhibit           Inhibits powerd for the duration of the command, or
@@ -42,36 +42,11 @@ case "$1" in
     exec "$EXEC" "$@";;
 esac
 
-# Generate the executable that outputs the equivalent of base::TimeTicks::Now()
-if hash tcc 2>/dev/null; then
-    cc='tcc'
-    ccparams='-w'
-else
-    cc='gcc'
-    ccparams='-xc'
-fi
-TIMETICKSNOW="`mktemp --tmpdir="$HOME" ".${0##*/}.XXXXXX"`"
-TRAP="rm -f '$TIMETICKSNOW'"
-trap "$TRAP" INT HUP 0
-"$cc" "$ccparams" - -lrt -o "$TIMETICKSNOW" <<EOF
-    #include <time.h>
-    #include <stdio.h>
-
-    int main() {
-        struct timespec t;
-        if (clock_gettime(CLOCK_MONOTONIC, &t))
-            return 1;
-        unsigned long long micros = t.tv_sec * 1000000ULL + t.tv_nsec / 1000;
-        printf("%llu\n", micros);
-        return 0;
-    }
-EOF
-
 pingpowerd() {
     host-dbus dbus-send --system --dest=org.chromium.PowerManager \
                         --type=method_call /org/chromium/PowerManager \
                         org.chromium.PowerManager.HandleUserActivity \
-                        "int64:`"$TIMETICKSNOW"`" || true
+                        "int64:`croutonticks`" || true
 }
 
 if [ "$CMD" = 'p' ]; then
