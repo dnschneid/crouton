@@ -117,6 +117,9 @@ fi
 # Resolve USERNAME if it is a UID (and we're logging in)
 if [ -z "$NOLOGIN" ]; then
     passwd="$CHROOT/etc/passwd"
+    if [ ! -r "$passwd" ]; then
+        error 1 "$CHROOT doesn't appear to be a valid chroot."
+    fi
     case "$USERNAME" in
     ''|*[!0-9]*)
         # Make sure the username exists
