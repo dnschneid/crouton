@@ -175,6 +175,9 @@ bindmount /proc
 bindmount /var/run/dbus /var/host/dbus
 bindmount /var/run/shill /var/host/shill
 
+# Make /tmp exec, since it's very confusing when it isn't.
+mount -o remount,exec /tmp
+
 # Bind-mount ~/Downloads if we're logged in as a user
 localdownloads='/home/chronos/user/Downloads'
 if [ -z "$NOLOGIN" -a -n "$CHROOTHOME" -a -d "$localdownloads" ]; then
