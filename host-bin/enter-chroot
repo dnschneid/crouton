@@ -85,6 +85,12 @@ else
     CHROOT="`sh -e "$BINDIR/mount-chroot" -p -c "$CHROOTS" "$NAME"`"
 fi
 
+# In disk full situations, mount-chroot can be empty. Good time to check sanity.
+if [ -z "$CHROOT" ]; then
+    error 1 'Something is wrong with the crouton install. Please make sure you have
+sufficient space available, then re-install the chroot and try again.'
+fi
+
 # Auto-unmount everything below and including the chroot when the script exits.
 TRAP="sh -e \"$BINDIR/unmount-chroot\" \
                             $BACKGROUND -c \"$CHROOTS\" \"$NAME\" || true;$TRAP"
