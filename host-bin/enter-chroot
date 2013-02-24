@@ -147,6 +147,37 @@ if sed "s=\\\\040=//=" /proc/mounts \
     mount -i -o remount,rw,dev,exec,suid "$mp"
 fi
 
+# Fix group numbers for critical groups to match Chromium OS. This is necessary
+# so that users have access to shared hardware, such as video and audio.
+gfile="$CHROOT/etc/group"
+if [ -f "$gfile" ]; then
+    for group in audio video; do
+        gid="`awk -F: '$1=="'"$group"'"{print $3; exit}' '/etc/group'`"
+        if [ -z "$gid" ]; then
+            echo "Couldn't find $group group in Chromium OS!" 1>&2
+            continue
+        fi
+        curgid="`awk -F: '$1=="'"$group"'"{print $3; exit}' "$gfile"`"
+        if [ "$gid" = "$curgid" ]; then
+            continue
+        elif [ -z "$curgid" ]; then
+            echo "Couldn't find $group group in chroot!" 1>&2
+            continue
+        fi
+        echo "Changing $group GID from $curgid to $gid..." 1>&2
+        move="`awk -F: '$3=='"$gid"'{print $1; exit}' "$gfile"`"
+        if [ -n "$move" ]; then
+            ngid="$gid"
+            while grep -q ":$ngid:" "$gfile"; do
+                ngid="$((ngid+1))"
+            done
+            echo "Moving $move GID from $gid to $ngid..." 1>&2
+            sed -i "s/:$gid:/:$ngid:/" "$gfile"
+        fi
+        sed -i "s/:$curgid:/:$gid:/" "$gfile"
+    done
+fi
+
 # Copy Xauthority if the chroot requests
 chrootxauth="$CHROOT/etc/X11/host-Xauthority"
 if [ -f "$chrootxauth" ]; then

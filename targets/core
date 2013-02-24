@@ -22,11 +22,6 @@ apt-get -y update
 echo 'Ensuring system is up-to-date...' 1>&2
 apt-get -y upgrade
 
-# Fix group numbers to match Chromium OS (FIXME: detect this?)
-groupmod -g 28 sudo
-groupmod -g 27 video
-groupmod -g 18 audio
-
-# Auto-add new users to the above groups
+# Auto-add new users to critical groups
 sed -i -e 's/^#*EXTRA_GROUPS=.*/EXTRA_GROUPS="audio video sudo"/' \
        -e 's/^#*ADD_EXTRA_GROUPS=.*/ADD_EXTRA_GROUPS=1/' /etc/adduser.conf
