@@ -135,18 +135,6 @@ if [ -z "$NOLOGIN" ]; then
     CHROOTHOME="`awk -F: '$1=="'"$USERNAME"'"{print $6; exit}' "$passwd"`"
 fi
 
-# Ensure the chroot is executable and writable
-mp="`readlink -f "$CHROOT"`"
-while ! mountpoint -q "$mp"; do
-    mp="${mp%/*}"
-    [ -z "$mp" ] && mp=/
-done
-escapedmp="`echo "$mp" | sed 's= =//='`"
-if sed "s=\\\\040=//=" /proc/mounts \
-        | grep -q "^[^ ]* $escapedmp [^ ]* [^ ]*\(noexec\|nodev\|nosuid\)"; then
-    mount -i -o remount,rw,dev,exec,suid "$mp"
-fi
-
 # Fix group numbers for critical groups to match Chromium OS. This is necessary
 # so that users have access to shared hardware, such as video and audio.
 gfile="$CHROOT/etc/group"
@@ -207,6 +195,8 @@ bindmount() {
         fi
     fi
 }
+# Ensure the chroot is executable and writable by bind-mounting it to itself.
+bindmount "$CHROOT" / rw,dev,exec,suid
 bindmount /dev
 bindmount /dev/pts
 bindmount /dev/shm
