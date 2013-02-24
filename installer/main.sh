@@ -22,6 +22,7 @@ PREFIX='/usr/local'
 RELEASE='precise'
 TARBALL=''
 TARGETS=''
+TARGETFILE=''
 UPDATE=''
 
 USAGE="$APPLICATION [options] -t targets
@@ -55,6 +56,8 @@ Options:
     -r RELEASE  Name of the distribution release. Default: $RELEASE
     -t TARGETS  Comma-separated list of environment targets to install.
                 Specify help to print out potential targets.
+    -T TARGETFILE  Path to a custom target definition file that gets applied to
+                the chroot as if it were a target in the $APPLICATION bundle.
     -u          If the chroot exists, runs the preparation step again.
                 You can use this to install new targets or update old ones.
 
@@ -73,7 +76,7 @@ error() {
 }
 
 # Process arguments
-while getopts 'a:def:k:m:n:p:r:s:t:u' f; do
+while getopts 'a:def:k:m:n:p:r:s:t:T:u' f; do
     case "$f" in
     a) ARCH="$OPTARG";;
     d) DOWNLOADONLY='y';;
@@ -85,6 +88,7 @@ while getopts 'a:def:k:m:n:p:r:s:t:u' f; do
     p) PREFIX="$OPTARG";;
     r) RELEASE="$OPTARG";;
     t) TARGETS="$TARGETS${TARGETS:+","}$OPTARG";;
+    T) TARGETFILE="$OPTARG";;
     u) UPDATE='y';;
     \?) error 2 "$USAGE";;
     esac
@@ -92,7 +96,7 @@ done
 shift "$((OPTIND-1))"
 
 # If targets weren't specified, we should just print help text.
-if [ -z "$DOWNLOADONLY" -a -z "$TARGETS" ]; then
+if [ -z "$DOWNLOADONLY" -a -z "$TARGETS" -a -z "$TARGETFILE" ]; then
     error 2 "$USAGE"
 fi
 
@@ -131,6 +135,13 @@ if [ -z "$DOWNLOADONLY" ]; then
             error 2 "Invalid target \"$TARGET\"."
         fi
     done
+    if [ -n "$TARGETFILE" ]; then
+        if [ ! -r "$TARGETFILE" ]; then
+            error 2 "Could not find \"$TARGETFILE\"."
+        elif [ ! -f "$TARGETFILE" ]; then
+            error 2 "\"$TARGETFILE\" is not a target definition file."
+        fi
+    fi
 fi
 
 # If we're not running as root, we must be downloading and have fakeroot and
@@ -299,11 +310,17 @@ rmtargetdedupfile="rm -f \"$TARGETDEDUPFILE\""
 TRAP="$rmtargetdedupfile; $TRAP"
 trap "$TRAP" INT HUP 0
 # Run each target, appending stdout to the prepare script.
+if [ -n "$TARGETFILE" ]; then
+    TARGET="`readlink -f "$TARGETFILE"`"
+    (. "$TARGET") >> "$CHROOT/prepare.sh"
+fi
 t="${TARGETS%,},post-common,"
 while [ -n "$t" ]; do
     TARGET="${t%%,*}"
     t="${t#*,}"
-    (. "$TARGETSDIR/$TARGET") >> "$CHROOT/prepare.sh"
+    if [ -n "$TARGET" ]; then
+        (. "$TARGETSDIR/$TARGET") >> "$CHROOT/prepare.sh"
+    fi
 done
 chmod 500 "$CHROOT/prepare.sh"
 # Delete the temp file

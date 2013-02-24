@@ -57,6 +57,10 @@ else
     # All ### lines are ignored.
     # Lines with "### append filename" will queue a file to be processed after
     # the current file is done.
+    t="$TARGET"
+    if [ "${t#/}" = "$t" ]; then
+        t="$TARGETSDIR/$t"
+    fi
     awk '
         (FNR == 1) {
             x = 0;
@@ -69,7 +73,7 @@ else
             next;
         }
         x;
-    ' "$TARGETSDIR/$TARGET"
+    ' "$t"
 fi
 # Break out of the subshell.
 exit
