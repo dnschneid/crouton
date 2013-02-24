@@ -181,8 +181,8 @@ bindmount /proc
 bindmount /var/run/dbus /var/host/dbus
 bindmount /var/run/shill /var/host/shill
 
-# Make /tmp exec, since it's very confusing when it isn't.
-mount -i -o remount,exec /tmp
+# Make chroot /tmp exec, since it's very confusing when it isn't.
+mount -i -o remount,exec "$CHROOT/tmp"
 
 # Bind-mount ~/Downloads if we're logged in as a user
 localdownloads='/home/chronos/user/Downloads'
