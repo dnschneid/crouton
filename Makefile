@@ -10,10 +10,13 @@ SCRIPTS := \
 	$(wildcard host-bin/*) \
 	$(wildcard installer/*) \
 	$(wildcard targets/*)
+VERSION = '0-%Y%m%d%H%M%S'
 TARPARAMS ?= -j
 
 $(TARGET): $(WRAPPER) $(SCRIPTS) Makefile
-	sed -e "s/\$$TARPARAMS/$(TARPARAMS)/" $(WRAPPER) > $(TARGETTMP)
+	sed -e "s/\$$TARPARAMS/$(TARPARAMS)/" \
+		-e "s/VERSION=.*/VERSION='$(shell date +$(VERSION))'/" \
+		$(WRAPPER) > $(TARGETTMP)
 	tar --owner=root --group=root -c $(TARPARAMS) $(SCRIPTS) >> $(TARGETTMP)
 	chmod +x $(TARGETTMP)
 	mv -f $(TARGETTMP) $(TARGET)

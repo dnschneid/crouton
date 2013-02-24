@@ -60,6 +60,7 @@ Options:
                 the chroot as if it were a target in the $APPLICATION bundle.
     -u          If the chroot exists, runs the preparation step again.
                 You can use this to install new targets or update old ones.
+    -V          Prints the version of the installer to stdout.
 
 Be aware that dev mode is inherently insecure, even if you have a strong
 password in your chroot! Anyone can simply switch VTs and gain root access
@@ -76,7 +77,7 @@ error() {
 }
 
 # Process arguments
-while getopts 'a:def:k:m:n:p:r:s:t:T:u' f; do
+while getopts 'a:def:k:m:n:p:r:s:t:T:uV' f; do
     case "$f" in
     a) ARCH="$OPTARG";;
     d) DOWNLOADONLY='y';;
@@ -90,6 +91,7 @@ while getopts 'a:def:k:m:n:p:r:s:t:T:u' f; do
     t) TARGETS="$TARGETS${TARGETS:+","}$OPTARG";;
     T) TARGETFILE="$OPTARG";;
     u) UPDATE='y';;
+    V) echo "$APPLICATION: version ${VERSION:-"git"}"; exit 0;;
     \?) error 2 "$USAGE";;
     esac
 done

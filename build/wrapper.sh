@@ -34,6 +34,8 @@
 # and then runs installer/main.sh with the parameters passed to it.
 # You can pass -x [directory] to extract the contents somewhere.
 
+VERSION='git'
+
 if [ "$1" = '-x' -a "$#" -le 2 ]; then
     # Extract to the specified directory.
     SCRIPTDIR="${2:-"${0##*/}.unbundled"}"
