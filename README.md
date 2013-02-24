@@ -166,6 +166,10 @@ Tips
     terminal. This is particularly useful for desktop environments: try running
     `sudo startxfce4 -b`
   * Want to disable Chromium OS's power management? Run `croutonpowerd -i`
+  * If you just want a nice CLI environment for running Vim, servers, gcc,
+    there's no need to install X11. Just use the `core` or `cli-extra` targets
+    and use the chroot via `enter-chroot` from the crosh shell. You can enter
+    the chroot simultaneously with as many crosh shells as you want.
 
 
 Issues?
