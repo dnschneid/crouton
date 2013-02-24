@@ -143,7 +143,7 @@ done
 escapedmp="`echo "$mp" | sed 's= =//='`"
 if sed "s=\\\\040=//=" /proc/mounts \
         | grep -q "^[^ ]* $escapedmp [^ ]* [^ ]*\(noexec\|nodev\|nosuid\)"; then
-    mount -o remount,rw,dev,exec,suid "$mp"
+    mount -i -o remount,rw,dev,exec,suid "$mp"
 fi
 
 # Copy Xauthority if the chroot requests
@@ -182,7 +182,7 @@ bindmount /var/run/dbus /var/host/dbus
 bindmount /var/run/shill /var/host/shill
 
 # Make /tmp exec, since it's very confusing when it isn't.
-mount -o remount,exec /tmp
+mount -i -o remount,exec /tmp
 
 # Bind-mount ~/Downloads if we're logged in as a user
 localdownloads='/home/chronos/user/Downloads'

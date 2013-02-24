@@ -244,7 +244,7 @@ if [ -z "$NODOWNLOAD" ] && [ -n "$DOWNLOADONLY" -o -z "$TARBALL" ]; then
     # Ensure that /tmp is mounted exec and dev
     if [ "$NOEXECTMP" = 'y' ]; then
         echo 'Remounting /tmp with dev+exec...' 1>&2
-        mount -o remount,dev,exec /tmp
+        mount -i -o remount,dev,exec /tmp
     fi
 
     # Create the temporary directory and delete it upon exit
