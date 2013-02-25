@@ -160,13 +160,13 @@ for NAME in "$@"; do
     # Unmount all mounts
     ntries=0
     echo "Unmounting $CHROOT..." 1>&2
-    baseesc="`echo "$base" | sed 's= =//='`"
+    baseesc="`echo "$base" | sed 's= =//=g'`"
 
     # Sync for safety
     sync
 
-    while ! sed "s=\\\\040=//=" /proc/mounts | cut -d" " -f2 \
-               | grep "^$baseesc" | sed 's=//= =' | xargs --no-run-if-empty -d '
+    while ! sed "s=\\\\040=//=g" /proc/mounts | cut -d' ' -f2 \
+              | grep "^$baseesc" | sed 's=//= =g' | xargs --no-run-if-empty -d '
 ' -n 50 umount 2>/dev/null; do
         if [ "$ntries" -eq "$TRIES" ]; then
             # Send signal to all processes running under the chroot
