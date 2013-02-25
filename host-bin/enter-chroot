@@ -40,7 +40,7 @@ error() {
 while getopts 'bc:k:n:u:x' f; do
     case "$f" in
     b) BACKGROUND='-y';;
-    c) CHROOTS="$OPTARG";;
+    c) CHROOTS="`readlink -f "$OPTARG"`";;
     k) KEYFILE="$OPTARG";;
     n) NAME="$OPTARG";;
     u) USERNAME="$OPTARG";;
