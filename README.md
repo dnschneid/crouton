@@ -172,6 +172,11 @@ Tips
     the chroot simultaneously with as many crosh shells as you want.
 
 
+Hey we just met, and this is crazy, but I'm getting a Pixel, so confirm support maybe?
+--------------------------------------------------------------------------------------
+`-t touch`.  'nuff said.
+
+
 Issues?
 -------
 Running another OS in a chroot is a pretty messy technique (although it's hidden
