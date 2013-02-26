@@ -96,6 +96,25 @@ TRAP="sh -e \"$BINDIR/unmount-chroot\" \
                             $BACKGROUND -c \"$CHROOTS\" \"$NAME\" || true;$TRAP"
 trap "$TRAP" INT HUP 0
 
+# If our root is on an external disk, we need to override powerd_suspend to not
+# disable USB device persistence, otherwise we will die on resume.
+# Because the system hardcodes the path to powerd_suspend, we have to completely
+# replace /usr/bin with a tmpfs that links to the original files.
+if [ ! "${CHROOT#/media}" = "$CHROOT" ] && ! mountpoint -q '/usr/bin'; then
+    newbin='/var/run/bin'
+    mkdir -p "$newbin"
+    if ! mountpoint -q "$newbin"; then
+        mount --bind -o ro /usr/bin "$newbin"
+    fi
+    mount -t tmpfs -o mode=755,uid=0,gid=0 tmpfs /usr/bin
+    ln -s "$newbin"/* /usr/bin/
+    pds='/usr/bin/powerd_suspend'
+    rm -f "$pds"
+    sed -e 's|/sys/bus/usb/devices/\*/power/persist||' \
+        "$newbin/powerd_suspend" > "$pds"
+    chmod 755 "$pds"
+fi
+
 # Offer to run /prepare.sh if it exists and yet we're logging in.
 if [ -z "$NOLOGIN" -a -f "$CHROOT/prepare.sh" ]; then
     echo 'A chroot preparation script still exists inside the chroot.' 1>&2

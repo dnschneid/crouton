@@ -85,27 +85,36 @@ checkusage() {
     if [ -n "$FORCE" ]; then
         return 0
     fi
-    local pid ppid proot root
+    local b="${1%/}/" pid ppid proot prootdir root rootdir
     for root in /proc/*/root; do
-        if [ -r "$root" ] && [ "`readlink -f "$root"`" = "$base" ]; then
-            pid="${root#/proc/}"
-            pid="${pid%/root}"
-            ppid="`ps -p "$pid" -o ppid= 2>/dev/null`"
-            if [ -z "$ppid" ] || [ "$ppid" -eq 1 ]; then
-                continue
-            fi
-            proot="/proc/$ppid/root"
-            if [ -r "$proot" ] && [ "`readlink -f "$proot"`" = "$base" ]; then
-                continue
-            fi
-            if grep -q 'CROUTON=CORE' "/proc/$pid/environ"; then
-                continue
-            fi
-            if [ -n "$PRINT" ]; then
-                ps -p "$pid" -o pid= -o cmd= || true
-            fi
-            return 1
+        if [ ! -r "$root" ]; then
+            continue
         fi
+        rootdir="`readlink -f "$root"`"
+        rootdir="${rootdir%/}/"
+        if [ "${rootdir#"$b"}" = "$rootdir" ]; then
+            continue
+        fi
+        pid="${root#/proc/}"
+        pid="${pid%/root}"
+        ppid="`ps -p "$pid" -o ppid= 2>/dev/null`"
+        if [ -z "$ppid" ] || [ "$ppid" -eq 1 ]; then
+            continue
+        fi
+        proot="/proc/$ppid/root"
+        if [ -r "$proot" ]; then
+            prootdir="`readlink -f "$proot"`"
+            if [ "${prootdir%/}/" = "$rootdir" ]; then
+                continue
+            fi
+        fi
+        if grep -q 'CROUTON=CORE' "/proc/$pid/environ"; then
+            continue
+        fi
+        if [ -n "$PRINT" ]; then
+            ps -p "$pid" -o pid= -o cmd= || true
+        fi
+        return 1
     done
     return 0
 }
@@ -227,5 +236,18 @@ for NAME in "$@"; do
     # More sync for more safety
     sync
 done
+
+# Remove /usr/bin override if it's no longer necessary (nothing important is
+# running with a root in removable media)
+if mountpoint -q /usr/bin && checkusage /media; then
+    newbin="`readlink '/usr/bin/env'`"
+    newbin="${newbin%/env}"
+    # Split the umount calls so if the first fails, the second won't happen.
+    if umount '/usr/bin' 2>/dev/null; then
+        # These may fail if you opened a new crosh. It doesn't hurt to leave it.
+        umount "$newbin" 2>/dev/null || true
+        rmdir "$newbin" 2>/dev/null || true
+    fi
+fi
 
 exit $ret
