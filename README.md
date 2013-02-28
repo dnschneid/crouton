@@ -172,7 +172,7 @@ Tips
     the chroot simultaneously with as many crosh shells as you want.
 
 
-Hey we just met, and this is crazy, but I'm getting a Pixel, so confirm support maybe?
+Hey, I just met you, and this is crazy, but I'm getting a Pixel, so confirm support maybe?
 --------------------------------------------------------------------------------------
 `-t touch`.  'nuff said.
 
