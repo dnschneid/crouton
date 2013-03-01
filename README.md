@@ -79,13 +79,37 @@ Once you've set up your chroot, you can easily enter it using the
 newly-installed `enter-chroot` command.  Ta-da!  That was easy.
 
 
+Chrome Pixel Support
+--------------------
+The Pixel is fully supported by crouton with only a few minor caveats you need to 
+keep in mind.
+
+When issuing the command to build your chroot, you will want to add '-t touch' to 
+your command. If you are adding a WM '-t touch,xfce' is how to do it.
+
+Be aware that until your favorite window manager supports HiDPI, results may vary.  
+Users are having good luck using XFCE with a few minor tweaks:
+
+ 1. In XFCE, right-click the desktop and choose Desktop Settings.
+ 2. In Icons tab, set icon size to 150.
+ 3. Close window.
+ 4. Right-click the desktop Applications > Settings > Appearance.
+ 5. In the Icons tab, select Humanity, Humanity-Dark, or Tango. GNOME icons are not resolution independent.
+ 6. In Fonts tab, enable Custom DPI and set it to 150.
+ 7. Close window.
+
+This should give you an interface normal humans are capable of working with. If
+you have any more tips, please share them!
+
 Examples
 --------
 
 ### The easy way (assuming you want Xfce)
   1. Download `crouton`.
-  2. Open a shell (Ctrl+Alt+T) and run
+  2. Open a shell (Ctrl+Alt+T) and run:
      `sudo sh -e ~/Downloads/crouton -t xfce`
+     Or if have the Chrome Pixel:
+     'sudo sh -e ~/Downloads/crouton -t xfce,touch'
   3. Wait patiently and answer the prompts like a good person.
   4. Done! You can jump straight to your Xfce session by running
      `sudo enter-chroot startxfce4` or, as a special shortcut, `sudo startxfce4`
@@ -170,11 +194,6 @@ Tips
     there's no need to install X11. Just use the `core` or `cli-extra` targets
     and use the chroot via `enter-chroot` from the crosh shell. You can enter
     the chroot simultaneously with as many crosh shells as you want.
-
-
-Hey, I just met you, and this is crazy, but I'm getting a Pixel, so confirm support maybe?
-------------------------------------------------------------------------------------------
-`-t touch`.  'nuff said.
 
 
 Issues?
