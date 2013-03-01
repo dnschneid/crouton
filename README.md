@@ -85,9 +85,9 @@ The Pixel is fully supported by crouton with only a few minor caveats you need t
 keep in mind.
 
 When issuing the command to build your chroot, you will want to add '-t touch' to 
-your command. If you are adding a GUI '-t touch,xfce' is how to do it.
+your command. If you are adding a WM '-t touch,xfce' is how to do it.
 
-Be aware that until your favorite user interface supports HiDPI, results may vary.  
+Be aware that until your favorite window manager supports HiDPI, results may vary.  
 Users are having good luck using XFCE with a few minor tweaks:
 
  1. In XFCE, right-click the desktop and choose Desktop Settings.
