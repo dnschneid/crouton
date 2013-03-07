@@ -21,12 +21,40 @@ compile /usr/local/bin/croutonticks -lrt <<EOF
         return 0;
     }
 EOF
+
 # Install utilities and links for powerd-poking daemon
 apt-get -y --no-install-recommends install xprintidle dbus
 ln -sf croutonpowerd /usr/local/bin/gnome-screensaver-command
 ln -sf croutonpowerd /usr/local/bin/xscreensaver-command
+
 # Add a blank Xauthority to all users' home directories
 touch /etc/skel/.Xauthority
 chmod 600 /etc/skel/.Xauthority
+
 # Create /usr/share/desktop-directories to avoid issues with xdg-desktop-menu
 mkdir -p /usr/share/desktop-directories
+
+# Update policies for mounting and unmounting devices with udisks2
+mkdir -p '/etc/polkit-1/localauthority/10-vendor.d'
+cat > '/etc/polkit-1/localauthority/10-vendor.d/10-crouton-udisks2.pkla' <<EOF
+[Allow mounting when started from crosh]
+Identity=*
+Action=org.freedesktop.udisks2.filesystem-mount
+ResultAny=auth_admin
+ResultInactive=yes
+ResultActive=yes
+
+[Allow eject when started from crosh]
+Identity=*
+Action=org.freedesktop.udisks2.eject-media
+ResultAny=auth_admin
+ResultInactive=yes
+ResultActive=yes
+
+[Disallow unmounting of Chromium OS mounts; it won't work]
+Identity=*
+Action=org.freedesktop.udisks2.filesystem-unmount-others
+ResultAny=no
+ResultInactive=no
+ResultActive=no
+EOF
