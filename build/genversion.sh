@@ -13,10 +13,15 @@ fi
 source=''
 
 # Get the branch from git
-githead="`dirname "$0"`/../.git/HEAD"
-if [ -f "$githead" ]; then
-    source="`cut -d/ -f3 "$githead"`"
-    source="${source:+"~"}$source"
+git="`dirname "$0"`/../.git"
+if [ -f "$git/HEAD" ]; then
+    source="`cut -d/ -f3 "$git/HEAD"`"
+    if [ -n "$source" ]; then
+        if [ -f "$git/refs/heads/$source" ]; then
+            source="$source:`head -c 8 "$git/refs/heads/$source"`"
+        fi
+        source="~$source"
+    fi
 fi
 
 VERSION="$1-%Y%m%d%H%M%S$source"
