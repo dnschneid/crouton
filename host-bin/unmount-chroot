@@ -44,7 +44,7 @@ error() {
 while getopts 'ac:fkpt:y' f; do
     case "$f" in
     a) ALLCHROOTS='y';;
-    c) CHROOTS="$OPTARG";;
+    c) CHROOTS="`readlink -f "$OPTARG"`";;
     f) FORCE='y';;
     k) SIGNAL="KILL";;
     p) PRINT='y';;

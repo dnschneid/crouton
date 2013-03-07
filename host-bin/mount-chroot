@@ -34,7 +34,7 @@ error() {
 # Process arguments
 while getopts 'c:ek:np' f; do
     case "$f" in
-    c) CHROOTS="$OPTARG";;
+    c) CHROOTS="`readlink -f "$OPTARG"`";;
     e) ENCRYPT='y';;
     k) KEYFILE="$OPTARG";;
     n) CREATE='y';;
