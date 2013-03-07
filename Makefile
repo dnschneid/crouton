@@ -10,12 +10,13 @@ SCRIPTS := \
 	$(wildcard host-bin/*) \
 	$(wildcard installer/*) \
 	$(wildcard targets/*)
-VERSION = '0-%Y%m%d%H%M%S'
+GENVERSION = build/genversion.sh
+VERSION = 0
 TARPARAMS ?= -j
 
-$(TARGET): $(WRAPPER) $(SCRIPTS) Makefile
+$(TARGET): $(WRAPPER) $(SCRIPTS) $(GENVERSION) Makefile
 	sed -e "s/\$$TARPARAMS/$(TARPARAMS)/" \
-		-e "s/VERSION=.*/VERSION='$(shell date +$(VERSION))'/" \
+		-e "s/VERSION=.*/VERSION='$(shell $(GENVERSION) $(VERSION))'/" \
 		$(WRAPPER) > $(TARGETTMP)
 	tar --owner=root --group=root -c $(TARPARAMS) $(SCRIPTS) >> $(TARGETTMP)
 	chmod +x $(TARGETTMP)
