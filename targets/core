@@ -20,7 +20,7 @@ EOF
 apt-get -y update
 
 echo 'Ensuring system is up-to-date...' 1>&2
-apt-get -y upgrade
+apt-get -y dist-upgrade
 
 # Auto-add new users to critical groups
 sed -i -e 's/^#*EXTRA_GROUPS=.*/EXTRA_GROUPS="audio video sudo"/' \
