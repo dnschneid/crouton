@@ -200,25 +200,34 @@ fi
 # Soft-link resolv.conf so that updates are automatically propagated
 ln -sf '/var/host/shill/resolv.conf' "$CHROOT/etc/resolv.conf"
 
+# Follows and fixes dangerous symlinks, returning the canonicalized path.
+fixabslinks() {
+    local p="$CHROOT/$1" c
+    # Follow and fix dangerous absolute symlinks
+    while c="`readlink -m "$p"`" && [ ! "$c" = "$p" ]; do
+        p="$CHROOT${c#"$CHROOT"}"
+    done
+    echo "$p"
+}
+
 # Bind-mounts $1 into $CHROOT/${2:-"$1"} if $2 is not already mounted
 # If $3 is specified, remounts with the specified options.
 bindmount() {
-    local target="$CHROOT/${2:-"$1"}" targetcanon
-    # Follow and fix dangerous absolute symlinks
-    while targetcanon="`readlink -m "$target"`" \
-            && [ ! "$targetcanon" = "$target" ]; do
-        target="$CHROOT${targetcanon#"$CHROOT"}"
-    done
-    if ! mountpoint -q "$target"; then
-        mkdir -p "$target"
-        mount --bind "$1" "$target"
-        if [ -n "$3" ]; then
-            mount -i -o "remount,$3" "$target"
+    local target="`fixabslinks "${2:-"$1"}"`"
+    if mountpoint -q "$target"; then
+        return 0
+    fi
+    mkdir -p "$target"
+    mount --bind "$1" "$target"
+    if [ -n "$3" ]; then
+        mount -i -o "remount,$3" "$target"
+        if [ -n "$4" ]; then
+            mount $4 "$target"
         fi
     fi
 }
 # Ensure the chroot is executable and writable by bind-mounting it to itself.
-bindmount "$CHROOT" / rw,dev,exec,suid
+bindmount "$CHROOT" / rw,dev,exec,suid --make-unbindable
 bindmount /dev
 bindmount /dev/pts
 bindmount /dev/shm
@@ -228,6 +237,15 @@ bindmount /tmp /tmp exec
 bindmount /proc
 bindmount /var/run/dbus /var/host/dbus
 bindmount /var/run/shill /var/host/shill
+
+# Bind-mount /media, specifically the removable directory
+destmedia="`fixabslinks '/var/host/media'`"
+if [ -d "$CHROOT/media" ] && ! mountpoint -q "$destmedia"; then
+    mount --make-shared /media
+    mkdir -p "$destmedia"
+    ln -sf "/var/host/media/removable" "$CHROOT/media/"
+    mount --rbind /media "$destmedia"
+fi
 
 # Bind-mount ~/Downloads if we're logged in as a user
 localdownloads='/home/chronos/user/Downloads'

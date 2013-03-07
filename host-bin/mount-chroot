@@ -221,6 +221,7 @@ $passphrase" | ecryptfs-wrap-passphrase "$wrappedfnek" -
         if ! mount -i -t ecryptfs -o "$mnt" "$CHROOTSRC" "$CHROOT"; then
             error 1 "Failed to mount $NAME."
         fi
+        mount --make-unbindable "$CHROOT"
     fi
 
     # Perform the move

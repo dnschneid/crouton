@@ -124,6 +124,16 @@ if [ -n "$ALLCHROOTS" ]; then
     set -- "$CHROOTS/"*
 fi
 
+# Follows and fixes dangerous symlinks, returning the canonicalized path.
+fixabslinks() {
+    local p="$CHROOT/$1" c
+    # Follow and fix dangerous absolute symlinks
+    while c="`readlink -m "$p"`" && [ ! "$c" = "$p" ]; do
+        p="$CHROOT${c#"$CHROOT"}"
+    done
+    echo "$p"
+}
+
 # Unmount each chroot
 ret=0
 for NAME in "$@"; do
@@ -173,6 +183,14 @@ for NAME in "$@"; do
 
     # Sync for safety
     sync
+
+    # Make sure the chroot's system media bind-mount is marked as slave to avoid
+    # unmounting devices system-wide. We still want to unmount locally-mounted
+    # media, though.
+    media="`fixabslinks '/var/host/media'`"
+    if mountpoint -q "$media"; then
+        mount --make-rslave "$media"
+    fi
 
     while ! sed "s=\\\\040=//=g" /proc/mounts | cut -d' ' -f2 \
               | grep "^$baseesc" | sed 's=//= =g' | xargs --no-run-if-empty -d '
