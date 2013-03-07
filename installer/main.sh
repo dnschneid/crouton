@@ -86,7 +86,7 @@ while getopts 'a:def:k:m:n:p:r:s:t:T:uV' f; do
     k) KEYFILE="$OPTARG";;
     m) MIRROR="$OPTARG";;
     n) NAME="$OPTARG";;
-    p) PREFIX="$OPTARG";;
+    p) PREFIX="`readlink -f "$OPTARG"`";;
     r) RELEASE="$OPTARG";;
     t) TARGETS="$TARGETS${TARGETS:+","}$OPTARG";;
     T) TARGETFILE="$OPTARG";;

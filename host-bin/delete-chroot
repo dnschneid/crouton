@@ -26,7 +26,7 @@ error() {
 # Process arguments
 while getopts 'c:n:y' f; do
     case "$f" in
-    c) CHROOTS="$OPTARG";;
+    c) CHROOTS="`readlink -f "$OPTARG"`";;
     y) YES='a';;
     \?) error 2 "$USAGE";;
     esac
