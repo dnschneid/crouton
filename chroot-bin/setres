@@ -1,0 +1,25 @@
+#!/bin/sh -e
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+if [ "$#" -lt 2 -o "$#" -gt 4 ]; then
+    echo "USAGE: ${0##*/} x y [r [output]]" 1>&2
+    exit 2
+fi
+x="$1"
+y="$2"
+r="${3:-60}"
+o="${4}"
+if [ -z "$o" ]; then
+    o="`xrandr -q | awk 'x{print $1;exit}/^Screen 0/{x=1}'`"
+fi
+cvt "$x" "$y" "$r" | {
+    read _
+    read _ mode data
+    mode="${mode#\"}"
+    mode="${mode%\"}"
+    xrandr --newmode "$mode" $data 2>/dev/null || true
+    xrandr --addmode "$o" "$mode"
+    xrandr --output "$o" --mode "$mode"
+}
