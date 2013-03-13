@@ -47,11 +47,11 @@ export PATH='/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin'
 
 # Run debootstrap second stage if it hasn't already happened
 if [ -r /debootstrap ]; then
-    # Debootstrap doesn't like anything mounted under /sys when it runs
+    # Debootstrap doesn't like anything mounted under /sys or /var when it runs
     # We assume that the chroot will be unmounted after this script is over, so
     # we don't need to explicitly remount anything. We also can't detect the
     # mounts properly due to the chroot, so we have to hardcode the mounts.
-    umount '/sys/fs/fuse/connections'
+    umount '/sys/fs/fuse/connections' '/var/run/lock' '/var/run'
     # Our custom /etc/resolv.conf link gets clobbered after bootstrap; save it
     mv -f /etc/resolv.conf /etc/resolv.conf.save
     # Start the bootstrap
