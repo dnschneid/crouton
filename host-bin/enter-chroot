@@ -226,6 +226,15 @@ bindmount() {
         fi
     fi
 }
+# Creates a tmpfs mount at $CHROOT/$1 with options $2 if not already mounted
+tmpfsmount() {
+    local target="`fixabslinks "$1"`"
+    if mountpoint -q "$target"; then
+        return 0
+    fi
+    mkdir -p "$target"
+    mount -i -t tmpfs -o "rw${2:+,}$2" tmpfs "$target"
+}
 # Ensure the chroot is executable and writable by bind-mounting it to itself.
 bindmount "$CHROOT" / rw,dev,exec,suid --make-unbindable
 bindmount /dev
@@ -235,8 +244,13 @@ bindmount /sys
 bindmount /sys/fs/fuse/connections
 bindmount /tmp /tmp exec
 bindmount /proc
+tmpfsmount /var/run 'noexec,nosuid,mode=0755,size=10%'
+tmpfsmount /var/run/lock 'noexec,nosuid,nodev,size=5120k'
 bindmount /var/run/dbus /var/host/dbus
 bindmount /var/run/shill /var/host/shill
+
+# Add a shm symlink to our new /var/run
+ln -sf /dev/shm "`fixabslinks '/var/run/'`"
 
 # Bind-mount /media, specifically the removable directory
 destmedia="`fixabslinks '/var/host/media'`"
