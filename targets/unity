@@ -7,7 +7,7 @@ if [ ! "$TARGETS" = 'help' -a ! "${ARCH#arm}" = "$ARCH" \
     echo "unity target does not work in xephyr in $RELEASE due to missing egl support." 1>&2
     exit 1
 fi
-REQUIRES='chromium gtk-extra x11 core'
+REQUIRES='chromium gtk-extra'
 DESCRIPTION='Installs the Unity desktop environment. (Approx. 700MB)'
 HOSTBIN='startunity'
 CHROOTBIN='startunity'
