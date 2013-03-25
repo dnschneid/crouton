@@ -13,8 +13,11 @@ echo 'x11' >> "${TARGETDEDUPFILE:-/dev/null}"
 if [ "$RELEASE" = 'quantal' ]; then
     # As of 2013-01-08, Quantal's Xephyr lacks GLX. Download one manually.
     apt-get -y install wget
-    xvers='1.11.4-0ubuntu10.12'
-    url="$MIRROR/pool/universe/x/xorg-server/xserver-xephyr_${xvers}_$ARCH.deb"
+    url="$MIRROR/pool/universe/x/xorg-server/"
+    xvers="`wget -O- "$url" \
+        | sed -n 's/.*\(xserver-xephyr_1\.11\.4-0ubuntu[0-9][0-9]\.[0-9]*_$ARCH\.deb\).*/\1/p' \
+        | sort -V | tail -n1`"
+    url="$url/${xvers:-xserver-xephyr_1.11.4-0ubuntu10.12_$ARCH.deb}"
     deb='/tmp/xephyr.deb'
     rm -f "$deb"
     wget --no-check-certificate "$url" -O "$deb"
@@ -24,7 +27,7 @@ if [ "$RELEASE" = 'quantal' ]; then
     # Add the apt preference to avoid immediate upgrade
     cat > /etc/apt/preferences.d/xserver-xephyr <<EOF
 Package: xserver-xephyr
-Pin: version <1.13.0-0ubuntu7
+Pin: version <1.14
 Pin-Priority: -1
 EOF
     # Fix the dependency problems.
