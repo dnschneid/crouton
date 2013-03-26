@@ -1,0 +1,15 @@
+#!/bin/sh -e
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+REQUIRES='chromium gtk-extra'
+DESCRIPTION='Installs the enlightenment desktop environment. (Approx. 50MB)'
+HOSTBIN='starte17'
+. "${TARGETSDIR:="$PWD"}/common"
+
+### Append to prepare.sh:
+apt-get -y install e17
+
+TIPS="$TIPS
+You can start e17 via the starte17 host command: sudo starte17
+"
