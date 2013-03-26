@@ -23,9 +23,9 @@ fi
 
 if [ "$TARGETS" = 'help' ]; then
     echo "$TARGET"
-    echo "\t$DESCRIPTION"
+    echo "	$DESCRIPTION"
     if [ -n "$REQUIRES" ]; then
-        echo "\tRequires: $REQUIRES"
+        echo "	Requires: $REQUIRES"
     fi
 elif [ ! "$TARGETS" = 'check' ]; then
     # Avoid double-adding targets
