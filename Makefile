@@ -9,6 +9,7 @@ SCRIPTS := \
 	$(wildcard chroot-bin/*) \
 	$(wildcard host-bin/*) \
 	$(wildcard installer/*) \
+	$(wildcard src/*) \
 	$(wildcard targets/*)
 GENVERSION = build/genversion.sh
 VERSION = 0
@@ -22,7 +23,13 @@ $(TARGET): $(WRAPPER) $(SCRIPTS) $(GENVERSION) Makefile
 	chmod +x $(TARGETTMP)
 	mv -f $(TARGETTMP) $(TARGET)
 
+croutoncursor: src/cursor.c Makefile
+	gcc -g -Wall -Werror src/cursor.c -lX11 -lXfixes -lXrender -o croutoncursor
+
+croutonticks: src/ticks.c Makefile
+	gcc -g -Wall -Werror src/ticks.c -lrt -o croutonticks
+
 clean:
-	rm -f $(TARGETTMP) $(TARGET)
+	rm -f $(TARGETTMP) $(TARGET) croutoncursor croutonticks
 
 .PHONY: clean

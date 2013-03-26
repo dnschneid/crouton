@@ -1,4 +1,4 @@
 *.tar.*
 .*.swp
 .*.tmp
-crouton
+crouton*

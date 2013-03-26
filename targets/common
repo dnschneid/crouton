@@ -19,6 +19,7 @@
 
 if [ -z "$TARGET" ]; then
     TARGET="$0"
+    SIMULATE=echo
 fi
 
 if [ "$TARGETS" = 'help' ]; then
@@ -44,35 +45,47 @@ elif [ ! "$TARGETS" = 'check' ]; then
     # Copy in requested items from host-bin and chroot-bin
     for f in $HOSTBIN; do
         echo "Installing $f into the host..." 1>&2
-        cp -f "$HOSTBINDIR/$f" "$BIN/"
-        chmod 755 "$BIN/$f"
+        $SIMULATE cp -f "$HOSTBINDIR/$f" "$BIN/"
+        $SIMULATE chmod 755 "$BIN/$f"
     done
     for f in $CHROOTBIN; do
         echo "Installing $f into the chroot..." 1>&2
-        cp -f "$CHROOTBINDIR/$f" "$CHROOT/usr/local/bin/"
-        chmod 755 "$CHROOT/usr/local/bin/$f"
+        $SIMULATE cp -f "$CHROOTBINDIR/$f" "$CHROOT/usr/local/bin/"
+        $SIMULATE chmod 755 "$CHROOT/usr/local/bin/$f"
     done
     # Print out the target file below the ### line.
     # This avoids having to escape everything like with cat<<EOF
     # All ### lines are ignored.
     # Lines with "### append filename" will queue a file to be processed after
     # the current file is done.
+    # Lines that start with "compile" will have their source code inserted as a
+    # HERE document.
     t="$TARGET"
     if [ "${t#/}" = "$t" ]; then
         t="$TARGETSDIR/$t"
     fi
     awk '
         (FNR == 1) {
-            x = 0;
+            ok = 0;
         }
         /^###/ {
-            x = 1;
+            ok = 1;
             if ($2 == "append") {
                 ARGV[ARGC++] = "'"$TARGETSDIR"'/" $3;
             }
             next;
         }
-        x;
+        ok && /^compile / {
+            src = "'"${SRCDIR:-$TARGETSDIR/../src}"'/" $2 ".c";
+        }
+        src && $NF != substr("\\\\", 1, 1) {
+            print $0 " <<EOF"
+            system("cat '\''" src "'\''");
+            print "EOF"
+            src = "";
+            next
+        }
+        ok;
     ' "$t"
 fi
 # Break out of the subshell.

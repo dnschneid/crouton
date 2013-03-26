@@ -8,19 +8,7 @@
 
 ### Append to prepare.sh:
 # Generate the executable that outputs the equivalent of base::TimeTicks::Now()
-compile /usr/local/bin/croutonticks -lrt <<EOF
-    #include <time.h>
-    #include <stdio.h>
-
-    int main() {
-        struct timespec t;
-        if (clock_gettime(CLOCK_MONOTONIC, &t))
-            return 1;
-        unsigned long long micros = t.tv_sec * 1000000ULL + t.tv_nsec / 1000;
-        printf("%llu\n", micros);
-        return 0;
-    }
-EOF
+compile ticks -lrt
 
 # Install utilities and links for powerd-poking daemon
 apt-get -y --no-install-recommends install xprintidle dbus

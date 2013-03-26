@@ -20,22 +20,23 @@ noauto() {
     done
 }
 
-# compile: Grabs the necessary dependencies and then compiles stdin as a C file
-# to the specified output and strips it. Finally, removes whatever it installed.
-# This allows targets to provide on-demand binaries without increasing the size
-# of the chroot after install.
-# $1: the output file
-# $2: linker flags
+# compile: Grabs the necessary dependencies and then compiles a C file from
+# stdin to the specified output and strips it. Finally, removes whatever it
+# installed. This allows targets to provide on-demand binaries without
+# increasing the size of the chroot after install.
+# $1: name; target is /usr/local/bin/crouton$1
+# $2: linker flags, quoted together
 # $3+: any package dependencies other than gcc and libc-dev.
 compile() {
-    local out="$1" linker="$2"
-    echo "Compiling $out..." 1>&2
+    local out="/usr/local/bin/crouton$1" linker="$2"
+    echo "Installing dependencies for $out..." 1>&2
     shift 2
     local pkgs="gcc libc-dev $*"
     local remove="`noauto $pkgs`"
     apt-get -y --no-install-recommends install $pkgs
+    echo "Compiling $out..." 1>&2
     ret=0
-    if ! gcc -xc -Os - "$linker" -o "$out" || ! strip "$out"; then
+    if ! gcc -xc -Os - $linker -o "$out" || ! strip "$out"; then
         ret=1
     fi
     apt-get -y --purge autoremove $remove

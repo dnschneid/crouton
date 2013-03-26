@@ -9,6 +9,7 @@ CHROOTBINDIR="$SCRIPTDIR/chroot-bin"
 INSTALLERDIR="$SCRIPTDIR/installer"
 HOSTBINDIR="$SCRIPTDIR/host-bin"
 TARGETSDIR="$SCRIPTDIR/targets"
+SRCDIR="$SCRIPTDIR/src"
 
 ARCH="`uname -m | sed -e 's i.86 i386 ;s x86_64 amd64 ;s arm.* armhf ;'`"
 DOWNLOADONLY=''
@@ -313,6 +314,7 @@ rmtargetdedupfile="rm -f \"$TARGETDEDUPFILE\""
 TRAP="$rmtargetdedupfile; $TRAP"
 trap "$TRAP" INT HUP 0
 # Run each target, appending stdout to the prepare script.
+unset SIMULATE
 if [ -n "$TARGETFILE" ]; then
     TARGET="`readlink -f "$TARGETFILE"`"
     (. "$TARGET") >> "$CHROOT/prepare.sh"

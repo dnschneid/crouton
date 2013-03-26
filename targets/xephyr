@@ -39,6 +39,10 @@ apt-get -y --no-install-recommends install \
     xserver-xephyr xinit ratpoison dmz-cursor-theme libgl1-mesa-dri \
     x11-utils xautomation xdotool xinput
 
+# Compile croutoncursor
+compile cursor '-lX11 -lXfixes -lXrender' \
+    libx11-dev libxfixes-dev libxrender-dev
+
 # Add a host Xauthority sentinel file
 hostxauth='/etc/X11/host-Xauthority'
 touch "$hostxauth"
@@ -48,7 +52,7 @@ chmod 444 "$hostxauth"
 echo '#!/bin/sh -e
 if [ -r "'"$hostxauth"'" ]; then
 	export DISPLAY=":0" XAUTHORITY="'"$hostxauth"'"
-	exec /usr/bin/Xephyr -fullscreen -nolisten tcp "$@"
+	exec /usr/bin/Xephyr -fullscreen -host-cursor -nolisten tcp "$@"
 else
 	exec /usr/bin/X -nolisten tcp "$@"
 fi
