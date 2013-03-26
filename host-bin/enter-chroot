@@ -226,6 +226,7 @@ bindmount() {
         fi
     fi
 }
+
 # Creates a tmpfs mount at $CHROOT/$1 with options $2 if not already mounted
 tmpfsmount() {
     local target="`fixabslinks "$1"`"
@@ -235,6 +236,14 @@ tmpfsmount() {
     mkdir -p "$target"
     mount -i -t tmpfs -o "rw${2:+,}$2" tmpfs "$target"
 }
+
+# If /var/run isn't mounted, we know the chroot hasn't been started yet.
+if mountpoint -q "`fixabslinks '/var/run'`"; then
+    firstrun=''
+else
+    firstrun='y'
+fi
+
 # Ensure the chroot is executable and writable by bind-mounting it to itself.
 bindmount "$CHROOT" / rw,dev,exec,suid --make-unbindable
 bindmount /dev
@@ -297,6 +306,11 @@ else
             mkdir -p /var/run/dbus
             chown messagebus:messagebus /var/run/dbus
             dbus-daemon --system --fork' - root
+    fi
+
+    # Run rc.local
+    if [ -n "$firstrun" -a -x "$CHROOT/etc/rc.local" ]; then
+        env -i chroot "$CHROOT" su -c 'exec /etc/rc.local >/dev/null 2>/dev/null' - root
     fi
 
     if [ $# = 0 ]; then
