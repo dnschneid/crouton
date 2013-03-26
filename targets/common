@@ -27,7 +27,7 @@ if [ "$TARGETS" = 'help' ]; then
     if [ -n "$REQUIRES" ]; then
         echo "\tRequires: $REQUIRES"
     fi
-else
+elif [ ! "$TARGETS" = 'check' ]; then
     # Avoid double-adding targets
     if grep -q "^$TARGET\$" "${TARGETDEDUPFILE:-/dev/null}"; then
         exit

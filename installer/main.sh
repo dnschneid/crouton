@@ -133,7 +133,8 @@ if [ -z "$DOWNLOADONLY" ]; then
             done
             exit 2
         elif [ ! "${TARGET%common}" = "$TARGET" ] || \
-             [ ! -r "$TARGETSDIR/$TARGET" ]; then
+             [ ! -r "$TARGETSDIR/$TARGET" ] || \
+             ! (TARGETS='check'; . "$TARGETSDIR/$TARGET"); then
             error 2 "Invalid target \"$TARGET\"."
         fi
     done
