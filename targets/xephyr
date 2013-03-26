@@ -27,7 +27,7 @@ if [ "$RELEASE" = 'quantal' ]; then
     # Add the apt preference to avoid immediate upgrade
     cat > /etc/apt/preferences.d/xserver-xephyr <<EOF
 Package: xserver-xephyr
-Pin: version <1.14
+Pin: version <1.13.3-0ubuntu4
 Pin-Priority: -1
 EOF
     # Fix the dependency problems.
@@ -37,7 +37,7 @@ fi
 # xserver-xephyr won't auto replace the manually-downloaded version.
 apt-get -y --no-install-recommends install \
     xserver-xephyr xinit ratpoison dmz-cursor-theme libgl1-mesa-dri \
-    x11-utils xautomation xdotool xinput
+    x11-utils x11-xserver-utils xautomation xdotool xinput xterm
 
 # Compile croutoncursor
 compile cursor '-lX11 -lXfixes -lXrender' \
