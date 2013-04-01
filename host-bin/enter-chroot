@@ -91,10 +91,12 @@ if [ -z "$CHROOT" ]; then
 sufficient space available, then re-install the chroot and try again.'
 fi
 
-# Auto-unmount everything below and including the chroot when the script exits.
-TRAP="sh -e \"$BINDIR/unmount-chroot\" \
-                            $BACKGROUND -c \"$CHROOTS\" \"$NAME\" || true;$TRAP"
-trap "$TRAP" INT HUP 0
+if [ -z "$CROUTON_NO_UNMOUNT" ]; then
+    # Auto-unmount everything below and including the chroot upon exit
+    TRAP="sh -e '$BINDIR/unmount-chroot' \
+                            $BACKGROUND -c '$CHROOTS' '$NAME' || true;$TRAP"
+    trap "$TRAP" INT HUP 0
+fi
 
 # If our root is on an external disk, we need to override powerd_suspend to not
 # disable USB device persistence, otherwise we will die on resume.
@@ -126,7 +128,8 @@ if [ -z "$NOLOGIN" -a -f "$CHROOT/prepare.sh" ]; then
     fi
     if [ -z "$response" -o ! "${response#[Yy]}" = "$response" ]; then
         echo 'Preparing chroot environment...' 1>&2
-        sh -e "$BINDIR/enter-chroot" -c "$CHROOTS" -n "$NAME" -x '/prepare.sh'
+        CROUTON_NO_UNMOUNT=1 sh -e "$BINDIR/enter-chroot" \
+            -c "$CHROOTS" -n "$NAME" -x '/prepare.sh'
         echo 'Setup completed. Entering chroot...' 1>&2
     else
         echo 'Skipping setup. You will be prompted again next time.' 1>&2
