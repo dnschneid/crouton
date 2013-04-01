@@ -6,6 +6,7 @@
 APPLICATION="${0##*/}"
 SCRIPTDIR="${SCRIPTDIR:-"`dirname "$0"`/.."}"
 CHROOTBINDIR="$SCRIPTDIR/chroot-bin"
+CHROOTETCDIR="$SCRIPTDIR/chroot-etc"
 INSTALLERDIR="$SCRIPTDIR/installer"
 HOSTBINDIR="$SCRIPTDIR/host-bin"
 TARGETSDIR="$SCRIPTDIR/targets"
@@ -301,8 +302,8 @@ if [ -z "$NODOWNLOAD" ] && [ -n "$DOWNLOADONLY" -o -z "$TARBALL" ]; then
     mv -f "$tmp/$subdir/"* "$CHROOT"
 fi
 
-# Ensure that /usr/local/bin exists
-mkdir -p "$CHROOT/usr/local/bin"
+# Ensure that /usr/local/bin and /etc/crouton exist
+mkdir -p "$CHROOT/usr/local/bin" "$CHROOT/etc/crouton"
 
 # Create the setup script inside the chroot
 echo 'Preparing chroot environment...' 1>&2

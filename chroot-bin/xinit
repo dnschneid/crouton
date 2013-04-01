@@ -44,9 +44,12 @@ queuelaunch() {
 # Launch the powerd poker daemon
 queuelaunch croutonpowerd --daemon
 
-# Launch the cursor relayer if in xephyr
+# Launch the cursor relayer and keyboard shortcuts if in xephyr
 if [ -n "$hostxauth" ]; then
     queuelaunch env DISPLAY=':0' XAUTHORITY="$hostxauth" croutoncursor ":$disp"
+
+    ln -sf '/etc/crouton/keylaunchrc-xephyr' "$HOME/.keylaunchrc"
+    queuelaunch keylaunch
 fi
 
 # Launch touchegg if it is requested.

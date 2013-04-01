@@ -11,8 +11,9 @@
 # DESCRIPTION with the description of the target, and REQUIRES with a
 # space-separated list of other targets it needs.
 
-# Finally, targets can set HOSTBIN and CHROOTBIN with a space-separated list of
-# files to copy from host-bin and chroot-bin into the appropriate places.
+# Finally, targets can set HOSTBIN, CHROOTBIN, and CHROOTETC with a
+# space-separated list of files to copy from host-bin, chroot-bin, and
+# chroot-etc into the appropriate places.
 
 # All targets must be idempotent since the user may Ctrl-C the process and run
 # it again.
@@ -37,7 +38,7 @@ elif [ ! "$TARGETS" = 'check' ]; then
     fi
     # Source the prerequisites
     for t in $REQUIRES; do
-        (TARGET="$t" HOSTBIN='' CHROOTBIN=''; . "$TARGETSDIR/$t")
+        (TARGET="$t" HOSTBIN='' CHROOTBIN='' CHROOTETC=''; . "$TARGETSDIR/$t")
     done
     # Add a print to the output
     echo ''
@@ -52,6 +53,11 @@ elif [ ! "$TARGETS" = 'check' ]; then
         echo "Installing $f into the chroot..." 1>&2
         $SIMULATE cp -f "$CHROOTBINDIR/$f" "$CHROOT/usr/local/bin/"
         $SIMULATE chmod 755 "$CHROOT/usr/local/bin/$f"
+    done
+    for f in $CHROOTETC; do
+        echo "Installing $f into the chroot..." 1>&2
+        $SIMULATE cp -f "$CHROOTETCDIR/$f" "$CHROOT/etc/crouton/"
+        $SIMULATE chmod 644 "$CHROOT/etc/crouton/$f"
     done
     # Print out the target file below the ### line.
     # This avoids having to escape everything like with cat<<EOF

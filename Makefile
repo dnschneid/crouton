@@ -7,6 +7,7 @@ TARGETTMP = .$(TARGET).tmp
 WRAPPER = build/wrapper.sh
 SCRIPTS := \
 	$(wildcard chroot-bin/*) \
+	$(wildcard chroot-etc/*) \
 	$(wildcard host-bin/*) \
 	$(wildcard installer/*) \
 	$(wildcard src/*) \

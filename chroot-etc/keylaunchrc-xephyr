@@ -1,0 +1,9 @@
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Replicates ratpoison shortcuts inside of Xephyr for when Xephyr grabs all keys
+
+key=***F1:xte 'keyup F1'; env DISPLAY=:0 XAUTHORITY=/etc/X11/host-Xauthority ratpoison -c prev
+key=***F2:xte 'keyup F2'; env DISPLAY=:0 XAUTHORITY=/etc/X11/host-Xauthority ratpoison -c next
+key=***Escape:xte 'keyup Escape'; env DISPLAY=:0 XAUTHORITY=/etc/X11/host-Xauthority ratpoison -c 'readkey root'
