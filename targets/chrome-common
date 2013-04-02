@@ -9,6 +9,15 @@
 # This command expects CHANNEL to be set with the requested Google Chrome
 # channel: stable, beta, or unstable.
 
+if [ ! "$TARGETS" = 'help' -a ! "${ARCH#arm}" = "$ARCH" ]; then
+    echo 'Google Chrome does not yet have an ARM build. Installing Chromium instead.' 1>&2
+    TARGET=chromium
+    . "${TARGETSDIR:="$PWD"}/$TARGET"
+fi
+REQUIRES='x11'
+echo 'chromium' >> "${TARGETDEDUPFILE:-/dev/null}"
+. "${TARGETSDIR:="$PWD"}/common"
+
 ### Append to prepare.sh:
 url="https://dl.google.com/linux/direct/google-chrome-${CHANNEL}_current_$ARCH.deb"
 deb='/tmp/chrome.deb'
