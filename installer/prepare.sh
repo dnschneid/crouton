@@ -3,10 +3,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# Usage: prepare.sh arch mirror release
+# Usage: prepare.sh arch mirror release version
 ARCH="${1:-"#ARCH"}"
 MIRROR="${2:-"#MIRROR"}"
 RELEASE="${3:-"#RELEASE"}"
+VERSION="${4:-"#VERSION"}"
 
 # noauto: For the specified packages, echos out "pkg-" for each package in the
 # list that isn't already installed. Targets use this to avoid installing

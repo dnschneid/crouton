@@ -4,10 +4,14 @@
 # found in the LICENSE file.
 REQUIRES=''
 DESCRIPTION='Performs core system configuration. Most users would want this.'
-CHROOTBIN='brightness host-dbus'
+CHROOTBIN='brightness croutonversion host-dbus'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
+if [ ! "$VERSION" = '#VERSION' ]; then
+    sed -i "s ^VERSION=.*\$ VERSION='$VERSION' " '/usr/local/bin/croutonversion'
+fi
+
 echo 'Preparing software sources...' 1>&2
 cat > /etc/apt/sources.list <<EOF
 deb $MIRROR $RELEASE main restricted universe multiverse

@@ -1,0 +1,121 @@
+#!/bin/sh -e
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+VERSION='unknown'
+
+APPLICATION="${0##*/}"
+CHANGES=''
+DOWNLOAD=''
+DEST="$HOME/Downloads/crouton"
+UPDATES=''
+
+BRANCH="${VERSION##*~}"
+BRANCH="${BRANCH%%:*}"
+COMMIT="${VERSION##*:}"
+CHANGESURL="https://github.com/dnschneid/crouton/compare/$COMMIT..."
+CROUTONURL='http://goo.gl/cZ2PL'
+
+
+USAGE="$APPLICATION [options]
+
+Reports the version of crouton installed, checks if updates are available,
+and/or launches a changelog.
+
+If no options are specified, outputs the installed version of crouton to STDOUT.
+
+Options:
+    -c       Launches a browser to view the list of changes.
+             If -u is specified, only launches if a newer version exists.
+    -d       Downloads the latest version of crouton to the location specified.
+             If -u is specified, only downloads if the version is newer.
+    -f FILE  Changes the destination of the downloaded crouton.
+             Default: $DEST
+    -h       Prints out usage.
+    -u       Checks for updates, and prints out the updated version number."
+
+
+# Function to exit with exit code $1, spitting out message $@ to stderr
+error() {
+    local ecode="$1"
+    shift
+    echo "$*" 1>&2
+    exit "$ecode"
+}
+
+# Process arguments
+while getopts 'cdf:u' f; do
+    case "$f" in
+    c) CHANGES='y';;
+    d) DOWNLOAD='y';;
+    f) DEST="$OPTARG";;
+    u) UPDATES='y';;
+    \?) error 2 "$USAGE";;
+    esac
+done
+
+# No extra parameters
+if [ ! "$#" = "$((OPTIND-1))" ]; then
+    error 2 "$USAGE"
+fi
+
+# Print out version if nothing else specified
+if [ -z "$CHANGES$DOWNLOAD$UPDATES" ]; then
+    echo "crouton: version $VERSION"
+    exit 0
+fi
+
+# Print out version to stderr for info
+echo "crouton: version $VERSION" 1>&2
+
+latest=''
+tmpdir=''
+if [ -n "$UPDATES$DOWNLOAD" ]; then
+    tmpdir="`mktemp -d --tmpdir=/tmp crouton.XXX`"
+    trap "rm -rf '$tmpdir'" INT HUP 0
+    echo "Retreiving latest version of crouton" 1>&2
+    wget -q "$CROUTONURL" -O "$tmpdir/crouton"
+    latest="`awk -F"'" '/^VERSION=/{print $2;exit}' "$tmpdir/crouton"`"
+fi
+
+# Print out latest version number if requested
+if [ -n "$UPDATES" ]; then
+    echo "latest: version $latest"
+elif [ -n "$latest" ]; then
+    echo "latest: version $latest" 1>&2
+fi
+
+# Save latest version if requested
+if [ -n "$DOWNLOAD" -a ! "$VERSION" = "$latest" ]; then
+    echo "Saving latest version to $DEST" 1>&2
+    mv -f "$tmpdir/crouton" "$DEST"
+fi
+
+# Launch changelog if requested
+if [ -n "$CHANGES" -a ! "$VERSION" = "$latest" ]; then
+    # Check if changelogs are available from this version / to this branch
+    if ! wget "$CHANGESURL$BRANCH" -O/dev/full 2>&1 | grep -q '404 Not Found'; then
+        CHANGESURL="$CHANGESURL$BRANCH"
+    elif ! wget "${CHANGESURL}master" -O/dev/full 2>&1 | grep -q '404 Not Found'; then
+        CHANGESURL="${CHANGESURL}master"
+    else
+        # Fall back on the main commit log
+        CHANGESURL='https://github.com/dnschneid/crouton/commits/'
+    fi
+    # One of these will probably work...
+    for x in exo-open gnome-open kde-open xdg-open \
+             sensible-browser x-www-browser www-browser; do
+        if hash "$x" 2>/dev/null; then
+            browser="$x"
+            break
+        fi
+    done
+    if [ -z "$browser" ]; then
+        error 2 "No browser found to view $CHANGESURL"
+    fi
+    # Launch the webpage
+    exec "$browser" "$CHANGESURL"
+fi
+
+exit 0

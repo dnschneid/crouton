@@ -307,7 +307,7 @@ mkdir -p "$CHROOT/usr/local/bin" "$CHROOT/etc/crouton"
 
 # Create the setup script inside the chroot
 echo 'Preparing chroot environment...' 1>&2
-VAREXPAND="s #ARCH $ARCH ;s #MIRROR $MIRROR ;s #RELEASE $RELEASE ;"
+VAREXPAND="s #ARCH $ARCH ;s #MIRROR $MIRROR ;s #RELEASE $RELEASE ;s #VERSION $VERSION ;"
 sed -e "$VAREXPAND" "$INSTALLERDIR/prepare.sh" > "$CHROOT/prepare.sh"
 # Create a file for target deduplication
 TARGETDEDUPFILE="`mktemp --tmpdir=/tmp "$APPLICATION.XXX"`"
