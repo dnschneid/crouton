@@ -124,7 +124,9 @@ if [ -z "$DOWNLOADONLY" ]; then
     while [ -n "$t" ]; do
         TARGET="${t%%,*}"
         t="${t#*,}"
-        if [ "$TARGET" = 'help' -o "$TARGET" = 'list' ]; then
+        if [ -z "$t" ]; then
+            continue
+        elif [ "$TARGET" = 'help' -o "$TARGET" = 'list' ]; then
             TARGETS='help'
             echo "Available targets:" 1>&2
             for t in "$TARGETSDIR/"*; do
