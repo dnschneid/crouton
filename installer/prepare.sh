@@ -60,6 +60,12 @@ if [ -r /debootstrap ]; then
     /debootstrap/debootstrap --second-stage
     # Fix the /etc/resolv.conf
     mv -f /etc/resolv.conf.save /etc/resolv.conf
+    # Fix the tty keyboard mode. keyboard-configuration puts tty1~6 in UTF8
+    # mode, assuming they are consoles. Since everything other than tty2 can be
+    # an X11 session, we need to revert those back to RAW.
+    for tty in 1 3 4 5 6; do
+        kbd_mode -s -C "/dev/tty$tty"
+    done
 fi
 
 # The rest is dictated by the selected targets.
