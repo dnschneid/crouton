@@ -124,7 +124,7 @@ if [ -z "$DOWNLOADONLY" ]; then
     while [ -n "$t" ]; do
         TARGET="${t%%,*}"
         t="${t#*,}"
-        if [ -z "$t" ]; then
+        if [ -z "$TARGET" ]; then
             continue
         elif [ "$TARGET" = 'help' -o "$TARGET" = 'list' ]; then
             TARGETS='help'
