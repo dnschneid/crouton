@@ -8,11 +8,48 @@ CHROOTBIN='brightness croutonversion host-dbus'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
+echo 'Preparing environment...' 1>&2
 if [ ! "$VERSION" = '#VERSION' ]; then
     sed -i "s ^VERSION=.*\$ VERSION='$VERSION' " '/usr/local/bin/croutonversion'
 fi
 
+# Create the new environment file
+oldenv='/etc/environment'
+newenv='/etc/environment.new'
+{
+    echo '### begin crouton-generated environment variables'
+    if [ "$PROXY" = 'unspecified' -o "$PROXY" = '#PROXY' ]; then
+        grep -i '^[a-z]*_proxy' "$oldenv" 2>/dev/null || true
+    elif [ -n "$PROXY" ]; then
+        for var in http_proxy HTTP_PROXY https_proxy HTTPS_PROXY \
+                   ftp_proxy FTP_PROXY; do
+            echo "$var='$PROXY'"
+        done
+        for var in no_proxy NO_PROXY; do
+            echo "$var='localhost,127.0.0.1'"
+        done
+    fi
+    echo '### end crouton-generated environment variables'
+    # Copy in previous user-environment settings
+    if [ -r "$oldenv" ]; then
+        awk '/^### begin/{x=1}!x;/^### end/{x=0}' "$oldenv"
+    fi
+} > "$newenv"
+mv -f "$newenv" "$oldenv"
+
 echo 'Preparing software sources...' 1>&2
+if [ ! "$PROXY" = 'unspecified' -a ! "$PROXY" = '#PROXY' ]; then
+    aptproxy='/etc/apt/apt.conf.d/80croutonproxy'
+    if [ -z "$PROXY" ]; then
+        rm -f "$aptproxy"
+    else
+        cat > "$aptproxy" <<EOF
+Acquire::http::proxy "$PROXY";
+Acquire::ftp::proxy "$PROXY";
+Acquire::https::proxy "$PROXY";
+EOF
+    fi
+fi
 cat > /etc/apt/sources.list <<EOF
 deb $MIRROR $RELEASE main restricted universe multiverse
 deb-src $MIRROR $RELEASE main restricted universe multiverse

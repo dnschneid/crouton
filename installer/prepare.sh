@@ -3,11 +3,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# Usage: prepare.sh arch mirror release version
+# Usage: prepare.sh arch mirror release proxy version
 ARCH="${1:-"#ARCH"}"
 MIRROR="${2:-"#MIRROR"}"
 RELEASE="${3:-"#RELEASE"}"
-VERSION="${4:-"#VERSION"}"
+PROXY="${4:-"#PROXY"}"
+VERSION="${5:-"#VERSION"}"
 
 # noauto: For the specified packages, echos out "pkg-" for each package in the
 # list that isn't already installed. Targets use this to avoid installing
@@ -46,6 +47,11 @@ compile() {
 
 # We need all paths to do administrative things
 export PATH='/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin'
+
+# Apply the proxy for this script
+if [ ! "$PROXY" = 'unspecified' -a "${PROXY#"#"}" = "$PROXY" ]; then
+    export http_proxy="$PROXY" https_proxy="$PROXY" ftp_proxy="$PROXY"
+fi
 
 # Run debootstrap second stage if it hasn't already happened
 if [ -r /debootstrap ]; then

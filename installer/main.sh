@@ -21,6 +21,7 @@ MIRROR86='http://archive.ubuntu.com/ubuntu/'
 MIRRORARM='http://ports.ubuntu.com/ubuntu-ports/'
 NAME=''
 PREFIX='/usr/local'
+PROXY='unspecified'
 RELEASE='precise'
 TARBALL=''
 TARGETS=''
@@ -55,6 +56,8 @@ Options:
     -n NAME     Name of the chroot. Default is the release name.
     -p PREFIX   The root directory in which to install the bin and chroot
                 subdirectories and data. Default: $PREFIX
+    -P PROXY    Set an HTTP proxy for the chroot; effectively sets http_proxy.
+                Specify an empty string to remove a proxy when updating.
     -r RELEASE  Name of the distribution release. Default: $RELEASE
     -t TARGETS  Comma-separated list of environment targets to install.
                 Specify help to print out potential targets.
@@ -79,7 +82,7 @@ error() {
 }
 
 # Process arguments
-while getopts 'a:def:k:m:n:p:r:s:t:T:uV' f; do
+while getopts 'a:def:k:m:n:p:P:r:s:t:T:uV' f; do
     case "$f" in
     a) ARCH="$OPTARG";;
     d) DOWNLOADONLY='y';;
@@ -89,6 +92,7 @@ while getopts 'a:def:k:m:n:p:r:s:t:T:uV' f; do
     m) MIRROR="$OPTARG";;
     n) NAME="$OPTARG";;
     p) PREFIX="`readlink -f "$OPTARG"`";;
+    P) PROXY="$OPTARG";;
     r) RELEASE="$OPTARG";;
     t) TARGETS="$TARGETS${TARGETS:+","}$OPTARG";;
     T) TARGETFILE="$OPTARG";;
@@ -196,6 +200,11 @@ if [ -z "$DOWNLOADONLY" -a -n "$TARBALL" ]; then
     else
         echo 'Unable to detect archive release and architecture. Using flags.' 1>&2
     fi
+fi
+
+# Set http_proxy if a proxy is specified.
+if [ ! "$PROXY" = 'unspecified' ]; then
+    export http_proxy="$PROXY" https_proxy="$PROXY" ftp_proxy="$PROXY"
 fi
 
 # Done with parameter processing!
@@ -326,7 +335,8 @@ mkdir -p "$CHROOT/usr/local/bin" "$CHROOT/etc/crouton"
 
 # Create the setup script inside the chroot
 echo 'Preparing chroot environment...' 1>&2
-VAREXPAND="s #ARCH $ARCH ;s #MIRROR $MIRROR ;s #RELEASE $RELEASE ;s #VERSION $VERSION ;"
+VAREXPAND="s #ARCH $ARCH ;s #MIRROR $MIRROR ;s #RELEASE $RELEASE ;"
+VAREXPAND="${VAREXPAND}s #PROXY $PROXY ;s #VERSION $VERSION ;"
 sed -e "$VAREXPAND" "$INSTALLERDIR/prepare.sh" > "$CHROOT/prepare.sh"
 # Create a file for target deduplication
 TARGETDEDUPFILE="`mktemp --tmpdir=/tmp "$APPLICATION.XXX"`"
