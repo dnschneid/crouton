@@ -83,7 +83,7 @@ for NAME in "$@"; do
 
     # Delete the chroot
     echo "Deleting $CHROOT"
-    rm -rf "$CHROOT"
+    rm -rf --one-file-system "$CHROOT"
 done
 
 exit $ret
