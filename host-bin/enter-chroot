@@ -265,7 +265,7 @@ bindmount /var/run/shill /var/host/shill
 ln -sf /dev/shm "`fixabslinks '/var/run/'`"
 
 # Add a /run/udev symlink for later versions of udev
-ln -sf /dev/.udev "`fixabslinks '/var/run/udev'`"
+ln -sfT /dev/.udev "`fixabslinks '/var/run'`/udev"
 
 # Bind-mount /media, specifically the removable directory
 destmedia="`fixabslinks '/var/host/media'`"
