@@ -171,7 +171,7 @@ for NAME in "$@"; do
             # Create key file
             wrappedkey="`mktemp`"
             wrappedfnek="`mktemp`"
-            TRAP="rm -f \"$wrappedkey\" \"$wrappedfnek\";$TRAP"
+            TRAP="rm -f '$wrappedkey' '$wrappedfnek';$TRAP"
             trap "$TRAP" INT HUP 0
             echo -n "$key
 $passphrase" | ecryptfs-wrap-passphrase "$wrappedkey" -
@@ -193,7 +193,7 @@ $passphrase" | ecryptfs-wrap-passphrase "$wrappedfnek" -
 
             wrappedkey="`mktemp`"
             wrappedfnek="`mktemp`"
-            TRAP="rm -f \"$wrappedkey\" \"$wrappedfnek\";$TRAP"
+            TRAP="rm -f '$wrappedkey' '$wrappedfnek';$TRAP"
             trap "$TRAP" INT HUP 0
 
             # Extract wrapped keys from keyfile

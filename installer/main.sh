@@ -209,7 +209,7 @@ fi
 
 # Done with parameter processing!
 # Make sure we always have echo when this script exits
-TRAP="stty echo 2>/dev/null || true; $TRAP"
+TRAP="stty echo 2>/dev/null || true;$TRAP"
 trap "$TRAP" INT HUP 0
 
 # Deterime directories, and fix NAME if it was not specified.
@@ -243,8 +243,8 @@ Either delete it, specify a different name (-n), or specify -u to update it."
     fi
 
     # Auto-unmount the chroot when the script exits
-    TRAP="sh -e \"$HOSTBINDIR/unmount-chroot\" \
-                    -y -c \"$CHROOTS\" \"$NAME\" 2>/dev/null || true;$TRAP"
+    TRAP="sh -e '$HOSTBINDIR/unmount-chroot' \
+                    -y -c '$CHROOTS' '$NAME' 2>/dev/null || true;$TRAP"
     trap "$TRAP" INT HUP 0
 
     # Sanity-check the release if we're updating
@@ -273,13 +273,13 @@ if [ -z "$NODOWNLOAD" ] && [ -n "$DOWNLOADONLY" -o -z "$TARBALL" ]; then
     # Create the temporary directory and delete it upon exit
     tmp="`mktemp -d --tmpdir=/tmp "$APPLICATION.XXX"`"
     subdir="$RELEASE-$ARCH"
-    TRAP="rm -rf \"$tmp\"; $TRAP"
+    TRAP="rm -rf '$tmp';$TRAP"
     trap "$TRAP" INT HUP 0
 
     # Ensure that the temporary directory has exec+dev, or mount a new tmpfs
     if [ "$NOEXECTMP" = 'y' ]; then
         mount -i -t tmpfs -o 'rw,dev,exec' tmpfs "$tmp"
-        TRAP="umount -f \"$tmp\"; $TRAP"
+        TRAP="umount -f '$tmp';$TRAP"
         trap "$TRAP" INT HUP 0
     fi
 
@@ -343,8 +343,8 @@ VAREXPAND="${VAREXPAND}s #PROXY $PROXY ;s #VERSION $VERSION ;"
 sed -e "$VAREXPAND" "$INSTALLERDIR/prepare.sh" > "$CHROOT/prepare.sh"
 # Create a file for target deduplication
 TARGETDEDUPFILE="`mktemp --tmpdir=/tmp "$APPLICATION.XXX"`"
-rmtargetdedupfile="rm -f \"$TARGETDEDUPFILE\""
-TRAP="$rmtargetdedupfile; $TRAP"
+rmtargetdedupfile="rm -f '$TARGETDEDUPFILE'"
+TRAP="$rmtargetdedupfile;$TRAP"
 trap "$TRAP" INT HUP 0
 # Run each target, appending stdout to the prepare script.
 unset SIMULATE
