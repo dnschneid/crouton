@@ -229,6 +229,8 @@ Either delete it, specify a different name (-n), or specify -u to update it."
         NODOWNLOAD='y'
         create=''
         echo "$CHROOT already exists; updating it..." 1>&2
+    elif [ -n "$UPDATE" ]; then
+        error 1 "$CHROOT does not exist; cannot update."
     fi
 
     # Mount the chroot and update CHROOT path
