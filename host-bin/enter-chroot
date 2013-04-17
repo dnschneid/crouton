@@ -319,7 +319,8 @@ else
 
     # Run rc.local
     if [ -n "$firstrun" -a -x "$CHROOT/etc/rc.local" ]; then
-        env -i chroot "$CHROOT" su -c 'exec /etc/rc.local >/dev/null 2>/dev/null' - root
+        env -i chroot "$CHROOT" su -c \
+            'exec /etc/rc.local >/dev/null 2>/dev/null </dev/null' - root
     fi
 
     if [ $# = 0 ]; then
