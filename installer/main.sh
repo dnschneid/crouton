@@ -270,17 +270,18 @@ fi
 
 # Download the bootstrap data if appropriate
 if [ -z "$NODOWNLOAD" ] && [ -n "$DOWNLOADONLY" -o -z "$TARBALL" ]; then
-    # Ensure that /tmp is mounted exec and dev
-    if [ "$NOEXECTMP" = 'y' ]; then
-        echo 'Remounting /tmp with dev+exec...' 1>&2
-        mount -i -o remount,dev,exec /tmp
-    fi
-
     # Create the temporary directory and delete it upon exit
     tmp="`mktemp -d --tmpdir=/tmp "$APPLICATION.XXX"`"
     subdir="$RELEASE-$ARCH"
     TRAP="rm -rf \"$tmp\"; $TRAP"
     trap "$TRAP" INT HUP 0
+
+    # Ensure that the temporary directory has exec+dev, or mount a new tmpfs
+    if [ "$NOEXECTMP" = 'y' ]; then
+        mount -i -t tmpfs -o 'rw,dev,exec' tmpfs "$tmp"
+        TRAP="umount -f \"$tmp\"; $TRAP"
+        trap "$TRAP" INT HUP 0
+    fi
 
     # Grab the latest release of debootstrap
     echo 'Downloading latest debootstrap...' 1>&2
