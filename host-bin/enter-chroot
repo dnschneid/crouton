@@ -289,8 +289,11 @@ if [ -n "$BACKGROUND" ]; then
         (
             trap '' INT HUP
             trap "$TRAP" 0
+            [ -t 0 ] && exec  < /dev/null
+            [ -t 1 ] && exec  > /dev/null
+            [ -t 2 ] && exec 2> /dev/null
             /usr/bin/env "$@"
-        ) </dev/null >/dev/null 2>/dev/null &
+        ) &
     }
 fi
 
