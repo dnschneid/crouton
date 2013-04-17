@@ -262,7 +262,7 @@ bindmount /var/run/dbus /var/host/dbus
 bindmount /var/run/shill /var/host/shill
 
 # Add a shm symlink to our new /var/run
-ln -sf /dev/shm "`fixabslinks '/var/run/'`"
+ln -sfT /dev/shm "`fixabslinks '/var/run'`/shm"
 
 # Add a /run/udev symlink for later versions of udev
 ln -sfT /dev/.udev "`fixabslinks '/var/run'`/udev"
