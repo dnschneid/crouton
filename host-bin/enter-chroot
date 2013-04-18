@@ -286,10 +286,12 @@ fi
 # and move the trap code to happen there.
 if [ -n "$BACKGROUND" ]; then
     env() {
+        local stdin=''
+        [ ! -t 0 ] && stdin="`readlink -m /dev/stdin`"
         (
             trap '' INT HUP
             trap "$TRAP" 0
-            [ -t 0 ] && exec  < /dev/null
+            [ -n "$stdin" ] && exec < "$stdin"
             [ -t 1 ] && exec  > /dev/null
             [ -t 2 ] && exec 2> /dev/null
             /usr/bin/env "$@"
