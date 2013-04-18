@@ -285,11 +285,12 @@ if [ -z "$NODOWNLOAD" ] && [ -n "$DOWNLOADONLY" -o -z "$TARBALL" ]; then
 
     # Grab the latest release of debootstrap
     echo 'Downloading latest debootstrap...' 1>&2
-    if ! wget -qO- 'http://anonscm.debian.org/gitweb/?p=d-i/debootstrap.git;a=snapshot;h=HEAD;sf=tgz' \
+    d='http://anonscm.debian.org/gitweb/?p=d-i/debootstrap.git;a=snapshot;h=HEAD;sf=tgz'
+    if ! wget -O- --no-verbose --timeout=60 -t2 "$d"  \
             | tar -C "$tmp" --strip-components=1 -zx 2>/dev/null; then
         echo 'Download from Debian gitweb failed. Trying latest release...' 1>&2
         d='http://ftp.debian.org/debian/pool/main/d/debootstrap/'
-        f="`wget -qO- "$d" \
+        f="`wget -O- --no-verbose --timeout=60 -t2 "$d" \
                 | sed -ne 's ^.*\(debootstrap_[0-9.]*.tar.gz\).*$ \1 p' \
                 | tail -n 1`"
         if [ -z "$f" ]; then
@@ -299,7 +300,7 @@ Check your internet connection or proxy settings and try again.'
         v="${f#*_}"
         v="${v%.tar.gz}"
         echo "Downloading debootstrap version $v..." 1>&2
-        if ! wget -qO- "$d$f" \
+        if ! wget -O- --no-verbose --timeout=60 -t2 "$d$f" \
                 | tar -C "$tmp" --strip-components=1 -zx 2>/dev/null; then
             error 1 'Failed to download debootstrap.'
         fi
