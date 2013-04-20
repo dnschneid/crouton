@@ -74,6 +74,9 @@ if [ -r /debootstrap ]; then
             kbd_mode -s -C "/dev/tty$tty"
         done
     fi
+else
+    # Do any pending configuration, in case of an unfortunately-timed Ctrl-C
+    dpkg --configure -a
 fi
 
 # The rest is dictated by the selected targets.
