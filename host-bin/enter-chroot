@@ -39,7 +39,7 @@ error() {
 # Process arguments
 while getopts 'bc:k:n:u:x' f; do
     case "$f" in
-    b) BACKGROUND='-y';;
+    b) BACKGROUND='y';;
     c) CHROOTS="`readlink -f "$OPTARG"`";;
     k) KEYFILE="$OPTARG";;
     n) NAME="$OPTARG";;
@@ -93,8 +93,7 @@ fi
 
 if [ -z "$CROUTON_NO_UNMOUNT" ]; then
     # Auto-unmount everything below and including the chroot upon exit
-    TRAP="sh -e '$BINDIR/unmount-chroot' \
-                            $BACKGROUND -c '$CHROOTS' '$NAME' || true;$TRAP"
+    TRAP="sh -e '$BINDIR/unmount-chroot' -yc '$CHROOTS' '$NAME' || true;$TRAP"
     trap "$TRAP" INT HUP 0
 fi
 
