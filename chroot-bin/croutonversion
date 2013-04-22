@@ -115,7 +115,9 @@ if [ -n "$CHANGES" -a ! "$VERSION" = "$latest" ]; then
         error 2 "No browser found to view $CHANGESURL"
     fi
     # Launch the webpage
-    exec "$browser" "$CHANGESURL"
+    if ! "$browser" "$CHANGESURL"; then
+        error 1 "Failed to launch browser to view $CHANGESURL"
+    fi
 fi
 
 exit 0
