@@ -63,6 +63,9 @@ apt-get -y update
 echo 'Ensuring system is up-to-date...' 1>&2
 apt-get -y dist-upgrade
 
+# On release upgrade, keyboard-configuration might be reconfigured.
+fixkeyboardmode
+
 # Auto-add new users to critical groups
 sed -i -e 's/^#*EXTRA_GROUPS=.*/EXTRA_GROUPS="audio video sudo"/' \
        -e 's/^#*ADD_EXTRA_GROUPS=.*/ADD_EXTRA_GROUPS=1/' /etc/adduser.conf

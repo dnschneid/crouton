@@ -45,6 +45,18 @@ compile() {
     return $ret
 }
 
+# Fixes the tty keyboard mode. keyboard-configuration puts tty1~6 in UTF8 mode,
+# assuming they are consoles. Since everything other than tty2 can be an X11
+# session, we need to revert those back to RAW. keyboard-configuration could be
+# reconfigured after bootstrap, dpkg --configure -a, or dist-upgrade.
+fixkeyboardmode() {
+    if hash kbd_mode 2>/dev/null; then
+        for tty in 1 3 4 5 6; do
+            kbd_mode -s -C "/dev/tty$tty"
+        done
+    fi
+}
+
 # We need all paths to do administrative things
 export PATH='/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin'
 
@@ -66,18 +78,13 @@ if [ -r /debootstrap ]; then
     /debootstrap/debootstrap --second-stage
     # Fix the /etc/resolv.conf
     mv -f /etc/resolv.conf.save /etc/resolv.conf
-    # Fix the tty keyboard mode. keyboard-configuration puts tty1~6 in UTF8
-    # mode, assuming they are consoles. Since everything other than tty2 can be
-    # an X11 session, we need to revert those back to RAW.
-    if hash kbd_mode 2>/dev/null; then
-        for tty in 1 3 4 5 6; do
-            kbd_mode -s -C "/dev/tty$tty"
-        done
-    fi
 else
     # Do any pending configuration, in case of an unfortunately-timed Ctrl-C
     dpkg --configure -a
 fi
+
+# Fix the keyboard mode early on (this will be called again after dist-upgrade).
+fixkeyboardmode
 
 # The rest is dictated by the selected targets.
 # Note that we install targets before adding the user, since targets may affect
