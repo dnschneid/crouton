@@ -65,6 +65,8 @@ Options:
                 the chroot as if it were a target in the $APPLICATION bundle.
     -u          If the chroot exists, runs the preparation step again.
                 You can use this to install new targets or update old ones.
+                Passing this parameter twice will force an update even if the
+                specified release does not match the one already installed.
     -V          Prints the version of the installer to stdout.
 
 Be aware that dev mode is inherently insecure, even if you have a strong
@@ -96,7 +98,7 @@ while getopts 'a:def:k:m:n:p:P:r:s:t:T:uV' f; do
     r) RELEASE="$OPTARG";;
     t) TARGETS="$TARGETS${TARGETS:+","}$OPTARG";;
     T) TARGETFILE="$OPTARG";;
-    u) UPDATE='y';;
+    u) UPDATE="$((UPDATE+1))";;
     V) echo "$APPLICATION: version ${VERSION:-"git"}"; exit 0;;
     \?) error 2 "$USAGE";;
     esac
@@ -250,7 +252,15 @@ Either delete it, specify a different name (-n), or specify -u to update it."
     # Sanity-check the release if we're updating
     if [ -n "$NODOWNLOAD" ] \
             && ! grep -q "=$RELEASE\$" "$CHROOT/etc/lsb-release"; then
-        error 1 "Release doesn't match! Please correct the -r option."
+        if [ ! "$UPDATE" = 2 ]; then
+            error 1 \
+"Release doesn't match! Please correct the -r option, or specify a second -u to
+change the release, upgrading the chroot (dangerous)."
+        else
+            echo "WARNING: Changing the chroot release to $RELEASE." 2>&1
+            echo "Press Control-C to abort; upgrade will continue in 5 seconds." 1>&2
+            sleep 5
+        fi
     fi
 
     mkdir -p "$BIN"
