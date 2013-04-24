@@ -266,6 +266,39 @@ change the release, upgrading the chroot (dangerous)."
     mkdir -p "$BIN"
 fi
 
+# Check and update dev boot settings. This may fail on old systems; ignore it.
+if [ -z "$DOWNLOADONLY" ] && \
+    boot="`crossystem dev_boot_usb dev_boot_legacy dev_boot_signed_only`"; then
+    # db_usb and db_legacy be off, db_signed_only should be on.
+    echo "$boot" | {
+        read usb legacy signed
+        suggest=''
+        if [ ! "$usb" = 0 ]; then
+            echo "WARNING: USB booting is enabled; consider disabling it." 1>&2
+            suggest="$suggest dev_boot_usb=0"
+        fi
+        if [ ! "$legacy" = 0 ]; then
+            echo "WARNING: Legacy booting is enabled; consider disabling it." 1>&2
+            suggest="$suggest dev_boot_legacy=0"
+        fi
+        if [ -n "$suggest" ]; then
+            if [ ! "$signed" = 1 ]; then
+                echo "WARNING: Signed boot verification is disabled; consider enabling it." 1>&2
+                suggest="$suggest dev_boot_signed_only=1"
+            fi
+            echo "You can use the following command: sudo crossystem$suggest" 1>&2
+            sleep 5
+        elif [ ! "$signed" = 1 ]; then
+            # Only enable signed booting if the user hasn't enabled alternate
+            # boot options, since those are opt-in.
+            echo "WARNING: Signed boot verification is disabled; enabling it for security." 1>&2
+            echo "You can disable it again using: sudo crossystem dev_boot_signed_only=0" 1>&2
+            crossystem dev_boot_signed_only=1 || true
+            sleep 2
+        fi
+    }
+fi
+
 # Unpack the tarball if appropriate
 if [ -z "$NODOWNLOAD" -a -z "$DOWNLOADONLY" ]; then
     echo "Installing $RELEASE-$ARCH chroot to $CHROOT" 1>&2
