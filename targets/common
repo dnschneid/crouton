@@ -46,17 +46,17 @@ elif [ ! "$TARGETS" = 'check' ]; then
     # Copy in requested items from host-bin and chroot-bin
     for f in $HOSTBIN; do
         echo "Installing $f into the host..." 1>&2
-        $SIMULATE cp -f "$HOSTBINDIR/$f" "$BIN/"
+        $SIMULATE cp -fP "$HOSTBINDIR/$f" "$BIN/"
         $SIMULATE chmod 755 "$BIN/$f"
     done
     for f in $CHROOTBIN; do
         echo "Installing $f into the chroot..." 1>&2
-        $SIMULATE cp -f "$CHROOTBINDIR/$f" "$CHROOT/usr/local/bin/"
+        $SIMULATE cp -fP "$CHROOTBINDIR/$f" "$CHROOT/usr/local/bin/"
         $SIMULATE chmod 755 "$CHROOT/usr/local/bin/$f"
     done
     for f in $CHROOTETC; do
         echo "Installing $f into the chroot..." 1>&2
-        $SIMULATE cp -f "$CHROOTETCDIR/$f" "$CHROOT/etc/crouton/"
+        $SIMULATE cp -fP "$CHROOTETCDIR/$f" "$CHROOT/etc/crouton/"
         $SIMULATE chmod 644 "$CHROOT/etc/crouton/$f"
     done
     # Print out the target file below the ### line.
