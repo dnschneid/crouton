@@ -63,6 +63,10 @@ apt-get -y update
 echo 'Ensuring system is up-to-date...' 1>&2
 apt-get -y dist-upgrade
 
+# Generate and set default locale
+locale-gen --lang en
+update-locale LANG=en_US.UTF-8
+
 # On release upgrade, keyboard-configuration might be reconfigured.
 fixkeyboardmode
 
