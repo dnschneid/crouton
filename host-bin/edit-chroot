@@ -1,0 +1,232 @@
+#!/bin/sh -e
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+APPLICATION="${0##*/}"
+BINDIR="`dirname "$0"`"
+CHROOTS="`readlink -f "\`dirname "$0"\`/../chroots"`"
+DELETE=''
+ENCRYPT=''
+KEYFILE=''
+MOVE=''
+YES=''
+YESPARAM=''
+
+USAGE="$APPLICATION [options] name [...]
+
+Edits a chroot.
+
+Options:
+    -c CHROOTS  Directory the chroots are in. Default: $CHROOTS
+    -d          Deletes the chroot. Assumed if run as delete-chroot.
+    -e          If the chroot is not encrypted, encrypt it.
+                If it is encrypted, change the encryption passphrase.
+    -k KEYFILE  File or directory to store the (encrypted) encryption keys in.
+                If unspecified, the keys will be stored in the chroot if doing a
+                first encryption, or left in place on existing chroots.
+                If specified, keyfile will be moved. Specify a dash - as the
+                KEYFILE to move the key back into the chroot.
+                If multiple chroots are specified, KEYFILE must either be -
+                or a directory.
+    -m DEST     Moves a chroot. Specify a new name to keep it in the same
+                directory, or an absolute path to move it entirely.
+                DEST can be a directory, in which case it must end in a slash.
+                If multiple chroots are specified, DEST must be a directory.
+    -y          Do all actions without confirmation."
+
+# Function to exit with exit code $1, spitting out message $@ to stderr
+error() {
+    local ecode="$1"
+    shift
+    echo "$*" 1>&2
+    exit "$ecode"
+}
+
+# Process arguments
+while getopts 'c:dek:m:y' f; do
+    case "$f" in
+    c) CHROOTS="`readlink -f "$OPTARG"`";;
+    d) DELETE='y';;
+    e) ENCRYPT='y';;
+    k) KEYFILE="$OPTARG";;
+    m) MOVE="$OPTARG";;
+    y) YES='a'; YESPARAM='-y';;
+    \?) error 2 "$USAGE";;
+    esac
+done
+shift "$((OPTIND-1))"
+
+# If the executable name is delete*, assume DELETE.
+if [ ! "${APPLICATION#delete}" = "$APPLICATION" ]; then
+    DELETE='y'
+fi
+
+# Need at least one chroot listed
+if [ $# = 0 ]; then
+    error 2 "$USAGE"
+fi
+
+# Cannot specify delete with anything else.
+if [ -n "$DELETE" -a -n "$ENCRYPT$KEYFILE$MOVE" ]; then
+    error 2 "$USAGE"
+fi
+
+# If multiple chroots are listed, KEYFILE and MOVE must be empty or directories.
+if [ $# -gt 1 ] && [ -f "$KEYFILE" -a ! "$KEYFILE" = '-' ]; then
+    error 2 "Multiple chroots specified, but $KEYFILE is not a directory."
+elif [ $# -gt 1 ] && [ "${MOVE%/}" = "$MOVE" ]; then
+    error 2 "Multiple chroots specified, but $MOVE is not a directory."
+fi
+
+# We need to run as root
+if [ ! "$USER" = root -a ! "$UID" = 0 ]; then
+    error 2 "$APPLICATION must be run as root."
+fi
+
+# Make sure we always exit with echo on the tty.
+TRAP="stty echo 2>/dev/null || true;$TRAP"
+trap "$TRAP" INT HUP 0
+
+# Returns the mountpoint a path is on. The path doesn't need to exist.
+# $1: the path to check
+# outputs on stdout
+getmountpoint() {
+    mp="`readlink -m "$1"`"
+    while ! stat -c '%m' "$mp" 2>/dev/null; do
+        mp="${mp%/*}"
+    done
+}
+
+# Process each chroot
+for NAME in "$@"; do
+    if [ -z "$NAME" ]; then
+        continue
+    fi
+    CHROOT="$CHROOTS/$NAME"
+
+    # Unmount the chroot. This also checks for existence.
+    sh -e "$BINDIR/unmount-chroot" $YESPARAM -c "$CHROOTS" "$NAME"
+
+    # Delete the chroot?
+    if [ -n "$DELETE" ]; then
+        # Confirm deletion
+        if [ "${YES#[Aa]}" = "$YES" ]; then
+            echo -n "Delete $CHROOT? [a/y/N] " 1>&2
+            read YES
+            if [ "${YES#[AaYy]}" = "$YES" ]; then
+                 error 2 "Aborting deletion of $CHROOT"
+            fi
+        fi
+        # Delete the chroot
+        echo "Deleting $CHROOT" 1>&2
+        rm -rf --one-file-system "$CHROOT"
+        continue
+    fi
+
+    # Update the keyfile
+    if [ -n "$KEYFILE" ]; then
+        # Find the current keyfile
+        oldkeyfile="$CHROOT/.ecryptfs"
+        if [ -f "$oldkeyfile" ]; then
+            header="`head -n1 "$oldkeyfile"`"
+            if [ -n "$header" ]; then
+                oldkeyfile="$header"
+            fi
+        fi
+        if [ "$KEYFILE" = '-' ]; then
+            KEYFILE="$CHROOT/.ecryptfs"
+        fi
+        if [ "${KEYFILE#/}" = "$KEYFILE" ]; then
+            KEYFILE="$PWD/$KEYFILE"
+        fi
+        if [ -d "$KEYFILE" -o ! "${KEYFILE%/}" = "$KEYFILE" ]; then
+            KEYFILE="${KEYFILE%/}/$NAME"
+        fi
+        oldkeyfile="`readlink -m "$oldkeyfile"`"
+        keyfilecanon="`readlink -m "$KEYFILE"`"
+        if [ ! -f "$oldkeyfile" ]; then
+            # If there is no old keyfile, make sure we've requested encryption.
+            if [ -z "$ENCRYPT" ]; then
+                error 1 "Old key file not found"
+            fi
+        elif [ ! "$oldkeyfile" = "$keyfilecanon" ]; then
+            # Write the new keyfile before removing the old.
+            if ! mkdir -p "`dirname "$KEYFILE"`"; then
+                error 1 "Unable to create directory for $KEYFILE"
+            fi
+            echo "Moving key file from $oldkeyfile to $KEYFILE" 1>&2
+            (echo; tail -n+2 "$oldkeyfile") > "$KEYFILE"
+            # Remove old keyfile before writing .ecryptfs, as it may be the same
+            rm -f "$oldkeyfile"
+            if [ ! "`readlink -m "$CHROOT/.ecryptfs"`" = "$KEYFILE" ]; then
+                echo "$KEYFILE" > "$CHROOT/.ecryptfs"
+            fi
+        elif [ -z "$ENCRYPT$MOVE" ]; then
+            echo "Keyfile is already located at $KEYFILE" 1>&2
+        fi
+    fi
+
+    # Encrypt/rewrap the chroot
+    if [ -n "$ENCRYPT" ]; then
+        # Use mount-chroot to do the heavy lifting
+        unmount="sh -e '$BINDIR/unmount-chroot' -y -c '$CHROOTS' '$NAME'"
+        trap "$unmount;$TRAP" INT HUP 0
+        if [ -n "$KEYFILE" ]; then
+            sh -e "$BINDIR/mount-chroot" -ee -k "$KEYFILE" -c "$CHROOTS" "$NAME"
+        else
+            sh -e "$BINDIR/mount-chroot" -ee -c "$CHROOTS" "$NAME"
+        fi
+        trap "$TRAP" INT HUP 0
+        eval "$unmount"
+    fi
+
+    # Move the chroot if requested
+    if [ -n "$MOVE" ]; then
+        target="$MOVE"
+        if [ "${target##*/}" = "$target" ]; then
+            # No slashes in the path. Assume renaming.
+            target="$CHROOTS/$target"
+        elif [ ! "${target%/}" = "$target" ]; then
+            # Ends in a slash; append name.
+            target="$target$NAME"
+        fi
+        if [ -e "$target" ]; then
+            # Can't tell if the destination is a directory or a chroot that
+            # already exists; be safe and assume it was a mistake.
+            error 2 "$target already exists"
+        fi
+        # Check if we're changing filesystems, because we should cp+rm for
+        # safety. We don't do this when encrypting a chroot (see mount-chroot),
+        # because that would require 2x the space on one device. When switching
+        # filesystems like this, however, that isn't a concern.
+        if [ ! "`getmountpoint "$target"`" = "`getmountpoint "$CHROOT"`" ]; then
+            echo "Moving $CHROOT across filesystems to $target" 1>&2
+            echo 'This will take a while.' 1>&2
+            echo "If the operation gets interrupted, you can safely delete $target" 1>&2
+            # Confirm long operation
+            if [ "${YES#[Aa]}" = "$YES" ]; then
+                echo -n "Are you sure you want to continue? [a/y/N] " 1>&2
+                read YES
+                if [ "${YES#[AaYy]}" = "$YES" ]; then
+                     error 2 "Aborting move of $CHROOT"
+                fi
+            fi
+            if ! mkdir -p "`dirname "$target"`"; then
+                error 1 "Unable to create directory for $target"
+            fi
+            echo "Copying to $target..." 1>&2
+            cp -a --one-file-system "$CHROOT" "$target"
+            echo "Deleting old $CHROOT..." 1>&2
+            rm -rf --one-file-system "$CHROOT"
+        else
+            if ! mkdir -p "`dirname "$target"`"; then
+                error 1 "Unable to create directory for $target"
+            fi
+            echo "Moving $CHROOT to $target" 1>&2
+            mv "$CHROOT" "$target"
+        fi
+    fi
+done
+
+exit 0
