@@ -17,6 +17,7 @@ Mounts one or more encrypted chroots into a root-only directory.
 Options:
     -c CHROOTS  Directory the chroots are in. Default: $CHROOTS
     -e          If the chroot is not encrypted, encrypt it.
+                If specified twice, prompt to change the encryption passphrase.
     -k KEYFILE  File or directory to store the (encrypted) encryption keys in.
                 If unspecified, the keys will be stored in the chroot if doing a
                 first encryption, or auto-detected on existing chroots.
@@ -35,7 +36,7 @@ error() {
 while getopts 'c:ek:np' f; do
     case "$f" in
     c) CHROOTS="`readlink -f "$OPTARG"`";;
-    e) ENCRYPT='y';;
+    e) ENCRYPT="$((ENCRYPT+1))";;
     k) KEYFILE="$OPTARG";;
     n) CREATE='y';;
     p) PRINT='y';;
@@ -57,6 +58,31 @@ fi
 # Make sure we always exit with echo on the tty.
 TRAP="stty echo 2>/dev/null || true;$TRAP"
 trap "$TRAP" INT HUP 0
+
+# Function to prompt the user for a passphrase. Sets $passphrase.
+promptNewPassphrase() {
+    echo -n "Choose an encryption passphrase for $NAME: " 1>&2
+    stty -echo
+    while [ -z "$passphrase" ]; do
+        read passphrase
+        if [ -z "$passphrase" ]; then
+            echo 1>&2
+            echo -n 'You must specify a passphrase: ' 1>&2
+            continue
+        fi
+        echo 1>&2
+        echo -n 'Please confirm your passphrase: ' 1>&2
+        read confirmation
+        if [ ! "$confirmation" = "$passphrase" ]; then
+            passphrase=''
+            echo 1>&2
+            echo -n 'Passphrases do not match; try again: ' 1>&2
+        fi
+        confirmation=''
+    done
+    stty echo
+    echo 1>&2
+}
 
 # Mount each chroot
 for NAME in "$@"; do
@@ -141,27 +167,8 @@ for NAME in "$@"; do
             if [ -e "$KEYFILE" ]; then
                 error 1 "Encryption key file $KEYFILE already exists. Refusing to overwrite!"
             fi
-            echo -n "Choose an encryption passphrase for $NAME: " 1>&2
-            stty -echo
-            while [ -z "$passphrase" ]; do
-                read passphrase
-                if [ -z "$passphrase" ]; then
-                    echo 1>&2
-                    echo -n 'You must specify a passphrase: ' 1>&2
-                    continue
-                fi
-                echo 1>&2
-                echo -n 'Please confirm your passphrase: ' 1>&2
-                read confirmation
-                if [ ! "$confirmation" = "$passphrase" ]; then
-                    passphrase=''
-                    echo 1>&2
-                    echo -n 'Passphrases do not match; try again: ' 1>&2
-                fi
-                confirmation=''
-            done
-            stty echo
-            echo 1>&2
+
+            promptNewPassphrase
 
             echo -n 'Generating keys (move the mouse to generate entropy)...' 1>&2
             key="`hexdump -v -n32 -e'"%02x"' /dev/random`"
@@ -199,9 +206,25 @@ $passphrase" | ecryptfs-wrap-passphrase "$wrappedfnek" -
             # Extract wrapped keys from keyfile
             tail -c 160 "$KEYFILE" | head -c 80 > "$wrappedkey"
             tail -c 80 "$KEYFILE" > "$wrappedfnek"
+
+            # Change the passphrase if requested
+            if [ "${ENCRYPT:-0}" -ge 2 ]; then
+                oldpassphrase="$passphrase"
+                unset passphrase
+                promptNewPassphrase
+
+                echo "Applying passphrase change" 1>&2
+                echo -n "$oldpassphrase
+$passphrase" | ecryptfs-rewrap-passphrase "$wrappedkey" -
+                echo -n "$oldpassphrase
+$passphrase" | ecryptfs-rewrap-passphrase "$wrappedfnek" -
+                echo | cat - "$wrappedkey" "$wrappedfnek" > "$KEYFILE"
+
+                unset oldpassphrase
+            fi
         fi
 
-        # Add keys to keychain and extract 
+        # Add keys to keychain and extract
         keysig="`echo -n "$passphrase" \
             | ecryptfs-unwrap-passphrase "$wrappedkey" - \
             | ecryptfs-add-passphrase - \
