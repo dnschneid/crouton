@@ -65,8 +65,8 @@ apt-get -y dist-upgrade
 
 # Generate and set default locale
 if [ ! -f "/etc/default/locale" ]; then
-  locale-gen --lang en
-  update-locale LANG=en_US.UTF-8
+    locale-gen --lang en_US.UTF-8
+    update-locale LANG=en_US.UTF-8
 fi
 
 # On release upgrade, keyboard-configuration might be reconfigured.
