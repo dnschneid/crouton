@@ -11,4 +11,10 @@ keysym Down = Down Down Page_Down Page_Down
 keysym Left = Left Left Home Home
 keysym Right = Right Right End End
 
+! This one will break on non-US keyboard
+keysym period = period greater Insert Insert
+
+! Capslock
+keysym Alt_L = Alt_L Meta_L Caps_Lock Caps_Lock
+keysym Alt_R = Alt_R Meta_R Caps_Lock Caps_Lock
 
