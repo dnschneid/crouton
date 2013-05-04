@@ -1,0 +1,14 @@
+! Modmap for Samsung Chromebook ARM
+! FIXME: Does this apply for all models? Or should it be model specific?
+
+! Map Search key as Mode_switch
+keycode 0x85 = Mode_switch
+
+! Map Search+arrows and Search+backspace
+keysym BackSpace = BackSpace BackSpace Delete Delete
+keysym Up = Up Up Page_Up Page_Up
+keysym Down = Down Down Page_Down Page_Down
+keysym Left = Left Left Home Home
+keysym Right = Right Right End End
+
+

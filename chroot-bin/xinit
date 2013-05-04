@@ -52,6 +52,10 @@ if [ -n "$hostxauth" ]; then
     queuelaunch keylaunch
 fi
 
+if [ -f '/etc/crouton/xmodmap' ]; then
+    queuelaunch xmodmap /etc/crouton/xmodmap
+fi
+
 # Launch touchegg if it is requested.
 toucheggconf='/etc/touchegg.conf'
 if [ -f "$toucheggconf" ]; then
