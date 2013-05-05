@@ -1,9 +1,0 @@
-# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
-# Use of this source code is governed by a BSD-style license that can be
-# found in the LICENSE file.
-
-# Replicates ratpoison shortcuts inside of Xephyr for when Xephyr grabs all keys
-
-key=***F1:xte 'keyup F1'; host-x11 ratpoison -c prev
-key=***F2:xte 'keyup F2'; host-x11 ratpoison -c next
-key=***Escape:xte 'keyup Escape'; host-x11 ratpoison -c 'readkey root'
