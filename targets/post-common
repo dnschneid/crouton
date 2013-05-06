@@ -20,7 +20,7 @@ if [ ! -f /etc/timezone ]; then
 fi
 # /var/host/timezone/localtime is itself a symbolic link, but as long as the
 # zoneinfo packages in the chroot and Chrome OS are the same, it should be fine
-ln -sf /var/host/timezone/localtime /etc/localtime
+ln -sfT /var/host/timezone/localtime /etc/localtime
 
 # Add the primary user
 if ! grep -q ":1000:" /etc/passwd; then
