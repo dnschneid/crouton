@@ -14,10 +14,8 @@ HOSTBIN='enter-chroot delete-chroot mount-chroot unmount-chroot'
 
 ### Append to prepare.sh:
 # Link the timezone to Chrome OS
-# Make sure /etc/timezone exists. It is updated in enter-chroot
-if [ ! -f /etc/timezone ]; then
-    touch /etc/timezone
-fi
+# Remove /etc/timezone, which is normally not needed
+rm -f /etc/timezone
 # /var/host/timezone/localtime is itself a symbolic link, but as long as the
 # zoneinfo packages in the chroot and Chrome OS are the same, it should be fine
 ln -sfT /var/host/timezone/localtime /etc/localtime

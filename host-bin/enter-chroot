@@ -202,30 +202,6 @@ fi
 # Soft-link resolv.conf so that updates are automatically propagated
 ln -sf '/var/host/shill/resolv.conf' "$CHROOT/etc/resolv.conf"
 
-# Update /etc/timezone to current time zone if it exists, and if /etc/localtime
-# is linked to Chrome OS localtime.
-# - /etc/timezone seems to be Ubuntu/Debian specific, so it might not be
-#   necessary to update it. We do it as a precautionary measure.
-# - Also, /etc/timezone will not get updated if the timezone is changed while
-#   the chroot is running.
-if [ -f $CHROOT/etc/timezone -a \
-     x`readlink $CHROOT/etc/localtime` = x"/var/host/timezone/localtime" ]; then
-    # Extract zoneinfo from link
-    LOCALTIME=`readlink -f /var/lib/timezone/localtime || true`
-    TIMEZONE=${LOCALTIME#/usr/share/zoneinfo/}
-    if [ x"$LOCALTIME" = x"$TIMEZONE" ]; then
-        echo "WARNING: /var/lib/timezone/localtime is not a symlink to a
-                                file in /usr/share/zoneinfo/ ($LOCALTIME)" 1>&2
-        echo "         Not updating /etc/timezone" 1>&2
-    else
-        # Only update if necessary
-        if [ x`cat $CHROOT/etc/timezone` != x"$TIMEZONE" ]; then
-            echo "Updating /etc/timezone to $TIMEZONE..." 1>&2
-            echo $TIMEZONE > $CHROOT/etc/timezone
-        fi
-    fi
-fi
-
 # Follows and fixes dangerous symlinks, returning the canonicalized path.
 fixabslinks() {
     local p="$CHROOT/$1" c
