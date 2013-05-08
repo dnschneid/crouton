@@ -14,14 +14,14 @@ HOSTBIN='enter-chroot delete-chroot mount-chroot unmount-chroot'
 
 ### Append to prepare.sh:
 
-# Link the timezone to Chrome OS
+# Link the timezone to Chromium OS
 # Remove /etc/timezone: this tells Ubuntu/Debian that we are managing the
 # content of /etc/localtime manually, and that it should not erase the symbolic
 # link upon update, unless "dpkg-reconfigure tzdata" is called explicitly.
 rm -f /etc/timezone
 
 # /var/host/timezone/localtime is itself a symbolic link, but as long as the
-# zoneinfo packages in the chroot and Chrome OS are the same, it should be fine
+# zoneinfo packages in the chroot and Chromium OS are the same, it'll be fine
 ln -sfT /var/host/timezone/localtime /etc/localtime
 
 # Add the primary user

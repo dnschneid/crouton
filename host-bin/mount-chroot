@@ -107,7 +107,7 @@ for NAME in "$@"; do
 
         # Ensure that there's a root password set before decrypting the chroot
         if [ ! -f '/mnt/stateful_partition/etc/devmode.passwd' ]; then
-            echo 'You must have a root password in ChromeOS to mount encrypted chroots.' 1>&2
+            echo 'You must have a root password in Chromium OS to mount encrypted chroots.' 1>&2
             chromeos-setdevpasswd
         fi
 
