@@ -71,7 +71,3 @@ if [ ! -f '/etc/default/locale' ]; then
     locale-gen --lang en_US.UTF-8
     update-locale LANG=en_US.UTF-8
 fi
-
-# Auto-add new users to critical groups
-sed -i -e 's/^#*EXTRA_GROUPS=.*/EXTRA_GROUPS="audio video sudo"/' \
-       -e 's/^#*ADD_EXTRA_GROUPS=.*/ADD_EXTRA_GROUPS=1/' /etc/adduser.conf

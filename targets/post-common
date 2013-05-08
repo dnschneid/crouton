@@ -25,7 +25,7 @@ rm -f /etc/timezone
 ln -sfT /var/host/timezone/localtime /etc/localtime
 
 # Add the primary user
-if ! grep -q ":1000:" /etc/passwd; then
+if ! grep -q ':1000:' /etc/passwd; then
     while ! echo "$username" | grep -q '^[a-z][-a-z0-9_]*$'; do
         if [ -n "$username" ]; then
             echo 'Username must be lowercase letters, numbers, or dashes.' 1>&2
@@ -33,7 +33,15 @@ if ! grep -q ":1000:" /etc/passwd; then
         echo -n 'Please specify a username for the primary user: ' 1>&2
         read username junk
     done
-    adduser "$username"
+    useradd -u 1000 -G audio,video,sudo -s '/bin/bash' -m "$username"
+    tries=0
+    while ! passwd "$username" && [ "$tries" -lt 3 ]; do
+        tries="$((tries+1))"
+    done
+    if [ "$tries" = 3 ]; then
+        echo \
+"Password left unset. To set a password, inside the chroot run: passwd $username" 1>&2
+    fi
 fi
 
 echo 'Cleaning up' 1>&2
