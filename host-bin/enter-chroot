@@ -203,19 +203,14 @@ fi
 ln -sf '/var/host/shill/resolv.conf' "$CHROOT/etc/resolv.conf"
 
 # Sanity check of the timezone setting
-if [ "`readlink $CHROOT/etc/localtime`" = "/var/host/timezone/localtime" ]; then
-    LOCALTIME=`readlink /var/lib/timezone/localtime || true`
-
-    if [ -z "$LOCALTIME" ]; then
-        echo "WARNING: the timezone configuration in Chromium OS seems invalid \
-(/var/lib/timezone/localtime is not a symbolic link)." 1>&2
-        echo "To set the chroot's timezone, run the following (for Ubuntu/Debian):
-sudo dpkg-reconfigure tzdata" 1>&2
-    elif [ ! -e "$CHROOT$LOCALTIME" ]; then
-        echo "WARNING: the timezone selected in Chromium OS does not exist \
-inside the chroot ($LOCALTIME)." 1>&2
-        echo "To set the chroot's timezone, run the following (for Ubuntu/Debian): 
-sudo dpkg-reconfigure tzdata" 1>&2
+localtime="$CHROOT/etc/localtime"
+hostlocaltime='/var/host/timezone/localtime'
+if [ -h "$localtime" ] && [ "`readlink "$localtime"`" = "$hostlocaltime" ]; then
+    timezone="`readlink -m /var/lib/timezone/localtime || true`"
+    if [ -z "$timezone" -o ! -e "$CHROOT$LOCALTIME" ]; then
+        echo "\
+WARNING: the timezone selected in Chromium OS does not exist inside the chroot.
+To set the chroot's timezone, run the following: sudo dpkg-reconfigure tzdata" 1>&2
     fi
 fi
 
