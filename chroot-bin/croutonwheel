@@ -58,7 +58,7 @@ while ! xprop -root _NET_WM_NAME | grep -q 'ratpoison'; do sleep .1; done 2>&-
 
 # Fork a process that hides the xinput window as soon as possible.
 # The xinput window is the only focusable window with no name.
-xev -root <&- | awk -W interactive '
+xev -root <&- | mawk -W interactive '
     m {
         id = substr($4, 1, length($4) - 1)
         if (system("xprop WM_NAME _NET_WM_NAME -id " id " \
@@ -80,7 +80,7 @@ while ! windows="`/usr/bin/ratpoison -c 'windows %%'`" || [ "$windows" = % ]; do
 done
 
 # Get the aura root window number (hex)
-aura="`xwininfo -root -children | awk '/aura_root/ {print $1}'`"
+aura="`xwininfo -root -children | mawk '/aura_root/ {print $1}'`"
 
 # Monitor xinput2 events, reacting only to scroll events (axes 2 and 3).
 # Accumulate the x and y scrolls, but reduce the acceleration so it doesn't go
@@ -99,7 +99,7 @@ aura="`xwininfo -root -children | awk '/aura_root/ {print $1}'`"
     while sleep 5; do
         echo 'ping'
     done
-} <&- | awk -W interactive '
+} <&- | mawk -W interactive '
     /^ping$/ {
         print "sleep 0"
     }
