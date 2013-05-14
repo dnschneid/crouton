@@ -97,7 +97,7 @@ checkusage() {
         fi
         pid="${root#/proc/}"
         pid="${pid%/root}"
-        ppid="`ps -p "$pid" -o ppid= 2>/dev/null`"
+        ppid="`ps -p "$pid" -o ppid= 2>/dev/null | sed 's/ //g'`"
         if [ -z "$ppid" ] || [ "$ppid" -eq 1 ]; then
             continue
         fi
