@@ -1,0 +1,14 @@
+#!/bin/sh -e
+
+DESCRIPTION='Add support for Chromebook keyboard in xkb.'
+. "${TARGETSDIR:="$PWD"}/common"
+
+### Append to prepare.sh:
+apt-get -y install wget
+
+# Download patched version of xkb-data.
+# This version is a little ahead for "precise", but it does not matter
+wget 'https://docs.google.com/uc?export=download&id=0BySjVRWYC3j1bmQ2XzlZVWJNOW8' -O /tmp/xkb-data_2.5.1-3ubuntu99_all.deb
+dpkg -i /tmp/xkb-data_2.5.1-3ubuntu99_all.deb
+rm -f /tmp/xkb-data_2.5.1-3ubuntu99_all.deb
+

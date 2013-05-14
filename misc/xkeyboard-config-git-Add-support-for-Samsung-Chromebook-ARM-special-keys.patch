@@ -1,0 +1,181 @@
+From 9758aa109f3824dac4240442d88d9d035a1e4214 Mon Sep 17 00:00:00 2001
+From: Nicolas Boichat <nicolas@boichat.ch>
+Date: Mon, 13 May 2013 22:56:18 +0800
+Subject: [PATCH] Add support for Samsung Chromebook ARM special keys.
+
+For example, we map Search+arrows to Page Up/Down/Home/End. This is
+done at the browser level in Chrome OS (i.e., not at the hardware
+or keymap level).
+
+We do this by adding an overlay.
+
+We are loading the symbols chromebook(overlay_before) before the
+layout is loaded. This is to make sure that the Search+. always
+maps to Insert, but allowing the layout to change the mapping
+of that key if necessary.
+
+Finally, chromebook(overlay_after) remaps <LWIN> (the Search key)
+to the overlay latch.
+
+An additional mapping is needed to make sure the the Super_R is
+not sent when the Search key is released (this is a little strange,
+and I'm not sure why this happens).
+---
+ compat/Makefile.am    |  2 +-
+ compat/chromebook     |  8 ++++++++
+ rules/base.ml1_c.part |  1 +
+ rules/base.ml1_s.part |  1 +
+ rules/base.ml_c.part  |  1 +
+ rules/base.ml_s.part  |  1 +
+ rules/base.xml.in     |  7 +++++++
+ rules/evdev.m_s.part  |  1 +
+ symbols/Makefile.am   |  2 +-
+ symbols/chromebook    | 30 ++++++++++++++++++++++++++++++
+ 10 files changed, 52 insertions(+), 2 deletions(-)
+ create mode 100644 compat/chromebook
+ create mode 100644 symbols/chromebook
+
+diff --git a/compat/Makefile.am b/compat/Makefile.am
+index e2026af..d4181b3 100644
+--- a/compat/Makefile.am
++++ b/compat/Makefile.am
+@@ -1,7 +1,7 @@
+ compatdir = $(xkb_base)/compat
+ 
+ compat_DATA = \
+-accessx basic caps complete \
++accessx basic caps chromebook complete \
+ iso9995 \
+ japan ledcaps \
+ lednum ledscroll level5 \
+diff --git a/compat/chromebook b/compat/chromebook
+new file mode 100644
+index 0000000..8e8c45c
+--- /dev/null
++++ b/compat/chromebook
+@@ -0,0 +1,8 @@
++// Overlay1_Enable is a latch key for overlay1
++
++default partial xkb_compatibility "overlay"  {
++    interpret Overlay1_Enable+AnyOfOrNone(all) {
++        action= SetControls(controls=Overlay1);
++    };
++};
++
+diff --git a/rules/base.ml1_c.part b/rules/base.ml1_c.part
+index f59e596..24dc091 100644
+--- a/rules/base.ml1_c.part
++++ b/rules/base.ml1_c.part
+@@ -1 +1,2 @@
++  chromebook	*		=	complete+chromebook
+   *		*		=	complete
+diff --git a/rules/base.ml1_s.part b/rules/base.ml1_s.part
+index 1a990b0..f2d125a 100644
+--- a/rules/base.ml1_s.part
++++ b/rules/base.ml1_s.part
+@@ -11,4 +11,5 @@
+   nokiarx51	cz(qwerty)		=	nokia_vndr/rx-51(common)+nokia_vndr/rx-51(cz_qwerty)
+   nokiarx51	*			=	nokia_vndr/rx-51(common)+nokia_vndr/rx-51(%l[1]%_v[1])
+  $thinkpads	br			=	pc+%l[1](thinkpad)
++ chromebook	*			=	pc+chromebook(overlay_before)+%l[1]%(v[1])
+   *		*			=	pc+%l[1]%(v[1])
+diff --git a/rules/base.ml_c.part b/rules/base.ml_c.part
+index 793ebe1..272f35a 100644
+--- a/rules/base.ml_c.part
++++ b/rules/base.ml_c.part
+@@ -2,4 +2,5 @@
+   *		jp		=	complete+japan
+   olpc          *               =       olpc
+   olpcm         *               =       olpc
++  chromebook	*		=	complete+chromebook
+   *		*		=	complete
+diff --git a/rules/base.ml_s.part b/rules/base.ml_s.part
+index 76c05d2..d394fec 100644
+--- a/rules/base.ml_s.part
++++ b/rules/base.ml_s.part
+@@ -33,5 +33,6 @@
+   ws011sh	*			=	pc+sharp_vndr/ws011sh(basic)
+   ws020sh	*			=	pc+sharp_vndr/ws020sh(basic)
+   htcdream	$htcdreamlayouts	=	%l(htcdream)
++  chromebook	*			=	pc+chromebook(overlay_before)+%l%(v)
+   *	   	$nonlatin		=	pc+us+%l%(v):2
+   *		*			=	pc+%l%(v)
+diff --git a/rules/base.xml.in b/rules/base.xml.in
+index 8e89aa1..b838058 100644
+--- a/rules/base.xml.in
++++ b/rules/base.xml.in
+@@ -275,6 +275,13 @@
+     </model>
+     <model>
+       <configItem>
++        <name>chromebook</name>
++        <description>Chromebook</description>
++        <vendor>Google</vendor>
++      </configItem>
++    </model>
++    <model>
++      <configItem>
+         <name>compaqeak8</name>
+         <_description>Compaq Easy Access Keyboard</_description>
+         <vendor>Compaq</vendor>
+diff --git a/rules/evdev.m_s.part b/rules/evdev.m_s.part
+index 5a6416b..3dcf538 100644
+--- a/rules/evdev.m_s.part
++++ b/rules/evdev.m_s.part
+@@ -1,3 +1,4 @@
+   $evdevkbds    =   +inet(evdev)+inet(%m)
+   applealu_jis  =   +inet(evdev)+macintosh_vndr/jp(alujiskeys)
++  chromebook	=   +inet(evdev)+chromebook(overlay_after)
+   *             =   +inet(evdev)
+diff --git a/symbols/Makefile.am b/symbols/Makefile.am
+index 509a549..9ea0740 100644
+--- a/symbols/Makefile.am
++++ b/symbols/Makefile.am
+@@ -33,7 +33,7 @@ terminate \
+ tj tm tr tw tz \
+ ua us uz vn \
+ za \
+-altwin capslock compose ctrl empty eurosign rupeesign group inet \
++altwin capslock chromebook compose ctrl empty eurosign rupeesign group inet \
+ keypad kpdl level3 level5 nbsp olpc shift srvr_ctrl typo
+ 
+ EXTRA_DIST = $(symbols_DATA)
+diff --git a/symbols/chromebook b/symbols/chromebook
+new file mode 100644
+index 0000000..1cf40ad
+--- /dev/null
++++ b/symbols/chromebook
+@@ -0,0 +1,30 @@
++// Keys that need to be overridden before the layout is
++// loaded. This makes sure that Search+. maps to Insert,
++// no matter what the "." key is mapped to.
++partial alphanumeric_keys
++xkb_symbols "overlay_before" {
++    key <AB09> { [a, b], overlay1=<INS> };
++
++    key <LEFT> { [ Left, Left ], overlay1=<HOME> };
++    key <RGHT> { [ Right, Right ], overlay1=<END> };
++    key <UP>   { [ Up, Up ], overlay1=<PGUP> };
++    key <DOWN> { [ Down, Down ], overlay1=<PGDN> };
++
++    key <BKSP> { [ BackSpace, BackSpace ], overlay1=<DELE> };
++    
++    key <LALT> { [ Alt_L, Meta_L ], overlay1=<CAPS> };
++    key <RALT> { [ Alt_R, Meta_R ], overlay1=<CAPS> };
++
++    // For some strange reason, some Super_R events are triggered when
++    // the Search key is release (i.e. with overlay on).
++    // This maps RWIN to a dummy key (<I253>), to make sure we catch it.
++    key <RWIN> { [ NoSymbol ], overlay1=<I253> };
++};
++
++// Keys that we want to override after the layout is loaded
++partial
++xkb_symbols "overlay_after" {
++    key <LWIN> { [ Overlay1_Enable ], overlay1=<LWIN> };
++    // Map dummy symbol to no symbol
++    key <I253> { [ NoSymbol ] };
++};
+-- 
+1.8.2.3
+
