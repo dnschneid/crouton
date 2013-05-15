@@ -4,11 +4,119 @@ DESCRIPTION='Add support for Chromebook keyboard in xkb.'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
-apt-get -y install wget
+# Make sure we start from a fresh package
+apt-mark unhold xkb-data || true 2>/dev/null
+apt-get -y install --reinstall xkb-data
 
-# Download patched version of xkb-data.
-# This version is a little ahead for "precise", but it does not matter
-wget 'https://docs.google.com/uc?export=download&id=0BySjVRWYC3j1bmQ2XzlZVWJNOW8' -O /tmp/xkb-data_2.5.1-3ubuntu99_all.deb
-dpkg -i /tmp/xkb-data_2.5.1-3ubuntu99_all.deb
-rm -f /tmp/xkb-data_2.5.1-3ubuntu99_all.deb
+XKBROOT=/usr/share/X11/xkb
+
+cat > $XKBROOT/compat/chromebook <<END
+// Overlay1_Enable is a latch key for overlay1
+
+default partial xkb_compatibility "overlay"  {
+    interpret Overlay1_Enable+AnyOfOrNone(all) {
+        action= SetControls(controls=Overlay1);
+    };
+};
+END
+
+cat > $XKBROOT/symbols/chromebook <<END
+// Keys that need to be overridden before the layout is
+// loaded. This makes sure that Search+. maps to Insert,
+// no matter what the "." key is mapped to.
+partial alphanumeric_keys
+xkb_symbols "overlay_before" {
+    key <AB09> { [a, b], overlay1=<INS> };
+
+    key <LEFT> { [ Left, Left ], overlay1=<HOME> };
+    key <RGHT> { [ Right, Right ], overlay1=<END> };
+    key <UP>   { [ Up, Up ], overlay1=<PGUP> };
+    key <DOWN> { [ Down, Down ], overlay1=<PGDN> };
+
+    key <BKSP> { [ BackSpace, BackSpace ], overlay1=<DELE> };
+    
+    key <LALT> { [ Alt_L, Meta_L ], overlay1=<CAPS> };
+    key <RALT> { [ Alt_R, Meta_R ], overlay1=<CAPS> };
+
+    // For some strange reason, some Super_R events are triggered when
+    // the Search key is release (i.e. with overlay on).
+    // This maps RWIN to a dummy key (<I253>), to make sure we catch it.
+    key <RWIN> { [ NoSymbol ], overlay1=<I253> };
+};
+
+// Keys that we want to override after the layout is loaded
+partial
+xkb_symbols "overlay_after" {
+    key <LWIN> { [ Overlay1_Enable ], overlay1=<LWIN> };
+    // Map dummy symbol to no symbol
+    key <I253> { [ NoSymbol ] };
+};
+END
+
+#FIXME: Check that all rules have applied?
+mawk '
+#rules/base.ml_s.part
+/^! model[ \t]*layout[ \t]*=[ \t]*symbols$/{
+    print; print "  chromebook	*			=	pc+chromebook(overlay_before)+%l%(v)"; next
+}
+
+#rules/base.ml1_c.part
+/^! model[ \t]*layout\[1\][ \t]*=[ \t]*compat$/{
+    print; print "  chromebook	*		=	complete+chromebook"; next
+}
+
+#rules/base.ml1_s.part
+/^! model[ \t]*layout\[1\][ \t]*=[ \t]*symbols$/{
+    print; print " chromebook	*			=	pc+chromebook(overlay_before)+%l[1]%(v[1])"; next
+}
+
+#rules/base.ml_c.part
+/^! model[ \t]*layout[ \t]*=[ \t]*compat$/{
+    print; print "  chromebook	*		=	complete+chromebook"; next
+}
+
+#rules/evdev.m_s.part
+/^! model[ \t]*=[ \t]*symbols$/{
+    print; print "  chromebook	=   +inet(evdev)+chromebook(overlay_after)"; next
+}
+
+#default: print line
+1
+' \
+$XKBROOT/rules/evdev > $XKBROOT/rules/evdev.new
+mv $XKBROOT/rules/evdev.new $XKBROOT/rules/evdev
+
+# rules/base.xml.in
+mawk '
+/^.*<modelList>.*$/{
+    print
+    print "    <model>";
+    print "      <configItem>";
+    print "        <name>chromebook</name>";
+    print "        <description>Chromebook</description>";
+    print "        <vendor>Google</vendor>";
+    print "      </configItem>";
+    print "    </model>";
+    next
+}
+
+#default: print line
+1
+' \
+$XKBROOT/rules/evdev.xml > $XKBROOT/rules/evdev.xml.new
+mv $XKBROOT/rules/evdev.xml.new $XKBROOT/rules/evdev.xml
+
+mawk '
+/^! model$/{
+    print; print "  chromebook      Chromebook"; next
+}
+
+#default: print line
+1
+' \
+$XKBROOT/rules/evdev.lst > $XKBROOT/rules/evdev.lst.new
+mv $XKBROOT/rules/evdev.lst.new $XKBROOT/rules/evdev.lst
+
+# Hold xkb-data, so that it does not get updated
+apt-mark hold xkb-data
 
