@@ -321,7 +321,8 @@ else
         env -i chroot "$CHROOT" su -c '
             pidfile="/var/run/dbus/pid"
             if [ -f "$pidfile" ]; then
-                if grep -q "^dbus-daemon" "/proc/`cat "$pidfile"`/cmdline" 2>/dev/null; then
+                if grep -q "^dbus-daemon" "/proc/`cat "$pidfile"`/cmdline" \
+                        2>/dev/null; then
                     exit 0
                 fi
                 rm -f "$pidfile"
@@ -334,7 +335,12 @@ else
     # Run rc.local
     if [ -n "$firstrun" -a -x "$CHROOT/etc/rc.local" ]; then
         env -i chroot "$CHROOT" su -c \
-            'exec /etc/rc.local >/dev/null 2>/dev/null </dev/null' - root
+            'exec /etc/rc.local >/dev/null 2>/dev/null </dev/null' - root \
+            || ret=$?
+        if [ ! "$ret" = 0 ]; then
+            echo "WARNING: /etc/rc.local failed with code $ret" 1>&2
+            ret=0
+        fi
     fi
 
     if [ $# = 0 ]; then
@@ -345,7 +351,8 @@ else
         for param in "$@"; do
             cmd="$cmd'`echo "$param" | sed "s/'/'\\\\\\''/g"`' "
         done
-        env -i TERM="$TERM" chroot "$CHROOT" su -c "$cmd" - "$USERNAME" || ret=$?
+        env -i TERM="$TERM" chroot "$CHROOT" su -c "$cmd" - "$USERNAME" \
+            || ret=$?
     fi
 fi
 
