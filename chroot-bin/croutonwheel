@@ -116,7 +116,7 @@ aura="`xwininfo -root -children | mawk '/aura_root/ {print $1}'`"
     !w && /^EVENT type 17/ {
         a = 1
     }
-    a && '$x' && ($1 == "2:") && ($2 != 0) {
+    a && '$x' && ($1 == "4:") && ($2 != 0) {
         if ($2 > 0) {
             if (x < 0) x = 0
             x += log($2) * '"$xs"' + '"$xc"'
@@ -133,7 +133,7 @@ aura="`xwininfo -root -children | mawk '/aura_root/ {print $1}'`"
             x += 1
         }
     }
-    a && ($1 == "3:") && ($2 != 0) {
+    a && ($1 == "5:") && ($2 != 0) {
         if ($2 > 0) {
             if (y < 0) y = 0
             y += log($2) * '"$ys"' + '"$yc"'
