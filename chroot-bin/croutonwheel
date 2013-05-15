@@ -95,14 +95,8 @@ aura="`xwininfo -root -children | mawk '/aura_root/ {print $1}'`"
     xi="$!"
     xev -root <&- &
     trap "kill $! $xi 2>&- || true" INT TERM HUP 0
-    # Ping every 5 seconds to get SIGPIPE when xte is killed.
-    while sleep 5; do
-        echo 'ping'
-    done
+    wait
 } <&- | mawk -W interactive '
-    /^ping$/ {
-        print "sleep 0"
-    }
     m {
         if ($4 == "'"$aura"',") {
             if (m == "MapNotify") {
@@ -160,6 +154,6 @@ aura="`xwininfo -root -children | mawk '/aura_root/ {print $1}'`"
         a = 0
     }
 ' | xte &
-trap "kill $! 2>&- || true" INT TERM HUP 0
+trap "pkill -P $$ 2>&- || true" INT TERM HUP 0
 wait
 exit 0
