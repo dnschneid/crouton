@@ -349,7 +349,7 @@ else
         # Escape out the command
         cmd=''
         for param in "$@"; do
-            cmd="$cmd'`echo "$param" | sed "s/'/'\\\\\\''/g"`' "
+            cmd="$cmd'`echo -n "$param" | sed "s/'/'\\\\\\''/g"`' "
         done
         env -i TERM="$TERM" chroot "$CHROOT" su -c "$cmd" - "$USERNAME" \
             || ret=$?
