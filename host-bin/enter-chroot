@@ -111,8 +111,7 @@ if [ ! "${CHROOT#/media}" = "$CHROOT" ] && ! mountpoint -q '/usr/bin'; then
     ln -s "$newbin"/* /usr/bin/
     pds='/usr/bin/powerd_suspend'
     rm -f "$pds"
-    sed -e 's|/sys/bus/usb/devices/\*/power/persist||' \
-        "$newbin/powerd_suspend" > "$pds"
+    sed -e 's|do echo 0|do echo 1|' "$newbin/powerd_suspend" > "$pds"
     chmod 755 "$pds"
 fi
 
