@@ -1,0 +1,64 @@
+#!/bin/sh
+# xinitrc wrapper for crouton:
+#  1. Runs crouton-specific commands
+#  2. Runs the provided xinitrc (emulating xinit behaviour)
+#  3. Runs crouton-specific commands before the server is destroyed
+
+DEFAULTXINITRC="$HOME/.xinitrc"
+
+cmd="$1"
+shift 1
+
+if [ -z "$cmd" ]; then
+    #Use ~/.xinitrc if no parameter is given
+    if [ -r "$DEFAULTXINITRC" ]; then
+        cmd="$DEFAULTXINITRC"
+    else
+        # In this case, xinit would start the default command:
+        # xterm  -geometry  +1+1  -n  login  -display  :0
+        # This is absurd for crouton, as the display is wrong anyway.
+        echo "croutonxinitrc-wrapper needs a xinitrc file as parameter, or a valid ~/.xinitrc"
+        exit 0
+    fi
+elif [ ! -r "$cmd" ]; then
+    # In this case, xinit would start the default command as well, and pass
+    # parameters to that command (assuming $cmd is not a missing xinitrc file).
+    # This is absurd for the same reasons.
+    echo "croutonxinitrc-wrapper needs a valid xinitrc file as parameter ('$cmd' is not readable)"
+    exit 0
+fi
+
+# Run crouton-specific commands:
+
+# Launch the powerd poker daemon
+croutonpowerd --daemon &
+
+# Launch the cursor relayer and keyboard shortcuts if in xephyr
+if [ -r "/etc/X11/host-Xauthority" ]; then
+    disp=$DISPLAY
+    env DISPLAY=':0' XAUTHORITY="/etc/X11/host-Xauthority" croutoncursor "$disp" &
+
+    ln -sf '/etc/crouton/keylaunchrc-xephyr' "$HOME/.keylaunchrc"
+    keylaunch &
+fi
+
+# Launch touchegg if it is requested.
+toucheggconf='/etc/touchegg.conf'
+if [ -f "$toucheggconf" ]; then
+    mkdir -p "$HOME/.config/touchegg"
+    ln -sf "$toucheggconf" "$HOME/.config/touchegg/"
+    touchegg &
+fi
+
+# Start xinitrc, most of the time it is a shell script that can be sourced,
+# but xinit manpage shows an example running a binary, so we support that as well.
+if [ -x "$cmd" ]; then
+    "$cmd" "$@"
+else
+    . "$cmd"
+fi
+
+# Run crouton-specific commands before the server exits:
+
+# Nothing currently
+
