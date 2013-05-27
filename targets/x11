@@ -9,7 +9,7 @@ if [ ! "$TARGETS" = 'help' -a ! "${ARCH#arm}" = "$ARCH" ]; then
 fi
 REQUIRES='core'
 DESCRIPTION='Basic X11 install. Does not install any desktop environment.'
-CHROOTBIN='croutonpowerd setres xinit croutonxinitrc-wrapper'
+CHROOTBIN='croutonpowerd croutonxinitrc-wrapper setres xinit'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
