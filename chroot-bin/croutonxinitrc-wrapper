@@ -69,7 +69,7 @@ ret=0
 if [ -n "$binary" -o -x "$cmd" ]; then
     "$cmd" $extraargs "$@" || ret="$?"
 else
-    sh "$cmd" $extraargs "$@" || ret="$?"
+    /bin/sh "$cmd" $extraargs "$@" || ret="$?"
 fi
 
 # Run crouton-specific commands before the server exits:
