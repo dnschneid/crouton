@@ -1,16 +1,21 @@
 #!/bin/sh -e
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
 
-DESCRIPTION='Add support for Chromebook keyboard in xkb.'
-. "${TARGETSDIR:="$PWD"}/common"
+# This adds support for Chromebook keyboard (Search+* keys)
+# This isn't a real target; it is sourced from x11-common.
 
 ### Append to prepare.sh:
 # Make sure we start from a fresh package
 apt-mark unhold xkb-data || true 2>/dev/null
 apt-get -y install --reinstall xkb-data
 
-XKBROOT=/usr/share/X11/xkb
+XKBROOT='/usr/share/X11/xkb'
+XKBROOTTMP=`mktemp -d tmp.crouton-xkb.XXXXXX --tmpdir=/tmp`
+mkdir -p "$XKBROOTTMP/compat" "$XKBROOTTMP/symbols" "$XKBROOTTMP/rules"
 
-cat > $XKBROOT/compat/chromebook <<END
+cat > "$XKBROOTTMP/compat/chromebook" <<END
 // Overlay1_Enable is a latch key for overlay1
 
 default partial xkb_compatibility "overlay"  {
@@ -20,13 +25,13 @@ default partial xkb_compatibility "overlay"  {
 };
 END
 
-cat > $XKBROOT/symbols/chromebook <<END
+cat > "$XKBROOTTMP/symbols/chromebook" <<END
 // Keys that need to be overridden before the layout is
 // loaded. This makes sure that Search+. maps to Insert,
 // no matter what the "." key is mapped to.
 partial alphanumeric_keys
 xkb_symbols "overlay_before" {
-    key <AB09> { [a, b], overlay1=<INS> };
+    key <AB09> { [ period, greater ], overlay1=<INS> };
 
     key <LEFT> { [ Left, Left ], overlay1=<HOME> };
     key <RGHT> { [ Right, Right ], overlay1=<END> };
@@ -34,7 +39,7 @@ xkb_symbols "overlay_before" {
     key <DOWN> { [ Down, Down ], overlay1=<PGDN> };
 
     key <BKSP> { [ BackSpace, BackSpace ], overlay1=<DELE> };
-    
+
     key <LALT> { [ Alt_L, Meta_L ], overlay1=<CAPS> };
     key <RALT> { [ Alt_R, Meta_R ], overlay1=<CAPS> };
 
@@ -48,48 +53,61 @@ xkb_symbols "overlay_before" {
 partial
 xkb_symbols "overlay_after" {
     key <LWIN> { [ Overlay1_Enable ], overlay1=<LWIN> };
-    // Map dummy symbol to no symbol
+    // Map dummy key to no symbol
     key <I253> { [ NoSymbol ] };
 };
 END
 
-#FIXME: Check that all rules have applied?
+error=''
 mawk '
 #rules/base.ml_s.part
 /^! model[ \t]*layout[ \t]*=[ \t]*symbols$/{
+    found[1] += 1;
     print; print "  chromebook	*			=	pc+chromebook(overlay_before)+%l%(v)"; next
 }
 
 #rules/base.ml1_c.part
 /^! model[ \t]*layout\[1\][ \t]*=[ \t]*compat$/{
+    found[2] += 1;
     print; print "  chromebook	*		=	complete+chromebook"; next
 }
 
 #rules/base.ml1_s.part
 /^! model[ \t]*layout\[1\][ \t]*=[ \t]*symbols$/{
+    found[3] += 1;
     print; print " chromebook	*			=	pc+chromebook(overlay_before)+%l[1]%(v[1])"; next
 }
 
 #rules/base.ml_c.part
 /^! model[ \t]*layout[ \t]*=[ \t]*compat$/{
+    found[4] += 1;
     print; print "  chromebook	*		=	complete+chromebook"; next
 }
 
 #rules/evdev.m_s.part
 /^! model[ \t]*=[ \t]*symbols$/{
+    found[5] += 1;
     print; print "  chromebook	=   +inet(evdev)+chromebook(overlay_after)"; next
 }
 
 #default: print line
 1
-' \
-$XKBROOT/rules/evdev > $XKBROOT/rules/evdev.new
-mv $XKBROOT/rules/evdev.new $XKBROOT/rules/evdev
+
+END {
+    for (i = 1; i <= 5; i++) {
+        if (found[i] != 1) {
+            print FILENAME ": Rule " i " did not apply once." > "/dev/stderr"
+            exit 1
+        }
+    }
+}
+' "$XKBROOT/rules/evdev" > "$XKBROOTTMP/rules/evdev" || error='y'
 
 # rules/base.xml.in
 mawk '
 /^.*<modelList>.*$/{
-    print
+    found += 1;
+    print;
     print "    <model>";
     print "      <configItem>";
     print "        <name>chromebook</name>";
@@ -102,20 +120,39 @@ mawk '
 
 #default: print line
 1
-' \
-$XKBROOT/rules/evdev.xml > $XKBROOT/rules/evdev.xml.new
-mv $XKBROOT/rules/evdev.xml.new $XKBROOT/rules/evdev.xml
+
+END {
+    if (found != 1) {
+        print FILENAME ": Rule did not apply once." > "/dev/stderr"
+        exit 1
+    }
+}
+' "$XKBROOT/rules/evdev.xml" > "$XKBROOTTMP/rules/evdev.xml" || error='y'
 
 mawk '
 /^! model$/{
+    found += 1;
     print; print "  chromebook      Chromebook"; next
 }
 
 #default: print line
 1
-' \
-$XKBROOT/rules/evdev.lst > $XKBROOT/rules/evdev.lst.new
-mv $XKBROOT/rules/evdev.lst.new $XKBROOT/rules/evdev.lst
+
+END {
+    if (found != 1) {
+        print FILENAME ": Rule did not apply once." > "/dev/stderr"
+        exit 1
+    }
+}
+' "$XKBROOT/rules/evdev.lst" > "$XKBROOTTMP/rules/evdev.lst" || error='y'
+
+if [ -z "$error" ]; then
+    cp -a "$XKBROOTTMP"/* "$XKBROOT"
+    rm -rf "$XKBROOTTMP"
+else
+    rm -rf "$XKBROOTTMP"
+    exit 1
+fi
 
 # Hold xkb-data, so that it does not get updated
 apt-mark hold xkb-data

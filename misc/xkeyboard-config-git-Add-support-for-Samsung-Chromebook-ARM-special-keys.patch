@@ -151,7 +151,7 @@ index 0000000..1cf40ad
 +// no matter what the "." key is mapped to.
 +partial alphanumeric_keys
 +xkb_symbols "overlay_before" {
-+    key <AB09> { [a, b], overlay1=<INS> };
++    key <AB09> { [ period, greater ], overlay1=<INS> };
 +
 +    key <LEFT> { [ Left, Left ], overlay1=<HOME> };
 +    key <RGHT> { [ Right, Right ], overlay1=<END> };
@@ -173,7 +173,7 @@ index 0000000..1cf40ad
 +partial
 +xkb_symbols "overlay_after" {
 +    key <LWIN> { [ Overlay1_Enable ], overlay1=<LWIN> };
-+    // Map dummy symbol to no symbol
++    // Map dummy key to no symbol
 +    key <I253> { [ NoSymbol ] };
 +};
 -- 
