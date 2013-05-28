@@ -225,13 +225,20 @@ fixabslinks() {
 
 # Bind-mounts $1 into $CHROOT/${2:-"$1"} if $2 is not already mounted
 # If $3 is specified, remounts with the specified options.
+# If $1 starts with a -, it's considered options to the bind mount, and the rest
+# of the parameters are shifted.
 bindmount() {
+    bindopts=''
+    if [ ! "${1#"-"}" = "$1" ]; then
+        bindopts="$1"
+        shift
+    fi
     local target="`fixabslinks "${2:-"$1"}"`"
     if mountpoint -q "$target"; then
         return 0
     fi
     mkdir -p "$target"
-    mount --bind "$1" "$target"
+    mount --bind $bindopts "$1" "$target"
     if [ -n "$3" ]; then
         mount -i -o "remount,$3" "$target"
         if [ -n "$4" ]; then
@@ -271,6 +278,11 @@ tmpfsmount /var/run/lock 'noexec,nosuid,nodev,size=5120k'
 bindmount /var/run/dbus /var/host/dbus
 bindmount /var/run/shill /var/host/shill
 bindmount /var/lib/timezone /var/host/timezone
+for m in /lib/modules/*; do
+    if [ -d "$m" ]; then
+        bindmount '-o ro' "$m"
+    fi
+done
 
 # Add a shm symlink to our new /var/run
 ln -sfT /dev/shm "`fixabslinks '/var/run'`/shm"
