@@ -108,7 +108,7 @@ checkusage() {
                 continue
             fi
         fi
-        if grep -q 'CROUTON=CORE' "/proc/$pid/environ"; then
+        if grep -q 'CROUTON=CORE' "/proc/$pid/environ" 2>/dev/null; then
             continue
         fi
         if [ -n "$PRINT" ]; then
