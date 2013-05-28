@@ -14,9 +14,7 @@ binary=
 
 # This part is a translation of what is found in xorg's xinit.c
 
-# A simple 'echo' would not work, as the $1 may look like an option to echo
-firstchar=`printf "%s" "$1" | head -c 1`
-if [ -z "$1" ] || [ "$firstchar" != "/" -a "$firstchar" != "." ]; then
+if [ -z "$1" ] || [ "${1#[/.]}" = "$1" ]; then
     # No client parameter: find .xinitrc if possible, run xterm otherwise
     required=''
     
@@ -29,7 +27,7 @@ if [ -z "$1" ] || [ "$firstchar" != "/" -a "$firstchar" != "." ]; then
     
     if [ ! -e "$cmd" ]; then
         if [ -n "$required" ]; then
-            echo "Warning, no client init file \"$cmd\""
+            echo "Warning, no client init file \"$cmd\"" 1>&2
         fi
         
         # If no client is given, use default command
