@@ -32,32 +32,4 @@ while [ -f "/tmp/.X$disp-lock" ]; do
     disp=$((disp+1))
 done
 
-# Function to exec the parameters when the display has been created.
-queuelaunch() {
-    (while sleep 1; do
-        if [ -S "/tmp/.X11-unix/X$disp" ]; then
-            DISPLAY=":$disp" exec "$@" >/dev/null 2>&1
-        fi
-    done) &
-}
-
-# Launch the powerd poker daemon
-queuelaunch croutonpowerd --daemon
-
-# Launch the cursor relayer and keyboard shortcuts if in xephyr
-if [ -n "$hostxauth" ]; then
-    queuelaunch env DISPLAY=':0' XAUTHORITY="$hostxauth" croutoncursor ":$disp"
-
-    ln -sf '/etc/crouton/keylaunchrc-xephyr' "$HOME/.keylaunchrc"
-    queuelaunch keylaunch
-fi
-
-# Launch touchegg if it is requested.
-toucheggconf='/etc/touchegg.conf'
-if [ -f "$toucheggconf" ]; then
-    mkdir -p "$HOME/.config/touchegg"
-    ln -sf "$toucheggconf" "$HOME/.config/touchegg/"
-    queuelaunch touchegg
-fi
-
-exec /usr/bin/xinit "$@" $dash $xserverrc ":$disp"
+exec /usr/bin/xinit /usr/local/bin/croutonxinitrc-wrapper "$@" $dash $xserverrc ":$disp"

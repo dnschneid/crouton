@@ -1,0 +1,77 @@
+#!/bin/sh -e
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# xinitrc wrapper for crouton:
+#  1. Runs crouton-specific commands
+#  2. Runs the provided client (emulating xinit behaviour)
+#  3. Runs crouton-specific commands before the server is destroyed
+
+cmd=
+extraargs=
+binary=
+
+# This part is a translation of what is found in xorg's xinit.c
+
+if [ -z "$1" ] || [ "${1#[/.]}" = "$1" ]; then
+    # No client parameter: find .xinitrc if possible, run xterm otherwise
+    required=''
+    
+    if [ -n "$XINITRC" ]; then
+        cmd="$XINITRC"
+        required='y'
+    elif [ -n "$HOME" ]; then
+        cmd="$HOME/.xinitrc"
+    fi
+    
+    if [ ! -e "$cmd" ]; then
+        if [ -n "$required" ]; then
+            echo "Warning, no client init file \"$cmd\"" 1>&2
+        fi
+        
+        # If no client is given, use default command
+        cmd="xterm"
+        extraargs="-geometry +1+1 -n login"
+        # Make sure xterm is executed directly: let sh resolve the path
+        binary='y'
+    fi
+else
+    cmd="$1"
+    shift 1
+fi
+
+# Run crouton-specific commands:
+
+# Launch the powerd poker daemon
+croutonpowerd --daemon &
+
+# Launch the cursor relayer and keyboard shortcuts if in xephyr
+if [ -r "/etc/X11/host-Xauthority" ]; then
+    DISPLAY=':0' XAUTHORITY="/etc/X11/host-Xauthority" croutoncursor "$DISPLAY" &
+
+    ln -sf '/etc/crouton/keylaunchrc-xephyr' "$HOME/.keylaunchrc"
+    keylaunch &
+fi
+
+# Launch touchegg if it is requested.
+toucheggconf='/etc/touchegg.conf'
+if [ -f "$toucheggconf" ]; then
+    mkdir -p "$HOME/.config/touchegg"
+    ln -sf "$toucheggconf" "$HOME/.config/touchegg/"
+    touchegg &
+fi
+
+# Run the client itself if it is executable, otherwise run it in a shell.
+ret=0
+if [ -n "$binary" -o -x "$cmd" ]; then
+    "$cmd" $extraargs "$@" || ret="$?"
+else
+    /bin/sh "$cmd" $extraargs "$@" || ret="$?"
+fi
+
+# Run crouton-specific commands before the server exits:
+
+# Nothing currently
+
+exit "$ret"
