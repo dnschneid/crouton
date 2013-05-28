@@ -186,7 +186,7 @@ there.
 
 I prefer Arch/Gentoo/Haiku/whatever
 -----------------------------------
-Great! Make your own scripts. Call it "chroagh!!"
+Great! Make your own scripts. Call it "croagh!!"
 
 
 License
