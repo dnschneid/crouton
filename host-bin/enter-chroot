@@ -189,6 +189,9 @@ if [ -f "$gfile" ]; then
     done
 fi
 
+# Copy in the current Chromium OS version for reference
+cp -f '/etc/lsb-release' "$CHROOT/var/host/"
+
 # Copy Xauthority if the chroot requests
 chrootxauth="$CHROOT/etc/X11/host-Xauthority"
 if [ -f "$chrootxauth" ]; then

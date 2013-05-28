@@ -23,7 +23,7 @@ USAGE="$APPLICATION [options]
 Reports the version of crouton installed, checks if updates are available,
 and/or launches a changelog.
 
-If no options are specified, outputs the installed version of crouton to STDOUT.
+If no options are specified, outputs crouton version information to STDOUT.
 
 Options:
     -c       Launches a browser to view the list of changes.
@@ -63,6 +63,8 @@ fi
 # Print out version if nothing else specified
 if [ -z "$CHANGES$DOWNLOAD$UPDATES" ]; then
     echo "crouton: version $VERSION"
+    host="`awk -F= '/_RELEASE_DESCRIPTION=/{print $2}' '/var/host/lsb-release'`"
+    echo "host: version $host"
     exit 0
 fi
 
