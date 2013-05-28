@@ -189,6 +189,9 @@ if [ -f "$gfile" ]; then
     done
 fi
 
+# Ensure $CHROOT/var/host exists.
+mkdir -p "$CHROOT/var/host"
+
 # Copy in the current Chromium OS version for reference
 cp -f '/etc/lsb-release' "$CHROOT/var/host/"
 
