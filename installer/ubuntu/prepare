@@ -1,0 +1,82 @@
+#!/bin/sh -e
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# This is a distro-specific continuation of the prepare.sh script.
+
+PKGEXT='deb'
+DISTROAKA='debian'
+
+
+# install_dist: see install() in prepare.sh for details.
+install_dist() {
+    local pkgs='' params=''
+    if [ "$1" = '--minimal' ]; then
+        params='--no-install-recommends'
+        shift
+    fi
+    while [ ! "$#" = 0 ]; do
+        if [ "$1" = '--' ]; then
+            shift
+            break
+        fi
+        pkgs="$pkgs $1"
+        shift
+    done
+    apt-get -y $params install $pkgs `list_uninstalled_dist - "$@"`
+}
+
+
+# install_pkg_dist: see install_pkg() in prepare.sh for details.
+install_pkg_dist() {
+    local params=''
+    if [ "$1" = '--minimal' ]; then
+        params='--no-install-recommends'
+        shift
+    fi
+    if [ ! "$#" = 0 ]; then
+        dpkg --force-depends -i "$@"
+    fi
+    apt-get -fy $params install
+}
+
+
+# remove_dist: see remove() in prepare.sh for details.
+remove_dist() {
+    apt-get -y --purge autoremove "$@"
+}
+
+
+# list_uninstalled_dist: see list_uninstalled() in prepare.sh for details.
+list_uninstalled_dist() {
+    local suffix="$1" pkg
+    shift
+    for pkg in "$@"; do
+        if ! dpkg-query -s "$pkg" 2>/dev/null >/dev/null; then
+            echo -n "$pkg$suffix "
+        fi
+    done
+}
+
+
+# Run debootstrap second stage if it hasn't already happened
+if [ -r /debootstrap ]; then
+    # Debootstrap doesn't like anything mounted under /sys or /var when it runs
+    # We assume that the chroot will be unmounted after this script is over, so
+    # we don't need to explicitly remount anything. We also can't detect the
+    # mounts properly due to the chroot, so we have to hardcode the mounts.
+    umount '/sys/fs/fuse/connections' '/var/run/lock' '/var/run'
+    # Our custom /etc/resolv.conf link gets clobbered after bootstrap; save it
+    mv -f /etc/resolv.conf /etc/resolv.conf.save
+    # Start the bootstrap
+    /debootstrap/debootstrap --second-stage
+    # Fix the /etc/resolv.conf
+    mv -f /etc/resolv.conf.save /etc/resolv.conf
+else
+    # Do any pending configuration, in case of an unfortunately-timed Ctrl-C
+    dpkg --configure -a
+fi
+
+# Fix the keyboard mode early on (this will be called again after dist-upgrade).
+fixkeyboardmode

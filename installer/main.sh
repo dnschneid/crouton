@@ -13,6 +13,7 @@ TARGETSDIR="$SCRIPTDIR/targets"
 SRCDIR="$SCRIPTDIR/src"
 
 ARCH="`uname -m | sed -e 's i.86 i386 ;s x86_64 amd64 ;s arm.* armhf ;'`"
+DISTRO=''
 DOWNLOADONLY=''
 ENCRYPT=''
 KEYFILE=''
@@ -205,6 +206,18 @@ if [ -z "$DOWNLOADONLY" -a -n "$TARBALL" ]; then
     fi
 fi
 
+# Detect which distro the release belongs to.
+for dist in "$INSTALLERDIR"/*/; do
+    if grep -q "^$RELEASE\$" "$dist/releases"; then
+        dist="${dist%/}"
+        DISTRO="${dist##*/}"
+        break
+    fi
+done
+if [ -z "$DISTRO" ]; then
+    error 2 "$RELEASE does not belong to any supported distribution."
+fi
+
 # Set http_proxy if a proxy is specified.
 if [ ! "$PROXY" = 'unspecified' ]; then
     export http_proxy="$PROXY" https_proxy="$PROXY" ftp_proxy="$PROXY"
@@ -327,43 +340,7 @@ if [ -z "$NODOWNLOAD" ] && [ -n "$DOWNLOADONLY" -o -z "$TARBALL" ]; then
         trap "$TRAP" INT HUP 0
     fi
 
-    # Grab the latest release of debootstrap
-    echo 'Downloading latest debootstrap...' 1>&2
-    d='http://anonscm.debian.org/gitweb/?p=d-i/debootstrap.git;a=snapshot;h=HEAD;sf=tgz'
-    if ! wget -O- --no-verbose --timeout=60 -t2 "$d"  \
-            | tar -C "$tmp" --strip-components=1 -zx 2>/dev/null; then
-        echo 'Download from Debian gitweb failed. Trying latest release...' 1>&2
-        d='http://ftp.debian.org/debian/pool/main/d/debootstrap/'
-        f="`wget -O- --no-verbose --timeout=60 -t2 "$d" \
-                | sed -ne 's ^.*\(debootstrap_[0-9.]*.tar.gz\).*$ \1 p' \
-                | tail -n 1`"
-        if [ -z "$f" ]; then
-            error 1 'Failed to download debootstrap.
-Check your internet connection or proxy settings and try again.'
-        fi
-        v="${f#*_}"
-        v="${v%.tar.gz}"
-        echo "Downloading debootstrap version $v..." 1>&2
-        if ! wget -O- --no-verbose --timeout=60 -t2 "$d$f" \
-                | tar -C "$tmp" --strip-components=1 -zx 2>/dev/null; then
-            error 1 'Failed to download debootstrap.'
-        fi
-    fi
-
-    # Add the necessary debootstrap executables
-    newpath="$PATH:$tmp"
-    cp "$INSTALLERDIR/ar" "$INSTALLERDIR/pkgdetails" "$tmp/"
-    chmod 755 "$INSTALLERDIR/ar" "$INSTALLERDIR/pkgdetails" 
-
-    # debootstrap wants a file to initialize /dev with, but we don't actually
-    # want any files there. Create an empty tarball that it can extract.
-    tar -czf "$tmp/devices.tar.gz" -T /dev/null
-
-    # Grab the release and drop it into the subdirectory
-    echo 'Downloading bootstrap files...' 1>&2
-    PATH="$newpath" DEBOOTSTRAP_DIR="$tmp" $FAKEROOT \
-        "$tmp/debootstrap" --foreign --arch="$ARCH" "$RELEASE" \
-                           "$tmp/$subdir" "$MIRROR" 1>&2
+    . "$INSTALLERDIR/$DISTRO/bootstrap"
 
     # Tar it up if we're only downloading
     if [ -n "$DOWNLOADONLY" ]; then
@@ -383,9 +360,12 @@ mkdir -p "$CHROOT/usr/local/bin" "$CHROOT/etc/crouton"
 
 # Create the setup script inside the chroot
 echo 'Preparing chroot environment...' 1>&2
-VAREXPAND="s #ARCH $ARCH ;s #MIRROR $MIRROR ;s #RELEASE $RELEASE ;"
+VAREXPAND="s #ARCH $ARCH ;s #MIRROR $MIRROR ;"
+VAREXPAND="${VAREXPAND}s #DISTRO $DISTRO ;s #RELEASE $RELEASE ;"
 VAREXPAND="${VAREXPAND}s #PROXY $PROXY ;s #VERSION $VERSION ;"
 sed -e "$VAREXPAND" "$INSTALLERDIR/prepare.sh" > "$CHROOT/prepare.sh"
+# Append the distro-specific prepare.sh
+cat "$INSTALLERDIR/$DISTRO/prepare" >> "$CHROOT/prepare.sh"
 # Create a file for target deduplication
 TARGETDEDUPFILE="`mktemp --tmpdir=/tmp "$APPLICATION.XXX"`"
 rmtargetdedupfile="rm -f '$TARGETDEDUPFILE'"

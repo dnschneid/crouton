@@ -9,7 +9,8 @@ SCRIPTS := \
 	$(wildcard chroot-bin/*) \
 	$(wildcard chroot-etc/*) \
 	$(wildcard host-bin/*) \
-	$(wildcard installer/*) \
+	$(wildcard installer/*.sh) \
+	$(wildcard installer/*/*) \
 	$(wildcard src/*) \
 	$(wildcard targets/*)
 GENVERSION = build/genversion.sh
