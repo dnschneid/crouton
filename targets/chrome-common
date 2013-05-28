@@ -19,20 +19,17 @@ echo 'chromium' >> "${TARGETDEDUPFILE:-/dev/null}"
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
-url="https://dl.google.com/linux/direct/google-chrome-${CHANNEL}_current_$ARCH.deb"
-deb='/tmp/chrome.deb'
-rm -f "$deb"
+url="https://dl.google.com/linux/direct/google-chrome-${CHANNEL}_current_$ARCH.$PKGEXT"
+pkg="/tmp/chrome.$PKGEXT"
+rm -f "$pkg"
 
 # We need wget to download, and Chrome needs xdg-utils to configure at all; the
 # rest of the dependencies we will resolve afterwards.
-apt-get -y install wget xdg-utils
+install wget xdg-utils
 
 # We don't have the right root certificates in the bare install.
-wget --no-check-certificate "$url" -O "$deb"
+wget --no-check-certificate "$url" -O "$pkg"
 
-# This will likely have dependency problems; make them only warnings.
-dpkg --force-depends -i "$deb"
-rm -f "$deb"
-
-# Fix the dependency problems.
-apt-get install -fy
+# Install the package and delete it.
+install_pkg "$pkg"
+rm -f "$pkg"

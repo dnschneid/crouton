@@ -37,20 +37,21 @@ newenv='/etc/environment.new'
 } > "$newenv"
 mv -f "$newenv" "$oldenv"
 
-echo 'Preparing software sources...' 1>&2
-if [ ! "$PROXY" = 'unspecified' -a ! "$PROXY" = '#PROXY' ]; then
-    aptproxy='/etc/apt/apt.conf.d/80croutonproxy'
-    if [ -z "$PROXY" ]; then
-        rm -f "$aptproxy"
-    else
-        cat > "$aptproxy" <<EOF
+if [ "$DISTRO" = 'ubuntu' ]; then 
+    echo 'Preparing software sources...' 1>&2
+    if [ ! "$PROXY" = 'unspecified' -a ! "$PROXY" = '#PROXY' ]; then
+        aptproxy='/etc/apt/apt.conf.d/80croutonproxy'
+        if [ -z "$PROXY" ]; then
+            rm -f "$aptproxy"
+        else
+            cat > "$aptproxy" <<EOF
 Acquire::http::proxy "$PROXY";
 Acquire::ftp::proxy "$PROXY";
 Acquire::https::proxy "$PROXY";
 EOF
+        fi
     fi
-fi
-cat > /etc/apt/sources.list <<EOF
+    cat > /etc/apt/sources.list <<EOF
 deb $MIRROR $RELEASE main restricted universe multiverse
 deb-src $MIRROR $RELEASE main restricted universe multiverse
 deb $MIRROR $RELEASE-updates main restricted universe multiverse
@@ -58,10 +59,11 @@ deb-src $MIRROR $RELEASE-updates main restricted universe multiverse
 deb $MIRROR $RELEASE-security main restricted universe multiverse
 deb-src $MIRROR $RELEASE-security main restricted universe multiverse
 EOF
-apt-get -y update
+    apt-get -y update
 
-echo 'Ensuring system is up-to-date...' 1>&2
-apt-get -y dist-upgrade
+    echo 'Ensuring system is up-to-date...' 1>&2
+    apt-get -y dist-upgrade
+fi
 
 # On release upgrade, keyboard-configuration might be reconfigured.
 fixkeyboardmode

@@ -22,8 +22,7 @@ EOF
     # Update database
     apt-get update
 fi
-apt-get -y install \
-    xfce4 xfce4-goodies shimmer-themes `noauto dictionaries-common hddtemp xorg`
+install xfce4 xfce4-goodies shimmer-themes -- dictionaries-common hddtemp xorg
 
 TIPS="$TIPS
 You can start Xfce via the startxfce4 host command: sudo startxfce4

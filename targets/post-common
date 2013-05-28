@@ -35,7 +35,9 @@ if ! grep -q ':1000:' /etc/passwd; then
 fi
 
 echo 'Cleaning up' 1>&2
-apt-get clean
+if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
+    apt-get clean
+fi
 rm -f "$0"
 
 if [ -n "$TIPS" ]; then

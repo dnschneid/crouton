@@ -7,4 +7,4 @@ DESCRIPTION="Chromium browser. Uses the distro's version, which may be old."
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
-apt-get -y install chromium-browser
+install chromium-browser

@@ -11,7 +11,7 @@
 compile ticks -lrt
 
 # Install utilities and links for powerd-poking daemon
-apt-get -y --no-install-recommends install xprintidle dbus
+install --minimal xprintidle dbus
 ln -sf croutonpowerd /usr/local/bin/gnome-screensaver-command
 ln -sf croutonpowerd /usr/local/bin/xscreensaver-command
 

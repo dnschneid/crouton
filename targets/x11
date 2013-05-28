@@ -13,7 +13,7 @@ CHROOTBIN='croutonpowerd croutonxinitrc-wrapper setres xinit'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
-apt-get -y install xorg dmz-cursor-theme
+install xorg dmz-cursor-theme
 # Fix launching X11 from inside crosh (user doesn't own a TTY)
 sed -i 's/allowed_users=.*/allowed_users=anybody/' '/etc/X11/Xwrapper.config'
 
