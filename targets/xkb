@@ -59,34 +59,34 @@ xkb_symbols "overlay_after" {
 END
 
 error=''
-mawk '
+awk '
 #rules/base.ml_s.part
 /^! model[ \t]*layout[ \t]*=[ \t]*symbols$/{
-    found[1] += 1;
+    found[1]++;
     print; print "  chromebook	*			=	pc+chromebook(overlay_before)+%l%(v)"; next
 }
 
 #rules/base.ml1_c.part
 /^! model[ \t]*layout\[1\][ \t]*=[ \t]*compat$/{
-    found[2] += 1;
+    found[2]++;
     print; print "  chromebook	*		=	complete+chromebook"; next
 }
 
 #rules/base.ml1_s.part
 /^! model[ \t]*layout\[1\][ \t]*=[ \t]*symbols$/{
-    found[3] += 1;
+    found[3]++;
     print; print " chromebook	*			=	pc+chromebook(overlay_before)+%l[1]%(v[1])"; next
 }
 
 #rules/base.ml_c.part
 /^! model[ \t]*layout[ \t]*=[ \t]*compat$/{
-    found[4] += 1;
+    found[4]++;
     print; print "  chromebook	*		=	complete+chromebook"; next
 }
 
 #rules/evdev.m_s.part
 /^! model[ \t]*=[ \t]*symbols$/{
-    found[5] += 1;
+    found[5]++;
     print; print "  chromebook	=   +inet(evdev)+chromebook(overlay_after)"; next
 }
 
@@ -96,7 +96,7 @@ mawk '
 END {
     for (i = 1; i <= 5; i++) {
         if (found[i] != 1) {
-            print FILENAME ": Rule " i " did not apply once." > "/dev/stderr"
+            print FILENAME ": Rule " i " did not apply once and only once." | "cat 1>&2"
             exit 1
         }
     }
@@ -104,9 +104,9 @@ END {
 ' "$XKBROOT/rules/evdev" > "$XKBROOTTMP/rules/evdev" || error='y'
 
 # rules/base.xml.in
-mawk '
+awk '
 /^.*<modelList>$/{
-    found += 1;
+    found++;
     print;
     print "    <model>";
     print "      <configItem>";
@@ -123,15 +123,15 @@ mawk '
 
 END {
     if (found != 1) {
-        print FILENAME ": Rule did not apply once." > "/dev/stderr"
+        print FILENAME ": Rule did not apply once and only once." | "cat 1>&2"
         exit 1
     }
 }
 ' "$XKBROOT/rules/evdev.xml" > "$XKBROOTTMP/rules/evdev.xml" || error='y'
 
-mawk '
+awk '
 /^! model$/{
-    found += 1;
+    found++;
     print; print "  chromebook      Chromebook"; next
 }
 
@@ -140,7 +140,7 @@ mawk '
 
 END {
     if (found != 1) {
-        print FILENAME ": Rule did not apply once." > "/dev/stderr"
+        print FILENAME ": Rule did not apply once and only once." | "cat 1>&2"
         exit 1
     }
 }
