@@ -2,9 +2,30 @@
 # Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+#
+# This adds support for Chromebook keyboard special keys.
+#
+# For example, we map Search+arrows to Page Up/Down/Home/End. This is
+# done at the browser level in Chrome OS (i.e., not at the hardware
+# or keymap level).
+#
+# We do this by adding an overlay.
+#
+# We are loading the symbols chromebook(overlay_before) before the
+# layout is loaded. This is to make sure that the Search+. always
+# maps to Insert, but allowing the layout to change the mapping
+# of that key if necessary.
+#
+# Finally, chromebook(overlay_after) remaps <LWIN> (the Search key)
+# to the overlay latch.
+#
+# An additional mapping is needed to make sure that Super_R is not
+# sent when the Search key is released (this is a little strange,
+# and I'm not sure why this happens).
 
-# This adds support for Chromebook keyboard (Search+* keys)
-# This isn't a real target; it is sourced from x11-common.
+REQUIRES='x11'
+DESCRIPTION='Adds support for Chromebook keyboard special keys.'
+. "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
 # Make sure we start from a fresh package

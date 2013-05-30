@@ -46,5 +46,3 @@ ResultAny=no
 ResultInactive=no
 ResultActive=no
 EOF
-
-### append xkb
