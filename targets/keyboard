@@ -33,7 +33,9 @@ apt-mark unhold xkb-data || true 2>/dev/null
 apt-get -y install --reinstall xkb-data
 
 XKBROOT='/usr/share/X11/xkb'
-XKBROOTTMP=`mktemp -d tmp.crouton-xkb.XXXXXX --tmpdir=/tmp`
+XKBROOTTMP="`mktemp -d crouton-xkb.XXXXXX --tmpdir=/tmp`"
+TRAP="rm -rf '$XKBROOTTMP';$TRAP"
+trap "$TRAP" INT HUP 0
 mkdir -p "$XKBROOTTMP/compat" "$XKBROOTTMP/symbols" "$XKBROOTTMP/rules"
 
 cat > "$XKBROOTTMP/compat/chromebook" <<END
@@ -79,102 +81,92 @@ xkb_symbols "overlay_after" {
 };
 END
 
-error=''
 awk '
-#rules/base.ml_s.part
+# default: print line
+1
+
+# rules/base.ml_s.part
 /^! model[ \t]*layout[ \t]*=[ \t]*symbols$/{
     found[1]++;
-    print; print "  chromebook	*			=	pc+chromebook(overlay_before)+%l%(v)"; next
+    print "  chromebook	*			=	pc+chromebook(overlay_before)+%l%(v)"
 }
 
-#rules/base.ml1_c.part
+# rules/base.ml1_c.part
 /^! model[ \t]*layout\[1\][ \t]*=[ \t]*compat$/{
     found[2]++;
-    print; print "  chromebook	*		=	complete+chromebook"; next
+    print "  chromebook	*		=	complete+chromebook"
 }
 
-#rules/base.ml1_s.part
+# rules/base.ml1_s.part
 /^! model[ \t]*layout\[1\][ \t]*=[ \t]*symbols$/{
     found[3]++;
-    print; print " chromebook	*			=	pc+chromebook(overlay_before)+%l[1]%(v[1])"; next
+    print "  chromebook	*			=	pc+chromebook(overlay_before)+%l[1]%(v[1])"
 }
 
-#rules/base.ml_c.part
+# rules/base.ml_c.part
 /^! model[ \t]*layout[ \t]*=[ \t]*compat$/{
     found[4]++;
-    print; print "  chromebook	*		=	complete+chromebook"; next
+    print "  chromebook	*		=	complete+chromebook"
 }
 
-#rules/evdev.m_s.part
+# rules/evdev.m_s.part
 /^! model[ \t]*=[ \t]*symbols$/{
     found[5]++;
-    print; print "  chromebook	=   +inet(evdev)+chromebook(overlay_after)"; next
+    print "  chromebook	=   +inet(evdev)+chromebook(overlay_after)"
 }
-
-#default: print line
-1
 
 END {
     for (i = 1; i <= 5; i++) {
         if (found[i] != 1) {
-            print FILENAME ": Rule " i " did not apply once and only once." | "cat 1>&2"
+            print "Error: " FILENAME ": rule " i ": applied " found[i] " times" > "/dev/stderr"
             exit 1
         }
     }
 }
-' "$XKBROOT/rules/evdev" > "$XKBROOTTMP/rules/evdev" || error='y'
+' "$XKBROOT/rules/evdev" > "$XKBROOTTMP/rules/evdev"
 
 # rules/base.xml.in
 awk '
+# default: print line
+1
+
 /^.*<modelList>$/{
     found++;
-    print;
     print "    <model>";
     print "      <configItem>";
     print "        <name>chromebook</name>";
     print "        <description>Chromebook</description>";
     print "        <vendor>Google</vendor>";
     print "      </configItem>";
-    print "    </model>";
-    next
+    print "    </model>"
 }
-
-#default: print line
-1
 
 END {
     if (found != 1) {
-        print FILENAME ": Rule did not apply once and only once." | "cat 1>&2"
+        print "Error: " FILENAME ": rule applied " found " times" > "/dev/stderr"
         exit 1
     }
 }
-' "$XKBROOT/rules/evdev.xml" > "$XKBROOTTMP/rules/evdev.xml" || error='y'
+' "$XKBROOT/rules/evdev.xml" > "$XKBROOTTMP/rules/evdev.xml"
 
 awk '
+# default: print line
+1
+
 /^! model$/{
     found++;
-    print; print "  chromebook      Chromebook"; next
+    print "  chromebook      Chromebook"
 }
-
-#default: print line
-1
 
 END {
     if (found != 1) {
-        print FILENAME ": Rule did not apply once and only once." | "cat 1>&2"
+        print "Error: " FILENAME ": rule applied " found " times" > "/dev/stderr"
         exit 1
     }
 }
-' "$XKBROOT/rules/evdev.lst" > "$XKBROOTTMP/rules/evdev.lst" || error='y'
+' "$XKBROOT/rules/evdev.lst" > "$XKBROOTTMP/rules/evdev.lst"
 
-if [ -z "$error" ]; then
-    cp -a "$XKBROOTTMP"/* "$XKBROOT"
-    rm -rf "$XKBROOTTMP"
-else
-    rm -rf "$XKBROOTTMP"
-    exit 1
-fi
+cp -a "$XKBROOTTMP"/* "$XKBROOT"/
 
 # Hold xkb-data, so that it does not get updated
 apt-mark hold xkb-data
-
