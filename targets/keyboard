@@ -6,18 +6,15 @@
 # This adds support for Chromebook keyboard special keys.
 #
 # For example, we map Search+arrows to Page Up/Down/Home/End. This is
-# done at the browser level in Chrome OS (i.e., not at the hardware
+# done at the browser level in Chromium OS (i.e., not at the hardware
 # or keymap level).
 #
-# We do this by adding an overlay.
+# The mapping of Search+F1-F10 is reversed compared to Chromium OS:
+# Pressing the back key still produces F1, Search+F1 is required to
+# generate XF86Back. 
 #
-# We are loading the symbols chromebook(overlay_before) before the
-# layout is loaded. This is to make sure that the Search+. always
-# maps to Insert, but allowing the layout to change the mapping
-# of that key if necessary.
-#
-# Finally, chromebook(overlay_after) remaps <LWIN> (the Search key)
-# to the overlay latch.
+# We do this by adding an overlay, and using Super_L (Search key) as
+# the overlay latch.
 #
 # An additional mapping is needed to make sure that Super_R is not
 # sent when the Search key is released (this is a little strange,
@@ -49,33 +46,55 @@ default partial xkb_compatibility "overlay"  {
 END
 
 cat > "$XKBROOTTMP/symbols/chromebook" <<END
-// Keys that need to be overridden before the layout is
-// loaded. This makes sure that Search+. maps to Insert,
-// no matter what the "." key is mapped to.
-partial alphanumeric_keys
-xkb_symbols "overlay_before" {
-    key <AB09> { [ period, greater ], overlay1=<INS> };
+// This mapping assumes that inet(evdev) will also be sourced
+partial
+xkb_symbols "overlay" {
+    key <LWIN> { [ Overlay1_Enable ], overlay1=<LWIN> };
+    
+    key <AB09> { overlay1=<INS> };
 
-    key <LEFT> { [ Left, Left ], overlay1=<HOME> };
-    key <RGHT> { [ Right, Right ], overlay1=<END> };
-    key <UP>   { [ Up, Up ], overlay1=<PGUP> };
-    key <DOWN> { [ Down, Down ], overlay1=<PGDN> };
+    key <LEFT> { overlay1=<HOME> };
+    key <RGHT> { overlay1=<END> };
+    key <UP>   { overlay1=<PGUP> };
+    key <DOWN> { overlay1=<PGDN> };
 
-    key <BKSP> { [ BackSpace, BackSpace ], overlay1=<DELE> };
+    key <FK01> { overlay1=<I247> };
+    key <I247>   {       [ XF86Back              ] };
+    key <FK02> { overlay1=<I248> };
+    key <I248>   {       [ XF86Forward           ] };
+    key <FK03> { overlay1=<I249> };
+    key <I249>   {       [ XF86Reload            ] };
+    key <FK04> { overlay1=<I156> }; // XF86Launch1
+    key <FK05> { overlay1=<I250> };
+    key <I250>   {       [ XF86ApplicationRight   ] };
+    key <FK06> { overlay1=<I232> }; // XF86MonBrightnessDown
+    key <FK07> { overlay1=<I233> }; // XF86MonBrightnessUp
+    key <FK08> { overlay1=<MUTE> };
+    key <FK09> { overlay1=<VOL-> };
+    key <FK10> { overlay1=<VOL+> };
 
-    key <LALT> { [ Alt_L, Meta_L ], overlay1=<CAPS> };
-    key <RALT> { [ Alt_R, Meta_R ], overlay1=<CAPS> };
+    key <AE01> { overlay1=<FK01> };
+    key <AE02> { overlay1=<FK02> };
+    key <AE03> { overlay1=<FK03> };
+    key <AE04> { overlay1=<FK04> };
+    key <AE05> { overlay1=<FK05> };
+    key <AE06> { overlay1=<FK06> };
+    key <AE07> { overlay1=<FK07> };
+    key <AE08> { overlay1=<FK08> };
+    key <AE09> { overlay1=<FK09> };
+    key <AE10> { overlay1=<FK10> };
+    key <AE11> { overlay1=<FK11> };
+    key <AE12> { overlay1=<FK12> };
+    key <BKSP> { overlay1=<DELE> };
+
+    key <LALT> { overlay1=<CAPS> };
+    key <RALT> { overlay1=<CAPS> };
 
     // For some strange reason, some Super_R events are triggered when
-    // the Search key is release (i.e. with overlay on).
+    // the Search key is released (i.e. with overlay on).
     // This maps RWIN to a dummy key (<I253>), to make sure we catch it.
     key <RWIN> { [ NoSymbol ], overlay1=<I253> };
-};
 
-// Keys that we want to override after the layout is loaded
-partial
-xkb_symbols "overlay_after" {
-    key <LWIN> { [ Overlay1_Enable ], overlay1=<LWIN> };
     // Map dummy key to no symbol
     key <I253> { [ NoSymbol ] };
 };
@@ -85,38 +104,26 @@ awk '
 # default: print line
 1
 
-# rules/base.ml_s.part
-/^! model[ \t]*layout[ \t]*=[ \t]*symbols$/{
-    found[1]++;
-    print "  chromebook	*			=	pc+chromebook(overlay_before)+%l%(v)"
-}
-
 # rules/base.ml1_c.part
 /^! model[ \t]*layout\[1\][ \t]*=[ \t]*compat$/{
-    found[2]++;
+    found[1]++;
     print "  chromebook	*		=	complete+chromebook"
-}
-
-# rules/base.ml1_s.part
-/^! model[ \t]*layout\[1\][ \t]*=[ \t]*symbols$/{
-    found[3]++;
-    print "  chromebook	*			=	pc+chromebook(overlay_before)+%l[1]%(v[1])"
 }
 
 # rules/base.ml_c.part
 /^! model[ \t]*layout[ \t]*=[ \t]*compat$/{
-    found[4]++;
+    found[2]++;
     print "  chromebook	*		=	complete+chromebook"
 }
 
 # rules/evdev.m_s.part
 /^! model[ \t]*=[ \t]*symbols$/{
-    found[5]++;
-    print "  chromebook	=   +inet(evdev)+chromebook(overlay_after)"
+    found[3]++;
+    print "  chromebook	=   +inet(evdev)+chromebook(overlay)"
 }
 
 END {
-    for (i = 1; i <= 5; i++) {
+    for (i = 1; i <= 3; i++) {
         if (found[i] != 1) {
             print "Error: " FILENAME ": rule " i ": applied " found[i] " times" > "/dev/stderr"
             exit 1
