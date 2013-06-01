@@ -11,7 +11,7 @@
 #
 # The mapping of Search+F1-F10 is reversed compared to Chromium OS:
 # Pressing the back key still produces F1, Search+F1 is required to
-# generate XF86Back. 
+# generate XF86Back.
 #
 # We do this by adding an overlay, and using Super_L (Search key) as
 # the overlay latch.
@@ -50,7 +50,7 @@ cat > "$XKBROOTTMP/symbols/chromebook" <<END
 partial
 xkb_symbols "overlay" {
     key <LWIN> { [ Overlay1_Enable ], overlay1=<LWIN> };
-    
+
     key <AB09> { overlay1=<INS> };
 
     key <LEFT> { overlay1=<HOME> };
@@ -59,14 +59,14 @@ xkb_symbols "overlay" {
     key <DOWN> { overlay1=<PGDN> };
 
     key <FK01> { overlay1=<I247> };
-    key <I247>   {       [ XF86Back              ] };
+    key <I247> { [ XF86Back ] };
     key <FK02> { overlay1=<I248> };
-    key <I248>   {       [ XF86Forward           ] };
+    key <I248> { [ XF86Forward ] };
     key <FK03> { overlay1=<I249> };
-    key <I249>   {       [ XF86Reload            ] };
+    key <I249> { [ XF86Reload ] };
     key <FK04> { overlay1=<I235> }; // XF86Display
     key <FK05> { overlay1=<I250> };
-    key <I250>   {       [ XF86ApplicationRight   ] };
+    key <I250> { [ XF86ApplicationRight ] };
     key <FK06> { overlay1=<I232> }; // XF86MonBrightnessDown
     key <FK07> { overlay1=<I233> }; // XF86MonBrightnessUp
     key <FK08> { overlay1=<MUTE> };
@@ -173,6 +173,7 @@ END {
 }
 ' "$XKBROOT/rules/evdev.lst" > "$XKBROOTTMP/rules/evdev.lst"
 
+# Apply the modifications
 cp -a "$XKBROOTTMP"/* "$XKBROOT"/
 
 # Hold xkb-data, so that it does not get updated
