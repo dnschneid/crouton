@@ -25,9 +25,11 @@ DESCRIPTION='Adds support for Chromebook keyboard special keys.'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
-# Make sure we start from a fresh package
-apt-mark unhold xkb-data || true 2>/dev/null
-apt-get -y install --reinstall xkb-data
+if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
+    # Make sure we start from a fresh package
+    apt-mark unhold xkb-data || true 2>/dev/null
+    apt-get -y install --reinstall xkb-data
+fi
 
 XKBROOT='/usr/share/X11/xkb'
 XKBROOTTMP="`mktemp -d crouton-xkb.XXXXXX --tmpdir=/tmp`"
@@ -176,5 +178,7 @@ END {
 # Apply the modifications
 cp -a "$XKBROOTTMP"/* "$XKBROOT"/
 
-# Hold xkb-data, so that it does not get updated
-apt-mark hold xkb-data
+if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
+    # Hold xkb-data, so that it does not get updated
+    apt-mark hold xkb-data
+fi
