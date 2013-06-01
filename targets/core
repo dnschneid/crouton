@@ -37,7 +37,7 @@ newenv='/etc/environment.new'
 } > "$newenv"
 mv -f "$newenv" "$oldenv"
 
-if [ "$DISTRO" = 'ubuntu' ]; then 
+if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
     echo 'Preparing software sources...' 1>&2
     if [ ! "$PROXY" = 'unspecified' -a ! "$PROXY" = '#PROXY' ]; then
         aptproxy='/etc/apt/apt.conf.d/80croutonproxy'
@@ -51,7 +51,9 @@ Acquire::https::proxy "$PROXY";
 EOF
         fi
     fi
-    cat > /etc/apt/sources.list <<EOF
+
+    if [ "$DISTRO" = 'ubuntu' ]; then
+        cat > /etc/apt/sources.list <<EOF
 deb $MIRROR $RELEASE main restricted universe multiverse
 deb-src $MIRROR $RELEASE main restricted universe multiverse
 deb $MIRROR $RELEASE-updates main restricted universe multiverse
@@ -59,6 +61,15 @@ deb-src $MIRROR $RELEASE-updates main restricted universe multiverse
 deb $MIRROR $RELEASE-security main restricted universe multiverse
 deb-src $MIRROR $RELEASE-security main restricted universe multiverse
 EOF
+    else
+        cat > /etc/apt/sources.list <<EOF
+deb $MIRROR $RELEASE main contrib
+deb-src $MIRROR $RELEASE main contrib
+deb $MIRROR $RELEASE-updates main contrib
+deb-src $MIRROR $RELEASE-updates main contrib
+EOF
+    fi
+
     apt-get -y update
 
     echo 'Ensuring system is up-to-date...' 1>&2
@@ -69,7 +80,7 @@ fi
 fixkeyboardmode
 
 # Generate and set default locale
-if [ ! -f '/etc/default/locale' ]; then
+if [ ! -f '/etc/default/locale' ] && hash locale-gen 2>/dev/null; then
     locale-gen --lang en_US.UTF-8
     update-locale LANG=en_US.UTF-8
 fi
