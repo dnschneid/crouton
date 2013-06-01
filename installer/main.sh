@@ -18,8 +18,6 @@ DOWNLOADONLY=''
 ENCRYPT=''
 KEYFILE=''
 MIRROR=''
-MIRROR86='http://archive.ubuntu.com/ubuntu/'
-MIRRORARM='http://ports.ubuntu.com/ubuntu-ports/'
 NAME=''
 PREFIX='/usr/local'
 PROXY='unspecified'
@@ -32,7 +30,7 @@ UPDATE=''
 USAGE="$APPLICATION [options] -t targets
 $APPLICATION [options] -d -f tarball
 
-Constructs a Debian-based chroot for running alongside Chromium OS.
+Constructs a chroot for running a more standard userspace alongside Chromium OS.
 
 If run with -f, a tarball is used to bootstrap the chroot. If specified with -d,
 the tarball is created for later use with -f.
@@ -43,7 +41,8 @@ This must be run as root unless -d is specified AND fakeroot is installed AND
 It is highly recommended to run this from a crosh shell (Ctrl+Alt+T), not VT2.
 
 Options:
-    -a ARCH     The architecture to prepare the chroot for. Default: $ARCH
+    -a ARCH     The architecture to prepare the chroot for.
+                Default: autodetected for the current system.
     -d          Downloads the bootstrap tarball but does not prepare the chroot.
     -e          Encrypt the chroot with ecryptfs using a passphrase.
                 If specified twice, prompt to change the encryption passphrase.
@@ -53,8 +52,7 @@ Options:
                 If unspecified, the keys will be stored in the chroot if doing a
                 first encryption, or auto-detected on existing chroots.
     -m MIRROR   Mirror to use for bootstrapping and apt-get.
-                Default for i386/amd64: $MIRROR86
-                Default for armhl/others: $MIRRORARM
+                Default depends on the release chosen.
     -n NAME     Name of the chroot. Default is the release name.
     -p PREFIX   The root directory in which to install the bin and chroot
                 subdirectories and data. Default: $PREFIX
@@ -117,13 +115,33 @@ if [ ! $# = 0 ]; then
     error 2 "$USAGE"
 fi
 
-# If MIRROR wasn't specified, choose it based on ARCH.
-if [ -z "$MIRROR" ]; then
-    if [ "$ARCH" = 'amd64' -o "$ARCH" = 'i386' ]; then
-        MIRROR="$MIRROR86"
-    else
-        MIRROR="$MIRRORARM"
+# If we specified a tarball, we need to detect the ARCH and RELEASE
+if [ -z "$DOWNLOADONLY" -a -n "$TARBALL" ]; then
+    if [ ! -f "$TARBALL" ]; then
+        error 2 "$TARBALL not found."
     fi
+    echo 'Detecting archive release and architecture...' 1>&2
+    releasearch="`tar -tf "$TARBALL" 2>/dev/null | head -n 1`"
+    releasearch="${releasearch%%/*}"
+    if [ ! "${releasearch#*-}" = "$releasearch" ]; then
+        ARCH="${releasearch#*-}"
+        RELEASE="${releasearch%-*}"
+    else
+        echo 'Unable to detect archive release and architecture. Using flags.' 1>&2
+    fi
+fi
+
+# Detect which distro the release belongs to.
+for dist in "$INSTALLERDIR"/*/; do
+    if grep -q "^$RELEASE\$" "$dist/releases"; then
+        DISTRO="${dist%/}"
+        DISTRO="${DISTRO##*/}"
+        . "${dist}defaults"
+        break
+    fi
+done
+if [ -z "$DISTRO" ]; then
+    error 2 "$RELEASE does not belong to any supported distribution."
 fi
 
 # Confirm or list targets if requested (and download only isn't chosen)
@@ -188,34 +206,6 @@ if [ -z "$DOWNLOADONLY" ] && \
 (Ctrl+Alt+T in Chromium OS), not from a VT. If you continue to run this from a
 VT, you're gonna have a bad time. Press Ctrl-C at any point to abort." 1>&2
     sleep 5
-fi
-
-# If we specified a tarball, we need to detect the ARCH and RELEASE
-if [ -z "$DOWNLOADONLY" -a -n "$TARBALL" ]; then
-    if [ ! -f "$TARBALL" ]; then
-        error 2 "$TARBALL not found."
-    fi
-    echo 'Detecting archive release and architecture...' 1>&2
-    releasearch="`tar -tf "$TARBALL" 2>/dev/null | head -n 1`"
-    releasearch="${releasearch%%/*}"
-    if [ ! "${releasearch#*-}" = "$releasearch" ]; then
-        ARCH="${releasearch#*-}"
-        RELEASE="${releasearch%-*}"
-    else
-        echo 'Unable to detect archive release and architecture. Using flags.' 1>&2
-    fi
-fi
-
-# Detect which distro the release belongs to.
-for dist in "$INSTALLERDIR"/*/; do
-    if grep -q "^$RELEASE\$" "$dist/releases"; then
-        dist="${dist%/}"
-        DISTRO="${dist##*/}"
-        break
-    fi
-done
-if [ -z "$DISTRO" ]; then
-    error 2 "$RELEASE does not belong to any supported distribution."
 fi
 
 # Set http_proxy if a proxy is specified.
