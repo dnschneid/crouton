@@ -22,3 +22,12 @@
         (xbindkey '(control shift alt F2) "/usr/local/bin/croutoncycle prev")
     )
 )
+
+; Extra bindings that must only be activated in chroot X11/Xephyr
+(if (not (equal? (getenv "CROUTON") "XINIT"))
+    (begin
+        ; Brightness control
+        (xbindkey '(XF86MonBrightnessDown) "brightness down")
+        (xbindkey '(XF86MonBrightnessUp) "brightness up")
+    )
+)
