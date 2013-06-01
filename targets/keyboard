@@ -64,7 +64,7 @@ xkb_symbols "overlay" {
     key <I248>   {       [ XF86Forward           ] };
     key <FK03> { overlay1=<I249> };
     key <I249>   {       [ XF86Reload            ] };
-    key <FK04> { overlay1=<I156> }; // XF86Launch1
+    key <FK04> { overlay1=<I235> }; // XF86Display
     key <FK05> { overlay1=<I250> };
     key <I250>   {       [ XF86ApplicationRight   ] };
     key <FK06> { overlay1=<I232> }; // XF86MonBrightnessDown
