@@ -62,6 +62,11 @@ if [ -f "$toucheggconf" ]; then
     touchegg &
 fi
 
+# Apply the Chromebook keyboard map if installed.
+if [ -f '/usr/share/X11/xkb/compat/chromebook' ]; then
+    setxkbmap -model chromebook
+fi
+
 # Run the client itself if it is executable, otherwise run it in a shell.
 ret=0
 if [ -n "$binary" -o -x "$cmd" ]; then
