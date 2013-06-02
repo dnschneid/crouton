@@ -59,8 +59,9 @@ Options:
     -P PROXY    Set an HTTP proxy for the chroot; effectively sets http_proxy.
                 Specify an empty string to remove a proxy when updating.
     -r RELEASE  Name of the distribution release. Default: $RELEASE
+                Specify 'help' or 'list' to print out recognized releases.
     -t TARGETS  Comma-separated list of environment targets to install.
-                Specify help to print out potential targets.
+                Specify 'help' or 'list' to print out potential targets.
     -T TARGETFILE  Path to a custom target definition file that gets applied to
                 the chroot as if it were a target in the $APPLICATION bundle.
     -u          If the chroot exists, runs the preparation step again.
@@ -106,7 +107,8 @@ done
 shift "$((OPTIND-1))"
 
 # If targets weren't specified, we should just print help text.
-if [ -z "$DOWNLOADONLY" -a -z "$TARGETS" -a -z "$TARGETFILE" ]; then
+if [ -z "$DOWNLOADONLY" -a -z "$TARGETS" -a -z "$TARGETFILE" \
+        -a ! "$RELEASE" = 'list' -a ! "$RELEASE" = 'help' ]; then
     error 2 "$USAGE"
 fi
 
@@ -131,12 +133,27 @@ if [ -z "$DOWNLOADONLY" -a -n "$TARBALL" ]; then
     fi
 fi
 
+# If the release is "list" or "help", print out all the valid releases.
+if [ "$RELEASE" = 'list' -o "$RELEASE" = 'help' ]; then
+    for dist in "$INSTALLERDIR"/*/; do
+        DISTRO="${dist%/}"
+        DISTRO="${DISTRO##*/}"
+        echo "Recognized $DISTRO releases:" 1>&2
+        echo -n '   ' 1>&2
+        while read RELEASE; do
+            echo -n " $RELEASE" 1>&2
+        done < "$dist/releases"
+        echo 1>&2
+    done
+    exit 2
+fi
+
 # Detect which distro the release belongs to.
 for dist in "$INSTALLERDIR"/*/; do
     if grep -q "^$RELEASE\$" "$dist/releases"; then
         DISTRO="${dist%/}"
         DISTRO="${DISTRO##*/}"
-        . "${dist}defaults"
+        . "$dist/defaults"
         break
     fi
 done
