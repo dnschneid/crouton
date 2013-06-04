@@ -12,7 +12,7 @@ HOSTBINDIR="$SCRIPTDIR/host-bin"
 TARGETSDIR="$SCRIPTDIR/targets"
 SRCDIR="$SCRIPTDIR/src"
 
-ARCH="`uname -m | sed -e 's i.86 i386 ;s x86_64 amd64 ;s arm.* armhf ;'`"
+ARCH=''
 DISTRO=''
 DOWNLOADONLY=''
 ENCRYPT=''
