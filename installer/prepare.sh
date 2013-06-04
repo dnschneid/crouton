@@ -5,7 +5,8 @@
 
 # Usage: prepare.sh arch mirror distro release proxy version
 ARCH="${1:-"#ARCH"}"
-MIRROR="${2:-"#MIRROR"}"
+# MIRROR may contain variables (e.g., $repo): make sure we do not expand it
+MIRROR=${2:-'#MIRROR'}
 DISTRO="${3:-"#DISTRO"}"
 RELEASE="${4:-"#RELEASE"}"
 PROXY="${5:-"#PROXY"}"
