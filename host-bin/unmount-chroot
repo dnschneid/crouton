@@ -193,7 +193,7 @@ for NAME in "$@"; do
     fi
 
     while ! sed "s=\\\\040=//=g" /proc/mounts | cut -d' ' -f2 \
-              | grep "^$baseesc" | sed 's=//= =g' | xargs --no-run-if-empty -d '
+              | grep -E "^$baseesc(/.*)?$" | sed 's=//= =g' | xargs --no-run-if-empty -d '
 ' -n 50 umount 2>/dev/null; do
         if [ "$ntries" -eq "$TRIES" ]; then
             # Send signal to all processes running under the chroot
