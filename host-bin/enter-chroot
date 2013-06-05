@@ -335,7 +335,11 @@ if [ -n "$NOLOGIN" ]; then
 else
     # Launch the system dbus
     if [ -x "$CHROOT/bin/dbus-daemon" ]; then
-        env -i chroot "$CHROOT" su -c '
+        dbususer=`echo "cat /busconfig/user/text()" \
+            | xmllint --shell "$CHROOT/etc/dbus-1/system.conf" \
+            | grep '^[a-z][-a-z0-9_]*$' 2>/dev/null || true`
+        env -i chroot "$CHROOT" su -c "
+            dbususer=\"$dbususer\""'
             pidfile="/var/run/dbus/pid"
             if [ -f "$pidfile" ]; then
                 if grep -q "^dbus-daemon" "/proc/`cat "$pidfile"`/cmdline" \
@@ -345,7 +349,9 @@ else
                 rm -f "$pidfile"
             fi
             mkdir -p /var/run/dbus
-            chown messagebus:messagebus /var/run/dbus
+            dbususer=`id -un "$dbususer" 2>/dev/null || echo "messagebus"`
+            dbusgrp=`id -gn "$dbususer" 2>/dev/null || echo "messagebus"`
+            chown "$dbususer:$dbusgrp" /var/run/dbus
             dbus-daemon --system --fork' - root
     fi
 
