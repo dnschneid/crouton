@@ -338,9 +338,9 @@ else
         # Try to detect the dbus user by parsing its configuration file
         # If it fails, or if the user does not exist, `id -un '$dbususer'`
         # will fail, and we fallback on a default user name ("messagebus")
-        dbususer=`echo "cat /busconfig/user/text()" \
+        dbususer="`echo "cat /busconfig/user/text()" \
             | xmllint --shell "$CHROOT/etc/dbus-1/system.conf" 2>/dev/null \
-            | grep '^[a-z][-a-z0-9_]*$' || true`
+            | grep '^[a-z][-a-z0-9_]*$' || true`"
         env -i chroot "$CHROOT" su -c "
             dbususer='$dbususer'"'
             pidfile="/var/run/dbus/pid"
@@ -352,8 +352,8 @@ else
                 rm -f "$pidfile"
             fi
             mkdir -p /var/run/dbus
-            dbususer="`id -un \"$dbususer\" 2>/dev/null || echo \"messagebus\"`"
-            dbusgrp="`id -gn \"$dbususer\" 2>/dev/null || echo \"messagebus\"`"
+            dbususer="`id -un "$dbususer" 2>/dev/null || echo "messagebus"`"
+            dbusgrp="`id -gn "$dbususer" 2>/dev/null || echo "messagebus"`"
             chown "$dbususer:$dbusgrp" /var/run/dbus
             dbus-daemon --system --fork' - root
     fi
