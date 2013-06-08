@@ -33,8 +33,7 @@ fi
 
 XKBROOT='/usr/share/X11/xkb'
 XKBROOTTMP="`mktemp -d crouton-xkb.XXXXXX --tmpdir=/tmp`"
-TRAP="rm -rf '$XKBROOTTMP';$TRAP"
-trap "$TRAP" INT HUP 0
+addtrap "rm -rf '$XKBROOTTMP'"
 mkdir -p "$XKBROOTTMP/compat" "$XKBROOTTMP/symbols" "$XKBROOTTMP/rules"
 
 cat > "$XKBROOTTMP/compat/chromebook" <<END

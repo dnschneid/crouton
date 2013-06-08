@@ -20,6 +20,20 @@ if [ ! "$PROXY" = 'unspecified' -a "${PROXY#"#"}" = "$PROXY" ]; then
     export http_proxy="$PROXY" https_proxy="$PROXY" ftp_proxy="$PROXY"
 fi
 
+# Setup trap in case of interrupt or error:
+#  - First disable all traps to make sure clean-up commands are not executed twice.
+#  - We then make sure this script exits immediately
+# The parameter must end with a semicolon
+settrap() {
+    trap "trap - INT HUP 0; $1 exit 2" INT HUP
+    trap "trap - INT HUP 0; $1" 0
+}
+
+# Prepend a command to the existing $TRAP 
+addtrap() {
+    TRAP="$1;$TRAP"
+    settrap "$TRAP"
+}
 
 # Takes in a list of crouton-style package names, and outputs the list, filtered
 # for the current distro.
