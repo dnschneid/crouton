@@ -32,6 +32,21 @@ error() {
     exit "$ecode"
 }
 
+# Setup trap in case of interrupt or error:
+#  - First disable all traps to make sure clean-up commands are not executed twice.
+#  - We then make sure this script exits immediately
+# The parameter must end with a semicolon
+settrap() {
+    trap "trap - INT HUP 0; $1 exit 2" INT HUP
+    trap "trap - INT HUP 0; $1" 0
+}
+
+# Prepend a command to the existing $TRAP 
+addtrap() {
+    TRAP="$1;$TRAP"
+    settrap "$TRAP"
+}
+
 # Process arguments
 while getopts 'c:ek:np' f; do
     case "$f" in
@@ -56,8 +71,7 @@ if [ ! "$USER" = root -a ! "$UID" = 0 ]; then
 fi
 
 # Make sure we always exit with echo on the tty.
-TRAP="stty echo 2>/dev/null || true;$TRAP"
-trap "$TRAP" INT HUP 0
+addtrap "stty echo 2>/dev/null || true"
 
 # Function to prompt the user for a passphrase. Sets $passphrase.
 promptNewPassphrase() {
@@ -178,8 +192,7 @@ for NAME in "$@"; do
             # Create key file
             wrappedkey="`mktemp`"
             wrappedfnek="`mktemp`"
-            TRAP="rm -f '$wrappedkey' '$wrappedfnek';$TRAP"
-            trap "$TRAP" INT HUP 0
+            addtrap "rm -f '$wrappedkey' '$wrappedfnek'"
             echo -n "$key
 $passphrase" | ecryptfs-wrap-passphrase "$wrappedkey" -
             echo -n "$fnek
@@ -200,8 +213,7 @@ $passphrase" | ecryptfs-wrap-passphrase "$wrappedfnek" -
 
             wrappedkey="`mktemp`"
             wrappedfnek="`mktemp`"
-            TRAP="rm -f '$wrappedkey' '$wrappedfnek';$TRAP"
-            trap "$TRAP" INT HUP 0
+            addtrap "rm -f '$wrappedkey' '$wrappedfnek'"
 
             # Extract wrapped keys from keyfile
             tail -c 160 "$KEYFILE" | head -c 80 > "$wrappedkey"

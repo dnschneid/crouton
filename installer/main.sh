@@ -84,6 +84,21 @@ error() {
     exit "$ecode"
 }
 
+# Setup trap in case of interrupt or error:
+#  - First disable all traps to make sure clean-up commands are not executed twice.
+#  - We then make sure this script exits immediately
+# The parameter must end with a semicolon
+settrap() {
+    trap "trap - INT HUP 0; $1 exit 2" INT HUP
+    trap "trap - INT HUP 0; $1" 0
+}
+
+# Prepend a command to the existing $TRAP 
+addtrap() {
+    TRAP="$1;$TRAP"
+    settrap "$TRAP"
+}
+
 # Process arguments
 while getopts 'a:def:k:m:n:p:P:r:s:t:T:uV' f; do
     case "$f" in
@@ -232,8 +247,7 @@ fi
 
 # Done with parameter processing!
 # Make sure we always have echo when this script exits
-TRAP="stty echo 2>/dev/null || true;$TRAP"
-trap "$TRAP" INT HUP 0
+addtrap "stty echo 2>/dev/null || true"
 
 # Deterime directories, and fix NAME if it was not specified.
 BIN="$PREFIX/bin"
@@ -266,9 +280,8 @@ Either delete it, specify a different name (-n), or specify -u to update it."
     fi
 
     # Auto-unmount the chroot when the script exits
-    TRAP="sh -e '$HOSTBINDIR/unmount-chroot' \
-                    -y -c '$CHROOTS' '$NAME' 2>/dev/null || true;$TRAP"
-    trap "$TRAP" INT HUP 0
+    addtrap "sh -e '$HOSTBINDIR/unmount-chroot' \
+                    -y -c '$CHROOTS' '$NAME' 2>/dev/null || true"
 
     # Sanity-check the release if we're updating
     if [ -n "$NODOWNLOAD" ] \
@@ -337,14 +350,12 @@ if [ -z "$NODOWNLOAD" ] && [ -n "$DOWNLOADONLY" -o -z "$TARBALL" ]; then
     # Create the temporary directory and delete it upon exit
     tmp="`mktemp -d --tmpdir=/tmp "$APPLICATION.XXX"`"
     subdir="$RELEASE-$ARCH"
-    TRAP="rm -rf '$tmp';$TRAP"
-    trap "$TRAP" INT HUP 0
+    addtrap "rm -rf '$tmp'"
 
     # Ensure that the temporary directory has exec+dev, or mount a new tmpfs
     if [ "$NOEXECTMP" = 'y' ]; then
         mount -i -t tmpfs -o 'rw,dev,exec' tmpfs "$tmp"
-        TRAP="umount -f '$tmp';$TRAP"
-        trap "$TRAP" INT HUP 0
+        addtrap "umount -f '$tmp'"
     fi
 
     . "$INSTALLERDIR/$DISTRO/bootstrap"
@@ -359,7 +370,13 @@ if [ -z "$NODOWNLOAD" ] && [ -n "$DOWNLOADONLY" -o -z "$TARBALL" ]; then
 
     # Move it to the right place
     echo 'Moving bootstrap files into the chroot...' 1>&2
+    # Make sure we do not leave an incomplete chroot in case of interrupt or
+    # error during the move
+    oldtrap="$TRAP"
+    addtrap "rm -rf '$CHROOT'"
     mv -f "$tmp/$subdir/"* "$CHROOT"
+    # Restore the previous trap
+    settrap "$oldtrap"
 fi
 
 # Ensure that /usr/local/bin and /etc/crouton exist
@@ -376,8 +393,7 @@ cat "$INSTALLERDIR/$DISTRO/prepare" >> "$CHROOT/prepare.sh"
 # Create a file for target deduplication
 TARGETDEDUPFILE="`mktemp --tmpdir=/tmp "$APPLICATION.XXX"`"
 rmtargetdedupfile="rm -f '$TARGETDEDUPFILE'"
-TRAP="$rmtargetdedupfile;$TRAP"
-trap "$TRAP" INT HUP 0
+addtrap "$rmtargetdedupfile"
 # Run each target, appending stdout to the prepare script.
 unset SIMULATE
 if [ -n "$TARGETFILE" ]; then

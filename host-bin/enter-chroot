@@ -36,6 +36,21 @@ error() {
     exit "$ecode"
 }
 
+# Setup trap in case of interrupt or error:
+#  - First disable all traps to make sure clean-up commands are not executed twice.
+#  - We then make sure this script exits immediately
+# The parameter must end with a semicolon
+settrap() {
+    trap "trap - INT HUP 0; $1 exit 2" INT HUP
+    trap "trap - INT HUP 0; $1" 0
+}
+
+# Prepend a command to the existing $TRAP 
+addtrap() {
+    TRAP="$1;$TRAP"
+    settrap "$TRAP"
+}
+
 # Process arguments
 while getopts 'bc:k:n:u:x' f; do
     case "$f" in
@@ -74,8 +89,7 @@ if [ -z "$NAME" ]; then
 fi
 
 # Make sure we always exit with echo on the tty.
-TRAP="stty echo 2>/dev/null || true;$TRAP"
-trap "$TRAP" INT HUP 0
+addtrap "stty echo 2>/dev/null || true"
 
 # Mount the chroot and update our CHROOT path
 if [ -n "$KEYFILE" ]; then
@@ -93,8 +107,7 @@ fi
 
 if [ -z "$CROUTON_NO_UNMOUNT" ]; then
     # Auto-unmount everything below and including the chroot upon exit
-    TRAP="sh -e '$BINDIR/unmount-chroot' -yc '$CHROOTS' '$NAME' || true;$TRAP"
-    trap "$TRAP" INT HUP 0
+    addtrap "sh -e '$BINDIR/unmount-chroot' -yc '$CHROOTS' '$NAME' || true"
 fi
 
 # If our root is on an external disk, we need to override powerd_suspend to not
