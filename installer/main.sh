@@ -7,6 +7,7 @@ APPLICATION="${0##*/}"
 SCRIPTDIR="${SCRIPTDIR:-"`dirname "$0"`/.."}"
 CHROOTBINDIR="$SCRIPTDIR/chroot-bin"
 CHROOTETCDIR="$SCRIPTDIR/chroot-etc"
+DISTRODIR=''
 INSTALLERDIR="$SCRIPTDIR/installer"
 HOSTBINDIR="$SCRIPTDIR/host-bin"
 TARGETSDIR="$SCRIPTDIR/targets"
@@ -21,7 +22,8 @@ MIRROR=''
 NAME=''
 PREFIX='/usr/local'
 PROXY='unspecified'
-RELEASE='precise'
+RELEASE=''
+DEFAULTRELEASE='precise'
 TARBALL=''
 TARGETS=''
 TARGETFILE=''
@@ -58,7 +60,8 @@ Options:
                 subdirectories and data. Default: $PREFIX
     -P PROXY    Set an HTTP proxy for the chroot; effectively sets http_proxy.
                 Specify an empty string to remove a proxy when updating.
-    -r RELEASE  Name of the distribution release. Default: $RELEASE
+    -r RELEASE  Name of the distribution release. Default: $DEFAULTRELEASE,
+                or auto-detected if upgrading a chroot and -n is specified.
                 Specify 'help' or 'list' to print out recognized releases.
     -t TARGETS  Comma-separated list of environment targets to install.
                 Specify 'help' or 'list' to print out potential targets.
@@ -107,6 +110,11 @@ if [ -z "$DOWNLOADONLY" -a -z "$TARGETS" -a -z "$TARGETFILE" \
     error 2 "$USAGE"
 fi
 
+# Download only + update doesn't make sense
+if [ -n "$DOWNLOADONLY" -a -n "$UPDATE" ]; then
+    error 2 "$USAGE"
+fi
+
 # There should never be any extra parameters.
 if [ ! $# = 0 ]; then
     error 2 "$USAGE"
@@ -130,30 +138,35 @@ fi
 
 # If the release is "list" or "help", print out all the valid releases.
 if [ "$RELEASE" = 'list' -o "$RELEASE" = 'help' ]; then
-    for dist in "$INSTALLERDIR"/*/; do
-        DISTRO="${dist%/}"
-        DISTRO="${DISTRO##*/}"
+    for DISTRODIR in "$INSTALLERDIR"/*/; do
+        DISTRODIR="${DISTRODIR%/}"
+        DISTRO="${DISTRODIR##*/}"
         echo "Recognized $DISTRO releases:" 1>&2
         echo -n '   ' 1>&2
         while read RELEASE; do
             echo -n " $RELEASE" 1>&2
-        done < "$dist/releases"
+        done < "$DISTRODIR/releases"
         echo 1>&2
     done
     exit 2
 fi
 
 # Detect which distro the release belongs to.
-for dist in "$INSTALLERDIR"/*/; do
-    if grep -q "^$RELEASE\$" "$dist/releases"; then
-        DISTRO="${dist%/}"
-        DISTRO="${DISTRO##*/}"
-        . "$dist/defaults"
-        break
+if [ -n "$RELEASE" -o -z "$UPDATE" ]; then
+    if [ -z "$RELEASE" ]; then
+        RELEASE="$DEFAULTRELEASE"
     fi
-done
-if [ -z "$DISTRO" ]; then
-    error 2 "$RELEASE does not belong to any supported distribution."
+    for DISTRODIR in "$INSTALLERDIR"/*/; do
+        DISTRODIR="${DISTRODIR%/}"
+        if grep -q "^$RELEASE\$" "$DISTRODIR/releases"; then
+            DISTRO="${DISTRODIR##*/}"
+            . "$DISTRODIR/defaults"
+            break
+        fi
+    done
+    if [ -z "$DISTRO" ]; then
+        error 2 "$RELEASE does not belong to any supported distribution."
+    fi
 fi
 
 # Confirm or list targets if requested (and download only isn't chosen)
@@ -232,7 +245,7 @@ addtrap "stty echo 2>/dev/null || true"
 # Deterime directories, and fix NAME if it was not specified.
 BIN="$PREFIX/bin"
 CHROOTS="$PREFIX/chroots"
-CHROOT="$CHROOTS/${NAME:="$RELEASE"}"
+CHROOT="$CHROOTS/${NAME:="${RELEASE:-"$DEFAULTRELEASE"}"}"
 
 # Confirm we have write access to the directory before starting.
 NODOWNLOAD=''
@@ -264,8 +277,8 @@ Either delete it, specify a different name (-n), or specify -u to update it."
                     -y -c '$CHROOTS' '$NAME' 2>/dev/null || true"
 
     # Sanity-check the release if we're updating
-    if [ -n "$NODOWNLOAD" ] \
-            && ! grep -q "=$RELEASE\$" "$CHROOT/etc/lsb-release"; then
+    if [ -n "$NODOWNLOAD" -a -n "$RELEASE" ] &&
+        [ ! "`sh -e "$DISTRODIR/getrelease.sh" "$CHROOT"`" = "$RELEASE" ]; then
         if [ ! "$UPDATE" = 2 ]; then
             error 1 \
 "Release doesn't match! Please correct the -r option, or specify a second -u to
@@ -274,6 +287,19 @@ change the release, upgrading the chroot (dangerous)."
             echo "WARNING: Changing the chroot release to $RELEASE." 2>&1
             echo "Press Control-C to abort; upgrade will continue in 5 seconds." 1>&2
             sleep 5
+        fi
+    elif [ -n "$NODOWNLOAD" -a -z "$RELEASE" ]; then
+        # Detect the release
+        for DISTRODIR in "$INSTALLERDIR"/*/; do
+            DISTRODIR="${DISTRODIR%/}"
+            if RELEASE="`sh -e "$DISTRODIR/getrelease.sh" "$CHROOT"`"; then
+                DISTRO="${DISTRODIR##*/}"
+                . "$DISTRODIR/defaults"
+                break
+            fi
+        done
+        if [ -z "$DISTRO" ]; then
+            error 2 "Unable to determine the release in $CHROOT. Please specify it with -r."
         fi
     fi
 
@@ -338,7 +364,7 @@ if [ -z "$NODOWNLOAD" ] && [ -n "$DOWNLOADONLY" -o -z "$TARBALL" ]; then
         addtrap "umount -f '$tmp'"
     fi
 
-    . "$INSTALLERDIR/$DISTRO/bootstrap"
+    . "$DISTRODIR/bootstrap"
 
     # Tar it up if we're only downloading
     if [ -n "$DOWNLOADONLY" ]; then
@@ -367,7 +393,7 @@ VAREXPAND="${VAREXPAND}s #DISTRO $DISTRO ;s #RELEASE $RELEASE ;"
 VAREXPAND="${VAREXPAND}s #PROXY $PROXY ;s #VERSION $VERSION ;"
 installscript "$INSTALLERDIR/prepare.sh" "$CHROOT/prepare.sh" "$VAREXPAND"
 # Append the distro-specific prepare.sh
-cat "$INSTALLERDIR/$DISTRO/prepare" >> "$CHROOT/prepare.sh"
+cat "$DISTRODIR/prepare" >> "$CHROOT/prepare.sh"
 # Create a file for target deduplication
 TARGETDEDUPFILE="`mktemp --tmpdir=/tmp "$APPLICATION.XXX"`"
 rmtargetdedupfile="rm -f '$TARGETDEDUPFILE'"
