@@ -84,6 +84,14 @@ error() {
     exit "$ecode"
 }
 
+# Setup trap in case of interrupt or error:
+#  - First disable all traps to make sure clean-up commands are not executed twice.
+#  - We then make sure this script exits immediately
+# The parameter must end with a semicolon
+settrap() {
+    trap "trap '' INT HUP 0; $1 exit 2" INT HUP 0
+}
+
 # Process arguments
 while getopts 'a:def:k:m:n:p:P:r:s:t:T:uV' f; do
     case "$f" in
@@ -233,7 +241,7 @@ fi
 # Done with parameter processing!
 # Make sure we always have echo when this script exits
 TRAP="stty echo 2>/dev/null || true;$TRAP"
-trap "$TRAP" INT HUP 0
+settrap "$TRAP"
 
 # Deterime directories, and fix NAME if it was not specified.
 BIN="$PREFIX/bin"
@@ -268,7 +276,7 @@ Either delete it, specify a different name (-n), or specify -u to update it."
     # Auto-unmount the chroot when the script exits
     TRAP="sh -e '$HOSTBINDIR/unmount-chroot' \
                     -y -c '$CHROOTS' '$NAME' 2>/dev/null || true;$TRAP"
-    trap "$TRAP" INT HUP 0
+    settrap "$TRAP"
 
     # Sanity-check the release if we're updating
     if [ -n "$NODOWNLOAD" ] \
@@ -338,13 +346,13 @@ if [ -z "$NODOWNLOAD" ] && [ -n "$DOWNLOADONLY" -o -z "$TARBALL" ]; then
     tmp="`mktemp -d --tmpdir=/tmp "$APPLICATION.XXX"`"
     subdir="$RELEASE-$ARCH"
     TRAP="rm -rf '$tmp';$TRAP"
-    trap "$TRAP" INT HUP 0
+    settrap "$TRAP"
 
     # Ensure that the temporary directory has exec+dev, or mount a new tmpfs
     if [ "$NOEXECTMP" = 'y' ]; then
         mount -i -t tmpfs -o 'rw,dev,exec' tmpfs "$tmp"
         TRAP="umount -f '$tmp';$TRAP"
-        trap "$TRAP" INT HUP 0
+        settrap "$TRAP"
     fi
 
     . "$INSTALLERDIR/$DISTRO/bootstrap"
@@ -377,7 +385,7 @@ cat "$INSTALLERDIR/$DISTRO/prepare" >> "$CHROOT/prepare.sh"
 TARGETDEDUPFILE="`mktemp --tmpdir=/tmp "$APPLICATION.XXX"`"
 rmtargetdedupfile="rm -f '$TARGETDEDUPFILE'"
 TRAP="$rmtargetdedupfile;$TRAP"
-trap "$TRAP" INT HUP 0
+settrap "$TRAP"
 # Run each target, appending stdout to the prepare script.
 unset SIMULATE
 if [ -n "$TARGETFILE" ]; then
