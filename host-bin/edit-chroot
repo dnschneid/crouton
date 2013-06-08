@@ -43,18 +43,25 @@ error() {
     exit "$ecode"
 }
 
-# Setup trap in case of interrupt or error:
-#  - First disable all traps to make sure clean-up commands are not executed twice.
-#  - We then make sure this script exits immediately
-# The parameter must end with a semicolon
+# Setup trap ($1) in case of interrupt or error.
+# Traps are first disabled to avoid executing clean-up commands twice.
+# In the case of interrupts, exit is called to avoid the script continuing.
+# $1 must either be empty or end in a semicolon.
 settrap() {
     trap "trap - INT HUP 0; $1 exit 2" INT HUP
     trap "trap - INT HUP 0; $1" 0
 }
 
-# Prepend a command to the existing $TRAP 
+# Prepend a command to the existing $TRAP
 addtrap() {
+    OLDTRAP="$TRAP"
     TRAP="$1;$TRAP"
+    settrap "$TRAP"
+}
+
+# Revert the last trap change
+undotrap() {
+    TRAP="$OLDTRAP"
     settrap "$TRAP"
 }
 
@@ -185,14 +192,13 @@ for NAME in "$@"; do
     if [ -n "$ENCRYPT" ]; then
         # Use mount-chroot to do the heavy lifting
         unmount="sh -e '$BINDIR/unmount-chroot' -y -c '$CHROOTS' '$NAME'"
-        oldtrap="$TRAP"
         addtrap "$unmount"
         if [ -n "$KEYFILE" ]; then
             sh -e "$BINDIR/mount-chroot" -ee -k "$KEYFILE" -c "$CHROOTS" "$NAME"
         else
             sh -e "$BINDIR/mount-chroot" -ee -c "$CHROOTS" "$NAME"
         fi
-        settrap "$oldtrap"
+        undotrap
         eval "$unmount"
     fi
 

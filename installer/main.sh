@@ -84,18 +84,25 @@ error() {
     exit "$ecode"
 }
 
-# Setup trap in case of interrupt or error:
-#  - First disable all traps to make sure clean-up commands are not executed twice.
-#  - We then make sure this script exits immediately
-# The parameter must end with a semicolon
+# Setup trap ($1) in case of interrupt or error.
+# Traps are first disabled to avoid executing clean-up commands twice.
+# In the case of interrupts, exit is called to avoid the script continuing.
+# $1 must either be empty or end in a semicolon.
 settrap() {
     trap "trap - INT HUP 0; $1 exit 2" INT HUP
     trap "trap - INT HUP 0; $1" 0
 }
 
-# Prepend a command to the existing $TRAP 
+# Prepend a command to the existing $TRAP
 addtrap() {
+    OLDTRAP="$TRAP"
     TRAP="$1;$TRAP"
+    settrap "$TRAP"
+}
+
+# Revert the last trap change
+undotrap() {
+    TRAP="$OLDTRAP"
     settrap "$TRAP"
 }
 
@@ -372,11 +379,9 @@ if [ -z "$NODOWNLOAD" ] && [ -n "$DOWNLOADONLY" -o -z "$TARBALL" ]; then
     echo 'Moving bootstrap files into the chroot...' 1>&2
     # Make sure we do not leave an incomplete chroot in case of interrupt or
     # error during the move
-    oldtrap="$TRAP"
     addtrap "rm -rf '$CHROOT'"
     mv -f "$tmp/$subdir/"* "$CHROOT"
-    # Restore the previous trap
-    settrap "$oldtrap"
+    undotrap
 fi
 
 # Ensure that /usr/local/bin and /etc/crouton exist
