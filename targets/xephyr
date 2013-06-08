@@ -19,8 +19,7 @@ if [ "$RELEASE" = 'quantal' ]; then
         | sed -n 's/.*\(xserver-xephyr_1\.11\.4-0ubuntu[0-9][0-9]\.[0-9]*_'"$ARCH"'\.deb\).*/\1/p' \
         | sort -V | tail -n1`"
     if [ -z "$xvers" ]; then
-        echo 'Error retreiving latest Xephyr version.' 1>&2
-        exit 1
+        error 1 'Error retreiving latest Xephyr version.'
     fi
     url="$url/$xvers"
     deb='/tmp/xephyr.deb'

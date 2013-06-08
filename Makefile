@@ -9,7 +9,7 @@ SCRIPTS := \
 	$(wildcard chroot-bin/*) \
 	$(wildcard chroot-etc/*) \
 	$(wildcard host-bin/*) \
-	$(wildcard installer/*.sh) \
+	$(wildcard installer/*.sh) installer/functions \
 	$(wildcard installer/*/*) \
 	$(wildcard src/*) \
 	$(wildcard targets/*)

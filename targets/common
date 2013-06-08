@@ -47,13 +47,13 @@ elif [ ! "$TARGETS" = 'check' ]; then
     for f in $HOSTBIN; do
         echo "Installing $f into the host..." 1>&2
         src="${HOSTBINDIR:-../host-bin}/$f"
-        $SIMULATE cp -fP "$src" "$BIN/"
+        $SIMULATE installscript "$src" "$BIN/"
         [ ! -h "$src" ] && $SIMULATE chmod 755 "$BIN/$f"
     done
     for f in $CHROOTBIN; do
         echo "Installing $f into the chroot..." 1>&2
         src="${CHROOTBINDIR:-../chroot-bin}/$f"
-        $SIMULATE cp -fP "$src" "$CHROOT/usr/local/bin/"
+        $SIMULATE installscript "$src" "$CHROOT/usr/local/bin/"
         [ ! -h "$src" ] && $SIMULATE chmod 755 "$CHROOT/usr/local/bin/$f"
     done
     for f in $CHROOTETC; do

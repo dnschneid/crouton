@@ -76,35 +76,8 @@ unless you've permanently assigned a Chromium OS root password. Encrypted
 chroots require you to set a Chromium OS root password, but are still only as
 secure as the passphrases you assign to them."
 
-# Function to exit with exit code $1, spitting out message $@ to stderr
-error() {
-    local ecode="$1"
-    shift
-    echo "$*" 1>&2
-    exit "$ecode"
-}
-
-# Setup trap ($1) in case of interrupt or error.
-# Traps are first disabled to avoid executing clean-up commands twice.
-# In the case of interrupts, exit is called to avoid the script continuing.
-# $1 must either be empty or end in a semicolon.
-settrap() {
-    trap "trap - INT HUP 0; $1 exit 2" INT HUP
-    trap "trap - INT HUP 0; $1" 0
-}
-
-# Prepend a command to the existing $TRAP
-addtrap() {
-    OLDTRAP="$TRAP"
-    TRAP="$1;$TRAP"
-    settrap "$TRAP"
-}
-
-# Revert the last trap change
-undotrap() {
-    TRAP="$OLDTRAP"
-    settrap "$TRAP"
-}
+# Common functions
+. "$SCRIPTDIR/installer/functions"
 
 # Process arguments
 while getopts 'a:def:k:m:n:p:P:r:s:t:T:uV' f; do
@@ -392,7 +365,7 @@ echo 'Preparing chroot environment...' 1>&2
 VAREXPAND="s #ARCH $ARCH ;s #MIRROR $MIRROR ;"
 VAREXPAND="${VAREXPAND}s #DISTRO $DISTRO ;s #RELEASE $RELEASE ;"
 VAREXPAND="${VAREXPAND}s #PROXY $PROXY ;s #VERSION $VERSION ;"
-sed -e "$VAREXPAND" "$INSTALLERDIR/prepare.sh" > "$CHROOT/prepare.sh"
+installscript "$INSTALLERDIR/prepare.sh" "$CHROOT/prepare.sh" "$VAREXPAND"
 # Append the distro-specific prepare.sh
 cat "$INSTALLERDIR/$DISTRO/prepare" >> "$CHROOT/prepare.sh"
 # Create a file for target deduplication

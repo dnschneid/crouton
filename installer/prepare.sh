@@ -20,27 +20,8 @@ if [ ! "$PROXY" = 'unspecified' -a "${PROXY#"#"}" = "$PROXY" ]; then
     export http_proxy="$PROXY" https_proxy="$PROXY" ftp_proxy="$PROXY"
 fi
 
-# Setup trap ($1) in case of interrupt or error.
-# Traps are first disabled to avoid executing clean-up commands twice.
-# In the case of interrupts, exit is called to avoid the script continuing.
-# $1 must either be empty or end in a semicolon.
-settrap() {
-    trap "trap - INT HUP 0; $1 exit 2" INT HUP
-    trap "trap - INT HUP 0; $1" 0
-}
-
-# Prepend a command to the existing $TRAP
-addtrap() {
-    OLDTRAP="$TRAP"
-    TRAP="$1;$TRAP"
-    settrap "$TRAP"
-}
-
-# Revert the last trap change
-undotrap() {
-    TRAP="$OLDTRAP"
-    settrap "$TRAP"
-}
+# Common functions
+. "`dirname "$0"`/../installer/functions"
 
 # Takes in a list of crouton-style package names, and outputs the list, filtered
 # for the current distro.
@@ -115,8 +96,7 @@ distropkgs() {
         if [ ! "$pkgname" = '.' ]; then
             echo -n "$pkgname "
         else
-            echo "Nothing specified for $DISTRO~$RELEASE in '$descriptor'" 1>&2
-            exit 2
+            error 2 "Nothing specified for $DISTRO~$RELEASE in '$descriptor'"
         fi
     done
 }
