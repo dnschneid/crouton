@@ -370,7 +370,13 @@ if [ -z "$NODOWNLOAD" ] && [ -n "$DOWNLOADONLY" -o -z "$TARBALL" ]; then
 
     # Move it to the right place
     echo 'Moving bootstrap files into the chroot...' 1>&2
+    # Make sure we do not leave an incomplete chroot in case of interrupt or
+    # error during the move
+    oldtrap="$TRAP"
+    addtrap "rm -rf '$CHROOT'"
     mv -f "$tmp/$subdir/"* "$CHROOT"
+    # Restore the previous trap
+    settrap "$oldtrap"
 fi
 
 # Ensure that /usr/local/bin and /etc/crouton exist
