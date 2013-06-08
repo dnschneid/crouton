@@ -43,6 +43,21 @@ error() {
     exit "$ecode"
 }
 
+# Setup trap in case of interrupt or error:
+#  - First disable all traps to make sure clean-up commands are not executed twice.
+#  - We then make sure this script exits immediately
+# The parameter must end with a semicolon
+settrap() {
+    trap "trap - INT HUP 0; $1 exit 2" INT HUP
+    trap "trap - INT HUP 0; $1" 0
+}
+
+# Prepend a command to the existing $TRAP 
+addtrap() {
+    TRAP="$1;$TRAP"
+    settrap "$TRAP"
+}
+
 # Process arguments
 while getopts 'c:dek:m:y' f; do
     case "$f" in
@@ -85,8 +100,7 @@ if [ ! "$USER" = root -a ! "$UID" = 0 ]; then
 fi
 
 # Make sure we always exit with echo on the tty.
-TRAP="stty echo 2>/dev/null || true;$TRAP"
-trap "$TRAP" INT HUP 0
+addtrap "stty echo 2>/dev/null || true"
 
 # Returns the mountpoint a path is on. The path doesn't need to exist.
 # $1: the path to check
@@ -171,13 +185,14 @@ for NAME in "$@"; do
     if [ -n "$ENCRYPT" ]; then
         # Use mount-chroot to do the heavy lifting
         unmount="sh -e '$BINDIR/unmount-chroot' -y -c '$CHROOTS' '$NAME'"
-        trap "$unmount;$TRAP" INT HUP 0
+        oldtrap="$TRAP"
+        addtrap "$unmount"
         if [ -n "$KEYFILE" ]; then
             sh -e "$BINDIR/mount-chroot" -ee -k "$KEYFILE" -c "$CHROOTS" "$NAME"
         else
             sh -e "$BINDIR/mount-chroot" -ee -c "$CHROOTS" "$NAME"
         fi
-        trap "$TRAP" INT HUP 0
+        settrap "$oldtrap"
         eval "$unmount"
     fi
 
