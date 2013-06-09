@@ -106,6 +106,9 @@ distropkgs() {
 # installs the first set, while avoiding installing the second set if they are
 # not already installed. The two groups are separated by a -- entry.
 # If the first parameter is --minimal, avoids installing unnecessary packages.
+# Unlike --minimal, the second set of packages is useful for allowing
+# "recommended" dependencies to be brought in while avoiding installing specific
+# ones. Distros without "recommended" dependencies can ignore the second set.
 install() {
     install_dist `distropkgs "$@"`
 }
@@ -115,6 +118,7 @@ install() {
 # problems, and then attempts to resolve the dependencies. If called without
 # parameters, simply fixes any dependency problems.
 # If the first parameter is --minimal, avoids installing unnecessary packages.
+# Distros that do not support external packages can implement this as an error.
 install_pkg() {
     install_pkg_dist "$@"
 }
