@@ -4,12 +4,15 @@
 # found in the LICENSE file.
 
 APPLICATION="${0##*/}"
+BACKUP=''
 BINDIR="`dirname "$0"`"
 CHROOTS="`readlink -f "\`dirname "$0"\`/../chroots"`"
 DELETE=''
 ENCRYPT=''
 KEYFILE=''
 MOVE=''
+RESTORE=''
+TARBALL=''
 YES=''
 YESPARAM=''
 
@@ -19,9 +22,17 @@ Edits a chroot.
 
 Options:
     -c CHROOTS  Directory the chroots are in. Default: $CHROOTS
+    -b          Backs up the chroot to a tarball. Compression format is chosen
+                based on the tarball extension. Backups always take place before
+                other actions on a given chroot.
     -d          Deletes the chroot. Assumed if run as delete-chroot.
     -e          If the chroot is not encrypted, encrypt it.
                 If it is encrypted, change the encryption passphrase.
+    -f TARBALL  When used with -b, overrides the default tarball to back up to.
+                If unspecified, assumes NAME-yyyymmdd-hhmm.tar[.gz], where .gz
+                is included for unencrypted chroots, and not for encrypted ones.
+                When used with -r, specifies the tarball to restore from.
+                You cannot specify multiple chroots with -f.
     -k KEYFILE  File or directory to store the (encrypted) encryption keys in.
                 If unspecified, the keys will be stored in the chroot if doing a
                 first encryption, or left in place on existing chroots.
@@ -33,6 +44,11 @@ Options:
                 directory, or an absolute path to move it entirely.
                 DEST can be a directory, in which case it must end in a slash.
                 If multiple chroots are specified, DEST must be a directory.
+    -r          Restores a chroot from a tarball. The tarball path can be
+                specified with -f or detected from name. If both are specified,
+                restores to that name instead of the one in the tarball.
+                Will not overwrite a chroot when restoring unless -r is
+                specified twice.
     -y          Do all actions without confirmation."
 
 # Function to exit with exit code $1, spitting out message $@ to stderr
@@ -44,13 +60,16 @@ error() {
 }
 
 # Process arguments
-while getopts 'c:dek:m:y' f; do
+while getopts 'bc:def:k:m:ry' f; do
     case "$f" in
+    b) BACKUP='y';;
     c) CHROOTS="`readlink -f "$OPTARG"`";;
     d) DELETE='y';;
     e) ENCRYPT='y';;
+    f) TARBALL="$OPTARG";;
     k) KEYFILE="$OPTARG";;
     m) MOVE="$OPTARG";;
+    r) RESTORE=$(($RESTORE+1));;
     y) YES='a'; YESPARAM='-y';;
     \?) error 2 "$USAGE";;
     esac
@@ -62,26 +81,48 @@ if [ ! "${APPLICATION#delete}" = "$APPLICATION" ]; then
     DELETE='y'
 fi
 
-# Need at least one chroot listed
-if [ $# = 0 ]; then
+# Need at least one chroot listed if not using -r with -f.
+if [ $# = 0 ] && ! [ -n "$RESTORE" -a -n "$TARBALL" ]; then
+    error 2 "$USAGE"
+fi
+
+# -f without -r or -b doesn't make sense
+if [ -n "$TARBALL" -a -z "$BACKUP$RESTORE" ]; then
+    error 2 "$USAGE"
+fi
+
+# Cannot specify both backup and restore.
+if [ -n "$BACKUP" -a -n "$RESTORE" ]; then
+    error 2 "$USAGE"
+fi
+
+# Can only specify one chroot if -f is specified.
+if [ -n "$TARBALL" -a $# -gt 1 ]; then
     error 2 "$USAGE"
 fi
 
 # Cannot specify delete with anything else.
-if [ -n "$DELETE" -a -n "$ENCRYPT$KEYFILE$MOVE" ]; then
+if [ -n "$DELETE" -a -n "$BACKUP$ENCRYPT$KEYFILE$MOVE$RESTORE" ]; then
     error 2 "$USAGE"
 fi
 
 # If multiple chroots are listed, KEYFILE and MOVE must be empty or directories.
 if [ $# -gt 1 ] && [ -f "$KEYFILE" -a ! "$KEYFILE" = '-' ]; then
     error 2 "Multiple chroots specified, but $KEYFILE is not a directory."
-elif [ $# -gt 1 ] && [ "${MOVE%/}" = "$MOVE" ]; then
+elif [ $# -gt 1 -a -n "$MOVE" -a "${MOVE%/}" = "$MOVE" ]; then
     error 2 "Multiple chroots specified, but $MOVE is not a directory."
 fi
 
 # We need to run as root
 if [ ! "$USER" = root -a ! "$UID" = 0 ]; then
     error 2 "$APPLICATION must be run as root."
+fi
+
+# If we're restoring and specified a tarball and no name, detect the name.
+if [ -n "$RESTORE" -a -n "$TARBALL" -a $# = 0 ]; then
+    echo 'Detecting chroot name...' 1>&2
+    NAME="`tar -tf "$TARBALL" 2>/dev/null | head -n 1`"
+    set -- "${NAME%%/*}"
 fi
 
 # Make sure we always exit with echo on the tty.
@@ -98,6 +139,24 @@ getmountpoint() {
     done
 }
 
+# Prints out a fancy spinner that updates every time a line is fed in.
+# $1: number of lines between each update of the spinner (default: 1)
+# Erases the line each time, so it will always be at position 0.
+# Either expect this and put text later in the line, or give this its own line.
+spinner() {
+    mawk -Winteractive '
+        BEGIN {
+            printf "\r"
+        }
+        {
+            y = (y+1) % '"${1:-1}"'
+            if (y == 0) {
+                x = (x+1) % 4
+                printf substr("\|/-", x+1, 1) "\r"
+            }
+        }' 1>&2
+}
+
 # Process each chroot
 for NAME in "$@"; do
     if [ -z "$NAME" ]; then
@@ -105,8 +164,20 @@ for NAME in "$@"; do
     fi
     CHROOT="$CHROOTS/$NAME"
 
-    # Unmount the chroot. This also checks for existence.
-    sh -e "$BINDIR/unmount-chroot" $YESPARAM -c "$CHROOTS" "$NAME"
+    # Check for existence and unmount/delete the chroot.
+    if [ -d "$CHROOT" ]; then
+        if [ "$RESTORE" = 1 ]; then
+            error 2 "$CHROOT already exists! Specify a second -r to overwrite it (dangerous)."
+        elif [ -n "$RESTORE" ]; then
+            EXISTS='y'
+        else
+            sh -e "$BINDIR/unmount-chroot" $YESPARAM -c "$CHROOTS" "$NAME"
+        fi
+    elif [ -n "$RESTORE" ]; then
+        EXISTS=''
+    else
+        error 2 "$CHROOT not found."
+    fi
 
     # Delete the chroot?
     if [ -n "$DELETE" ]; then
@@ -119,9 +190,72 @@ for NAME in "$@"; do
             fi
         fi
         # Delete the chroot
-        echo "Deleting $CHROOT" 1>&2
-        rm -rf --one-file-system "$CHROOT"
+        echo -n "  Deleting $CHROOT..." 1>&2
+        rm -rvf --one-file-system "$CHROOT" | spinner 1000
+        echo "Finished deleting $CHROOT" 1>&2
         continue
+    fi
+
+    # Backup the chroot
+    if [ -n "$BACKUP" ]; then
+        dest="$TARBALL"
+        if [ -z "$dest" ]; then
+            dest="$NAME-`date '+%Y%m%d-%H%M'`.tar"
+            # Only compress if it's not encrypted (it'd be a waste of time)
+            if [ ! -f "$CHROOT/.ecryptfs" ]; then
+                dest="$dest.gz"
+            fi
+            # Relative paths unless we're in root, in which case use Downloads.
+            if [ "$PWD" = '/' -a -w '/home/chronos/user/Downloads' ]; then
+                dest="/home/chronos/user/Downloads/$dest"
+            fi
+        fi
+        echo -n "  Backing up $CHROOT to $dest..." 1>&2
+        tar --checkpoint=100 --checkpoint-action=exec=echo --one-file-system \
+            -caf "$dest" -C "$CHROOTS" "$NAME" | spinner
+        echo "Finished backing up $CHROOT to $dest" 1>&2
+    fi
+
+    # Restore the chroot
+    if [ -n "$RESTORE" ]; then
+        src="$TARBALL"
+        if [ -z "$src" ]; then
+            file="$NAME"
+            # Relative paths unless we're in root, in which case use Downloads.
+            if [ "$PWD" = '/' -a -r '/home/chronos/user/Downloads' ]; then
+                file="/home/chronos/user/Downloads/$file"
+            fi
+            # Search for the alphabetically last tarball with src.
+            # Dated tarballs take precedence over undated tarballs.
+            for file in "$file."* "$file-"*; do
+                if [ ! -f "$file" ]; then
+                    continue
+                fi
+                # Confirm it's a tarball
+                if ! tar --test-label -f "$file" 2>/dev/null; then
+                    continue
+                fi
+                # Since * alphabetizes, always keep the last one
+                src="$file"
+            done
+            if [ -z "$src" ]; then
+                error 2 "Unable to find a tarball for $NAME. You can specify one with -f."
+            fi
+            echo "Found $src for restoring $NAME." 1>&2
+        elif ! tar --test-label -f "$src" 2>/dev/null; then
+            error 2 "$src doesn't appear to be a valid tarball."
+        fi
+        if [ -n "$EXISTS" ]; then
+            echo "WARNING: $CHROOT already exists. Deleting it before restoring." 1>&2
+            echo "Press Control-C to abort; restoration will continue in 5 seconds." 1>&2
+            sleep 5
+            sh -e "$BINDIR/edit-chroot" -d -y -c "$CHROOTS" "$NAME"
+        fi
+        echo -n "  Restoring $src to $CHROOT..." 1>&2
+        mkdir -p "$CHROOT"
+        tar --checkpoint=200 --checkpoint-action=exec=echo --one-file-system \
+            -xaf "$src" -C "$CHROOT" --strip-components=1 | spinner
+        echo "Finished restoring $src to $CHROOT" 1>&2
     fi
 
     # Update the keyfile
@@ -215,10 +349,12 @@ for NAME in "$@"; do
             if ! mkdir -p "`dirname "$target"`"; then
                 error 1 "Unable to create directory for $target"
             fi
-            echo "Copying to $target..." 1>&2
-            cp -a --one-file-system "$CHROOT" "$target"
-            echo "Deleting old $CHROOT..." 1>&2
-            rm -rf --one-file-system "$CHROOT"
+            echo -n "  Copying to $target..." 1>&2
+            cp -av --one-file-system "$CHROOT" "$target" | spinner 200
+            echo "Finished copying to $target" 1>&2
+            echo -n "  Deleting old $CHROOT..." 1>&2
+            rm -rfv --one-file-system "$CHROOT" | spinner 1000
+            echo "Finished deleting old $CHROOT" 1>&2
         else
             if ! mkdir -p "`dirname "$target"`"; then
                 error 1 "Unable to create directory for $target"
