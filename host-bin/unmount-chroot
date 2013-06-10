@@ -216,12 +216,15 @@ for NAME in "$@"; do
                 echo "Sending SIG$SIGNAL to processes under $CHROOT..." 1>&2
             fi
             for root in /proc/*/root; do
-                if [ ! -r "$root" ] || [ ! "`readlink -f "$root"`" = "$base" ]; then
+                if [ ! -r "$root" ] \
+                        || [ ! "`readlink -f "$root"`" = "$base" ]; then
                     continue
                 fi
                 pid="${root#/proc/}"
                 pid="${pid%/root}"
-                if [ -z "$FORCE" ] && grep -q 'CROUTON=CORE' "/proc/$pid/environ"; then
+                if [ -z "$FORCE" ] \
+                        && grep -q 'CROUTON=CORE' \
+                                   "/proc/$pid/environ" 2>/dev/null; then
                     continue
                 fi
                 if [ -n "${printonly:-"$PRINT"}" ]; then
