@@ -32,7 +32,8 @@ Options:
                 If unspecified, assumes NAME-yyyymmdd-hhmm.tar[.gz], where .gz
                 is included for unencrypted chroots, and not for encrypted ones.
                 When used with -r, specifies the tarball to restore from.
-                You cannot specify multiple chroots with -f.
+                If TARBALL is a directory, automatic naming is still used.
+                If multiple chroots are specified, TARBALL must be a directory.
     -k KEYFILE  File or directory to store the (encrypted) encryption keys in.
                 If unspecified, the keys will be stored in the chroot if doing a
                 first encryption, or left in place on existing chroots.
@@ -91,21 +92,18 @@ if [ -n "$BACKUP" -a -n "$RESTORE" ]; then
     error 2 "$USAGE"
 fi
 
-# Can only specify one chroot if -f is specified.
-if [ -n "$TARBALL" -a $# -gt 1 ]; then
-    error 2 "$USAGE"
-fi
-
 # Cannot specify delete with anything else.
 if [ -n "$DELETE" -a -n "$BACKUP$ENCRYPT$KEYFILE$MOVE$RESTORE" ]; then
     error 2 "$USAGE"
 fi
 
 # If multiple chroots are listed, KEYFILE and MOVE must be empty or directories.
-if [ $# -gt 1 ] && [ -f "$KEYFILE" -a ! "$KEYFILE" = '-' ]; then
+if [ $# -gt 1 -a -f "$KEYFILE" -a ! "$KEYFILE" = '-' ]; then
     error 2 "Multiple chroots specified, but $KEYFILE is not a directory."
 elif [ $# -gt 1 -a -n "$MOVE" -a "${MOVE%/}" = "$MOVE" ]; then
     error 2 "Multiple chroots specified, but $MOVE is not a directory."
+elif [ $# -gt 1 -a -f "$TARBALL" ]; then
+    error 2 "Multiple chroots specified, but $TARBALL is not a directory."
 fi
 
 # We need to run as root
@@ -117,7 +115,23 @@ fi
 if [ -n "$RESTORE" -a -n "$TARBALL" -a $# = 0 ]; then
     echo 'Detecting chroot name...' 1>&2
     NAME="`tar -tf "$TARBALL" 2>/dev/null | head -n 1`"
+    if [ -z "$NAME" ]; then
+        error 2 "$TARBALL doesn't appear to be a valid tarball."
+    fi
     set -- "${NAME%%/*}"
+fi
+
+# If TARBALL ends in a slash or we're restoring multiple chroots, make directory
+if [ -n "$TARBALL" ] && \
+        [ $# -ge 2 -o -d "$TARBALL" -o ! "${TARBALL%/}" = "$TARBALL" ]; then
+    TARBALL="${TARBALL%/}/"
+    mkdir -p "$TARBALL"
+fi
+
+# If TARBALL is unspecified and we're in /, put the tarball in ~/Downloads
+if [ -n "$BACKUP$RESTORE" -a -z "$TARBALL" -a "$PWD" = '/' \
+        -a -d '/home/chronos/user/Downloads' ]; then
+    TARBALL="/home/chronos/user/Downloads/"
 fi
 
 # Make sure we always exit with echo on the tty.
@@ -193,15 +207,11 @@ for NAME in "$@"; do
     # Backup the chroot
     if [ -n "$BACKUP" ]; then
         dest="$TARBALL"
-        if [ -z "$dest" ]; then
-            dest="$NAME-`date '+%Y%m%d-%H%M'`.tar"
+        if [ -z "$dest" -o -d "$TARBALL" ]; then
+            dest="$TARBALL$NAME-`date '+%Y%m%d-%H%M'`.tar"
             # Only compress if it's not encrypted (it'd be a waste of time)
             if [ ! -f "$CHROOT/.ecryptfs" ]; then
                 dest="$dest.gz"
-            fi
-            # Relative paths unless we're in root, in which case use Downloads.
-            if [ "$PWD" = '/' -a -w '/home/chronos/user/Downloads' ]; then
-                dest="/home/chronos/user/Downloads/$dest"
             fi
         fi
         echo -n "  Backing up $CHROOT to $dest..." 1>&2
@@ -213,12 +223,8 @@ for NAME in "$@"; do
     # Restore the chroot
     if [ -n "$RESTORE" ]; then
         src="$TARBALL"
-        if [ -z "$src" ]; then
-            file="$NAME"
-            # Relative paths unless we're in root, in which case use Downloads.
-            if [ "$PWD" = '/' -a -r '/home/chronos/user/Downloads' ]; then
-                file="/home/chronos/user/Downloads/$file"
-            fi
+        if [ -z "$src" -o -d "$TARBALL" ]; then
+            file="$TARBALL$NAME"
             # Search for the alphabetically last tarball with src.
             # Dated tarballs take precedence over undated tarballs.
             for file in "$file."* "$file-"*; do
