@@ -10,7 +10,9 @@ CHROOTBIN='brightness croutonversion host-dbus'
 ### Append to prepare.sh:
 echo 'Preparing environment...' 1>&2
 if [ ! "$VERSION" = '#VERSION' ]; then
-    sed -i "s ^VERSION=.*\$ VERSION='$VERSION' " '/usr/local/bin/croutonversion'
+    sed -e "s ^VERSION=.*\$ VERSION='$VERSION' ;" \
+        -e "s ^RELEASE=.*\$ RELEASE='$RELEASE' ;" \
+        -i '/usr/local/bin/croutonversion'
 fi
 
 # Create the new environment file

@@ -4,6 +4,7 @@
 # found in the LICENSE file.
 
 VERSION='unknown'
+RELEASE='unknown'
 
 APPLICATION="${0##*/}"
 CHANGES=''
@@ -63,8 +64,12 @@ fi
 # Print out version if nothing else specified
 if [ -z "$CHANGES$DOWNLOAD$UPDATES" ]; then
     echo "crouton: version $VERSION"
-    host="`awk -F= '/_RELEASE_DESCRIPTION=/{print $2}' '/var/host/lsb-release'`"
-    echo "host: version $host"
+    echo "release: $RELEASE"
+    hostrel='/var/host/lsb-release'
+    if [ -r "$hostrel" ]; then
+        host="`awk -F= '/_RELEASE_DESCRIPTION=/{print $2}' "$hostrel"`"
+    fi
+    echo "host: version ${host:-unknown}"
     exit 0
 fi
 
