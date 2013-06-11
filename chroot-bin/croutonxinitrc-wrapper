@@ -67,6 +67,16 @@ if [ -f '/usr/share/X11/xkb/compat/chromebook' ]; then
     setxkbmap -model chromebook
 fi
 
+# Configure trackpad settings if needed
+if synclient >/dev/null 2>&1; then
+    case "`awk -F= '/_RELEASE_BOARD=/{print $2}' '/var/host/lsb-release'`" in
+        butterfly*) SYNCLIENT="FingerLow=1 FingerHigh=5 $SYNCLIENT";;
+    esac
+    if [ -n "$SYNCLIENT" ]; then
+        synclient $SYNCLIENT
+    fi
+fi
+
 # Run the client itself if it is executable, otherwise run it in a shell.
 ret=0
 if [ -n "$binary" -o -x "$cmd" ]; then
