@@ -3,23 +3,36 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# Adds a :# to the xinit command line, where # is the first available display
-# number. Also adds the -- to the command line and references the global
-# xserverrc if it isn't already there.  By putting this in /usr/local/bin, PATH
-# will prefer it and scripts that call xinit will automagically work.
+# Morphs the xinit command line to use the wrapper client, correct the X
+# display, remove any auth reference, and default to the crouton xserverrc.
+# By putting this in /usr/local/bin, PATH will prefer it and scripts that
+# call xinit will automagically work.
 
 xserverrc='/etc/X11/xinit/xserverrc'
 dash='--'
-for arg in "$@"; do
-    if [ -z "$dash" ]; then
+disp=''
+n=$#
+while [ ! "$n" = 0 ]; do
+    arg="$1"
+    n="$((n-1))"
+    shift
+    if [ -z "$disp" -a ! "${arg#":"}" = "$arg" ]; then
+        disp="$arg"
+        continue
+    elif [ "$arg" = '-auth' ]; then
+        if [ ! "$n" = 0 ]; then
+            n="$((n-1))"
+            shift
+        fi
+        continue
+    elif [ -n "$dash" -a "$arg" = '--' ]; then
+        dash=
         # Check if there's a xserverrc specified.
-        if [ ! "${arg#/}" = "$arg" ]; then
+        if [ ! "${1#/}" = "$1" ]; then
             xserverrc=''
         fi
-        break
-    elif [ "$arg" = '--' ]; then
-        dash=
     fi
+    set -- "$@" "$arg"
 done
 
 disp=0
