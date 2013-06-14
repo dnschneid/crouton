@@ -1,0 +1,50 @@
+#!/bin/sh -e
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+USAGE="${0##*/} next|prev
+Cycles through running graphical chroots."
+
+case "$1" in
+[Pp]*) cmd='prev';;
+[Nn]*) cmd='next';;
+*) echo "$USAGE" 1>&2; exit 2;;
+esac
+
+# If we're using Xephyr, run ratpoison
+xmethod="`readlink -f '/etc/X11/xinit/xserverrc'`"
+xmethod="${xmethod##*-}"
+if [ "$xmethod" = 'xephyr' ]; then
+    exec /usr/local/bin/host-x11 ratpoison -c "$cmd"
+fi
+
+# Otherwise, determine current tty and X11 ttys
+curtty="tty`fgconsole`"
+seltty=''
+prevtty=''
+for tty in `ps -CX -CXorg -otname= | sort`; do
+    if [ "$cmd" = 'next' -a -z "$seltty" ]; then
+        seltty="$tty"
+    fi
+    if [ -z "$curtty" ]; then
+        seltty="$tty"
+        break
+    elif [ "$tty" = "$curtty" ]; then
+        # Make the tty selection.
+        if [ "$cmd" = 'prev' ]; then
+            seltty="$prevtty"
+        else
+            curtty=''
+        fi
+    fi
+    prevtty="$tty"
+done
+if [ -z "$seltty" ]; then
+    seltty="$tty"
+fi
+
+# If we have a tty and it's not the same as the current one, switch
+if [ -n "$seltty" -a ! "$seltty" = "$curtty" ]; then
+    exec chvt "${seltty#tty}"
+fi
