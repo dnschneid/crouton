@@ -1,0 +1,14 @@
+#!/bin/sh -e
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Either runs the specified command with the environment set to use the host's
+# X11 server, or prints out the environment changes required.
+
+export DISPLAY=':0' XAUTHORITY='/var/host/Xauthority'
+if [ "$#" = 0 ]; then
+    echo "export DISPLAY='$DISPLAY' XAUTHORITY='$XAUTHORITY'"
+else
+    exec "$@"
+fi

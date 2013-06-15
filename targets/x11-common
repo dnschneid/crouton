@@ -7,6 +7,9 @@
 # forms of X11.
 
 ### Append to prepare.sh:
+# Store and apply the X11 method
+ln -sfT "/etc/crouton/xserverrc-$XMETHOD" '/etc/X11/xinit/xserverrc'
+
 # Generate the executable that outputs the equivalent of base::TimeTicks::Now()
 compile ticks -lrt
 

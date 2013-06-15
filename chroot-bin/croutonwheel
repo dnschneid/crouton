@@ -45,7 +45,7 @@ if [ $# -ge "$OPTIND" ]; then
 fi
 
 # Operate on the Chromium OS X11 server
-export DISPLAY=':0' XAUTHORITY='/etc/X11/host-Xauthority'
+eval "`/usr/local/bin/host-x11`"
 
 # If we launched this from a terminal, release return just in case; if the
 # xinput window appears before return is pressed, the release will get eaten.

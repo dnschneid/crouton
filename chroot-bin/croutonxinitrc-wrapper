@@ -47,8 +47,10 @@ fi
 croutonpowerd --daemon &
 
 # Launch the cursor relayer and keyboard shortcuts if in xephyr
-if [ -r "/etc/X11/host-Xauthority" ]; then
-    DISPLAY=':0' XAUTHORITY="/etc/X11/host-Xauthority" croutoncursor "$DISPLAY" &
+xmethod="`readlink -f '/etc/X11/xinit/xserverrc'`"
+xmethod="${xmethod##*-}"
+if [ "$xmethod" = 'xephyr' ]; then
+    host-x11 croutoncursor "$DISPLAY" &
 
     ln -sf '/etc/crouton/keylaunchrc-xephyr' "$HOME/.keylaunchrc"
     keylaunch &

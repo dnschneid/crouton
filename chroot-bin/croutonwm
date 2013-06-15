@@ -3,39 +3,41 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# Checks if a global WM is needed, and either launches it if it is not running,
-# or alerts it that a new window is being created if it is.
+# Launches a window manager on the Chromium OS X server if it is not running,
+# or alerts it that a new window is being created and exits if it is.
+# If --fork is specified, croutonwm will exit immediately regardless.
 
-hostxauth='/etc/X11/host-Xauthority'
-if [ -r "$hostxauth" ]; then
-    # Check if the global WM is already running
-    wmrunning=""
-    for wmpid in `ps -C ratpoison -opid=`; do
-        if grep -q "CROUTON=CORE" "/proc/$wmpid/environ"; then
-            wmrunning="y"
-            break
-        fi
-    done
-    # Launch it if it is not running; otherwise, just adjust padding
-    setpadding='set padding 0 0 -1 0'
-    killwheel=''
-    if [ -z "$wmrunning" ]; then
-        cmd='-f'
-        param='/dev/stdin'
-        croutonwheel="`dirname "$0"`/croutonwheel"
-        if [ -e "$croutonwheel" ]; then
-            if [ -f "$HOME/.croutonwheel" ]; then
-                CROUTON_WHEEL_PARAMS="`head -n1 "$HOME/.croutonwheel"`"
-            fi
-            env -i CROUTON="CORE" "$croutonwheel" $CROUTON_WHEEL_PARAMS <&- &
-            killwheel="kill $! 2>/dev/null || true;"
-        fi
-    else
-        cmd='-c'
-        param="$setpadding"
+# Check if the global WM is already running
+wmrunning=""
+for wmpid in `ps -C ratpoison -opid=`; do
+    if grep -q "CROUTON=CORE" "/proc/$wmpid/environ"; then
+        wmrunning="y"
+        break
     fi
-    env -i DISPLAY=":0" XAUTHORITY="$hostxauth" CROUTON="CORE" \
-        "/usr/bin/ratpoison" "$cmd" "$param" <&- <<WMRC &
+done
+
+# Launch it if it is not running; otherwise, just adjust padding
+setpadding='set padding 0 0 -1 0'
+killwheel=''
+if [ -z "$wmrunning" ]; then
+    cmd='-f'
+    param='/dev/stdin'
+    croutonwheel="`dirname "$0"`/croutonwheel"
+    if [ -e "$croutonwheel" ]; then
+        if [ -f "$HOME/.croutonwheel" ]; then
+            CROUTON_WHEEL_PARAMS="`head -n1 "$HOME/.croutonwheel"`"
+        fi
+        env -i CROUTON="CORE" "$croutonwheel" $CROUTON_WHEEL_PARAMS <&- &
+        killwheel="kill $! 2>/dev/null || true;"
+    fi
+else
+    cmd='-c'
+    param="$setpadding"
+fi
+
+launch() {
+    exec env -i CROUTON='CORE' '/usr/local/bin/host-x11' \
+        '/usr/bin/ratpoison' "$cmd" "$param" <&- <<WMRC
             escape C-S-M-Escape
             bind C-S-M-Escape set padding 0 0 0 0
             definekey top C-S-M-F1 prev
@@ -57,4 +59,10 @@ if [ -r "$hostxauth" ]; then
                 [ "\`"/usr/bin/ratpoison" -c "windows %%"\`" = % ] \
                 && { "/usr/bin/ratpoison" -c quit || true; $killwheel } || true
 WMRC
+}
+
+if [ "$1" = '--fork' ]; then
+    launch &
+else
+    launch
 fi

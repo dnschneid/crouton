@@ -1,0 +1,7 @@
+#!/bin/sh -e
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+export DISPLAY=':0' XAUTHORITY='/var/host/Xauthority'
+exec /usr/bin/Xephyr -fullscreen -host-cursor -nolisten tcp "$@"

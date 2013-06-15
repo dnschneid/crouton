@@ -5,8 +5,12 @@
 
 # Launches Unity or Unity-2D depending on the X server.
 
-hostxauth='/etc/X11/host-Xauthority'
-if [ -r "$hostxauth" ]; then
+xmethod="`readlink -f '/etc/X11/xinit/xserverrc'`"
+xmethod="${xmethod##*-}"
+if [ "$xmethod" = 'x11' ]; then
+    # We have 3D acceleration, so use Unity
+    exec xinit /usr/bin/unity
+else
     # We're on Xephyr, so use Unity-2D
     exec xinit /bin/sh -c '
         unity-2d-panel & p="$!"
@@ -16,6 +20,4 @@ if [ -r "$hostxauth" ]; then
         trap "kill $p 2>&-" INT TERM HUP 0
         wait
     '
-else
-    exec xinit /usr/bin/unity
 fi

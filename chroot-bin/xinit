@@ -8,9 +8,12 @@
 # xserverrc if it isn't already there.  By putting this in /usr/local/bin, PATH
 # will prefer it and scripts that call xinit will automagically work.
 
+# Launch the global window manager if needed
+xmethod="`readlink -f '/etc/X11/xinit/xserverrc'`"
+xmethod="${xmethod##*-}"
 croutonwm='/usr/local/bin/croutonwm'
-if [ -x "$croutonwm" ]; then
-    . "$croutonwm"
+if [ "$xmethod" = 'xephyr' -a -x "$croutonwm" ]; then
+    "$croutonwm" --fork
 fi
 
 xserverrc='/etc/X11/xinit/xserverrc'

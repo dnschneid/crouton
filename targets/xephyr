@@ -5,12 +5,14 @@
 REQUIRES='core'
 DESCRIPTION='Nested X11 install. Replaces X11 if specified first.'
 CHROOTBIN='croutonpowerd croutonwheel croutonwm croutonxinitrc-wrapper xinit'
-CHROOTETC='keylaunchrc-xephyr'
+CHROOTETC='keylaunchrc-xephyr xserverrc-xephyr'
 # Prevent X11 from being added if it hasn't already.
 echo 'x11' >> "${TARGETDEDUPFILE:-/dev/null}"
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
+XMETHOD=xephyr
+
 if [ "$RELEASE" = 'quantal' ]; then
     # As of 2013-01-08, Quantal's Xephyr lacks GLX. Download one manually.
     install wget
@@ -45,21 +47,6 @@ install --minimal \
 # Compile croutoncursor
 compile cursor '-lX11 -lXfixes -lXrender' \
     libx11-dev libxfixes-dev libxrender-dev
-
-# Add a host Xauthority sentinel file
-hostxauth='/etc/X11/host-Xauthority'
-touch "$hostxauth"
-chmod 444 "$hostxauth"
-
-# Modify xserverrc
-echo '#!/bin/sh -e
-if [ -r "'"$hostxauth"'" ]; then
-	export DISPLAY=":0" XAUTHORITY="'"$hostxauth"'"
-	exec /usr/bin/Xephyr -fullscreen -host-cursor -nolisten tcp "$@"
-else
-	exec /usr/bin/X -nolisten tcp "$@"
-fi
-' > /etc/X11/xinit/xserverrc
 
 TIPS="$TIPS
 You can flip through your running chroot desktops and Chromium OS by hitting

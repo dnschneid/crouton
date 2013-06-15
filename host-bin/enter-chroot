@@ -188,12 +188,12 @@ mkdir -p "$CHROOT/var/host"
 # Copy in the current Chromium OS version for reference
 cp -f '/etc/lsb-release' "$CHROOT/var/host/"
 
-# Copy Xauthority if the chroot requests
-chrootxauth="$CHROOT/etc/X11/host-Xauthority"
-if [ -f "$chrootxauth" ]; then
-    # Copy the latest Xauthority into the chroot
-    cp -f "$XAUTHORITY" "$chrootxauth"
-    chmod 444 "$chrootxauth"
+# Copy the latest Xauthority into the chroot
+cp -f "$XAUTHORITY" "$CHROOT/var/host/Xauthority"
+chmod 444 "$CHROOT/var/host/Xauthority"
+# Be backwards-compatible, just in case
+if [ -f "$CHROOT/etc/X11/host-Xauthority" ]; then
+    ln -sfT '/var/host/Xauthority' "$CHROOT/etc/X11/host-Xauthority"
 fi
 
 # Prepare chroot filesystem
