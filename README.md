@@ -132,7 +132,7 @@ Examples
 
 ### A backup a day keeps the price-gouging data restoration services away
   1. `sudo edit-chroot -b chrootname` backs up your chroot to a timestamped
-     tarball to the current directory. Chroots are named either via the `-n`
+     tarball in the current directory. Chroots are named either via the `-n`
      parameter when created or by the release name if -n was not specified.
   2. `sudo edit-chroot -r chrootname` restores the chroot from the most recent
      timestamped tarball. You can explicitly specify the tarball with `-f`
