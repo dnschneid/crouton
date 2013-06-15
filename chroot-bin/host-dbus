@@ -1,4 +1,11 @@
-#!/bin/sh
+#!/bin/sh -e
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Either runs the specified command with the environment set to use the host's
+# system dbus instance, or prints out the environment changes required.
+
 export DBUS_SYSTEM_BUS_ADDRESS='unix:path=/var/host/dbus/system_bus_socket'
 if [ "$#" = 0 ]; then
     echo "export DBUS_SYSTEM_BUS_ADDRESS='$DBUS_SYSTEM_BUS_ADDRESS'"
