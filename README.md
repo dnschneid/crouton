@@ -1,15 +1,16 @@
-crouton: Chromium OS Ubuntu Chroot Environment
-==============================================
+crouton: Chromium OS Universal Chroot Environment
+=================================================
 
-crouton is a set of scripts based around debootstrap that bundle up into an
-easy-to-use, Chromium OS-centric Ubuntu chroot generator.  It should work for
-Debian as well (you can specify a different mirror and release), but "Chromium
-OS Debian Chroot Environment" doesn't acronymize as well.
+crouton is a set of scripts that bundle up into an easy-to-use,
+Chromium OS-centric chroot generator. Currently Ubuntu and Debian are
+supported (using debootstrap behind the scenes), but "Chromium OS Debian,
+Ubuntu, and Probably Other Distros Eventually Chroot Environment" doesn't
+acronymize as well (crodupodece is admittedly pretty fun to say, though).
 
 
 "crouton"...an acronym?
 -----------------------
-It stands for _ChRomium Os UbunTu chrOot enviroNment_
+It stands for _ChRomium Os Universal chrooT envirONment_
 ...or something like that. Do capitals really matter if caps-lock has been
 (mostly) banished, and the keycaps are all lower-case?
 
@@ -51,16 +52,19 @@ insecure*, so don't expect a password in your chroot to keep anyone from your
 data. crouton does support encrypting chroots, but the encryption is only as
 strong as the quality of your passphrase. Consider this your warning.
 
-That's it!  Surprised?
+That's it! Surprised?
 
 
 Usage
 -----
+crouton is a powerful tool, and there are a *lot* of features, but basic usage
+is as simple as possible by design.
+
 There are three ways to acquire and run crouton. Two of which have cyclical
 dependencies.
 
 If you're just here to use crouton, you can grab the latest release from
-[goo.gl/fd3zc](http://goo.gl/fd3zc).  Download it, pop open a shell
+[goo.gl/fd3zc](http://goo.gl/fd3zc). Download it, pop open a shell
 (Ctrl+Alt+T, type `shell` and hit enter), and run `sh -e ~/Downloads/crouton` to
 see the help text. See the "examples" section for some usage examples.
 
@@ -69,21 +73,21 @@ directly, or using `make` to build your very own `crouton`. Of course, you won't
 have git on your Chromium OS device with which to do this, hence the cyclical
 dependency. Downloading a git snapshot from GitHub would bypass that issue.
 
-crouton uses the concept of "targets" to decide what to install.  While you will
+crouton uses the concept of "targets" to decide what to install. While you will
 have apt-get in your chroot, some targets may need minor hacks to avoid issues
-when running in the chrooted environment.  As such, if you expect to want
+when running in the chrooted environment. As such, if you expect to want
 something that is fulfilled by a target, install that target when you make the
 chroot and you'll have an easier time.
 
 Once you've set up your chroot, you can easily enter it using the
-newly-installed `enter-chroot` command.  Ta-da!  That was easy.
+newly-installed `enter-chroot` command. Ta-da! That was easy.
 
 
 Examples
 --------
 
-### The easy way (assuming you want Xfce)
-  1. Download `crouton`.
+### The easy way (assuming you want an Ubuntu LTS with Xfce)
+  1. Download `crouton`
   2. Open a shell (Ctrl+Alt+T, type `shell` and hit enter) and run
      `sudo sh -e ~/Downloads/crouton -t xfce`
   3. Wait patiently and answer the prompts like a good person.
@@ -97,15 +101,59 @@ Examples
   6. Exit the chroot by logging out of Xfce.
 
 ### With encryption!
-  1. Add the -e parameter when you run crouton to create an encrypted chroot.
+  1. Add the `-e` parameter when you run crouton to create an encrypted chroot.
   2. You can get some extra protection on your chroot by storing the decryption
-     key separately from the place the chroot is stored. Use the -k parameter to
-     specify a file or directory to store the keys in (such as a USB drive or SD
-     card) when you create the chroot. Beware that if you lose this file, your
-     chroot will not be decryptable.
+     key separately from the place the chroot is stored. Use the `-k` parameter
+     to specify a file or directory to store the keys in (such as a USB drive or
+     SD card) when you create the chroot. Beware that if you lose this file,
+     your chroot will not be decryptable. That's kind of the point, of course.
 
-### You want to make a bootstrap tarball and create a chroot from that
-  1. Download `crouton`.
+### Hey now, Ubuntu 12.04 is pretty old; I'm young and hip
+  1. The `-r` parameter specifies which distro you want to use.
+  2. Run `sh -e ~/Downloads/crouton -r list` to list the recognized releases and
+     which distros they belong to.
+
+### I don't always use Linux, but when I do, I use CLI
+  1. You can save a chunk of space by ditching X and just installing
+     command-line tools using `-t core` or `-t cli-extra`
+  2. Enter the chroot in as many crosh shells as you want simultaneously using
+     `sudo enter-chroot`
+  3. Use the [Crosh Window](http://goo.gl/eczLT) extension to keep Chromium OS
+     from eating standard keyboard shortcuts.
+
+### A new version of crouton came out; my chroot is therefore obsolete and sad
+  1. Check for updates, download the latest version, and see what's new by
+     running `croutonversion -u -d -c` from the chroot (run `croutonversion -h`
+     to see what those parameters actually do).
+  2. Exit the chroot and run `sudo sh -e ~/Downloads/crouton -t xfce -u`
+     (substitute xfce for whichever targets you want to update).
+  3. You can use this with `-e` to encrypt a non-encrypted chroot, but make sure
+     you don't interrupt the operation.
+
+### A backup a day keeps the price-gouging data restoration services away
+  1. `sudo edit-chroot -b chrootname` backs up your chroot to a timestamped
+     tarball to the current directory. Chroots are named either via the `-n`
+     parameter when created or by the release name if -n was not specified.
+  2. `sudo edit-chroot -r chrootname` restores the chroot from the most recent
+     timestamped tarball. You can explicitly specify the tarball with `-f`
+
+*Unlike with Chromium OS, the data in your chroot isn't synced to the cloud.*
+
+### This chroot's name/location/password/existence sucks. How to fix?
+  1. Check out the `edit-chroot` command; it likely does what you need it to do.
+  2. If you set a Chromium OS root password, you can change it with
+     `sudo chromeos-setdevpasswd`
+  3. You can change the password inside your chroot with `passwd`
+
+### I want to install the chroot to another location
+  1. Use `-p` to specify the directory in which to install the chroot and
+     scripts. Be sure to quote or escape spaces.
+  2. When entering the chroot, either specify the full path of the enter-chroot
+     or start* scripts (i.e. `sudo sh -e /path/to/enter-chroot`), or use the
+     `-c` parameter to explicitly specify the chroots directory.
+
+### Downloading bootstrap files over and over again is a waste of time
+  1. Download `crouton`
   2. Open a shell (Ctrl+Alt+T, type `shell` and hit enter) and run
      `sudo sh -e ~/Downloads/crouton -d -f ~/Downloads/mybootstrap.tar.bz2`
   3. You can then create chroots using the tarball by running
@@ -114,37 +162,11 @@ Examples
 *This is the quickest way to create multiple chroots at once, since you won't
 have to determine and download the bootstrap files every time.*
 
-### A new version of crouton came out, and you want to update your chroot
-  1. Download the new `crouton`.
-  2. Open a shell (Ctrl+Alt+T, type `shell` and hit enter) and run
-     `sudo sh -e ~/Downloads/crouton -t xfce -u`
-  3. You can use this with -e to encrypt a non-encrypted chroot, but make sure
-     you don't interrupt the operation.
+### Targets are cool. Abusing them for fun and profit is even cooler
+  1. You can make your own target files (start by copying one of the existing
+     ones) and then use them with any version of crouton via the `-T` parameter.
 
-### You're crazy and want to play with all of the features of crouton
-  1. Download the source snapshot tarball to your Chromium OS device.
-  2. Extract it and cd into the source directory.
-  3. Create a tarball of an old Ubuntu with perhaps the wrong architecture on a
-     different mirror using the unbundled scripts:
-
-        sh -e installer/main.sh -d -a i386 -r hardy \
-           -m 'http://mirrors.us.kernel.org/ubuntu/' -f iamcrazy.tar.bz2
-
-  4. Install the chroot with a custom name to an encrypted subdirectory in /tmp
-     with the key stored on a removable disk, and install just cli-extra since
-     you may be crazy but at least you recognize that /tmp is backed by RAM on
-     Chromium OS and you'll quickly exhaust the available space if you install
-     X11:
-
-        sudo sh -e installer/main.sh -m 'http://mirrors.us.kernel.org/ubuntu/' \
-                -f iamcrazy.tar.bz2 -p /tmp -n crazychrooty -t core,cli-extra \
-                -e -k '/media/removable/External Drive/chrootkeys/'
-
-  5. If that command actually worked, enter the chroot and login as root
-     straight into vi because, well, you're crazy:
-
-        sudo sh -e host-bin/enter-chroot -c /tmp/chroots -n crazychrooty \
-                -u root vi
+*This is great for automating common tasks when creating chroots.*
 
 ### Help! I've created a monster that must be slain!
   1. The delete-chroot command is your sword, shield, and only true friend.
@@ -156,6 +178,9 @@ Tips
 
   * Chroots are cheap! Create multiple ones using `-n`, break them, then make
     new, better ones!
+  * You can change the distro mirror from the default by using `-m`
+  * Behind a proxy? `-P` lets you specify one.
+  * List all the available targets and descriptions with `-t help`
   * A script is installed in your chroot called `brightness`. You can assign
     this to keyboard shortcuts to adjust the brightness of the screen (e.g.
     `brightness up`) or keyboard (e.g. `brightness k down`).
@@ -165,28 +190,49 @@ Tips
     terminal. This is particularly useful for desktop environments: try running
     `sudo startxfce4 -b`
   * Want to disable Chromium OS's power management? Run `croutonpowerd -i`
-  * If you just want a nice CLI environment for running Vim, servers, gcc,
-    there's no need to install X11. Just use the `core` or `cli-extra` targets
-    and use the chroot via `enter-chroot` from the crosh shell. You can enter
-    the chroot simultaneously with as many crosh shells as you want.
-
-
-Hey, I just met you, and this is crazy, but I'm getting a Pixel, so confirm support maybe?
-------------------------------------------------------------------------------------------
-`-t touch`.  'nuff said.
+  * Only want power management disabled for the duration of a command?
+    `croutonpowerd -i command and arguments` will automatically stop inhibiting
+    power management when the command exits.
+  * Have a Pixel or two or 4.352 million? `-t touch` improves touch support.
+  * Want more tips? Check the [wiki](https://github.com/dnschneid/crouton/wiki).
 
 
 Issues?
 -------
 Running another OS in a chroot is a pretty messy technique (although it's hidden
-behind very pretty scripts), and these scripts are pretty new, so problems are
-not surprising. Check the issue tracker and file a bug if your issue isn't
-there.
+behind very pretty scripts), and these scripts are relatively new, so problems
+are not surprising. Check the issue tracker and file a bug if your issue isn't
+there. When filing a new bug, include the output of `croutonversion` run from
+inside the chroot (if possible).
 
 
-I prefer Arch/Gentoo/Haiku/whatever
------------------------------------
-Great! Make your own scripts. Call it "croagh!!"
+Can I help?
+-----------
+Yes!
+
+
+But how?
+--------
+There's a way For Everyone to help!
+
+  * Something broken? File a bug! Bonus points if you try to fix it.
+  * Want to try and break something? Look through [requests for testing](https://github.com/dnschneid/crouton/issues?labels=needstesting&state=open)
+    and then do your best to brutally rip the author's work to shreds.
+  * Look through [open issues](https://github.com/dnschneid/crouton/issues?state=open)
+    and see if there's a topic or application you happen to have experience
+    with. And then, preferably, share that experience with others.
+  * Find issues that need [wiki entries](https://github.com/dnschneid/crouton/issues?labels=needswiki&state=open,closed)
+    and add the relevant info to the [wiki](https://github.com/dnschneid/crouton/wiki).
+    Or just add things to/improve things in the wiki in general, but do try to
+    keep it relevant and organized.
+  * Really like a certain desktop environment? Open or comment on a bug with
+    steps to get things working well. Or better yet, create a pull request with
+    a new target.
+  * Feel like hacking around with Chromium OS integration? Fork crouton, improve
+    integration, and create a pull request.
+  * Is your distro underrepresented? Want to contribute to the elusive and
+    mythical beast known as "croagh"? Fork crouton, add the distro, and create a
+    pull request.
 
 
 License
