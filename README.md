@@ -93,11 +93,8 @@ Examples
   3. Wait patiently and answer the prompts like a good person.
   4. Done! You can jump straight to your Xfce session by running
      `sudo enter-chroot startxfce4` or, as a special shortcut, `sudo startxfce4`
-  5. On x86/amd64, switch between Chromium OS and your chroot using
-     Ctrl+Alt+Back and the sequence Ctrl+Alt+Forward followed by
-     Ctrl+Alt+Refresh. On ARM platforms (or if you've explicitly selected the
-     xephyr target on non-ARM), use Ctrl+Alt+Shift+Back or
-     Ctrl+Alt+Shift+Forward to cycle through the chroots.
+  5. Cycle through Chromium OS and your running graphical chroots using
+     Ctrl+Alt+Shift+Back and Ctrl+Alt+Shift+Forward.
   6. Exit the chroot by logging out of Xfce.
 
 ### With encryption!
