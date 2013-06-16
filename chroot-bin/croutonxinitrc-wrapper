@@ -57,13 +57,13 @@ if [ -r "/etc/crouton/keylaunchrc-$xmethod" ]; then
     if [ "$xmethod" = 'x11' ]; then
         running=''
         for p in `ps -C keylaunch -opid=`; do
-            if grep -q 'DISPLAY=:0' "/proc/$p/environ" 2>/dev/null; then
+            if grep -q 'CROUTON=XINIT' "/proc/$p/environ" 2>/dev/null; then
                 running='y'
                 break
             fi
         done
         if [ -z "$running" ]; then
-            host-x11 keylaunch &
+            CROUTON='XINIT' host-x11 keylaunch &
         fi
     fi
 fi
