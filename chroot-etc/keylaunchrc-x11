@@ -3,7 +3,6 @@
 # found in the LICENSE file.
 
 # Creates the shortcuts to cycle X11 chroots like with Xephyr.
-# Must be run as root.
 
 key=***F1:/usr/local/bin/croutoncycle prev
 key=***F2:/usr/local/bin/croutoncycle next

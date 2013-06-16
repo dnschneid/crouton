@@ -10,7 +10,7 @@ fi
 REQUIRES='core'
 DESCRIPTION='Basic X11 install. Does not install any desktop environment.'
 CHROOTBIN='croutoncycle croutonpowerd croutonxinitrc-wrapper setres xinit'
-CHROOTETC='keylaunchrc-root-x11 xserverrc-x11'
+CHROOTETC='keylaunchrc-x11 xserverrc-x11'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
@@ -19,6 +19,9 @@ XMETHOD=x11
 install xorg dmz-cursor-theme
 # Fix launching X11 from inside crosh (user doesn't own a TTY)
 sed -i 's/allowed_users=.*/allowed_users=anybody/' '/etc/X11/Xwrapper.config'
+
+# Make chvt and fgconsole SUID root so we don't need to run keylaunch as root
+chmod u+s /bin/chvt /bin/fgconsole
 
 TIPS="$TIPS
 You can switch to your running chroot desktops by hitting Ctrl+Alt+Refresh
