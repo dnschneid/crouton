@@ -67,9 +67,13 @@ EOF
         cat > /etc/apt/sources.list <<EOF
 deb $MIRROR $RELEASE main contrib
 deb-src $MIRROR $RELEASE main contrib
+EOF
+        if [ "$RELEASE" != 'sid' ]; then
+            cat >> /etc/apt/sources.list <<EOF
 deb $MIRROR $RELEASE-updates main contrib
 deb-src $MIRROR $RELEASE-updates main contrib
 EOF
+        fi
     fi
 
     apt-get -y update
