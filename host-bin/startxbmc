@@ -7,7 +7,7 @@ APPLICATION="${0##*/}"
 
 USAGE="$APPLICATION [options]
 
-Wraps enter-chroot to start a XBMC session.
+Wraps enter-chroot to start an XBMC session.
 By default, it will log into the primary user on the first chroot found.
 
 Options are directly passed to enter-chroot; run enter-chroot to list them."

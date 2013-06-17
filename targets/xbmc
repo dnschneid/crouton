@@ -3,12 +3,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 REQUIRES='x11'
-DESCRIPTION='Installs the XBMC desktop environment. (Approx. 700MB)'
+DESCRIPTION='Installs the XBMC media player. (Approx. 137MB)'
 HOSTBIN='startxbmc'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
-apt-get -y install xbmc `noauto network-manager`
+apt-get -y install xbmc
 
 TIPS="$TIPS
 You can start XBMC via the startxbmc host command: sudo startxbmc
