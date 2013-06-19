@@ -18,8 +18,18 @@ XMETHOD=x11
 if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
 	install xorg dmz-cursor-theme keylaunch
 fi
+#xorg doesn't build a video driver by default, is there some way to automatically detect it?
 if [ "${DISTROAKA:-"$DISTRO"}" = 'funtoo' ]; then
-	emerge -u xorg-server dmz-cursor-theme oroborus-keylaunch
+    if [ ! `/bin/grep -q 'VIDEO_CARDS' /etc/make.conf` ]; then
+        echo -e "Your graphics hardware is reported as:  `/usr/sbin/lspci | grep -i vga` \r\nPlease select a corresponding driver:  "1>&2
+        read videodriver
+        echo -e "VIDEO_CARDS=\"$videodriver\"" >> /etc/make.conf
+    fi
+#Do we need to compile the synaptics touchpad driver?
+#    if [ ! `/bin/grep -q 'INPUT_DEVICES' /etc/make.conf` ];
+#        echo -e "VIDEO_CARDS=\"$videodriver\"" >> /etc/make.conf
+#    fi
+    emerge -u xorg-server oroborus-keylaunch xterm xorg-drivers
 fi
 
 # Fix launching X11 from inside crosh (user doesn't own a TTY)
