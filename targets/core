@@ -82,6 +82,11 @@ EOF
     apt-get -y dist-upgrade
 fi
 
+if [ "${DISTROAKA:-"$DISTRO"}" = 'funtoo' ]; then
+#	emerge --sync
+	install sudo gentoolkit
+fi
+
 # On release upgrade, keyboard-configuration might be reconfigured.
 fixkeyboardmode
 
@@ -89,7 +94,7 @@ fixkeyboardmode
 install --minimal sudo
 
 # Generate and set default locale
-if [ ! -f '/etc/default/locale' ] && hash locale-gen 2>/dev/null; then
+if [ ! -f '/etc/default/locale' ] && [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ] && hash locale-gen 2>/dev/null; then
     locale-gen --lang en_US.UTF-8
     update-locale LANG=en_US.UTF-8
 fi

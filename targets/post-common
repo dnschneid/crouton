@@ -24,7 +24,14 @@ if ! grep -q ':1000:' /etc/passwd; then
         echo -n 'Please specify a username for the primary user: ' 1>&2
         read username junk
     done
-    useradd -u 1000 -G "$groups" -s '/bin/bash' -m "$username"
+
+    if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
+        useradd -u 1000 -G audio,video,sudo -s '/bin/bash' -m "$username"
+    fi
+    if [ "${DISTROAKA:-"$DISTRO"}" = 'funtoo' ]; then
+        useradd -u 1000 -G audio,video,wheel -s '/bin/bash' -m "$username"
+    fi
+
     tries=0
     while ! passwd "$username" && [ "$tries" -lt 3 ]; do
         tries="$((tries+1))"
@@ -41,6 +48,9 @@ fi
 echo 'Cleaning up' 1>&2
 if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
     apt-get clean
+fi
+if [ "${DISTROAKA:-"$DISTRO"}" = 'funtoo' ]; then
+    eclean-dist -df
 fi
 rm -f "$0"
 

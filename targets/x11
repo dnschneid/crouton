@@ -16,13 +16,22 @@ CHROOTETC='xbindkeysrc.scm xserverrc-x11'
 ### Append to prepare.sh:
 XMETHOD=x11
 
-install xorg dmz-cursor-theme kbd
+install gentoo=xorg-x11,xorg gentoo=,dmz-cursor-theme gentoo=,kbd
+
 # Fix launching X11 from inside crosh (user doesn't own a TTY)
-sed -i 's/allowed_users=.*/allowed_users=anybody/' '/etc/X11/Xwrapper.config'
+if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
+	sed -i 's/allowed_users=.*/allowed_users=anybody/' '/etc/X11/Xwrapper.config'
+fi
 
 # Make chvt and fgconsole SUID root so we don't need to run keylaunch as root
-chmod u+s /bin/chvt /bin/fgconsole
 
+if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
+	chmod u+s /bin/chvt /bin/fgconsole
+fi 
+
+if [ "${DISTROAKA:-"$DISTRO"}" = 'funtoo' ]; then
+	chmod u+s /usr/bin/chvt /usr/bin/fgconsole
+fi
 TIPS="$TIPS
 You can flip through your running chroot desktops and Chromium OS by hitting
 Ctrl+Alt+Shift+Back and Ctrl+Alt+Shift+Forward.

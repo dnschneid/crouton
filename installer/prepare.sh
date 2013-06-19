@@ -173,13 +173,17 @@ compile() {
     shift 2
     local pkgs="gcc libc-dev $*"
     local remove="`list_uninstalled '' $pkgs`"
-    install --minimal $pkgs
+    if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
+        install --minimal $pkgs
+    fi
     echo "Compiling $out..." 1>&2
     ret=0
     if ! gcc -xc -Os - $linker -o "$out" || ! strip "$out"; then
         ret=1
     fi
-    remove $remove
+    if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
+        remove $remove
+    fi
     return $ret
 }
 

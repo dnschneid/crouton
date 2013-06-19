@@ -11,7 +11,12 @@
 ln -sfT "/etc/crouton/xserverrc-$XMETHOD" '/etc/X11/xinit/xserverrc'
 
 # Install utilities and links for powerd-poking daemon
-install --minimal xprintidle dbus
+if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
+    install --minimal xprintidle dbus
+fi
+if [ "${DISTROAKA:-"$DISTRO"}" = 'funtoo' ]; then
+    install --minimal sys-apps/dbus
+fi
 ln -sf croutonpowerd /usr/local/bin/gnome-screensaver-command
 ln -sf croutonpowerd /usr/local/bin/xscreensaver-command
 
