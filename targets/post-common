@@ -23,7 +23,7 @@ if ! grep -q ':1000:' /etc/passwd; then
         echo -n 'Please specify a username for the primary user: ' 1>&2
         read username junk
     done
-    useradd -u 1000 -G audio,video,sudo -s '/bin/bash' -m "$username"
+    useradd -u 1000 -G audio,video,sudo,plugdev -s '/bin/bash' -m "$username"
     tries=0
     while ! passwd "$username" && [ "$tries" -lt 3 ]; do
         tries="$((tries+1))"

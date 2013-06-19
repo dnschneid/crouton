@@ -155,20 +155,22 @@ fi
 # so that users have access to shared hardware, such as video and audio.
 gfile="$CHROOT/etc/group"
 if [ -f "$gfile" ]; then
-    for group in audio video; do
-        gid="`awk -F: '$1=="'"$group"'"{print $3; exit}' '/etc/group'`"
+    for group in audio video usb:plugdev; do
+        hostgroup="${group%:*}"
+        chrootgroup="${group#*:}"
+        gid="`awk -F: '$1=="'"$hostgroup"'"{print $3; exit}' '/etc/group'`"
         if [ -z "$gid" ]; then
-            echo "Couldn't find $group group in Chromium OS!" 1>&2
+            echo "Couldn't find $hostgroup group in Chromium OS!" 1>&2
             continue
         fi
-        curgid="`awk -F: '$1=="'"$group"'"{print $3; exit}' "$gfile"`"
+        curgid="`awk -F: '$1=="'"$chrootgroup"'"{print $3; exit}' "$gfile"`"
         if [ "$gid" = "$curgid" ]; then
             continue
         elif [ -z "$curgid" ]; then
-            echo "Couldn't find $group group in chroot!" 1>&2
+            echo "Couldn't find $chrootgroup group in chroot!" 1>&2
             continue
         fi
-        echo "Changing $group GID from $curgid to $gid..." 1>&2
+        echo "Changing $chrootgroup GID from $curgid to $gid..." 1>&2
         move="`awk -F: '$3=='"$gid"'{print $1; exit}' "$gfile"`"
         if [ -n "$move" ]; then
             ngid="$gid"
