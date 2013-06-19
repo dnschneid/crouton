@@ -224,6 +224,7 @@ for NAME in "$@"; do
     if [ -n "$RESTORE" ]; then
         src="$TARBALL"
         if [ -z "$src" -o -d "$TARBALL" ]; then
+            src=''
             file="$TARBALL$NAME"
             # Search for the alphabetically last tarball with src.
             # Dated tarballs take precedence over undated tarballs.
