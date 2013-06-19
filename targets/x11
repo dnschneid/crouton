@@ -15,14 +15,27 @@ CHROOTETC='keylaunchrc-x11 xserverrc-x11'
 
 ### Append to prepare.sh:
 XMETHOD=x11
+if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
+	install xorg dmz-cursor-theme keylaunch
+fi
+if [ "${DISTROAKA:-"$DISTRO"}" = 'funtoo' ]; then
+	emerge -u xorg-server dmz-cursor-theme oroborus-keylaunch
+fi
 
-install xorg dmz-cursor-theme keylaunch
 # Fix launching X11 from inside crosh (user doesn't own a TTY)
-sed -i 's/allowed_users=.*/allowed_users=anybody/' '/etc/X11/Xwrapper.config'
+if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
+	sed -i 's/allowed_users=.*/allowed_users=anybody/' '/etc/X11/Xwrapper.config'
+fi
 
 # Make chvt and fgconsole SUID root so we don't need to run keylaunch as root
-chmod u+s /bin/chvt /bin/fgconsole
 
+if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
+	chmod u+s /bin/chvt /bin/fgconsole
+fi 
+
+if [ "${DISTROAKA:-"$DISTRO"}" = 'funtoo' ]; then
+	chmod u+s /usr/bin/chvt /usr/bin/fgconsole
+fi
 TIPS="$TIPS
 You can switch to your running chroot desktops by hitting Ctrl+Alt+Refresh
 through Ctrl+Alt+VolumeUp (each additional running chroot will be one key to the
