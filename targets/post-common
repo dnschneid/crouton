@@ -37,15 +37,33 @@ if ! grep -q ':1000:' /etc/passwd; then
         echo \
 "Password left unset. To set a password, inside the chroot run: passwd $username" 1>&2
     fi
+    if [ "${DISTROAKA:-"$DISTRO"}" = 'funtoo' ]; then
+        tries=0
+        echo -e 'Set root password.  ' 1>&2
+        while ! passwd && [ "$tries" -lt 3 ]; do
+            tries="$((tries+1))"
+        done
+        if [ "$tries" = 3 ]; then
+            echo -n \
+'Root password left unset. To set a password, login to the chroot as root and run: passwd ' 1>&2
+        fi
+    fi
 fi
 
 echo 'Cleaning up' 1>&2
 if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
     apt-get clean
 fi
+
+#eclean is pointless immediately post install, nothing will be deleted save for files with 
+#failed checksums.  I'm not sure if a manually deleting distfiles and tmp is the "Gentoo way," but it works
 if [ "${DISTROAKA:-"$DISTRO"}" = 'funtoo' ]; then
-    eclean-dist -df
+#    source /etc/profile
+#    eclean-dist -dq
+    rm -rf /var/tmp/portage/*
+    rm -rf /usr/portage/distfiles/*
 fi
+
 rm -f "$0"
 
 if [ -n "$TIPS" ]; then

@@ -17,7 +17,7 @@ lsb="${1%/}/etc/gentoo-release"
 #    exit 1
 #fi
 
-rel="`head -n 1 /etc/gentoo-release | awk -F" " '{ print tolower($1) }'`"
+rel="`head -n 1 $lsb | awk -F" " '{ print tolower($1) }'`"
 if [ -z "$rel" ]; then
     exit 1
 fi

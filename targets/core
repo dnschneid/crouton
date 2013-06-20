@@ -80,7 +80,7 @@ fi
 
 if [ "${DISTROAKA:-"$DISTRO"}" = 'funtoo' ]; then
 #	emerge --sync
-	install sudo gentoolkit
+	install pciutils gentoolkit
 fi
 
 # On release upgrade, keyboard-configuration might be reconfigured.
@@ -90,6 +90,15 @@ fixkeyboardmode
 if [ ! -f '/etc/default/locale' ] && [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ] && hash locale-gen 2>/dev/null; then
     locale-gen --lang en_US.UTF-8
     update-locale LANG=en_US.UTF-8
+fi
+
+if [ "${DISTROAKA:-"$DISTRO"}" = 'funtoo' ] && hash locale-gen 2>/dev/null; then
+    if ! `locale | grep -q LANG=en_US.UTF-8`; then
+        localedef -i en_US -f UTF-8 en_US.UTF-8
+        echo "LANG=\"en_US.UTF-8\"" >> /etc/env.d/02locale
+	env-update
+	source /etc/profile
+    fi
 fi
 
 echo 'Syncing timezone...' 1>&2

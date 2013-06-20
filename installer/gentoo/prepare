@@ -24,7 +24,7 @@ install_dist() {
         pkgs="$pkgs $1"
         shift
     done
-    emerge -u $params $pkgs 
+    emerge --autounmask-write --newuse -qu --jobs=$((`cat /proc/cpuinfo | grep "model name" | wc -l` + 1)) $params $pkgs  && dispatch-conf && emerge --newuse -qu --jobs=$((`cat /proc/cpuinfo | grep "model name" | wc -l` + 1)) $params $pkgs 
 }
 
 
@@ -62,6 +62,13 @@ list_uninstalled_dist() {
 
 # Bootstrap portage
 emerge --sync
+#Set MAKEOPTS and jobs based on processor cores
+if ! `/bin/grep -q 'MAKEOPTS' /etc/portage/make.conf`; then
+    echo "MAKEOPTS=\"-j$((`cat /proc/cpuinfo | grep "model name" | wc -l` + 1))\"" >> /etc/portage/make.conf
+fi
+
+# Update portage
+install --minimal portage
 
 # Fix the keyboard mode early on (this will be called again after dist-upgrade).
 fixkeyboardmode

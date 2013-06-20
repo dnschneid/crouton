@@ -20,16 +20,18 @@ if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
 fi
 #xorg doesn't build a video driver by default, is there some way to automatically detect it?
 if [ "${DISTROAKA:-"$DISTRO"}" = 'funtoo' ]; then
-    if [ ! `/bin/grep -q 'VIDEO_CARDS' /etc/make.conf` ]; then
-        echo -e "Your graphics hardware is reported as:  `/usr/sbin/lspci | grep -i vga` \r\nPlease select a corresponding driver:  "1>&2
+#There should probably be some logic to set an appropriate profile, but this is different between Gentoo and Funtoo (and Sabayon or whatever else may come in the future)
+    if ! `/bin/grep -q 'VIDEO_CARDS' /etc/portage/make.conf`; then
+        echo -e "Your graphics hardware is reported as:  `/usr/sbin/lspci | grep -i vga` \r\nPlease select a corresponding driver:  "
         read videodriver
-        echo -e "VIDEO_CARDS=\"$videodriver\"" >> /etc/make.conf
+        echo -e "VIDEO_CARDS=\"$videodriver\"" >> /etc/portage/make.conf
     fi
-#Do we need to compile the synaptics touchpad driver?
-#    if [ ! `/bin/grep -q 'INPUT_DEVICES' /etc/make.conf` ];
-#        echo -e "VIDEO_CARDS=\"$videodriver\"" >> /etc/make.conf
-#    fi
-    emerge -u xorg-server oroborus-keylaunch xterm xorg-drivers
+#Do we need to compile the synaptics touchpad driver?  Gentoo seems to not include this by default
+    if [ ! `/bin/grep -q 'INPUT_DEVICES' /etc/portage/make.conf` ]; then
+        echo -e "INPUT_DEVICES=\"evdev keyboard mouse synaptics\"" >> /etc/portage/make.conf
+    fi
+#xterm might be redundant
+    install xorg-x11 oroborus-keylaunch xterm
 fi
 
 # Fix launching X11 from inside crosh (user doesn't own a TTY)
