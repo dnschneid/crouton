@@ -31,7 +31,8 @@ if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
     apt-get -y install --reinstall xkb-data
 fi
 if [ "${DISTROAKA:-"$DISTRO"}" = 'funtoo' ]; then
-	install xkeyboard-config setxkbmap
+    install setxkbmap
+    emerge xkeyboard-config
 fi
 XKBROOT='/usr/share/X11/xkb'
 XKBROOTTMP="`mktemp -d crouton-xkb.XXXXXX --tmpdir=/tmp`"

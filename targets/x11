@@ -18,6 +18,7 @@ XMETHOD=x11
 
 install gentoo=xorg-x11,xorg gentoo=,dmz-cursor-theme gentoo=,kbd
 
+
 # Fix launching X11 from inside crosh (user doesn't own a TTY)
 if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
 	sed -i 's/allowed_users=.*/allowed_users=anybody/' '/etc/X11/Xwrapper.config'

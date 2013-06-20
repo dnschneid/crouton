@@ -115,8 +115,13 @@ if [ -n "$DOWNLOADONLY" -a -n "$UPDATE" ]; then
     error 2 "$USAGE"
 fi
 
-# Gentoo/Funtoo is currently limited to specifying a stage3 tarball for installation
-if [ "$RELEASE" = 'gentoo' -o "$RELEASE" = 'funtoo' -a -z "$TARBALL" ]; then
+# Funtoo is currently limited to specifying a stage3 tarball for installation
+if [ "$RELEASE" = 'funtoo' -a -z "$TARBALL" -a -z "$UPDATE" ]; then
+    error 2 'Please download a stage 3 tarball and pass it to crouton with the -f flag to install Gentoo'
+fi
+
+# Gentoo is currently limited to specifying a stage3 tarball for installation
+if [ "$RELEASE" = 'gentoo' -a -z "$TARBALL" -a -z "$UPDATE" ]; then
     error 2 'Please download a stage 3 tarball and pass it to crouton with the -f flag to install Gentoo'
 fi
 
