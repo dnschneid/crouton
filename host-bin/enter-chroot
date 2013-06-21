@@ -73,7 +73,7 @@ addtrap "stty echo 2>/dev/null || true"
 
 # Mount the chroot and update our CHROOT path
 if [ -n "$KEYFILE" ]; then
-    CHROOT="`sh -e "$BINDIR/mount-chroot"
+    CHROOT="`sh -e "$BINDIR/mount-chroot" \
                                      -k "$KEYFILE" -p -c "$CHROOTS" "$NAME"`"
 else
     CHROOT="`sh -e "$BINDIR/mount-chroot" -p -c "$CHROOTS" "$NAME"`"
