@@ -46,27 +46,32 @@ fi
 # Launch the powerd poker daemon
 croutonpowerd --daemon &
 
-# Launch appropriate daemons for the X11 method
+# Apply the Chromebook keyboard map if installed.
+if [ -f '/usr/share/X11/xkb/compat/chromebook' ]; then
+    setxkbmap -model chromebook
+fi
+
+# Launch key binding daemon
 xmethod="`readlink -f '/etc/X11/xinit/xserverrc'`"
 xmethod="${xmethod##*-}"
-if [ -r "/etc/crouton/keylaunchrc-$xmethod" ]; then
-    ln -sfT "/etc/crouton/keylaunchrc-$xmethod" "$HOME/.keylaunchrc"
-    keylaunch &
 
-    # Launch keylaunch for the Chromium OS X server if it isn't running
-    if [ "$xmethod" = 'x11' ]; then
-        running=''
-        for p in `ps -C keylaunch -opid=`; do
-            if grep -q 'CROUTON=XINIT' "/proc/$p/environ" 2>/dev/null; then
-                running='y'
-                break
-            fi
-        done
-        if [ -z "$running" ]; then
-            CROUTON='XINIT' host-x11 keylaunch &
+METHOD="$xmethod" xbindkeys -fg /etc/crouton/xbindkeysrc.scm
+
+# Launch xbindkeys for the Chromium OS X server if it isn't running
+if [ "$xmethod" = 'x11' ]; then
+    running=''
+    for p in `ps -C xbindkeys -opid=`; do
+        if grep -q 'CROUTON=XINIT' "/proc/$p/environ" 2>/dev/null; then
+            running='y'
+            break
         fi
+    done
+    if [ -z "$running" ]; then
+        CROUTON='XINIT' METHOD="$xmethod" \
+            host-x11 xbindkeys -fg /etc/crouton/xbindkeysrc.scm
     fi
 fi
+
 # Pass through the host cursor on xephyr
 if [ "$xmethod" = 'xephyr' ]; then
     host-x11 croutoncursor "$DISPLAY" &
@@ -78,11 +83,6 @@ if [ -f "$toucheggconf" ]; then
     mkdir -p "$HOME/.config/touchegg"
     ln -sf "$toucheggconf" "$HOME/.config/touchegg/"
     touchegg &
-fi
-
-# Apply the Chromebook keyboard map if installed.
-if [ -f '/usr/share/X11/xkb/compat/chromebook' ]; then
-    setxkbmap -model chromebook
 fi
 
 # Configure trackpad settings if needed

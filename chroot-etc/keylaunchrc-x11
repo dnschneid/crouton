@@ -1,8 +1,0 @@
-# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
-# Use of this source code is governed by a BSD-style license that can be
-# found in the LICENSE file.
-
-# Creates the shortcuts to cycle X11 chroots like with Xephyr.
-
-key=***F1:/usr/local/bin/croutoncycle prev
-key=***F2:/usr/local/bin/croutoncycle next
