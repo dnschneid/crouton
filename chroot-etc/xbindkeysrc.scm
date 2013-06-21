@@ -34,6 +34,7 @@
         (xbindkey '(XF86MonBrightnessDown) "brightness down")
         (xbindkey '(XF86MonBrightnessUp) "brightness up")
 
+        ; Load ~/.xbindkeysrc.scm for customization if the current user has one
         (let ((usercfg (string-append (getenv "HOME") "/.xbindkeysrc.scm")))
             (if (access? usercfg F_OK) (load usercfg))
         )
