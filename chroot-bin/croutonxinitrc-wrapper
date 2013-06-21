@@ -67,7 +67,8 @@ if [ "$xmethod" = 'x11' ]; then
         fi
     done
     if [ -z "$running" ]; then
-        CROUTON='XINIT' METHOD="$xmethod" host-x11 xbindkeys -fg /etc/crouton/xbindkeysrc.scm
+        CROUTON='XINIT' METHOD="$xmethod" \
+            host-x11 xbindkeys -fg /etc/crouton/xbindkeysrc.scm
     fi
 fi
 
