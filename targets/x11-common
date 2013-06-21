@@ -18,6 +18,9 @@ install --minimal xprintidle dbus
 ln -sf croutonpowerd /usr/local/bin/gnome-screensaver-command
 ln -sf croutonpowerd /usr/local/bin/xscreensaver-command
 
+# Install xbindkeys for key shortcuts
+install --minimal xbindkeys
+
 # Add a blank Xauthority to all users' home directories
 touch /etc/skel/.Xauthority
 chmod 600 /etc/skel/.Xauthority

@@ -5,7 +5,7 @@
 REQUIRES='core'
 DESCRIPTION='Nested X11 install. Replaces X11 if specified first.'
 CHROOTBIN='croutoncycle croutonpowerd croutonwheel croutonwm croutonxinitrc-wrapper xinit'
-CHROOTETC='keylaunchrc-xephyr xserverrc-xephyr'
+CHROOTETC='xbindkeysrc.scm xserverrc-xephyr'
 # Prevent X11 from being added if it hasn't already.
 echo 'x11' >> "${TARGETDEDUPFILE:-/dev/null}"
 . "${TARGETSDIR:="$PWD"}/common"
@@ -41,8 +41,7 @@ fi
 # xserver-xephyr won't auto replace the manually-downloaded version.
 install --minimal \
     xserver-xephyr xinit ratpoison dmz-cursor-theme libgl1-mesa-dri \
-    x11-utils x11-xserver-utils xautomation xdotool xinput xterm \
-    keylaunch
+    x11-utils x11-xserver-utils xautomation xdotool xinput xterm
 
 # Compile croutoncursor
 compile cursor '-lX11 -lXfixes -lXrender' \
