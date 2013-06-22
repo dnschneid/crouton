@@ -11,13 +11,7 @@ if [ -z "$1" ]; then
     exit 2
 fi
 
-lsb="${1%/}/etc/gentoo-release"
-
-#if ! grep -q 'DISTRIB_ID=Ubuntu' "$lsb" 2>/dev/null; then
-#    exit 1
-#fi
-
-rel="`head -n 1 $lsb | awk -F" " '{ print tolower($1) }'`"
+rel="`awk '{print tolower($1); exit}' "${1%/}/etc/gentoo-release"`"
 if [ -z "$rel" ]; then
     exit 1
 fi

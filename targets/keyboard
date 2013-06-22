@@ -30,7 +30,7 @@ if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
     apt-mark unhold xkb-data || true 2>/dev/null
     apt-get -y install --reinstall xkb-data
 fi
-if [ "${DISTROAKA:-"$DISTRO"}" = 'funtoo' ]; then
+if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
     install setxkbmap
     emerge xkeyboard-config
 fi

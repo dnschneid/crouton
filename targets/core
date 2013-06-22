@@ -82,9 +82,9 @@ EOF
     apt-get -y dist-upgrade
 fi
 
-if [ "${DISTROAKA:-"$DISTRO"}" = 'funtoo' ]; then
+if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
 #	emerge --sync
-	install pciutils gentoolkit
+	install gentoolkit
 fi
 
 # On release upgrade, keyboard-configuration might be reconfigured.
@@ -99,10 +99,7 @@ if [ ! -f '/etc/default/locale' ] && [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ] &&
     update-locale LANG=en_US.UTF-8
 fi
 
-# Link debian_chroot to the chroot name
-if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
-    ln -sfT '/etc/crouton/name' '/etc/debian_chroot'
-if [ "${DISTROAKA:-"$DISTRO"}" = 'funtoo' ] && hash locale-gen 2>/dev/null; then
+if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ] && hash locale-gen 2>/dev/null; then
     if ! `locale | grep -q LANG=en_US.UTF-8`; then
         localedef -i en_US -f UTF-8 en_US.UTF-8
         echo "LANG=\"en_US.UTF-8\"" >> /etc/env.d/02locale

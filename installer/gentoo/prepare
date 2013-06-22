@@ -6,8 +6,8 @@
 # This is a distro-specific continuation of the prepare.sh script.
 
 #PKGEXT='deb'
-DISTROAKA='funtoo'
-
+DISTROAKA='gentoo'
+NJOBS=$((`grep -c '^processor' /proc/cpuinfo`+1))
 
 # install_dist: see install() in prepare.sh for details.
 install_dist() {
@@ -24,7 +24,9 @@ install_dist() {
         pkgs="$pkgs $1"
         shift
     done
-    emerge --autounmask-write --newuse -qu --jobs=$((`cat /proc/cpuinfo | grep "model name" | wc -l` + 1)) $params $pkgs  && dispatch-conf && emerge --newuse -qu --jobs=$((`cat /proc/cpuinfo | grep "model name" | wc -l` + 1)) $params $pkgs 
+    emerge --autounmask-write --newuse -qu --jobs=$NJOBS $params $pkgs  
+    dispatch-conf
+    emerge --newuse -qu --jobs=$NJOBS $params $pkgs 
 }
 
 
@@ -64,7 +66,7 @@ list_uninstalled_dist() {
 emerge --sync
 #Set MAKEOPTS and jobs based on processor cores
 if ! `/bin/grep -q 'MAKEOPTS' /etc/portage/make.conf`; then
-    echo "MAKEOPTS=\"-j$((`cat /proc/cpuinfo | grep "model name" | wc -l` + 1))\"" >> /etc/portage/make.conf
+    echo "MAKEOPTS=\"-j$NJOBS\"" >> /etc/portage/make.conf
 fi
 
 # Update portage

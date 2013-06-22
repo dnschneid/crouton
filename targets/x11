@@ -16,8 +16,21 @@ CHROOTETC='xbindkeysrc.scm xserverrc-x11'
 ### Append to prepare.sh:
 XMETHOD=x11
 
-install gentoo=xorg-x11,xorg gentoo=,dmz-cursor-theme gentoo=,kbd
+#xorg doesn't build a video driver by default, is there some way to automatically detect it?
+if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
+#There should probably be some logic to set an appropriate profile, but this is different between Gentoo and Funtoo (and Sabayon or whatever else may come in the future)
+    if ! `/bin/grep -q 'VIDEO_CARDS' /etc/portage/make.conf`; then
+#        echo -e "Your graphics hardware is reported as:  `/usr/sbin/lspci | grep -i vga` \r\nPlease select a corresponding driver:  "
+#        read videodriver
+        echo -e "VIDEO_CARDS=\"intel fbdev\"" >> /etc/portage/make.conf
+    fi
+#Do we need to compile the synaptics touchpad driver?  Gentoo seems to not include this by default
+    if [ ! `/bin/grep -q 'INPUT_DEVICES' /etc/portage/make.conf` ]; then
+        echo -e "INPUT_DEVICES=\"evdev keyboard mouse synaptics\"" >> /etc/portage/make.conf
+    fi
+fi
 
+install gentoo=xorg-x11,xorg gentoo=,dmz-cursor-theme gentoo=,kbd
 
 # Fix launching X11 from inside crosh (user doesn't own a TTY)
 if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
@@ -26,13 +39,8 @@ fi
 
 # Make chvt and fgconsole SUID root so we don't need to run keylaunch as root
 
-if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
-	chmod u+s /bin/chvt /bin/fgconsole
-fi 
+chmod u+s `which chvt` `which fgconsole`
 
-if [ "${DISTROAKA:-"$DISTRO"}" = 'funtoo' ]; then
-	chmod u+s /usr/bin/chvt /usr/bin/fgconsole
-fi
 TIPS="$TIPS
 You can flip through your running chroot desktops and Chromium OS by hitting
 Ctrl+Alt+Shift+Back and Ctrl+Alt+Shift+Forward.
