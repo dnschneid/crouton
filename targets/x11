@@ -24,9 +24,8 @@ sed -i 's/allowed_users=.*/allowed_users=anybody/' '/etc/X11/Xwrapper.config'
 chmod u+s /bin/chvt /bin/fgconsole
 
 TIPS="$TIPS
-You can switch to your running chroot desktops by hitting Ctrl+Alt+Refresh
-through Ctrl+Alt+VolumeUp (each additional running chroot will be one key to the
-right), and switch back to Chromium OS by hitting Ctrl+Alt+Back.
+You can flip through your running chroot desktops and Chromium OS by hitting
+Ctrl+Alt+Shift+Back and Ctrl+Alt+Shift+Forward.
 "
 
 ### append x11-common
