@@ -211,6 +211,9 @@ if [ -h "$localtime" ] && [ "`readlink "$localtime"`" = "$hostlocaltime" ]; then
         echo "\
 WARNING: the timezone selected in Chromium OS does not exist inside the chroot.
 To set the chroot's timezone, run the following: sudo dpkg-reconfigure tzdata" 1>&2
+    else
+        # Set /etc/timezone in chroot - fixes the clock in Unity
+        echo "${timezone#/usr/share/zoneinfo/}" > "$CHROOT/etc/timezone"
     fi
 fi
 
