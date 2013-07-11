@@ -3,21 +3,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# Launches Unity or Unity-2D depending on the X server.
+# Launches Unity; will fall back to Unity-2D on supported releases
 
-xmethod="`readlink -f '/etc/X11/xinit/xserverrc'`"
-xmethod="${xmethod##*-}"
-if [ "$xmethod" = 'x11' ]; then
-    # We have 3D acceleration, so use Unity
-    exec xinit /usr/bin/unity
-else
-    # We're on Xephyr, so use Unity-2D
-    exec xinit /bin/sh -c '
-        unity-2d-panel & p="$!"
-        unity-2d-shell & p="$p $!"
-        unity-2d-spread & p="$p $!"
-        metacity & p="$p $!"
-        trap "kill $p 2>&-" INT TERM HUP 0
-        wait
-    '
-fi
+export DESKTOP_SESSION=ubuntu
+exec xinit /etc/X11/xinit/xinitrc "gnome-session --session=$DESKTOP_SESSION"
