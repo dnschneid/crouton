@@ -101,3 +101,7 @@ rm -f /etc/timezone
 # /var/host/timezone/localtime is itself a symbolic link, but as long as the
 # zoneinfo packages in the chroot and Chromium OS are the same, it'll be fine
 ln -sfT /var/host/timezone/localtime /etc/localtime
+
+# Link /etc/mtab to /proc/mounts. It's not totally accurate, but close enough,
+# as it at least has / and all the media-mounted devices.
+ln -sfT /proc/mounts /etc/mtab
