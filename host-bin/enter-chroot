@@ -184,6 +184,9 @@ if [ -f "$gfile" ]; then
     done
 fi
 
+# Save the chroot name to the chroot
+echo "$NAME" > "$CHROOT/etc/crouton/name"
+
 # Ensure $CHROOT/var/host exists.
 mkdir -p "$CHROOT/var/host"
 

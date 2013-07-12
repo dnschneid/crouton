@@ -91,6 +91,11 @@ if [ ! -f '/etc/default/locale' ] && hash locale-gen 2>/dev/null; then
     update-locale LANG=en_US.UTF-8
 fi
 
+# Link debian_chroot to the chroot name
+if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
+    ln -sfT '/etc/crouton/name' '/etc/debian_chroot'
+fi
+
 echo 'Syncing timezone...' 1>&2
 # Link the timezone to Chromium OS
 # Remove /etc/timezone: this tells Ubuntu/Debian that we are managing the
