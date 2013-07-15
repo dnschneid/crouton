@@ -16,7 +16,7 @@ CHROOTETC='xbindkeysrc.scm xserverrc-x11'
 ### Append to prepare.sh:
 XMETHOD=x11
 
-install xorg dmz-cursor-theme
+install xorg dmz-cursor-theme kbd
 # Fix launching X11 from inside crosh (user doesn't own a TTY)
 sed -i 's/allowed_users=.*/allowed_users=anybody/' '/etc/X11/Xwrapper.config'
 

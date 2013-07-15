@@ -85,6 +85,9 @@ fi
 # On release upgrade, keyboard-configuration might be reconfigured.
 fixkeyboardmode
 
+# Install critical packages
+install --minimal sudo
+
 # Generate and set default locale
 if [ ! -f '/etc/default/locale' ] && hash locale-gen 2>/dev/null; then
     locale-gen --lang en_US.UTF-8
