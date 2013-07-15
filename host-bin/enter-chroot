@@ -342,7 +342,7 @@ else
         dbususer="`echo "cat /busconfig/user/text()" \
             | xmllint --shell "$CHROOT/etc/dbus-1/system.conf" 2>/dev/null \
             | grep '^[a-z][-a-z0-9_]*$' || true`"
-        env -i chroot "$CHROOT" su -c "
+        env -i chroot "$CHROOT" su -s '/bin/sh' -c "
             dbususer='$dbususer'"'
             pidfile="/var/run/dbus/pid"
             if [ -f "$pidfile" ]; then
@@ -361,7 +361,7 @@ else
 
     # Run rc.local
     if [ -n "$firstrun" -a -x "$CHROOT/etc/rc.local" ]; then
-        env -i chroot "$CHROOT" su -c \
+        env -i chroot "$CHROOT" su -s '/bin/sh' -c \
             'exec /etc/rc.local >/dev/null 2>/dev/null </dev/null' - root \
             || ret=$?
         if [ ! "$ret" = 0 ]; then
@@ -378,7 +378,8 @@ else
         for param in "$@"; do
             cmd="$cmd'`echo -n "$param" | sed "s/'/'\\\\\\''/g"`' "
         done
-        env -i TERM="$TERM" chroot "$CHROOT" su -c "$cmd" - "$USERNAME" \
+        env -i TERM="$TERM" chroot "$CHROOT" \
+            su -s '/bin/sh' -c "$cmd" - "$USERNAME" \
             || ret=$?
     fi
 fi

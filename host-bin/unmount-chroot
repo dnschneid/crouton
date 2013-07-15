@@ -165,7 +165,7 @@ for NAME in "$@"; do
     fi
 
     # Kill the chroot's system dbus if one is running; failure is fine
-    env -i chroot "$CHROOT" su -c '
+    env -i chroot "$CHROOT" su -s '/bin/sh' -c '
         pidfile="/var/run/dbus/pid"
         if [ ! -f "$pidfile" ]; then
             exit 0
