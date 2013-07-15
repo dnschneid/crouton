@@ -236,5 +236,5 @@ License
 -------
 crouton (including this eloquently-written README) is copyright &copy; 2013 The
 Chromium OS Authors. All rights reserved. Use of the source code included here
-is governed by a BSD-style license that can be found in the LICENCE file in the
+is governed by a BSD-style license that can be found in the LICENSE file in the
 source tree.
