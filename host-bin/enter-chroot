@@ -147,8 +147,11 @@ if [ -z "$NOLOGIN" ]; then
             error 1 "UID $uid not found in $NAME"
         fi
     esac
-    # Detect the home directory for the user
+    # Detect the home directory and shell for the user
     CHROOTHOME="`awk -F: '$1=="'"$USERNAME"'"{print $6; exit}' "$passwd"`"
+    CHROOTSHELL="`awk -F: '$1=="'"$USERNAME"'"{print $NF; exit}' "$passwd"`"
+else
+    CHROOTSHELL='/bin/sh'
 fi
 
 # Fix group numbers for critical groups to match Chromium OS. This is necessary
@@ -374,7 +377,7 @@ else
         env -i TERM="$TERM" chroot "$CHROOT" su - "$USERNAME" || ret=$?
     else
         # Escape out the command
-        cmd=''
+        cmd="export SHELL='$CHROOTSHELL';"
         for param in "$@"; do
             cmd="$cmd'`echo -n "$param" | sed "s/'/'\\\\\\''/g"`' "
         done
