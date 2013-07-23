@@ -338,7 +338,8 @@ if [ -n "$NOLOGIN" ]; then
     env -i TERM="$TERM" chroot "$CHROOT" "$@" || ret=$?
 else
     # Launch the system dbus
-    if [ -x "$CHROOT/bin/dbus-daemon" ]; then
+    if [ -x "$CHROOT/bin/dbus-daemon" ] || \
+       [ -x "$CHROOT/usr/bin/dbus-daemon" ]; then
         # Try to detect the dbus user by parsing its configuration file
         # If it fails, or if the user does not exist, `id -un '$dbususer'`
         # will fail, and we fallback on a default user name ("messagebus")
