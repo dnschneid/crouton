@@ -6,18 +6,26 @@
 # Provides a wrapper around gnome-session to allow gnome-session based
 # desktop environments to work with crouton nicely
 
-USAGE="${0##*/}
+USAGE="${0##*/} [session]
 A wrapper around gnome-session that can be passed to xinit.
-Provide the desktop environment in the DESKTOP_SESSION variable, e.g.
-export DESKTOP_SESSION=gnome; xinit gnome-session-wrapper"
+Provide the session type in the DESKTOP_SESSION variable, 
+or as an optional session argument.
 
+Examples:
+(launch GNOME from crosh with session in DESKTOP_SESSION)
+DESKTOP_SESSION=gnome xinit /etc/X11/xinit/xinitrc ${0##*/}
+
+(launch Unity from an xterm with session as an argument)
+${0##*/} ubuntu"
+
+export DESKTOP_SESSION="${DESKTOP_SESSION:-"$1"}"
 if [ -z "$DESKTOP_SESSION" ]; then
-  echo "$USAGE"
-  exit 1
+    echo "$USAGE" 1>&2
+    exit 2
 fi
 
 if [ -z "$DISPLAY" ]; then
-    exec xinit /etc/X11/xinit/xinitrc gnome-session-wrapper
+    exec xinit /etc/X11/xinit/xinitrc "$0"
 else
     exec gnome-session --session="$DESKTOP_SESSION"
 fi
