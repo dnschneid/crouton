@@ -1,0 +1,23 @@
+#!/bin/sh -e
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+#
+# Provides a wrapper around gnome-session to allow gnome-session based
+# desktop environments to work with crouton nicely
+
+USAGE="${0##*/}
+A wrapper around gnome-session that can be passed to xinit.
+Provide the desktop environment in the DESKTOP_SESSION variable, e.g.
+export DESKTOP_SESSION=gnome; xinit gnome-session-wrapper"
+
+if [ -z "$DESKTOP_SESSION" ]; then
+  echo "$USAGE"
+  exit 1
+fi
+
+if [ -z "$DISPLAY" ]; then
+    exec xinit /etc/X11/xinit/xinitrc gnome-session-wrapper
+else
+    exec gnome-session --session="$DESKTOP_SESSION"
+fi
