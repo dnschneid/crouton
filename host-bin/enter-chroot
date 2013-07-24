@@ -338,29 +338,29 @@ if [ -n "$NOLOGIN" ]; then
     env -i TERM="$TERM" chroot "$CHROOT" "$@" || ret=$?
 else
     # Launch the system dbus
-    if [ -x "$CHROOT/bin/dbus-daemon" ]; then
-        # Try to detect the dbus user by parsing its configuration file
-        # If it fails, or if the user does not exist, `id -un '$dbususer'`
-        # will fail, and we fallback on a default user name ("messagebus")
+    # Try to detect the dbus user by parsing its configuration file
+    # If it fails, or if the user does not exist, `id -un '$dbususer'`
+    # will fail, and we fallback on a default user name ("messagebus")
+    env -i chroot "$CHROOT" su -s '/bin/sh' -c '
+        if ! hash dbus-daemon 2>/dev/null; then
+            exit 0
+        fi
         dbususer="`echo "cat /busconfig/user/text()" \
-            | xmllint --shell "$CHROOT/etc/dbus-1/system.conf" 2>/dev/null \
-            | grep '^[a-z][-a-z0-9_]*$' || true`"
-        env -i chroot "$CHROOT" su -s '/bin/sh' -c "
-            dbususer='$dbususer'"'
-            pidfile="/var/run/dbus/pid"
-            if [ -f "$pidfile" ]; then
-                if grep -q "^dbus-daemon" "/proc/`cat "$pidfile"`/cmdline" \
-                        2>/dev/null; then
-                    exit 0
-                fi
-                rm -f "$pidfile"
+        | xmllint --shell "/etc/dbus-1/system.conf" 2>/dev/null \
+        | grep "^[a-z][-a-z0-9_]*$" || true`"
+        pidfile="/var/run/dbus/pid"
+        if [ -f "$pidfile" ]; then
+            if grep -q "^dbus-daemon" "/proc/`cat "$pidfile"`/cmdline" \
+                    2>/dev/null; then
+                exit 0
             fi
-            mkdir -p /var/run/dbus
-            dbususer="`id -un "$dbususer" 2>/dev/null || echo "messagebus"`"
-            dbusgrp="`id -gn "$dbususer" 2>/dev/null || echo "messagebus"`"
-            chown "$dbususer:$dbusgrp" /var/run/dbus
-            dbus-daemon --system --fork' - root
-    fi
+            rm -f "$pidfile"
+        fi
+        mkdir -p /var/run/dbus
+        dbususer="`id -un "$dbususer" 2>/dev/null || echo "messagebus"`"
+        dbusgrp="`id -gn "$dbususer" 2>/dev/null || echo "messagebus"`"
+        chown "$dbususer:$dbusgrp" /var/run/dbus
+        dbus-daemon --system --fork' - root
 
     # Run rc.local
     if [ -n "$firstrun" -a -x "$CHROOT/etc/rc.local" ]; then
