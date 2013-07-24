@@ -5,5 +5,4 @@
 
 # Launches Unity; will fall back to Unity-2D on supported releases
 
-export DESKTOP_SESSION=ubuntu
-exec gnome-session-wrapper
+exec gnome-session-wrapper ubuntu

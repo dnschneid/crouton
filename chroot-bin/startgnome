@@ -5,5 +5,4 @@
 
 # Launches GNOME; automatically falls back to gnome-panel
 
-export DESKTOP_SESSION=gnome
-exec gnome-session-wrapper
+exec gnome-session-wrapper gnome
