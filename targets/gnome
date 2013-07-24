@@ -1,0 +1,17 @@
+#!/bin/sh -e
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+REQUIRES='chromium gtk-extra'
+DESCRIPTION='Installs the GNOME desktop environment. (Approx. 600MB)'
+HOSTBIN='startgnome'
+CHROOTBIN='startgnome gnome-session-wrapper'
+. "${TARGETSDIR:="$PWD"}/common"
+
+### Append to prepare.sh:
+install gnome-control-center gnome-screensaver gnome-session \
+        gnome-session-fallback gnome-shell nautilus -- network-manager brasero
+
+TIPS="$TIPS
+You can start GNOME via the startgnome host command: sudo startgnome
+"

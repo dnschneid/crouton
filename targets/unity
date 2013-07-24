@@ -9,7 +9,7 @@ fi
 REQUIRES='chromium gtk-extra'
 DESCRIPTION='Installs the Unity desktop environment. (Approx. 700MB)'
 HOSTBIN='startunity'
-CHROOTBIN='startunity'
+CHROOTBIN='startunity gnome-session-wrapper'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
