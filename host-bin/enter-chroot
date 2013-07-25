@@ -142,8 +142,8 @@ if [ -z "$NOLOGIN" -a -f "$CHROOT$SETUPSCRIPT" ]; then
 fi
 
 # Resolve USERNAME if it is a UID (and we're logging in)
+passwd="$CHROOT/etc/passwd"
 if [ -z "$NOLOGIN" ]; then
-    passwd="$CHROOT/etc/passwd"
     if [ ! -r "$passwd" ]; then
         error 1 "$CHROOT doesn't appear to be a valid chroot."
     fi
@@ -347,7 +347,7 @@ if [ -n "$BACKGROUND" ]; then
 fi
 
 # Launch the system dbus unless we are entering a basic shell.
-if [ ! "$NOLOGIN" = 1 -a -x "$CHROOT/bin/dbus-daemon" ]; then
+if [ ! "$NOLOGIN" = 1 ] && grep -q '^root:' "$passwd" 2>/dev/null; then
     # Try to detect the dbus user by parsing its configuration file
     # If it fails, or if the user does not exist, `id -un '$dbususer'`
     # will fail, and we fallback on a default user name ("messagebus")
@@ -355,6 +355,9 @@ if [ ! "$NOLOGIN" = 1 -a -x "$CHROOT/bin/dbus-daemon" ]; then
         | xmllint --shell "$CHROOT/etc/dbus-1/system.conf" 2>/dev/null \
         | grep '^[a-z][-a-z0-9_]*$' || true`"
     env -i chroot "$CHROOT" su -s '/bin/sh' -c "
+        if ! hash dbus-daemon 2>/dev/null; then
+            exit 0
+        fi
         dbususer='$dbususer'"'
         pidfile="/var/run/dbus/pid"
         if [ -f "$pidfile" ]; then
