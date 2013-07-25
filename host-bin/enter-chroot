@@ -11,6 +11,7 @@ KEYFILE=''
 NAME=''
 USERNAME='1000'
 NOLOGIN=''
+SETUPSCRIPT='/prepare.sh'
 
 USAGE="$APPLICATION [options] [command [args...]]
 
@@ -26,7 +27,8 @@ Options:
     -n NAME     Name of the chroot to enter. Default: first one found in CHROOTS
     -u USERNAME Username (or UID) to log into. Default: 1000 (the primary user)
     -x          Does not log in, but directly executes the command instead.
-                Note that the environment will be empty (sans TERM)."
+                Note that the environment will be empty (sans TERM).
+                Specify -x a second time to run the $SETUPSCRIPT script."
 
 # Common functions
 . "$BINDIR/../installer/functions"
@@ -39,7 +41,8 @@ while getopts 'bc:k:n:u:x' f; do
     k) KEYFILE="$OPTARG";;
     n) NAME="$OPTARG";;
     u) USERNAME="$OPTARG";;
-    x) NOLOGIN='y';;
+    x) NOLOGIN="$((NOLOGIN+1))"
+       [ "$NOLOGIN" -gt 2 ] && NOLOGIN=2;;
     \?) error 2 "$USAGE";;
     esac
 done
@@ -53,6 +56,17 @@ fi
 # We need a command if we specified to run in the background
 if [ -n "$BACKGROUND" -a $# = 0 ]; then
     error 2 "A command must be specified in order to run in the background."
+fi
+
+# If -x is specified twice, our command is the setup script.
+if [ "$NOLOGIN" = 2 ]; then
+    if [ ! $# = 0 ]; then
+        error 2 "A command cannot be specified with -xx."
+    fi
+    if [ -n "$BACKGROUND" ]; then
+        error 2 "Cannot run the setup script in the background."
+    fi
+    set -- "$SETUPSCRIPT"
 fi
 
 # Select the first chroot available if one hasn't been specified
@@ -108,9 +122,9 @@ if [ ! "${CHROOT#/media}" = "$CHROOT" ] && ! mountpoint -q '/usr/bin'; then
     chmod 755 "$pds"
 fi
 
-# Offer to run /prepare.sh if it exists and yet we're logging in.
-if [ -z "$NOLOGIN" -a -f "$CHROOT/prepare.sh" ]; then
-    echo 'A chroot preparation script still exists inside the chroot.' 1>&2
+# Offer to run the setup script if it exists and yet we're logging in.
+if [ -z "$NOLOGIN" -a -f "$CHROOT$SETUPSCRIPT" ]; then
+    echo 'A chroot setup script still exists inside the chroot.' 1>&2
     echo 'The chroot may not be fully set up.' 1>&2
     response=''
     if tty -s; then
@@ -120,7 +134,7 @@ if [ -z "$NOLOGIN" -a -f "$CHROOT/prepare.sh" ]; then
     if [ -z "$response" -o ! "${response#[Yy]}" = "$response" ]; then
         echo 'Preparing chroot environment...' 1>&2
         CROUTON_NO_UNMOUNT=1 sh -e "$BINDIR/enter-chroot" \
-            -c "$CHROOTS" -n "$NAME" -x '/prepare.sh'
+            -c "$CHROOTS" -n "$NAME" -xx
         echo 'Setup completed. Entering chroot...' 1>&2
     else
         echo 'Skipping setup. You will be prompted again next time.' 1>&2
@@ -332,36 +346,47 @@ if [ -n "$BACKGROUND" ]; then
     }
 fi
 
+# Launch the system dbus unless we are entering a basic shell.
+if [ ! "$NOLOGIN" = 1 -a -x "$CHROOT/bin/dbus-daemon" ]; then
+    # Try to detect the dbus user by parsing its configuration file
+    # If it fails, or if the user does not exist, `id -un '$dbususer'`
+    # will fail, and we fallback on a default user name ("messagebus")
+    dbususer="`echo "cat /busconfig/user/text()" \
+        | xmllint --shell "$CHROOT/etc/dbus-1/system.conf" 2>/dev/null \
+        | grep '^[a-z][-a-z0-9_]*$' || true`"
+    env -i chroot "$CHROOT" su -s '/bin/sh' -c "
+        dbususer='$dbususer'"'
+        pidfile="/var/run/dbus/pid"
+        if [ -f "$pidfile" ]; then
+            if grep -q "^dbus-daemon" "/proc/`cat "$pidfile"`/cmdline" \
+                    2>/dev/null; then
+                exit 0
+            fi
+            rm -f "$pidfile"
+        fi
+        mkdir -p /var/run/dbus
+        dbususer="`id -un "$dbususer" 2>/dev/null || echo "messagebus"`"
+        dbusgrp="`id -gn "$dbususer" 2>/dev/null || echo "messagebus"`"
+        chown "$dbususer:$dbusgrp" /var/run/dbus
+        dbus-daemon --system --fork' - root
+fi
+
 # Start the chroot and any specified command
 ret=0
 if [ -n "$NOLOGIN" ]; then
     env -i TERM="$TERM" chroot "$CHROOT" "$@" || ret=$?
-else
-    # Launch the system dbus
-    if [ -x "$CHROOT/bin/dbus-daemon" ]; then
-        # Try to detect the dbus user by parsing its configuration file
-        # If it fails, or if the user does not exist, `id -un '$dbususer'`
-        # will fail, and we fallback on a default user name ("messagebus")
-        dbususer="`echo "cat /busconfig/user/text()" \
-            | xmllint --shell "$CHROOT/etc/dbus-1/system.conf" 2>/dev/null \
-            | grep '^[a-z][-a-z0-9_]*$' || true`"
-        env -i chroot "$CHROOT" su -s '/bin/sh' -c "
-            dbususer='$dbususer'"'
-            pidfile="/var/run/dbus/pid"
-            if [ -f "$pidfile" ]; then
-                if grep -q "^dbus-daemon" "/proc/`cat "$pidfile"`/cmdline" \
-                        2>/dev/null; then
-                    exit 0
-                fi
-                rm -f "$pidfile"
-            fi
-            mkdir -p /var/run/dbus
-            dbususer="`id -un "$dbususer" 2>/dev/null || echo "messagebus"`"
-            dbusgrp="`id -gn "$dbususer" 2>/dev/null || echo "messagebus"`"
-            chown "$dbususer:$dbusgrp" /var/run/dbus
-            dbus-daemon --system --fork' - root
+    # Handle the return value when running the setup script.
+    if [ "$NOLOGIN" = 2 ]; then
+        # If it succeeded yet still exists, run it again.
+        if [ "$ret" = 0 -a -f "$CHROOT$SETUPSCRIPT" ]; then
+            sh -e "$BINDIR/unmount-chroot" -yxc "$CHROOTS" "$NAME"
+            # We don't need to return from this.
+            exec sh -e "$BINDIR/enter-chroot" -c "$CHROOTS" -n "$NAME" -xx
+        elif [ ! "$ret" = 0 ]; then
+            error "$ret" 'Failed to complete chroot setup.'
+        fi
     fi
-
+else
     # Run rc.local
     if [ -n "$firstrun" -a -x "$CHROOT/etc/rc.local" ]; then
         env -i chroot "$CHROOT" su -s '/bin/sh' -c \

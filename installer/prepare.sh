@@ -140,6 +140,13 @@ list_uninstalled() {
 }
 
 
+# Requests a re-launch of the preparation script with a fresh chroot setup.
+# Generally called immediately after bootstrapping to fix the environment.
+relaunch_setup() {
+    exit 0
+}
+
+
 # Fixes the tty keyboard mode. keyboard-configuration puts tty1~6 in UTF8 mode,
 # assuming they are consoles. Since everything other than tty2 can be an X11
 # session, we need to revert those back to RAW. keyboard-configuration could be

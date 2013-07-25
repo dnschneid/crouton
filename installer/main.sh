@@ -417,6 +417,6 @@ chmod 500 "$CHROOT/prepare.sh"
 eval "$rmtargetdedupfile"
 
 # Run the setup script inside the chroot
-sh -e "$HOSTBINDIR/enter-chroot" -c "$CHROOTS" -n "$NAME" -x '/prepare.sh'
+sh -e "$HOSTBINDIR/enter-chroot" -c "$CHROOTS" -n "$NAME" -xx
 
 echo "Done! You can enter the chroot using enter-chroot." 1>&2

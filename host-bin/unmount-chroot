@@ -6,6 +6,7 @@
 APPLICATION="${0##*/}"
 ALLCHROOTS=''
 CHROOTS="`readlink -f "\`dirname "$0"\`/../chroots"`"
+EXCLUDEROOT=''
 FORCE=''
 PRINT=''
 SIGNAL='TERM'
@@ -29,6 +30,7 @@ Options:
     -p          Print to STDOUT the processes stopping a chroot from unmounting.
     -t TRIES    Number of seconds to try before signalling the processes.
                 Use -t inf to be exceedingly patient. Default: $TRIES
+    -x          Keep the root directory of the chroot mounted.
     -y          Signal any remaining processes without confirmation.
                 Automatically escalates from SIGTERM to SIGKILL."
 
@@ -41,7 +43,7 @@ error() {
 }
 
 # Process arguments
-while getopts 'ac:fkpt:y' f; do
+while getopts 'ac:fkpt:xy' f; do
     case "$f" in
     a) ALLCHROOTS='y';;
     c) CHROOTS="`readlink -f "$OPTARG"`";;
@@ -49,6 +51,7 @@ while getopts 'ac:fkpt:y' f; do
     k) SIGNAL="KILL";;
     p) PRINT='y';;
     t) TRIES="$OPTARG";;
+    x) EXCLUDEROOT='y';;
     y) YES='a';;
     \?) error 2 "$USAGE";;
     esac
@@ -178,8 +181,23 @@ for NAME in "$@"; do
 
     # Unmount all mounts
     ntries=0
-    echo "Unmounting $CHROOT..." 1>&2
+    if [ -z "$EXCLUDEROOT" ]; then
+        echo "Unmounting $CHROOT..." 1>&2
+    else
+        echo "Pruning $CHROOT mounts..." 1>&2
+    fi
     baseesc="`echo "$base" | sed 's= =//=g'`"
+
+    # Define the mountpoint filter to only unmount specific mounts.
+    # The filter is run on the escaped version of the mountpoint.
+    filter() {
+        if [ -z "$EXCLUDEROOT" ]; then
+            grep "^$baseesc\\(/.*\\)\\?\$"
+        else
+            # Don't include the base directory
+            grep "^$baseesc/."
+        fi
+    }
 
     # Sync for safety
     sync
@@ -193,7 +211,7 @@ for NAME in "$@"; do
     fi
 
     while ! sed "s=\\\\040=//=g" /proc/mounts | cut -d' ' -f2 \
-              | grep "^$baseesc\\(/.*\\)\\?\$" | sed 's=//= =g' | xargs --no-run-if-empty -d '
+              | filter | sed 's=//= =g' | xargs --no-run-if-empty -d '
 ' -n 50 umount 2>/dev/null; do
         if [ "$ntries" -eq "$TRIES" ]; then
             # Send signal to all processes running under the chroot
