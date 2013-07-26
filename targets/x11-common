@@ -10,9 +10,6 @@
 # Store and apply the X11 method
 ln -sfT "/etc/crouton/xserverrc-$XMETHOD" '/etc/X11/xinit/xserverrc'
 
-# Generate the executable that outputs the equivalent of base::TimeTicks::Now()
-compile ticks -lrt
-
 # Install utilities and links for powerd-poking daemon
 install --minimal xprintidle dbus
 ln -sf croutonpowerd /usr/local/bin/gnome-screensaver-command

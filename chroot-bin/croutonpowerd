@@ -45,8 +45,7 @@ esac
 pingpowerd() {
     host-dbus dbus-send --system --dest=org.chromium.PowerManager \
                         --type=method_call /org/chromium/PowerManager \
-                        org.chromium.PowerManager.HandleUserActivity \
-                        "int64:`croutonticks`" || true
+                        org.chromium.PowerManager.HandleUserActivity || true
 }
 
 if [ "$CMD" = 'p' ]; then
