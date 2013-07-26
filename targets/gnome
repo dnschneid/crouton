@@ -9,8 +9,8 @@ CHROOTBIN='startgnome gnome-session-wrapper'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
-install gnome-control-center gnome-screensaver gnome-session \
-        gnome-session-fallback gnome-shell nautilus -- network-manager brasero
+install --minimal gnome-control-center gnome-screensaver gnome-session \
+        gnome-session-fallback gnome-shell nautilus
 
 TIPS="$TIPS
 You can start GNOME via the startgnome host command: sudo startgnome
