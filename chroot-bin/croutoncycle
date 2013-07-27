@@ -24,6 +24,10 @@ curtty="tty`fgconsole`"
 seltty=''
 prevtty=''
 for tty in `ps -CX -CXorg -otname= | sort`; do
+    # On some systems, the tty of Chromium OS cannot be determined and returns ?
+    if [ "$tty" = '?' ]; then
+        tty='tty1'
+    fi
     if [ "$cmd" = 'next' -a -z "$seltty" ]; then
         seltty="$tty"
     fi
