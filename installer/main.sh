@@ -306,8 +306,28 @@ change the release, upgrading the chroot (dangerous)."
     mkdir -p "$BIN"
 fi
 
+# Checks if it's safe to enable boot signing verification.
+# We check by attempting to mount / read-write. We do so in a bind mount to a
+# temporary directory to avoid changing its state permanently if it is
+# successful.
+vboot_is_safe() {
+    local tmp="`mktemp -d --tmpdir=/tmp 'crouton-rwtest.XXX'`"
+    local unmount="umount '$tmp' 2>/dev/null || true; rmdir '$tmp'"
+    addtrap "$unmount"
+    mount --bind / "$tmp" >/dev/null
+    local ret=1
+    mount -o remount,rw "$tmp" 2>/dev/null || ret=0
+    undotrap
+    eval "$unmount"
+    return "$ret"
+}
+
 # Check and update dev boot settings. This may fail on old systems; ignore it.
-if [ -z "$DOWNLOADONLY" ] && \
+if [ -z "$DOWNLOADONLY" ] && ! vboot_is_safe; then
+    echo "WARNING: Your rootfs is writable. Signed boot verification cannot be enabled." 1>&2
+    echo "If this is a surprise to you, you should do a full system recovery via USB." 1>&2
+    sleep 5
+elif [ -z "$DOWNLOADONLY" ] && \
     boot="`crossystem dev_boot_usb dev_boot_legacy dev_boot_signed_only`"; then
     # db_usb and db_legacy be off, db_signed_only should be on.
     echo "$boot" | {
