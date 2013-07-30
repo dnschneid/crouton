@@ -60,27 +60,27 @@ Usage
 crouton is a powerful tool, and there are a *lot* of features, but basic usage
 is as simple as possible by design.
 
-There are three ways to acquire and run crouton. Two of which have cyclical
-dependencies.
-
 If you're just here to use crouton, you can grab the latest release from
 [goo.gl/fd3zc](http://goo.gl/fd3zc). Download it, pop open a shell
 (Ctrl+Alt+T, type `shell` and hit enter), and run `sh -e ~/Downloads/crouton` to
 see the help text. See the "examples" section for some usage examples.
 
-The other two involve cloning this repo and either running `installer/main.sh`
-directly, or using `make` to build your very own `crouton`. Of course, you won't
-have git on your Chromium OS device with which to do this, hence the cyclical
-dependency. Downloading a git snapshot from GitHub would bypass that issue.
+If you're modifying crouton, you'll probably want to clone or download the repo
+and then either run `installer/main.sh` directly, or use `make` to build your
+very own `crouton`. You can also download the latest release, cd into the
+Downloads folder, and run `sh -e crouton -x` to extract out the juicy scripts
+contained within, but you'll be missing build-time stuff like the Makefile.
 
 crouton uses the concept of "targets" to decide what to install. While you will
 have apt-get in your chroot, some targets may need minor hacks to avoid issues
 when running in the chrooted environment. As such, if you expect to want
 something that is fulfilled by a target, install that target when you make the
-chroot and you'll have an easier time.
+chroot and you'll have an easier time. You can see the list of available targets
+by running `sh -e ~/Downloads/crouton -t help`.
 
 Once you've set up your chroot, you can easily enter it using the
-newly-installed `enter-chroot` command. Ta-da! That was easy.
+newly-installed `enter-chroot` command, or one of the target-specific
+start\* commands. Ta-da! That was easy.
 
 
 Examples
@@ -177,7 +177,6 @@ Tips
     new, better ones!
   * You can change the distro mirror from the default by using `-m`
   * Behind a proxy? `-P` lets you specify one.
-  * List all the available targets and descriptions with `-t help`
   * A script is installed in your chroot called `brightness`. You can assign
     this to keyboard shortcuts to adjust the brightness of the screen (e.g.
     `brightness up`) or keyboard (e.g. `brightness k down`).
