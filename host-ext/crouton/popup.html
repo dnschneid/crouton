@@ -1,0 +1,73 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Crouton extension popup</title>
+    <style>
+      body {
+        min-width: 400px;
+        max-width: 400px;
+        overflow-x: hidden;
+      }
+
+      a { // Do not show focus outline
+        outline: 0;
+      }
+
+      #right {
+        position: fixed;
+        top:20px;
+        right:5px;
+        text-align: right;
+      }
+
+      #scrolllogger {
+        width: 400px;
+        height: 200px;
+        overflow-y: auto;
+      }
+
+      #logger {
+        border: 0px;
+        border-spacing: 0;
+      }
+
+      td {
+        font-family: "monospace";
+        font-size: 12px;
+        vertical-align: top;
+        padding: 2px 15px;
+      }
+
+      td.time {
+        padding: 2px 0px;
+        color:#606060;
+      }
+
+      td.time.error {
+        background-color: #FF0000;
+        color: #000000;
+      }
+
+      td.value.debug { color: #808080; }
+      td.value.info { color: #008000; }
+      td.value.error { color: #800000; }
+
+      #debugdiv {
+        text-align: right;
+      }
+    </style>
+    <script src="popup.js"></script>
+  </head>
+  <body>
+    <h1>Crouton extension</h1>
+    <div id="right"><a href="#" id="enable">.</a></div>
+    <div id="info">Loading...</div>
+    <br/>
+    <div id="scrolllogger">
+    <table id="logger"></table>
+    </div>
+    <br/>
+    <div id="debugdiv"><input type="checkbox" id="debugcheck">Enable debugging</input></div>
+  </body>
+</html>
+

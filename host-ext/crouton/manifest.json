@@ -1,0 +1,20 @@
+{
+  "manifest_version": 2,
+
+  "name": "Crouton extension",
+  "description": "This extension provides clipboard synchronization between crouton and Chromium OS, and allows URL clicks in crouton to be forwarded to Chromium OS.",
+  "version": "1.0",
+  "icons": { "48": "icon-48.png" },
+
+  "browser_action": {
+    "default_icon": "icon-offline-38.png",
+    "default_popup": "popup.html"
+  },
+  "background": {
+    "page": "background.html"
+  },
+  "permissions": [
+    "clipboardRead",
+    "clipboardWrite"
+  ]
+}
