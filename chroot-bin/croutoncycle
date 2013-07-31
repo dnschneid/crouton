@@ -3,10 +3,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-USAGE="${0##*/} next|prev
-Cycles through running graphical chroots."
+USAGE="${0##*/} next|prev|cros
+Cycles through running graphical chroots.
+\"cros\" switches back to Chromium OS."
 
 case "$1" in
+[Cc]*) cmd='select 0';;
 [Pp]*) cmd='prev';;
 [Nn]*) cmd='next';;
 *) echo "$USAGE" 1>&2; exit 2;;
@@ -17,6 +19,11 @@ xmethod="`readlink -f '/etc/X11/xinit/xserverrc'`"
 xmethod="${xmethod##*-}"
 if [ "$xmethod" = 'xephyr' ]; then
     exec /usr/local/bin/host-x11 ratpoison -c "$cmd"
+fi
+
+# cros: Switch to VT1
+if [ "$cmd" = 'select 0' ]; then
+    exec chvt 1
 fi
 
 # Otherwise, determine current tty and X11 ttys
