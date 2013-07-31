@@ -104,22 +104,12 @@ if [ -z "$CROUTON_NO_UNMOUNT" ]; then
     addtrap "sh -e '$BINDIR/unmount-chroot' -yc '$CHROOTS' '$NAME' || true"
 fi
 
-# If our root is on an external disk, we need to override powerd_suspend to not
-# disable USB device persistence, otherwise we will die on resume.
-# Because the system hardcodes the path to powerd_suspend, we have to completely
-# replace /usr/bin with a tmpfs that links to the original files.
-if [ ! "${CHROOT#/media}" = "$CHROOT" ] && ! mountpoint -q '/usr/bin'; then
-    newbin='/var/run/bin'
-    mkdir -p "$newbin"
-    if ! mountpoint -q "$newbin"; then
-        mount --bind -o ro /usr/bin "$newbin"
-    fi
-    mount -t tmpfs -o mode=755,uid=0,gid=0 tmpfs /usr/bin
-    ln -s "$newbin"/* /usr/bin/
-    pds='/usr/bin/powerd_suspend'
-    rm -f "$pds"
-    sed -e 's|do echo 0|do echo 1|' "$newbin/powerd_suspend" > "$pds"
-    chmod 755 "$pds"
+# If our root is on an external disk we need to ensure USB device persistence is
+# enabled otherwise we will lose the file-system after a suspend event.
+if [ ! "${CHROOT#/media}" = "$CHROOT" ]; then
+    for usbp in /sys/bus/usb/devices/*/power/persist; do
+        echo 1 > "$usbp"
+    done
 fi
 
 # Offer to run the setup script if it exists and yet we're logging in.
