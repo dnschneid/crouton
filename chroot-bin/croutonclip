@@ -1,0 +1,211 @@
+#!/bin/sh -e
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+#
+# Synchronizes clipboard between X displays, making use of crouton's WebSocket
+# server and Chromium extension to synchronize the clipboard with Chromium OS
+
+VERBOSE='0'
+
+PIPEDIR='/tmp/crouton-ext'
+PIPEIN="$PIPEDIR/in"
+PIPEOUT="$PIPEDIR/out"
+PIPELOCK="$PIPEDIR/lock"
+
+# Write a command to croutonwebsocket, and read back response
+websocketcommand() {
+        # Check that $PIPEDIR and the FIFO pipes exist
+        if ! [ -d "$PIPEDIR" -a -p "$PIPEIN" -a -p "$PIPEOUT" ]; then
+            echo "EError $PIPEIN or $PIPEOUT are not pipes."
+            exit 0
+        fi
+
+        (
+            flock 5
+            cat > "$PIPEIN"
+            cat "$PIPEOUT"
+        ) 5>"$PIPELOCK"
+}
+
+current=''
+cliptmp="`mktemp "croutonclip.XXX" --tmpdir=/tmp`"
+cliptmp2="`mktemp "croutonclip.XXX" --tmpdir=/tmp`"
+
+TRAP="rm -f '$cliptmp' '$cliptmp2'; exit 2"
+trap "$TRAP" INT TERM HUP 0
+
+copyclip() {
+    next="$1"
+
+    if [ -z "$next" ]; then
+        return 0
+    fi
+
+    if [ -z "$current" ]; then
+        current="$next"
+        return 0
+    fi
+
+    if [ "$current" = "$next" ]; then
+        return 0
+    fi
+
+    [ -n "$VERBOSE" ] && echo ">>Current: $current>>"
+
+    # Copy clipboard content from the current display
+    if [ "$current" = ':0' ]; then
+        echo -n 'R' | websocketcommand > "$cliptmp2"
+        STATUS="`head -c 1 "$cliptmp2"`"
+        if [ "$STATUS" = 'R' ]; then
+            tail -c +2 "$cliptmp2" > "$cliptmp"
+        else
+            echo -n "croutonwebsocket error: " >&2
+            cat "$cliptmp2" >&2
+            # Stop here (the clipboard content is lost in this case)
+            current="$next"
+            return 0
+        fi
+    else
+        DISPLAY="$current" xclip -o -sel clip > "$cliptmp"
+    fi
+
+    [ -n "$VERBOSE" ] && cat "$cliptmp"
+
+    [ -n "$VERBOSE" ] && echo "<<Next: $next<<"
+
+    # Paste clipboard content to the next display
+    if [ "$next" = ':0' ]; then
+        STATUS="`(echo -n 'W'; cat "$cliptmp") | websocketcommand`"
+        if [ "$STATUS" != 'WOK' ]; then
+            # Write failed, skip Chromium OS (do not update $current)
+            echo -n "croutonwebsocket error: $STATUS" >&2
+            return 0
+        fi
+    else
+        # Do not override content if it "looks" the same
+        # (we might have rich text or other content in the clipboard)
+        DISPLAY="$next" xclip -o -sel clip > "$cliptmp2"
+        if ! diff -q "$cliptmp" "$cliptmp2" > /dev/null; then
+            cat "$cliptmp" | DISPLAY="$next" xclip -i -sel clip
+        fi
+    fi
+
+    current="$next"
+}
+
+# Wait for the websocket server to get connected to the extension
+# Timeout after 10 seconds (twice crouton extension retry period)
+waitwebsocket() {
+    timeout=10
+    while [ $timeout -gt 0 ]; do
+        [ -n "$VERBOSE" ] && echo "Ping..."
+
+        # Prepare and send a random ping message
+        RND="`head -c 9 /dev/urandom | base64`"
+        STATUS="`echo -n "P$RND" | websocketcommand`"
+        if [ "$STATUS" = "P$RND" ]; then
+            [ -n "$VERBOSE" ] && echo "OK!"
+            return 0
+        fi
+
+        [ -n "$VERBOSE" ] && echo "$STATUS"
+
+        sleep 1
+        timeout=$(($timeout-1))
+    done
+    echo "Timeout waiting for extension to connect." >&2
+}
+
+croutonwebsocket &
+TRAP="kill $! 2> /dev/null; $TRAP"
+trap "$TRAP" INT TERM HUP 0
+
+xmethod="`readlink -f '/etc/X11/xinit/xserverrc'`"
+xmethod="${xmethod##*-}"
+
+# For both x11/xephyr, the code works as follow:
+#  - A command outputs one line per event (window/tty change).
+#  - In a second subshell, read these events, one by one, and transfer the
+#    clipboard content.
+# This makes sure we do not miss any events and that we copy the clipboard
+# around in the right sequence.
+
+# Launch xbindkeys for the Chromium OS X server if it isn't running
+if [ "$xmethod" = 'xephyr' ]; then
+    # Assume current display is Chromium OS, and the awk script does not detect
+    # the current window
+    current=':0'
+
+    # Detect window change using MapNotifiy events that do not have the
+    # override-redirect flag ("override NO" in xev events)
+    {
+        host-x11 xev -root &
+        trap "kill $!; $TRAP" INT TERM HUP 0
+        wait
+    } | mawk -W interactive '
+        m {
+            if ($6 == "NO") {
+                print $4 # Window id
+            }
+            m = ""
+        }
+        /^MapNotify/ {
+            m = $1
+        }
+    ' | {
+        # Wait for extension to connect (do not fail even if it times out)
+        waitwebsocket
+
+        while read line; do
+            # Translate window id to display number
+            id="${line%%,}"
+            name="`host-x11 xprop -format WM_NAME 8s '\t$0\n' \
+                                    -id "$id" WM_NAME | cut -f 2`"
+            if [ "$name" = '"aura_root_0"' ]; then
+                display=":0"
+            else
+                # This relies on WM_NAME looking like "Xephyr on :1.0 (...)"
+                display="`echo "$name" |
+                    sed -n -e 's/^\"Xephyr on \(:[0-9]\{1,\}\).*$/\1/p'`"
+            fi
+            copyclip "$display"
+        done
+    }
+elif [ "$xmethod" = 'x11' ]; then
+    # No need to set $current in this case:
+    # croutonvtmonitor outputs the current display right after it is started
+
+    {
+        croutonvtmonitor &
+        trap "kill $!; $TRAP" INT TERM HUP 0
+        wait
+    } | {
+        # Wait for extension to connect (do not fail even if it times out)
+        waitwebsocket
+
+        while read id; do
+            # Find which process own the tty
+            process="`ps -o pid= -t "$id" | sed 's/ //g'`"
+
+            if [ -n "$process" ]; then
+                # Find display the process is owning (if any)
+                display=''
+                for lock in /tmp/.X*-lock; do
+                    if grep -q -e "^ *$process$" $lock; then
+                        display="${lock##/tmp/.X}"
+                        display=":${display%%-lock}"
+                    fi
+                done
+
+                if [ -n "$display" ]; then
+                    copyclip "$display"
+                fi
+            fi
+        done
+    }
+else
+    echo "Invalid xmethod='$xmethod'." >&2
+fi
+
+exit 1
