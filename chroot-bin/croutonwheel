@@ -53,6 +53,13 @@ if tty -s; then
     xte 'keyup Return'
 fi
 
+# Determine which device is the internal trackpad
+for tpid in `/usr/bin/xinput --list --id-only`; do
+    if /usr/bin/xinput list-props "$tpid" | grep -qi 'touchpad'; then
+        break
+    fi
+done
+
 # Wait for ratpoison to come up
 while ! xprop -root _NET_WM_NAME | grep -q 'ratpoison'; do sleep .1; done 2>&-
 
@@ -116,37 +123,48 @@ aura="`xwininfo -root -children | mawk '/aura_root/ {print $1}'`"
     !w && /^EVENT type 17/ {
         a = 1
     }
-    a && '$x' && ($1 == "4:") && ($2 != 0) {
+    a && ($1 == "device:") {
+        if ($3 == "('"$tpid"')") {
+            haxis = "4:"
+            vaxis = "5:"
+            istp = 1
+        } else {
+            haxis = "2:"
+            vaxis = "3:"
+            istp = 0
+        }
+    }
+    a && '"$x"' && ($1 == haxis) && ($2 != 0) {
         if ($2 > 0) {
             if (x < 0) x = 0
-            x += log($2) * '"$xs"' + '"$xc"'
+            x += istp ? log($2) * '"$xs"' + '"$xc"' : 1
         } else {
             if (x > 0) x = 0
-            x -= log(-$2) * '"$xs"' + '"$xc"'
+            x -= istp ? log(-$2) * '"$xs"' + '"$xc"' : 1
         }
         while (x >= 1) {
-            print "mouseclick '$r'"
+            print "mouseclick '"$r"'"
             x -= 1
         }
         while (x <= -1) {
-            print "mouseclick '$l'"
+            print "mouseclick '"$l"'"
             x += 1
         }
     }
-    a && ($1 == "5:") && ($2 != 0) {
+    a && ($1 == vaxis) && ($2 != 0) {
         if ($2 > 0) {
             if (y < 0) y = 0
-            y += log($2) * '"$ys"' + '"$yc"'
+            y += istp ? log($2) * '"$ys"' + '"$yc"' : 1
         } else {
             if (y > 0) y = 0
-            y -= log(-$2) * '"$ys"' + '"$yc"'
+            y -= istp ? log(-$2) * '"$ys"' + '"$yc"' : 1
         }
         while (y >= 1) {
-            print "mouseclick '$d'"
+            print "mouseclick '"$d"'"
             y -= 1
         }
         while (y <= -1) {
-            print "mouseclick '$u'"
+            print "mouseclick '"$u"'"
             y += 1
         }
     }
