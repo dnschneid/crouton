@@ -112,6 +112,47 @@ trap - HUP INT
 
 # Run crouton-specific commands before the server exits:
 
-# Nothing currently
+echo "Running exit commands..."
+
+# Find the clipboard synchronization daemon
+# When read line is executed in croutonclip, a second process is active,
+# but only one responds to SIGTERM. Make sure we send the signal to all
+# of them
+croutonclippids=""
+for ccpid in `ps -C croutonclip -opid=`; do
+    if grep -q "CROUTON=CORE" "/proc/$ccpid/environ"; then
+        croutonclippids="$ccpid $croutonclippids"
+    fi
+done
+
+if [ -n "$croutonclippids" ]; then
+    # Check if we there is another crouton X server running
+
+    # Remove possible .0 in DISPLAY (e.g. :0.0)
+    current="`echo $DISPLAY | sed -n -e 's/^\(:[0-9]*\).*$/\1/p'`"
+
+    other=''
+    for lock in /tmp/.X*-lock; do
+        display="${lock##/tmp/.X}"
+        display=":${display%%-lock}"
+
+        xpid="`cat "$lock" | sed 's/ //g'`"
+
+        # Ignore :0 (Chromium OS) and current display
+        # Make sure process indicated by lock file is running
+        if ! [ "$display" = ':0' -o "$display" = "$current" ] &&
+                ps -p "$xpid" >/dev/null 2>&1; then
+            echo "Found other: $display" >&2
+            other='y'
+            break
+        fi
+    done
+
+    # No other display: kill croutonclip
+    if [ -z "$other" ]; then
+        echo "Killing croutonclip ($croutonclippids)..." >&2
+        kill $croutonclippids
+    fi
+fi
 
 exit "$ret"
