@@ -55,7 +55,7 @@ fi
 
 # Determine which device is the internal trackpad
 for tpid in `/usr/bin/xinput --list --id-only`; do
-    if /usr/bin/xinput list-props "$tpid" | grep -qi 'touchpad'; then
+    if /usr/bin/xinput list-props "$tpid" | grep -qi 'touchpad\|trackpad'; then
         break
     fi
 done
