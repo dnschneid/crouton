@@ -276,17 +276,12 @@ for NAME in "$@"; do
     sync
 done
 
-# Remove /usr/bin override if it's no longer necessary (nothing important is
-# running with a root in removable media)
-if mountpoint -q /usr/bin && checkusage /media; then
-    newbin="`readlink '/usr/bin/env'`"
-    newbin="${newbin%/env}"
-    # Split the umount calls so if the first fails, the second won't happen.
-    if umount '/usr/bin' 2>/dev/null; then
-        # These may fail if you opened a new crosh. It doesn't hurt to leave it.
-        umount "$newbin" 2>/dev/null || true
-        rmdir "$newbin" 2>/dev/null || true
-    fi
+# Re-disable USB persistence (the Chromium OS default) if we no longer
+# have chroots running with a root in removable media
+if checkusage /media; then
+    for usbp in /sys/bus/usb/devices/*/power/persist; do
+        echo 0 > "$usbp"
+    done
 fi
 
 exit $ret
