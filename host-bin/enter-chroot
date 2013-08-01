@@ -9,6 +9,7 @@ BINDIR="`dirname "$0"`"
 CHROOTS="`readlink -f "$BINDIR/../chroots"`"
 KEYFILE=''
 NAME=''
+TARGET=''
 USERNAME='1000'
 NOLOGIN=''
 SETUPSCRIPT='/prepare.sh'
@@ -25,6 +26,7 @@ Options:
     -c CHROOTS  Directory the chroots are in. Default: $CHROOTS
     -k KEYFILE  Override the auto-detected encryption key location.
     -n NAME     Name of the chroot to enter. Default: first one found in CHROOTS
+    -t TARGET   Only enter the chroot if it contains the specified TARGET.
     -u USERNAME Username (or UID) to log into. Default: 1000 (the primary user)
     -x          Does not log in, but directly executes the command instead.
                 Note that the environment will be empty (sans TERM).
@@ -34,12 +36,13 @@ Options:
 . "$BINDIR/../installer/functions"
 
 # Process arguments
-while getopts 'bc:k:n:u:x' f; do
+while getopts 'bc:k:n:t:u:x' f; do
     case "$f" in
     b) BACKGROUND='y';;
     c) CHROOTS="`readlink -f "$OPTARG"`";;
     k) KEYFILE="$OPTARG";;
     n) NAME="$OPTARG";;
+    t) TARGET="$OPTARG";;
     u) USERNAME="$OPTARG";;
     x) NOLOGIN="$((NOLOGIN+1))"
        [ "$NOLOGIN" -gt 2 ] && NOLOGIN=2;;
@@ -71,14 +74,29 @@ fi
 
 # Select the first chroot available if one hasn't been specified
 if [ -z "$NAME" ]; then
+    haschroots=''
     for CHROOT in "$CHROOTS"/*; do
-        if [ -d "$CHROOT/etc" -o -f "$CHROOT/.ecryptfs" ]; then
-            NAME="${CHROOT##*/}"
-            break
+        if [ ! -d "$CHROOT/etc" -a ! -f "$CHROOT/.ecryptfs" ]; then
+            continue
         fi
+        haschroots='y'
+        if [ -n "$TARGET" ]; then
+            if ! grep -q "^$TARGET$" "$CHROOT/.crouton-targets" 2>/dev/null; then
+                continue
+            fi
+        fi
+        NAME="${CHROOT##*/}"
+        break
     done
-    if [ -z "$NAME" ]; then
+    if [ -z "$haschroots" ]; then
         error 1 "No chroots found in $CHROOTS"
+    fi
+    if [ -z "$NAME" ]; then
+        error 1 "No chroots with target '$TARGET' found in $CHROOTS"
+    fi
+elif [ -n "$TARGET" ]; then
+    if ! grep -q "^$TARGET$" "$CHROOTS/$NAME/.crouton-targets" 2>/dev/null; then
+        error 1 "$CHROOTS/$NAME does not contain target '$TARGET'"
     fi
 fi
 
@@ -91,6 +109,10 @@ if [ -n "$KEYFILE" ]; then
                                      -k "$KEYFILE" -p -c "$CHROOTS" "$NAME"`"
 else
     CHROOT="`sh -e "$BINDIR/mount-chroot" -p -c "$CHROOTS" "$NAME"`"
+fi
+
+if [ ! "$NOLOGIN" = 2 ]; then
+    echo "Entering $CHROOT..." 1>&2
 fi
 
 # In disk full situations, mount-chroot can be empty. Good time to check sanity.
