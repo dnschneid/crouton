@@ -97,11 +97,18 @@ fi
 
 # Run the client itself if it is executable, otherwise run it in a shell.
 ret=0
+pid=
 if [ -n "$binary" -o -x "$cmd" ]; then
-    "$cmd" $extraargs "$@" || ret="$?"
+    "$cmd" $extraargs "$@" &
 else
-    /bin/sh "$cmd" $extraargs "$@" || ret="$?"
+    /bin/sh "$cmd" $extraargs "$@" &
 fi
+pid=$!
+
+# Make sure exit commands are run even if we receive a signal
+trap "kill '$pid'" HUP INT
+wait "$pid" || ret=$?
+trap - HUP INT
 
 # Run crouton-specific commands before the server exits:
 
