@@ -246,6 +246,7 @@ addtrap "stty echo 2>/dev/null || true"
 BIN="$PREFIX/bin"
 CHROOTS="$PREFIX/chroots"
 CHROOT="$CHROOTS/${NAME:="${RELEASE:-"$DEFAULTRELEASE"}"}"
+TARGETDEDUPFILE="$CHROOT/.crouton-targets"
 
 # Confirm we have write access to the directory before starting.
 NODOWNLOAD=''
@@ -414,10 +415,33 @@ VAREXPAND="${VAREXPAND}s #PROXY $PROXY ;s #VERSION $VERSION ;"
 installscript "$INSTALLERDIR/prepare.sh" "$CHROOT/prepare.sh" "$VAREXPAND"
 # Append the distro-specific prepare.sh
 cat "$DISTRODIR/prepare" >> "$CHROOT/prepare.sh"
-# Create a file for target deduplication
-TARGETDEDUPFILE="`mktemp --tmpdir=/tmp "$APPLICATION.XXX"`"
-rmtargetdedupfile="rm -f '$TARGETDEDUPFILE'"
-addtrap "$rmtargetdedupfile"
+# Read the explicit targets file in the chroot (if it exists)
+TARGETSFILE="$CHROOT/etc/crouton/targets"
+if [ -r "$TARGETSFILE" ]; then
+    read t < "$TARGETSFILE"
+    t="${t%,},"
+    while [ -n "$t" ]; do
+        TARGET="${t%%,*}"
+        t="${t#*,}"
+        if [ -z "$TARGET" ]; then
+            continue
+        fi
+        # Don't put duplicate entries in the targets list
+        tlist=",$TARGETS,"
+        if [ ! "${tlist%",$TARGET,"*}" = "$tlist" ]; then
+            continue
+        fi
+        if [ ! -r "$TARGETSDIR/$TARGET" ]; then
+            echo "Previously installed target '$TARGET' no longer exists." 1>&2
+            continue
+        fi
+        # Add the target
+        TARGETS="${TARGETS%,},$TARGET"
+    done
+fi
+# Reset the installed target list files
+echo "$TARGETS" > "$TARGETSFILE"
+echo -n '' > "$TARGETDEDUPFILE"
 # Run each target, appending stdout to the prepare script.
 unset SIMULATE
 if [ -n "$TARGETFILE" ]; then
@@ -433,8 +457,6 @@ while [ -n "$t" ]; do
     fi
 done
 chmod 500 "$CHROOT/prepare.sh"
-# Delete the temp file
-eval "$rmtargetdedupfile"
 
 # Run the setup script inside the chroot
 sh -e "$HOSTBINDIR/enter-chroot" -c "$CHROOTS" -n "$NAME" -xx

@@ -97,7 +97,8 @@ for NAME in "$@"; do
         fi
         # Check for non-encrypted files, which means we may need to move them.
         for file in "$CHROOT/"*; do
-            if [ "${file#*/ECRYPTFS_FNEK_ENCRYPTED}" = "$file" ]; then
+            if [ "${file#*/ECRYPTFS_FNEK_ENCRYPTED}" = "$file" ] && \
+                    [ ! "$file" = "$CHROOT/.crouton-targets" ]; then
                 movesrc="$CHROOT"
                 break
             fi
@@ -270,6 +271,7 @@ no   -- You don't want to decide one way or another quite yet.
              -not -wholename './ECRYPTFS_MOVE_STAGING_*' \
              -not -wholename '.' \
              -not -wholename './.ecryptfs' \
+             -not -wholename './.crouton-targets' \
              -exec mkdir -p "$tmp/{}" ';' \
              -exec rmdir "$tmp/{}" ';' \
              '(' -prune , -exec mv -f '{}' "$tmp/{}" ';' ')' 1>&2
@@ -293,6 +295,7 @@ no   -- You don't want to decide one way or another quite yet.
         find -not -name 'ECRYPTFS_FNEK_ENCRYPTED*' \
              -not -wholename '.' \
              -not -wholename './.ecryptfs' \
+             -not -wholename './.crouton-targets' \
              '(' -prune , -exec rm -rvf '{}' ';' ')' 1>&2
         echo 'Done.' 1>&2
     );;
@@ -303,6 +306,7 @@ no   -- You don't want to decide one way or another quite yet.
              -not -name 'ECRYPTFS_MOVE_STAGING_*' \
              -not -wholename '.' \
              -not -wholename './.ecryptfs' \
+             -not -wholename './.crouton-targets' \
              -print -prune 1>&2
         echo 'Done.' 1>&2
         exit 2
