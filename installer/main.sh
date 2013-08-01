@@ -105,7 +105,7 @@ done
 shift "$((OPTIND-1))"
 
 # If targets weren't specified, we should just print help text.
-if [ -z "$DOWNLOADONLY" -a -z "$TARGETS" -a -z "$TARGETFILE" \
+if [ -z "$DOWNLOADONLY" -a -z "$UPDATE" -a -z "$TARGETS" -a -z "$TARGETFILE" \
         -a ! "$RELEASE" = 'list' -a ! "$RELEASE" = 'help' ]; then
     error 2 "$USAGE"
 fi
