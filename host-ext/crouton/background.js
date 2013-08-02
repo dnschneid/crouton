@@ -8,7 +8,7 @@ var VERSION = "1";
 var MAXLOGGERLEN = 20;
 var RETRY_TIMEOUT = 5;
 /* String to copy to the clipboard if it should be empty */
-var DUMMY_EMPTYSTRING = "<crouton-empty-Y3JvdXRvbgo=>";
+var DUMMY_EMPTYSTRING = "%";
 
 LogLevel = {
     ERROR : 0,
