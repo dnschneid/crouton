@@ -136,6 +136,9 @@ static int popen2(char* cmd, char* input, int inlen, char* output, int outlen) {
     outlen = read(stdout_fd[0], output, outlen);
     close(stdout_fd[0]);
 
+    /* Wait for process to finish to avoid leaving a zombie */
+    waitpid(pid, NULL, 0);
+
     return outlen;
 }
 
