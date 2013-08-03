@@ -97,8 +97,7 @@ for NAME in "$@"; do
         fi
         # Check for non-encrypted files, which means we may need to move them.
         for file in "$CHROOT/"*; do
-            if [ "${file#*/ECRYPTFS_FNEK_ENCRYPTED}" = "$file" ] && \
-                    [ ! "$file" = "$CHROOT/.crouton-targets" ]; then
+            if [ "${file#*/ECRYPTFS_FNEK_ENCRYPTED}" = "$file" ]; then
                 movesrc="$CHROOT"
                 break
             fi
