@@ -10,17 +10,17 @@ PIPELOCK="$PIPEDIR/lock"
 
 # Write a command to croutonwebsocket, and read back response
 websocketcommand() {
-        # Check that $PIPEDIR and the FIFO pipes exist
-        if ! [ -d "$PIPEDIR" -a -p "$PIPEIN" -a -p "$PIPEOUT" ]; then
-            echo "EError $PIPEIN or $PIPEOUT are not pipes."
-            exit 0
-        fi
+    # Check that $PIPEDIR and the FIFO pipes exist
+    if ! [ -d "$PIPEDIR" -a -p "$PIPEIN" -a -p "$PIPEOUT" ]; then
+        echo "EError $PIPEIN or $PIPEOUT are not pipes."
+        exit 0
+    fi
 
-        (
-            flock 5
-            cat > "$PIPEIN"
-            cat "$PIPEOUT"
-        ) 5>"$PIPELOCK"
+    (
+        flock 5
+        cat > "$PIPEIN"
+        cat "$PIPEOUT"
+    ) 5>"$PIPELOCK"
 }
 
 USAGE="${0##*/} [-s] URL
@@ -40,7 +40,7 @@ fi
 STATUS="`echo -n U"$*" | websocketcommand`"
 
 if [ ! "$STATUS" = 'UOK' ]; then
-    echo "$STATUS" | tail -c +2
+    echo "${STATUS#?}" 1>&2
     exit 1
 fi
 
