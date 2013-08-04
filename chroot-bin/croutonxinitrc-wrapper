@@ -97,7 +97,6 @@ fi
 
 # Run the client itself if it is executable, otherwise run it in a shell.
 ret=0
-pid=
 if [ -n "$binary" -o -x "$cmd" ]; then
     "$cmd" $extraargs "$@" &
 else
@@ -112,46 +111,14 @@ trap - HUP INT
 
 # Run crouton-specific commands before the server exits:
 
-echo "Running exit commands..."
+echo "Running exit commands..." 1>&2
 
-# Find the clipboard synchronization daemon
-# When read line is executed in croutonclip, a second process is active,
-# but only one responds to SIGTERM. Make sure we send the signal to all
-# of them
-croutonclippids=""
-for ccpid in `ps -C croutonclip -opid=`; do
-    if grep -q "CROUTON=CORE" "/proc/$ccpid/environ"; then
-        croutonclippids="$ccpid $croutonclippids"
-    fi
-done
-
-if [ -n "$croutonclippids" ]; then
-    # Check if we there is another crouton X server running
-
-    # Remove possible .0 in DISPLAY (e.g. :0.0)
-    current="`echo $DISPLAY | sed -n -e 's/^\(:[0-9]*\).*$/\1/p'`"
-
-    other=''
-    for lock in /tmp/.X*-lock; do
-        display="${lock##/tmp/.X}"
-        display=":${display%%-lock}"
-
-        xpid="`cat "$lock" | sed 's/ //g'`"
-
-        # Ignore :0 (Chromium OS) and current display
-        # Make sure process indicated by lock file is running
-        if ! [ "$display" = ':0' -o "$display" = "$current" ] &&
-                ps -p "$xpid" >/dev/null 2>&1; then
-            echo "Found other: $display" >&2
-            other='y'
-            break
-        fi
-    done
-
-    # No other display: kill croutonclip
-    if [ -z "$other" ]; then
-        echo "Killing croutonclip ($croutonclippids)..." >&2
-        kill $croutonclippids
+# Kill croutonclip if there is no other X server running
+if pgrep -x croutonclip >/dev/null; then
+    # There is at least 2 servers running (the current one and Chromium OS)
+    if [ "`ps -CX -CXorg -CXephyr -opid= | wc -l`" -le 2 ]; then
+        echo "Killing croutonclip..." 1>&2
+        pkill -x croutonclip
     fi
 fi
 
