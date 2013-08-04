@@ -6,7 +6,7 @@ EXTFILE="crouton.crx"
 
 cd "`dirname "$0"`"
 
-rm -f $EXTFILE
+rm -f "$EXTFILE"
 
 CHROMIUM="/opt/google/chrome/chrome"
 if [ ! -x "$CHROMIUM" ]; then
@@ -19,12 +19,14 @@ if [ -f "$key" ]; then
     ARGS="$ARGS --pack-extension-key=$key"
 fi
 
-$CHROMIUM $ARGS >&2 || echo "Chromium process error (may not be fatal)" >&2
+if ! "$CHROMIUM" $ARGS; then
+    echo "Chromium process error (may not be fatal)" >&2
+fi
 
 # Check if extension file was generated
 if [ -s "$EXTFILE" ]; then
-    echo "crouton Chromium extension generated successfully."
+    echo "Chromium extension generated successfully."
 else
-    echo "Cannot generate crouton Chromium extension." >&2
+    echo "Cannot generate Chromium extension." >&2
     exit 1
 fi

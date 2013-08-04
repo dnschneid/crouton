@@ -11,9 +11,9 @@ var RETRY_TIMEOUT = 5;
 var DUMMY_EMPTYSTRING = "%";
 
 LogLevel = {
-    ERROR : 0,
-    INFO : 1,
-    DEBUG : 2
+    ERROR : "error",
+    INFO : "info",
+    DEBUG : "debug"
 }
 
 /* Global variables */
@@ -32,13 +32,14 @@ var status_ = "";
 var logger_ = []; /* Array of status messages: [LogLevel, time, message] */
 
 function updateIcon() {
-    icon = active_ ? "icon-online-38.png" : "icon-offline-38.png";
-
-    if (!enabled_)
-        icon = "icon-disabled-38.png"
-
     if (error_)
         icon = "icon-error-38.png"
+    else if (!enabled_)
+        icon = "icon-disabled-38.png"
+    else if (active_)
+        icon = "icon-online-38.png";
+    else
+        icon = "icon-offline-38.png";
 
     chrome.browserAction.setIcon({path: icon});
 }
@@ -54,7 +55,7 @@ function setStatus(status, active) {
 }
 
 /* Refresh the popup page */
-refreshPopup = function() {
+function refreshPopup() {
     var views = chrome.extension.getViews({type: "popup"});
     for (var i = 0; i < views.length; views++) {
         /* Make sure page is ready */
@@ -112,19 +113,7 @@ refreshPopup = function() {
                 var row = loggertable.insertRow(-1);
                 var cell1 = row.insertCell(0);
                 var cell2 = row.insertCell(1);
-                var levelclass = "debug";
-                switch (value[0]) {
-                case LogLevel.ERROR:
-                    levelclass = "error";
-                    break;
-                case LogLevel.INFO:
-                    levelclass = "info";
-                    break;
-                case LogLevel.DEBUG:
-                default:
-                    levelclass = "debug";
-                    break;
-                }
+                var levelclass = value[0];
                 cell1.className = "time " + levelclass;
                 cell2.className = "value " + levelclass;
                 cell1.innerHTML = value[1];
@@ -256,7 +245,7 @@ function websocketMessage(evt) {
         break;
     case 'U': /* Open an URL */
         /* URL must be absolute: see RFC 3986 for syntax (section 3.1) */
-        if (match = (/^([a-z][a-z0-9+-\.]+):/i).exec(payload)) {
+        if (match = (/^([a-z][a-z0-9+-.]*):/i).exec(payload)) {
             /* FIXME: we could blacklist schemes using match[1] here */
             chrome.tabs.create({ url: payload });
             websocket_.send("UOK");
@@ -322,7 +311,7 @@ function printLog(str, level) {
         str = str.substring(0, 77) + "...";
     console.log(datestr + ": " + str);
     /* Add to logger if this is not a debug message, or if debugging is enabled */
-    if (level == LogLevel.ERROR || level == LogLevel.INFO || debug_) {
+    if (level != LogLevel.DEBUG || debug_) {
         logger_.unshift([level, datestr, str]);
         if (logger_.length > MAXLOGGERLEN) {
             logger_.pop();
