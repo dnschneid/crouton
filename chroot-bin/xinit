@@ -19,15 +19,7 @@ fi
 # Launch the clipboard synchronization daemon
 croutonclip='/usr/local/bin/croutonclip'
 
-croutoncliprunning=""
-for ccpid in `ps -C croutonclip -opid=`; do
-    if grep -q "CROUTON=CORE" "/proc/$ccpid/environ"; then
-        croutoncliprunning="y"
-        break
-    fi
-done
-
-if [ -x "$croutonclip" -a -z "$croutoncliprunning" ]; then
+if [ -x "$croutonclip" ] && ! pgrep -x croutonclip >/dev/null; then
     env -i CROUTON="CORE" "$croutonclip" <&- &
 fi
 
