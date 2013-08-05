@@ -18,7 +18,11 @@ XMETHOD=x11
 
 #xorg doesn't build a video driver by default, is there some way to automatically detect it?
 if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
-#There should probably be some logic to set an appropriate profile, but this is different between Gentoo and Funtoo (and Sabayon or whatever else may come in the future)
+# Set desktop profile
+    GENTOO_PROFILE=$"`eselect profile list | grep desktop | grep -P -o '(?<=\[)[0-9]*(?=\])'`"
+    if [-n $GENTOO_PROFILE]; then
+        eselect profile set "$GENTOO_PROFILE"
+    fi
     if ! `/bin/grep -q 'VIDEO_CARDS' /etc/portage/make.conf`; then
 #        echo -e "Your graphics hardware is reported as:  `/usr/sbin/lspci | grep -i vga` \r\nPlease select a corresponding driver:  "
 #        read videodriver

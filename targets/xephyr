@@ -38,9 +38,16 @@ Pin-Priority: -1
 EOF
 fi
 
+if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
+# Set kdrive useflag
+	if [ $"`equery u xorg-server | grep kdrive`" = "-kdrive" ]; then
+	euse --enable kdrive;
+
+fi
+
 # xserver-xephyr won't auto replace the manually-downloaded version.
 install --minimal \
-    xserver-xephyr xinit ratpoison dmz-cursor-theme libgl1-mesa-dri \
+    gentoo=xorg-x11,xserver-xephyr xinit ratpoison gentoo=,dmz-cursor-theme gentoo=mesa,libgl1-mesa-dri \
     x11-utils x11-xserver-utils xautomation xdotool xinput xterm
 
 # Compile croutoncursor

@@ -83,8 +83,8 @@ EOF
 fi
 
 if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
-#	emerge --sync
-	install gentoolkit
+# Gentoolkit and genlop provide extra tools for interacting with portage
+	install gentoolkit genlop
 fi
 
 # On release upgrade, keyboard-configuration might be reconfigured.
@@ -94,17 +94,19 @@ fixkeyboardmode
 install --minimal sudo
 
 # Generate and set default locale
-if [ ! -f '/etc/default/locale' ] && [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ] && hash locale-gen 2>/dev/null; then
-    locale-gen --lang en_US.UTF-8
-    update-locale LANG=en_US.UTF-8
-fi
-
-if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ] && hash locale-gen 2>/dev/null; then
-    if ! `locale | grep -q LANG=en_US.UTF-8`; then
-        localedef -i en_US -f UTF-8 en_US.UTF-8
-        echo "LANG=\"en_US.UTF-8\"" >> /etc/env.d/02locale
-	env-update
-	source /etc/profile
+if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
+    if [ ! -f '/etc/default/locale' ] && hash locale-gen 2>/dev/null; then
+        locale-gen --lang en_US.UTF-8
+        update-locale LANG=en_US.UTF-8
+    fi
+elif [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
+    if [ ! -f '/etc/env.d/02locale' ]; then
+        cp /etc/locale.gen /etc/locale.gen.croutonorig
+        sed -i -e 's/^#en_US.UTF-8/en_US.UTF-8/' /etc/locale.gen
+        locale-gen
+        echo 'LANG=en_US.UTF-8' > /etc/env.d/02locale
+        env-update
+        source /etc/profile
     fi
 fi
 

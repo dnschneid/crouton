@@ -6,15 +6,20 @@
 # This file is sourced from main.sh to update distro-specific defaults.
 # It must set at least ARCH and MIRROR if not already specified.
 
+# I'm not sure what the options are here, there are gentoo builds for
+# numerous architectures.  Are all i.86 results really 64-bit?  This also
+# assumes that hard floating point arm v7 is the right architecture to choose
+# but this is a not particularly educated guess.  I don't have arm hardware
+# for testing.
 if [ -z "$ARCH" ]; then
-    ARCH="`uname -m | sed -e 's i.86 i386 ;s x86_64 amd64 ;s arm.* armhf ;'`"
+    ARCH="`uname -m | sed -e 's i.86 i386 ;s x86_64 amd64 ;s arm.* arm ;'`"
 fi
 
 if [ -z "$MIRROR" ]; then
     if [ "$ARCH" = 'amd64' -o "$ARCH" = 'i386' ]; then
-        MIRROR='http://archive.ubuntu.com/ubuntu/'
+        MIRROR='ftp://mirrors.rit.edu/gentoo/releases/amd64/current-stage3'
     else
-        MIRROR='http://ports.ubuntu.com/ubuntu-ports/'
+        MIRROR='ftp://ftp.gtlib.gatech.edu/pub/gentoo/releases/arm/autobuilds/current-stage3-armv7a_hardfp'
     fi
 fi
 

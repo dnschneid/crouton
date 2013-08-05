@@ -171,11 +171,9 @@ compile() {
     local out="/usr/local/bin/crouton$1" linker="$2"
     echo "Installing dependencies for $out..." 1>&2
     shift 2
-    local pkgs="gcc libc-dev $*"
+    local pkgs="gcc gentoo=glibc,libc-dev $*"
     local remove="`list_uninstalled '' $pkgs`"
-    if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
-        install --minimal $pkgs
-    fi
+    install --minimal $pkgs
     echo "Compiling $out..." 1>&2
     ret=0
     if ! gcc -xc -Os - $linker -o "$out" || ! strip "$out"; then

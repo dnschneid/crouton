@@ -22,8 +22,10 @@ EOF
     # Update database
     apt-get update
 fi
-install xfce4 xfce4-goodies ubuntu=shimmer-themes, \
-        -- dictionaries-common hddtemp xorg
+
+install gentoo=xfce4-meta,xfce4 gentoo=,xfce4-goodies ubuntu=shimmer-themes, \
+        -- gentoo=,dictionaries-common hddtemp gentoo=xorg-x11,xorg
+
 
 TIPS="$TIPS
 You can start Xfce via the startxfce4 host command: sudo startxfce4

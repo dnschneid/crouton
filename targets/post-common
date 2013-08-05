@@ -15,7 +15,16 @@ HOSTBIN='enter-chroot delete-chroot edit-chroot mount-chroot unmount-chroot'
 ### Append to prepare.sh:
 
 # Add the primary user
-groups='audio,video,sudo,plugdev'
+groups='audio,video'
+if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
+    USERADDGROUPS="$USERADDGROUPS,sudo,plugdev"
+elif [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
+    USERADDGROUPS="$USERADDGROUPS,users,wheel,portage"
+    install sudo
+    if [ ! -e /etc/sudoers.d/00-wheel ]; then
+        echo '%wheel ALL=(ALL) ALL' > /etc/sudoers.d/00-wheel
+    fi
+fi
 if ! grep -q ':1000:' /etc/passwd; then
     while ! echo "$username" | grep -q '^[a-z][-a-z0-9_]*$'; do
         if [ -n "$username" ]; then
@@ -24,14 +33,7 @@ if ! grep -q ':1000:' /etc/passwd; then
         echo -n 'Please specify a username for the primary user: ' 1>&2
         read username junk
     done
-
-    if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
-        useradd -u 1000 -G audio,video,sudo -s '/bin/bash' -m "$username"
-    fi
-    if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
-        useradd -u 1000 -G audio,video,wheel -s '/bin/bash' -m "$username"
-    fi
-
+    useradd -u 1000 -G "$groups" -s '/bin/bash' -m "$username"
     tries=0
     while ! passwd "$username" && [ "$tries" -lt 3 ]; do
         tries="$((tries+1))"
@@ -44,19 +46,8 @@ else
     username="`awk -F: '$3==1000{print $1; exit}' '/etc/passwd'`"
     usermod -a -G "$groups" "$username"
     
-    if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
-        tries=0
-        echo -e 'Set root password.  ' 1>&2
-        while ! passwd && [ "$tries" -lt 3 ]; do
-            tries="$((tries+1))"
-        done
-        if [ "$tries" = 3 ]; then
-            echo -n \
-'Root password left unset. To set a password, login to the chroot as root and run: passwd ' 1>&2
-        fi
-    fi
-
 fi
+
 
 echo 'Cleaning up' 1>&2
 if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then

@@ -7,4 +7,4 @@ DESCRIPTION='Basic CLI tools such as wget and ssh.'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
-install wget openssh-client
+install wget gentoo=openssh,openssh-client

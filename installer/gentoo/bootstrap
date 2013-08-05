@@ -1,0 +1,22 @@
+#!/bin/sh -e
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# This is a distro-specific bootstrap script, sourced from main.sh, and as such
+# has access to all of the variables set by main.sh, namely $tmp (the temporary
+# directory), $INSTALLERDIR/$DISTRO, $RELEASE, $ARCH, and $MIRROR.
+
+# Grab the latest release of Gentoo
+
+# Do we not need to explicitly presrve permissions?  The tarball contains a 
+# populated dev directory but we bindmount host dev nodes overwriting the 
+# directory.  Is it better to not extract dev at all?  Is it ok to create the
+# the subdirectory here?
+mkdir $tmp/$subdir
+if ! wget -O- --no-verbose --timeout=60 -t2 "$MIRROR/stage3-$ARCH*.tar.bz2"  \
+        | tar -C "$tmp/$subdir" --strip-components=1 -jx 2>/dev/null; then
+        error 2 'Failed to download stage 3 tarball.
+Check your internet connection or proxy settings and try again.'
+fi
+

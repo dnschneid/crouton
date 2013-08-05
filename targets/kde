@@ -8,7 +8,7 @@ HOSTBIN='startkde'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
-install kde-standard -- network-manager
+install gentoo=kdebase-meta,kde-standard -- gentoo=networkmanager,network-manager
 
 TIPS="$TIPS
 You can start KDE via the startkde host command: sudo startkde
