@@ -68,7 +68,7 @@ EOF
 deb $MIRROR $RELEASE main contrib
 deb-src $MIRROR $RELEASE main contrib
 EOF
-        if [ "$RELEASE" != 'sid' ]; then
+        if [ "$RELEASE" != 'jessie' -a "$RELEASE" != 'sid' ]; then
             cat >> /etc/apt/sources.list <<EOF
 deb $MIRROR $RELEASE-updates main contrib
 deb-src $MIRROR $RELEASE-updates main contrib
