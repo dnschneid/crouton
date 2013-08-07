@@ -2,6 +2,12 @@
 # Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+if [ ! "$ARCH" = 'amd64' -a ! "$ARCH" = 'i386' ] && \
+    [ "$RELEASE" = 'precise' -o "$RELEASE" = 'quantal' ]; then
+    error 1 "cinnamon target not supported in $RELEASE on $ARCH because no packages are available."
+elif [ "$RELEASE" = 'wheezy' ]; then
+    error 1 "cinnamon target not supported in $RELEASE because no packages are available."
+fi
 REQUIRES='chromium gtk-extra'
 DESCRIPTION='Installs the Cinnamon desktop environment. (Approx. 300MB)'
 HOSTBIN='startcinnamon'
@@ -24,11 +30,7 @@ EOF
         # Update database
         apt-get update
         install --minimal ubuntu~precise=,cinnamon-control-center cinnamon-screensaver nemo
-    elif [ "$RELEASE" = 'precise' -o "$RELEASE" = 'quantal' ]; then
-        error 1 "cinnamon target not supported in $RELEASE on $ARCH because no packages are available."
     fi
-elif [ "$DISTRO" = 'debian' ] && [ "$RELEASE" = 'wheezy' ]; then
-    error 1 "cinnamon target not supported in $RELEASE because no packages are available."
 fi
 
 install --minimal cinnamon \
