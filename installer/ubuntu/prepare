@@ -60,6 +60,37 @@ list_uninstalled_dist() {
 }
 
 
+# install_mirror_package: Fetch and install a package directly from the mirror.
+# This allows to install a package from a different release, when the current
+# release does not provide the required package, or when the version it
+# provides is broken or outdated.
+# $1: Package name (e.g. xserver-xephyr)
+# $2: Mirror path (e.g. pool/universe/x/xorg-server)
+# $3: Version regex (e.g. '1\.11\.4-0ubuntu[0-9][0-9]\.[0-9]*').
+#     If not specified, match any version (default regex: ".*").
+#     The latest version that matches the regex is selected.
+install_mirror_package() {
+    install wget
+    local package="$1"
+    local url="$MIRROR/$2/"
+    local regex="${3:-.*}"
+    # Find package in directory listing. We assume that each file is on a
+    # separate line, and look for filenames enclosed in quotes (a href value).
+    local xvers="`wget -O- "$url" \
+        | sed -n 's/.*"\('"$package"'_'"$regex"'_'"$ARCH"'\.deb\)".*/\1/p' \
+        | sort -V | tail -n 1`"
+    if [ -z "$xvers" ]; then
+        error 1 "Error retrieving $package."
+    fi
+    url="$url$xvers"
+    # Download the package to a temporary file
+    local deb="`mktemp crouton.XXXXXX --tmpdir=/tmp`"
+    addtrap "rm -f '$deb' 2>/dev/null"
+    wget --no-check-certificate "$url" -O"$deb"
+    # Install the package
+    install_pkg "$deb"
+}
+
 # Run debootstrap second stage if it hasn't already happened
 if [ -r /debootstrap ]; then
     # Debootstrap doesn't like anything mounted under /sys or /var when it runs
