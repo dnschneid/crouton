@@ -26,7 +26,7 @@ if ! grep -q ':1000:' /etc/passwd; then
     done
     useradd -u 1000 -G "$groups" -s '/bin/bash' -m "$username"
     tries=0
-    while ! passwd "$username" && [ "$tries" -lt 3 ]; do
+    while [ "$tries" -lt 3 ] && ! passwd "$username"; do
         tries="$((tries+1))"
     done
     if [ "$tries" = 3 ]; then
