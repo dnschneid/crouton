@@ -547,6 +547,17 @@ else
     else
         # Escape out the command
         cmd="export SHELL='$CHROOTSHELL';"
+
+        # Arch: Workaround for bug in su/bash, where /etc/profile is not
+        # sourced, even though su is called with '-' (login shell).
+        # See: https://bugs.archlinux.org/task/31831
+        # This is necessary to get /usr/local/bin in the PATH, and setup the
+        # correct locale, among other things. This is not necessary in Ubuntu,
+        # as these are set by /etc/pam.d/su .
+        if grep -q "ID=arch" "$CHROOT/etc/os-release"; then
+            cmd="$cmd . /etc/profile;"
+        fi
+
         for param in "$@"; do
             cmd="$cmd'`echo -n "$param" | sed "s/'/'\\\\\\''/g"`' "
         done
