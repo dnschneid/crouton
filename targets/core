@@ -108,6 +108,29 @@ EOF
 
     echo 'Ensuring system is up-to-date...' 1>&2
     apt-get -y dist-upgrade
+elif [ "${DISTROAKA:-"$DISTRO"}" = 'arch' ]; then
+    if [ -n "$MIRROR" -a "$MIRROR" != 'unspecified' ]; then
+        if [ ! -e /etc/pacman.d/mirrorlist.pacorig ]; then
+            cp -T /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.pacorig
+        fi
+
+        echo "Server = $MIRROR" > /etc/pacman.d/mirrorlist
+    fi
+
+    echo 'Ensuring system is up-to-date...' 1>&2
+    ret=0
+    pacman -Syu --noconfirm || ret=$?
+    if [ "$ret" != 0 ]; then
+        cat 1>&2 <<END
+Cannot upgrade the system automatically, you may want to run the installer
+command again, to make sure this is not a transient error. If there is no
+obvious network error, you should look on http://www.archlinux.org for
+upgrades requiring manual intervention, then enter the chroot as root with:
+ $ sudo enter-chroot -n $NAME -u 0
+and follow the instructions on Arch Linux website.
+END
+        exit $ret
+    fi
 fi
 
 # On release upgrade, keyboard-configuration might be reconfigured.
@@ -117,9 +140,18 @@ fixkeyboardmode
 install --minimal sudo wget ca-certificates
 
 # Generate and set default locale
-if [ ! -f '/etc/default/locale' ] && hash locale-gen 2>/dev/null; then
-    locale-gen --lang en_US.UTF-8
-    update-locale LANG=en_US.UTF-8
+if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
+    if [ ! -f '/etc/default/locale' ] && hash locale-gen 2>/dev/null; then
+        locale-gen --lang en_US.UTF-8
+        update-locale LANG=en_US.UTF-8
+    fi
+elif [ "${DISTROAKA:-"$DISTRO"}" = 'arch' ]; then
+    if [ ! -f '/etc/locale.conf' ]; then
+        cp /etc/locale.gen /etc/locale.gen.pacorig
+        sed -i -e 's/^#en_US.UTF-8/en_US.UTF-8/' /etc/locale.gen
+        locale-gen
+        echo 'LANG=en_US.UTF-8' > /etc/locale.conf
+    fi
 fi
 
 # Link debian_chroot to the chroot name
