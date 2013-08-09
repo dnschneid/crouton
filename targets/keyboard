@@ -29,6 +29,8 @@ if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
     # Make sure we start from a fresh package
     apt-mark unhold xkb-data || true 2>/dev/null
     apt-get -y install --reinstall xkb-data
+elif [ "${DISTROAKA:-"$DISTRO"}" = 'arch' ]; then
+    pacman -S xkeyboard-config --noconfirm
 fi
 
 XKBROOT='/usr/share/X11/xkb'
@@ -180,4 +182,11 @@ cp -a "$XKBROOTTMP"/* "$XKBROOT"/
 if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
     # Hold xkb-data, so that it does not get updated
     apt-mark hold xkb-data
+elif [ "${DISTROAKA:-"$DISTRO"}" = 'arch' ]; then
+    # Make sure xkeyboard-config does not get updated
+    if ! grep -q '^IgnorePkg.*=.*\bxkeyboard-config\b' /etc/pacman.conf; then
+        sed -i \
+            -e 's/^\#* *IgnorePkg.*=\(.*\)/IgnorePkg = xkeyboard-config \1/' \
+             /etc/pacman.conf
+    fi
 fi

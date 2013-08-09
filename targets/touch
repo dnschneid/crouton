@@ -15,7 +15,8 @@ if release -lt raring; then
     # As of 2013-01-30, pre-Raring touchegg is useless. Download it manually.
     install_mirror_package 'touchegg' 'pool/universe/t/touchegg'
 else
-    install --minimal touchegg
+    install --minimal arch=aur:frame, arch=aur:grail, arch=aur:geis, \
+                      arch=aur:touchegg,touchegg
 fi
 
 # The global config file.
