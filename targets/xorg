@@ -91,9 +91,20 @@ END
     apt-get -y --force-yes --no-install-recommends dist-upgrade -f
 fi
 
-install xorg dmz-cursor-theme
-# Fix launching X11 from inside crosh (user doesn't own a TTY)
-sed -i 's/allowed_users=.*/allowed_users=anybody/' '/etc/X11/Xwrapper.config'
+install xorg arch=,dmz-cursor-theme arch=ttf-dejavu
+
+if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
+    # Fix launching X11 from inside crosh (user doesn't own a TTY)
+    sed -i 's/allowed_users=.*/allowed_users=anybody/' /etc/X11/Xwrapper.config
+fi
+
+# Xorg 1.16 wants to run as normal user, which breaks crouton
+if [ "${DISTROAKA:-"$DISTRO"}" = 'arch' ]; then
+    cat >/etc/X11/Xwrapper.config <<EOF
+allowed_users=anybody
+needs_root_rights=yes
+EOF
+fi
 
 TIPS="$TIPS
 You can flip through your running chroot desktops and Chromium OS by hitting

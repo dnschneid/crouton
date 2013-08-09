@@ -28,13 +28,18 @@ elif release -gt quantal; then
 fi
 
 # xserver-xephyr won't auto replace the manually-downloaded version.
+# FIXME: What is the purpose of dmz-cursor-theme and libgl1-mesa-dri?
 install --minimal \
-    xserver-xephyr xinit dmz-cursor-theme libgl1-mesa-dri \
-    x11-utils x11-xserver-utils xinput xterm
+    arch=xorg-server-xephyr,xserver-xephyr arch=,xinit \
+    arch=,dmz-cursor-theme \
+    arch=ttf-dejavu, \
+    arch=,libgl1-mesa-dri \
+    arch=xorg-utils,x11-utils arch=xorg-server-utils,x11-xserver-utils \
+    arch=xorg-xinput,xinput xterm
 
 # Compile croutoncursor
 compile cursor '-lX11 -lXfixes -lXrender' \
-    libx11-dev libxfixes-dev libxrender-dev
+    arch=,libx11-dev arch=,libxfixes-dev arch=,libxrender-dev
 
 TIPS="$TIPS
 You can flip through your running chroot desktops and Chromium OS by hitting

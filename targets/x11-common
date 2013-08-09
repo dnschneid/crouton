@@ -7,14 +7,19 @@
 # forms of X11.
 
 ### Append to prepare.sh:
+
+# Arch: Install xorg-xinit before creating /etc/X11/xinit/xserverrc, to make
+# sure it does not get erased if xorg-xinit is pulled later on
+install --minimal arch=xorg-xinit,
+
 # Store and apply the X11 method
 ln -sfT "/etc/crouton/xserverrc-$XMETHOD" '/etc/X11/xinit/xserverrc'
 
 # Install utility for croutoncycle
-compile wmtools '-lX11' libx11-dev
+compile wmtools '-lX11' arch=,libx11-dev
 
 # Install utilities and links for powerd-poking daemon
-compile xi2event '-lX11 -lXi' libx11-dev libxi-dev
+compile xi2event '-lX11 -lXi' arch=,libx11-dev arch=,libxi-dev
 install --minimal dbus xdg-utils
 ln -sf croutonpowerd /usr/local/bin/gnome-screensaver-command
 ln -sf croutonpowerd /usr/local/bin/xscreensaver-command
