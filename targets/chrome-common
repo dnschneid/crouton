@@ -26,26 +26,30 @@ REQUIRES='x11'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
-# Only download if it's not already installed, since it auto-updates
-pkg="google-chrome-$CHANNEL"
-if [ -n "`list_uninstalled '' "$pkg"`" ]; then
-    # Chrome needs hicolor-icon-theme to configure/install
-    install hicolor-icon-theme
-
-    url="https://dl.google.com/linux/direct/${pkg}_current_$ARCH.$PKGEXT"
-    tmp="`mktemp crouton.XXXXXX --tmpdir=/tmp`"
-    addtrap "rm -f '$tmp'"
-
-    wget "$url" -O "$tmp"
-
-    # Remove other providers of google-chrome, then install the package
-    for c in stable beta dev; do
-        c="google-chrome-$c"
-        if [ -z "`list_uninstalled '' "$c"`" ]; then
-            remove "$c"
-        fi
-    done
-    install_pkg "$tmp"
+if [ "${DISTROAKA:-"$DISTRO"}" = 'arch' ]; then
+    install aur:google-chrome$CHANNEL
 else
-    echo "$pkg is already installed."
+    # Only download if it's not already installed, since it auto-updates
+    pkg="google-chrome-$CHANNEL"
+    if [ -n "`list_uninstalled '' "$pkg"`" ]; then
+        # Chrome needs hicolor-icon-theme to configure/install
+        install hicolor-icon-theme
+
+        url="https://dl.google.com/linux/direct/${pkg}_current_$ARCH.$PKGEXT"
+        tmp="`mktemp crouton.XXXXXX --tmpdir=/tmp`"
+        addtrap "rm -f '$tmp'"
+
+        wget "$url" -O "$tmp"
+
+        # Remove other providers of google-chrome, then install the package
+        for c in stable beta dev; do
+            c="google-chrome-$c"
+            if [ -z "`list_uninstalled '' "$c"`" ]; then
+                remove "$c"
+            fi
+        done
+        install_pkg "$tmp"
+    else
+        echo "$pkg is already installed."
+    fi
 fi
