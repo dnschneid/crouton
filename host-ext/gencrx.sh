@@ -1,32 +1,63 @@
 #!/bin/sh -e
-# For some reason Chrome segfaults at the end of the process
-# (version 27.0.1453.116), but the package still looks fine.
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+#
+# We could leverage on Chrome to build the extension, using something like
+# /opt/google/chrome/chrome --pack-extension=crouton
+# However many versions cannot build the package without crashing:
+#  - 27.0.1453.116 aborts at the end of the process, but the package still
+#    looks fine.
+#  - 28.0.1500.95 aborts before creating the extension.
+#
+# zip package is not available in Chromium OS, so we cannot run this script
+# during setup.
+#
+# This script is loosely based a script found along the CRX file format
+# specification: http://developer.chrome.com/extensions/crx.html
 
-EXTFILE="crouton.crx"
+EXTNAME="crouton"
 
 cd "`dirname "$0"`"
 
-rm -f "$EXTFILE"
+rm -f "$EXTNAME.crx"
 
-CHROMIUM="/opt/google/chrome/chrome"
-if [ ! -x "$CHROMIUM" ]; then
-    CHROMIUM="chromium"
+trap "rm -f '$EXTNAME.zip' '$EXTNAME.sig' '$EXTNAME.pub'" 0
+
+# Create zip file
+( cd $EXTNAME; zip -qr -9 -X "../$EXTNAME.zip" . )
+
+if [ ! -e "$EXTNAME.pem" ]; then
+    openssl genrsa -out "$EXTNAME.pem" 1024
 fi
 
-key="crouton.pem"
-ARGS="--pack-extension=crouton"
-if [ -f "$key" ]; then
-    ARGS="$ARGS --pack-extension-key=$key"
-fi
+# Signature
+openssl sha1 -sha1 -binary -sign "$EXTNAME.pem" <"$EXTNAME.zip" >"$EXTNAME.sig"
 
-if ! "$CHROMIUM" $ARGS; then
-    echo "Chromium process error (may not be fatal)" >&2
-fi
+# Public key
+openssl rsa -pubout -outform DER < "$EXTNAME.pem" >"$EXTNAME.pub" 2>/dev/null
 
-# Check if extension file was generated
-if [ -s "$EXTFILE" ]; then
-    echo "Chromium extension generated successfully."
-else
-    echo "Cannot generate Chromium extension." >&2
-    exit 1
-fi
+# Print a 32-bit integer, Little-endian byte order
+printint() {
+    val="$1"
+    i=4
+    while [ $i -gt 0 ]; do
+        lsb="$(($val % 256))"
+        oct="`printf '%o' $lsb`"
+        printf "\\$oct"
+        val="$(($val / 256))"
+        i="$(($i-1))"
+    done
+}
+
+{
+    # Magic number
+    echo -n 'Cr24'
+    # Version
+    printint 2
+    # Public key length
+    printint "`stat -c'%s' "$EXTNAME.pub"`"
+    # Signature length
+    printint "`stat -c'%s' "$EXTNAME.sig"`"
+    cat "$EXTNAME.pub" "$EXTNAME.sig" "$EXTNAME.zip"
+} > "$EXTNAME.crx"

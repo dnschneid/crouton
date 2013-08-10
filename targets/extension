@@ -7,8 +7,6 @@ DESCRIPTION='Clipboard synchronization and URL handling with Chromium OS.'
 CHROOTBIN='croutonclip croutonurlhandler'
 
 if [ ! "$TARGETS" = 'help' ] && [ ! "$TARGETS" = 'check' ]; then
-  # Chromium does not like to run as root
-  su -c "${SCRIPTDIR:-..}/host-ext/gencrx.sh" chronos >&2
   cp "${SCRIPTDIR:-..}/host-ext/crouton.crx" /home/chronos/user/Downloads/
 fi
 
