@@ -11,7 +11,8 @@
 ln -sfT "/etc/crouton/xserverrc-$XMETHOD" '/etc/X11/xinit/xserverrc'
 
 # Install utilities and links for powerd-poking daemon
-install --minimal xprintidle dbus
+compile xi2event '-lX11 -lXi' libx11-dev libxi-dev
+install --minimal dbus
 ln -sf croutonpowerd /usr/local/bin/gnome-screensaver-command
 ln -sf croutonpowerd /usr/local/bin/xscreensaver-command
 
