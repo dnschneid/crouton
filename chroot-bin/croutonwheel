@@ -47,37 +47,8 @@ fi
 # Operate on the Chromium OS X11 server
 eval "`/usr/local/bin/host-x11`"
 
-# If we launched this from a terminal, release return just in case; if the
-# xinput window appears before return is pressed, the release will get eaten.
-if tty -s; then
-    xte 'keyup Return'
-fi
-
 # Wait for ratpoison to come up
 while ! xprop -root _NET_WM_NAME | grep -q 'ratpoison'; do sleep .1; done 2>&-
-
-# Fork a process that hides the xinput window as soon as possible.
-# The xinput window is the only focusable window with no name.
-xev -root <&- | mawk -W interactive '
-    m {
-        id = substr($4, 1, length($4) - 1)
-        if (system("xprop WM_NAME _NET_WM_NAME -id " id " \
-                    | grep -vq \"not found\"")) {
-            system("xdotool windowunmap " id)
-            exit
-        }
-        m = 0
-    }
-    /^MapNotify/ {
-        m = 1
-    }
-' &
-
-# Wait for ratpoison to have more than one window (so that ratpoison doesn't
-# quit when we kill the xinput window)
-while ! windows="`/usr/bin/ratpoison -c 'windows %%'`" || [ "$windows" = % ]; do
-    sleep .1
-done
 
 # Get the aura root window number (hex)
 aura="`xwininfo -root -children | mawk '/aura_root/ {print $1}'`"
@@ -91,12 +62,18 @@ aura="`xwininfo -root -children | mawk '/aura_root/ {print $1}'`"
 # per-event basis, both to improve latency and performance as well as handle the
 # case where this script outlives the chroot.
 {
-    stdbuf -oL xinput test-xi2 <&- &
+    croutonxi2event <&- &
     xi="$!"
     xev -root <&- &
     trap "kill $! $xi 2>&- || true" INT TERM HUP 0
     wait
 } <&- | mawk -W interactive '
+    # Test if x is a non-zero real number (i.e. not nan, inf, or 0)
+    # (x+0 != x+1) tests if the number is not nan or inf.
+    function isnonzero(x) {
+        return (x+0 != x+1) && (x != 0)
+    }
+
     m {
         if ($4 == "'"$aura"',") {
             if (m == "MapNotify") {
@@ -114,25 +91,17 @@ aura="`xwininfo -root -children | mawk '/aura_root/ {print $1}'`"
     }
 
     !w && /^EVENT type 17/ {
-        a = 1
-    }
-    (a == 1) && ($1 == "flags:") {
-        a = 2
-    }
-    a && /^$/ {
-        a = 0
-        if (flags["9:"] || flags["12:"]) {
-            dx = flags["4:"]
-            dy = flags["5:"]
+        # Valuators start at $10
+        if (isnonzero($19) || isnonzero($22)) {
+            dx = $14
+            dy = $15
             tp = 1
         } else {
-            dx = flags["2:"]
-            dy = flags["3:"]
+            dx = $12
+            dy = $13
             tp = 0
         }
-        for (x in flags)
-            flags[x] = 0
-        if ('"$x"' && dx) {
+        if ('"$x"' && isnonzero(dx)) {
             if (dx > 0) {
                 if (x < 0) x = 0
                 x += tp ? log(dx) * '"$xs"' + '"$xc"' : 1
@@ -149,7 +118,7 @@ aura="`xwininfo -root -children | mawk '/aura_root/ {print $1}'`"
                 x += 1
             }
         }
-        if (dy) {
+        if (isnonzero(dy)) {
             if (dy > 0) {
                 if (y < 0) y = 0
                 y += tp ? log(dy) * '"$ys"' + '"$yc"' : 1
@@ -166,9 +135,6 @@ aura="`xwininfo -root -children | mawk '/aura_root/ {print $1}'`"
                 y += 1
             }
         }
-    }
-    (a == 2) {
-        flags[$1] = $2
     }
 ' | xte &
 trap "pkill -P $$ 2>&- || true" INT TERM HUP 0
