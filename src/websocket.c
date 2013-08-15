@@ -26,6 +26,7 @@
 #include <signal.h>
 #include <sys/wait.h>
 #include <errno.h>
+#include <ctype.h>
 
 const int BUFFERSIZE = 4096;
 
@@ -35,11 +36,11 @@ const int PORT = 30001;
 const int FRAMEMAXHEADERSIZE = 2+8;
 const int MAXFRAMESIZE = 16*1048576; // 16MiB
 const char* GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
-/* Key from client must be 24 bytes long (16 bytes base64 decoded) */
+/* Key from client must be 24 bytes long (16 bytes, base64 encoded) */
 const int SECKEY_LEN = 24;
-/* SHA-1 in 20 bytes long */
+/* SHA-1 is 20 bytes long */
 const int SHA1_LEN = 20;
-/* base64 encoding SHA-1 must be 28 bytes long (ceil(20/3*4)+1). */
+/* base64-encoded SHA-1 must be 28 bytes long (ceil(20/3*4)+1). */
 const int SHA1_BASE64_LEN = 28;
 
 /* WebSocket opcodes */
@@ -58,7 +59,7 @@ const int PIPEOUT_WRITE_TIMEOUT = 3000;
 
 /* 0 - Quiet
  * 1 - General messages (init, new connections)
- * 2 - 1 + Messages on each new transfers
+ * 2 - 1 + Information on each transfer
  * 3 - 2 + Extra information */
 static int verbose = 0;
 
@@ -72,6 +73,7 @@ static int verbose = 0;
 #define syserror(str, ...) printf("%s: " str " (%s)\n", \
                     __func__, ##__VA_ARGS__, strerror(errno))
 
+/* File descriptors */
 static int server_fd = -1;
 static int pipein_fd = -1;
 static int client_fd = -1;
@@ -137,7 +139,6 @@ static int popen2(char* cmd, char* input, int inlen, char* output, int outlen) {
     pid_t pid = 0;
     int stdin_fd[2];
     int stdout_fd[2];
-    int readlen;
     int ret = -1;
 
     if (pipe(stdin_fd) < 0 || pipe(stdout_fd) < 0) {
@@ -165,30 +166,24 @@ static int popen2(char* cmd, char* input, int inlen, char* output, int outlen) {
 
     /* Parent */
 
-    /* We assume that the input is short enough, so the write will not block */
-    if (block_write(stdin_fd[1], input, inlen) != inlen) {
-        syserror("Cannot write to pipe!");
-        close(stdin_fd[1]);
-        goto error;
-    }
-    close(stdin_fd[1]);
-
-    /* Read output, while waiting for process termination. This could be done
-     * without polling, by reacting on SIGCHLD, but this is good enough for our
-     * purpose, and slightly simpler. */
-    struct pollfd fds[1];
+    /* Write input, and read output, while waiting for process termination.
+     * This could be done without polling, by reacting on SIGCHLD, but this is
+     * good enough for our purpose, and slightly simpler. */
+    struct pollfd fds[2];
     fds[0].events = POLLIN;
     fds[0].fd = stdout_fd[0];
+    fds[1].events = POLLOUT;
+    fds[1].fd = stdin_fd[1];
 
-    int stat_loc = -1;
     pid_t wait_pid;
-    readlen = 0;
+    int readlen = 0;
+    int writelen = 0;
     while (1) {
         /* Get child status */
-        wait_pid = waitpid(pid, &stat_loc, WNOHANG);
+        wait_pid = waitpid(pid, NULL, WNOHANG);
         /* Check if there is data to read, no matter the process status. */
         /* Timeout after 10ms, or immediately if the process exited already */
-        int polln = poll(fds, 1, (wait_pid == pid) ? 0 : 10);
+        int polln = poll(fds, 2, (wait_pid == pid) ? 0 : 10);
 
         if (polln < 0) {
             syserror("poll error.");
@@ -197,6 +192,26 @@ static int popen2(char* cmd, char* input, int inlen, char* output, int outlen) {
 
         log(3, "poll=%d (%d)", polln, (wait_pid == pid));
 
+        /* We can write something to stdin */
+        if (fds[1].revents & POLLOUT) {
+            int n = write(stdin_fd[1], input+writelen, inlen-writelen);
+            if (n < 0) {
+                error("write error.");
+                goto error;
+            }
+            log(3, "write n=%d/%d", n, inlen);
+
+            writelen += n;
+            if (writelen == inlen) {
+                /* Done writing: Only poll stdout from now on. */
+                close(stdin_fd[1]);
+                stdin_fd[1] = -1;
+                fds[1].fd = -1;
+            }
+            polln--;
+        }
+
+        /* We can read something from stdout */
         if (fds[0].revents & POLLIN) {
             int n = read(stdout_fd[0], output+readlen, outlen-readlen);
             if (n < 0) {
@@ -228,18 +243,24 @@ static int popen2(char* cmd, char* input, int inlen, char* output, int outlen) {
         }
     }
 
+    if (stdin_fd[1] >= 0)
+        close(stdin_fd[1]);
     close(stdout_fd[0]);
     return readlen;
 
 error:
-    /* Closing the pipe forces the child process to exit */
+    if (stdin_fd[1] >= 0)
+        close(stdin_fd[1]);
+    /* Closing the stdout pipe forces the child process to exit */
     close(stdout_fd[0]);
-    wait_pid = waitpid(pid, &stat_loc, 0);
+    /* Try to wait 10ms for the process to exit, then bail out. */
+    waitpid(pid, NULL, 10);
     return ret;
 }
 
 /* Open a pipe in non-blocking mode, then set it back to blocking mode. */
-/* Returns fd on success, < 0 on error. */
+/* Returns fd on success, -1 if the pipe cannot be open, -2 if the O_NONBLOCK
+ * flag cannot be cleared. */
 static int pipe_open_block(const char* path, int oflag) {
     int fd;
 
@@ -253,6 +274,7 @@ static int pipe_open_block(const char* path, int oflag) {
     int flags = fcntl(fd, F_GETFL, 0);
     if (flags < 0 || fcntl(fd, F_SETFL, flags & ~O_NONBLOCK) < 0) {
         syserror("error in fnctl GETFL/SETFL.");
+        close(fd);
         return -2;
     }
 
@@ -273,8 +295,9 @@ static int pipeout_open() {
      * pipes for writing behaves as follows: In blocking mode, "open" blocks.
      * In non-blocking mode, it fails (returns -1). This means that we cannot
      * open the pipe, then use functions like poll/select to detect when a
-     * reader becomes available. Waiting forever is also not an option, so we
-     * are forced to poll manually.
+     * reader becomes available. Waiting forever is also not an option: we do
+     * want to block this server if a client "forgets" to read the answer back.
+     * Therefore, we are forced to poll manually.
      * Using usleep is simpler, and probably better than measuring time elapsed:
      * If the system hangs for a while (like during large I/O writes), this will
      * still wait around PIPEOUT_WRITE_TIMEOUT ms of actual user time, instead
@@ -283,8 +306,8 @@ static int pipeout_open() {
         pipeout_fd = pipe_open_block(PIPEOUT_FILENAME, O_WRONLY);
         if (pipeout_fd >= 0)
             break;
-        if (pipeout_fd == -2)
-            return -1;
+        if (pipeout_fd == -2) /* fnctl error: this is fatal. */
+            exit(1);
         usleep(10000);
     }
 
@@ -322,7 +345,7 @@ static int pipeout_write(char* buffer, int len) {
     return n;
 }
 
-/* Open pipe out, write a string, and close the pipe. */
+/* Open pipe out, write a string, then close the pipe. */
 static void pipeout_error(char* str) {
     pipeout_open();
     pipeout_write(str, strlen(str));
@@ -333,11 +356,11 @@ static void pipeout_error(char* str) {
 /* Pipe in functions */
 /**/
 
-/* Flush the pipe (in case of error), close it, then reopen it. This is
+/* Flush the pipe (in case of error), close it, then reopen it. Reopening is
  * necessary to prevent poll from getting continuous POLLHUP when the process
- * that wrote into the pipe terminates (croutonurlhandler for example).
+ * that writes into the pipe terminates (croutonurlhandler for example).
  * This MUST be called before anything is written to pipeout to avoid race
- * condition. */
+ * condition, where we would flush out legitimate data from a second process */
 static void pipein_reopen() {
     if (pipein_fd >= 0) {
         char buffer[BUFFERSIZE];
@@ -370,14 +393,14 @@ static void pipein_read() {
         log(3, "n=%d", n);
 
         if (n < 0) {
+            /* This is very unlikely, and fatal. */
             syserror("Error reading from pipe.");
-
-            exit(1); /* We're dead if that happens... */
+            exit(1);
         } else if (n == 0) {
             break;
         }
 
-        /* Text or cont frame */
+        /* Write a text frame for the first packet, then cont frames. */
         n = socket_client_write_frame(buffer, n,
                                   first ? WS_OPCODE_TEXT : WS_OPCODE_CONT, 0);
         if (n < 0) {
@@ -394,8 +417,9 @@ static void pipein_read() {
 
     pipein_reopen();
 
-    /* Empty FIN frame */
-    n = socket_client_write_frame(buffer, 0, 0, 1);
+    /* Empty FIN frame to finish the message. */
+    n = socket_client_write_frame(buffer, 0,
+                                  first ? WS_OPCODE_TEXT : WS_OPCODE_CONT, 1);
     if (n < 0) {
         error("Error writing frame.");
         pipeout_error("EError: socket write error");
@@ -424,7 +448,7 @@ static void pipein_read() {
         if (len < 0)
             break;
 
-        /* Read the whole frame */
+        /* Read the whole frame, and write it to pipeout */
         while (len > 0) {
             int rlen = (len > BUFFERSIZE) ? BUFFERSIZE: len;
             if (socket_client_read_frame_data(buffer, rlen, maskkey) < 0) {
@@ -445,9 +469,8 @@ static void pipein_read() {
 int checkfifo(const char* filename) {
     struct stat fstat;
 
-    /* Check if file exists: if not, create it. */
+    /* Check if file exists: if not, create the FIFO. */
     if (access(filename, F_OK) < 0) {
-        /* FIFO does not exist: create it */
         if (mkfifo(filename,
                 S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH) < 0) {
             syserror("Cannot create FIFO pipe.");
@@ -520,27 +543,30 @@ static void socket_client_close(int sendclose) {
 
     if (sendclose) {
         char buffer[FRAMEMAXHEADERSIZE];
-        socket_client_write_frame(buffer, 0, 8, 1);
-        /* We are supposed to read back the answer, but we probably do not want
-         * to block, waiting for the answer, so we just close the socket. */
+        socket_client_write_frame(buffer, 0, WS_OPCODE_CLOSE, 1);
+        /* FIXME: We are supposed to read back the answer (if we are not
+         * replying to a close frame sent by the client), but we probably do not
+         * want to block, waiting for the answer, so we just close the socket.
+         */
     }
 
     close(client_fd);
     client_fd = -1;
 }
 
-/* buffer needs to be FRAMEMAXHEADERSIZE+size long,
- * and data must start at buffer[FRAMEMAXHEADERSIZE] only.
- *  - opcode should generally be WS_OPCODE_CONT (continuation) or WS_OPCODE_TEXT
+/* Send a frame to the WebSocket client.
+ *  - buffer needs to be FRAMEMAXHEADERSIZE+size long, and data must start at
+ *    buffer[FRAMEMAXHEADERSIZE] only.
+ *  - opcode should generally be WS_OPCODE_TEXT or WS_OPCODE_CONT (continuation)
  *  - fin indicates if the this is the last frame in the message
- * Returns size on success, -1 on error.
+ * Returns size on success. On error, closes the socket, and returns -1.
  */
 static int socket_client_write_frame(char* buffer, unsigned int size,
                                      unsigned int opcode, int fin) {
+    /* Start of frame, with header: at least 2 bytes before the actual data */
     char* pbuffer = buffer+FRAMEMAXHEADERSIZE-2;
     int payloadlen = size;
     int extlensize = 0;
-    int i;
 
     /* Test if we need an extended length field. */
     if (payloadlen > 125) {
@@ -555,6 +581,7 @@ static int socket_client_write_frame(char* buffer, unsigned int size,
 
         /* Network-order (big-endian) */
         unsigned int tmpsize = size;
+        int i;
         for (i = extlensize-1; i >= 0; i--) {
             pbuffer[2+i] = tmpsize & 0xff;
             tmpsize >>= 8;
@@ -576,20 +603,21 @@ static int socket_client_write_frame(char* buffer, unsigned int size,
 }
 
 /* Read a WebSocket frame header:
- *  - fin indicates in this is the final frame in a fragemented message
+ *  - fin indicates in this is the final frame in a fragmented message
  *  - maskkey is the XOR key used for the message
- *  - retry is set to 1 if we receive a control packet, and the caller
- *    should call again
- *  - Returns the frame length (-1 on error)
+ *  - retry is set to 1 if we receive a control packet: the caller must call
+ *    again if it expects more data.
+ *
+ * Returns the frame length on success. On error, closes the socket,
+ * and returns -1.
  *
  * Data is then read with socket_client_read_frame_data()
  */
 static int socket_client_read_frame_header(int* fin, uint32_t* maskkey,
                                            int* retry) {
-    char header[2]; /* Min header length */
+    char header[2]; /* Minimum header length */
     char extlen[8]; /* Extended length */
-    int n, i;
-    int opcode = -1;
+    int n;
 
     *retry = 0;
 
@@ -600,7 +628,7 @@ static int socket_client_read_frame_header(int* fin, uint32_t* maskkey,
         return -1;
     }
 
-    int mask;
+    int opcode, mask;
     uint64_t length;
     *fin = (header[0] & 0x80) != 0;
     if (header[0] & 0x70) { /* Reserved bits are on */
@@ -631,6 +659,7 @@ static int socket_client_read_frame_header(int* fin, uint32_t* maskkey,
         }
 
         /* Network-order (big-endian) */
+        int i;
         length = 0;
         for (i = 0; i < extlensize; i++) {
             length = length << 8 | extlen[i];
@@ -665,12 +694,14 @@ static int socket_client_read_frame_header(int* fin, uint32_t* maskkey,
     }
 
     /* is opcode continuation, text, or binary? */
+    /* FIXME: We should check that only the first packet is text or binary, and
+     * that the following are continuation ones. */
     if (opcode != WS_OPCODE_CONT &&
         opcode != WS_OPCODE_TEXT && opcode != WS_OPCODE_BINARY) {
         log(2, "Got a control packet (opcode=%d).", opcode);
 
         /* Control packets cannot be fragmented.
-         * Unknown data (opcode 3-7) will result in error anyway. */
+         * Unknown data (opcodes 3-7) will result in error anyway. */
         if (*fin == 0) {
             error("Fragmented unknown packet (%x).", opcode);
             socket_client_close(1);
@@ -687,11 +718,11 @@ static int socket_client_read_frame_header(int* fin, uint32_t* maskkey,
 
         if (opcode == WS_OPCODE_CLOSE) { /* Connection close. */
             error("Connection close from WebSocket client.");
-            socket_client_close(0);
+            socket_client_close(1);
             free(buffer);
             return -1;
         } else if (opcode == WS_OPCODE_PING) { /* Ping */
-            socket_client_write_frame(buffer, length, 10, 1);
+            socket_client_write_frame(buffer, length, WS_OPCODE_PONG, 1);
         } else if (opcode == WS_OPCODE_PONG) { /* Pong */
             /* Do nothing */
         } else { /* Unknown opcode */
@@ -712,10 +743,11 @@ static int socket_client_read_frame_header(int* fin, uint32_t* maskkey,
     return length;
 }
 
-/* Read frame data from the socket client:
- * - Make sure that buffer is at least 4*ceil(size/4) long
- *   (unmasking works with blocks of 4 bytes)
- * Returns size on success (the buffer has been completely filled), -1 on error.
+/* Read frame data from the WebSocket client:
+ * - Make sure that buffer is at least 4*ceil(size/4) long, as unmasking works
+ *   on blocks of 4 bytes.
+ * Returns size on success (the buffer has been completely filled).
+ * On error, closes the socket, and returns -1.
  */
 static int socket_client_read_frame_data(char* buffer, unsigned int size,
                                          uint32_t maskkey) {
@@ -738,7 +770,7 @@ static int socket_client_read_frame_data(char* buffer, unsigned int size,
     return n;
 }
 
-/* Unrequested data came in from client. */
+/* Unrequested data came in from WebSocket client. */
 static void socket_client_read() {
     char buffer[BUFFERSIZE];
     int length = 0;
@@ -757,19 +789,19 @@ static void socket_client_read() {
                  * get called again if there is more data waiting. */
                 return;
             } else {
+                /* We already read some frames of a fragmented message: wait
+                 * for the rest. */
                 continue;
             }
         }
 
         if (curlen < 0) {
-            free(buffer);
             socket_client_close(0);
             return;
         }
 
         if (length+curlen > BUFFERSIZE) {
             error("Message too big (%d>%d).", length+curlen, BUFFERSIZE);
-            free(buffer);
             socket_client_close(1);
             return;
         }
@@ -777,13 +809,17 @@ static void socket_client_read() {
         if (socket_client_read_frame_data(buffer+length, curlen, maskkey) < 0) {
             error("Read error.");
             socket_client_close(0);
-            free(buffer);
             return;
         }
 
         length += curlen;
+        data = 1;
     }
 
+    /* In future versions, we can process such packets here. */
+
+    /* In the current version, this is actually never supposed to happen:
+     * close the connection */
     error("Received an unexpected packet from client.");
     socket_client_close(0);
 }
@@ -795,7 +831,9 @@ static void socket_client_sendversion() {
     char* outbuf = malloc(FRAMEMAXHEADERSIZE+versionlen);
     memcpy(outbuf+FRAMEMAXHEADERSIZE, version, versionlen);
 
-    if (socket_client_write_frame(outbuf, versionlen, 1, 1) < 0) {
+    log(2, "Sending version packet (%s).", version);
+
+    if (socket_client_write_frame(outbuf, versionlen, WS_OPCODE_TEXT, 1) < 0) {
         error("Write error.");
         socket_client_close(0);
         free(outbuf);
@@ -803,8 +841,8 @@ static void socket_client_sendversion() {
     }
     free(outbuf);
 
-    /* Read back response */
-    char buffer[32];
+    /* Read response back */
+    char buffer[256];
     int buflen = 0;
     int fin = 0;
     uint32_t maskkey;
@@ -820,35 +858,35 @@ static void socket_client_sendversion() {
         if (len < 0)
             break;
 
-        /* Read the whole frame */
-        while (len > 0) {
-            int rlen = (len > 32-buflen) ? 32-buflen: len;
-
-            if (rlen == 0) {
-                error("Response too long: (>32 bytes).");
-                socket_client_close(1);
-                return;
-            }
-
-            if (socket_client_read_frame_data(buffer+buflen,
-                                                rlen, maskkey) < 0) {
-                socket_client_close(0);
-                return;
-            }
-            buflen += rlen;
-            len -= rlen;
+        if (len+buflen > 256) {
+            error("Response too long: (>%d bytes).", 256);
+            socket_client_close(1);
+            return;
         }
+
+        if (socket_client_read_frame_data(buffer+buflen, len, maskkey) < 0) {
+            socket_client_close(0);
+            return;
+        }
+        buflen += len;
     }
 
-    buffer[buflen == 32 ? 31 : buflen] = 0;
+    buffer[buflen == 256 ? 255 : buflen] = 0;
     if (buflen != 3 || strcmp(buffer, "VOK")) {
-        error("Invalid response: (%s).", buffer);
+        int i;
+        for (i = 0; i < buflen; i++) {
+            if (!isprint(buffer[i]))
+                buffer[i] = '?';
+        }
+        error("Invalid response: %s.", buffer);
         socket_client_close(1);
         return;
     }
+
+    log(2, "Received VOK.");
 }
 
-/* OK bitmask indicating if we received everything we need in the header */
+/* Bitmask indicating if we received everything we need in the header */
 const int OK_GET = 0x01;         /* GET {PATH} HTTP/1.1 */
 const int OK_GET_PATH = 0x02;    /* {PATH} == / in GET request */
 const int OK_UPGRADE = 0x04;     /* Upgrade: websocket */
@@ -901,8 +939,8 @@ static void socket_server_error(int newclient_fd, int ok) {
 }
 
 /* Read and parse HTTP header.
- * Returns 0 if the header is valid. websocket_key contains the value of
- * Sec-WebSocket-Key.
+ * Returns 0 if the header is valid. websocket_key must be at least SECKEY_LEN
+ * bytes long, and contains the value of Sec-WebSocket-Key on success.
  * Returns < 0 in case of error: in that case newclient_fd is closed.
  */
 static int socket_server_read_header(int newclient_fd, char* websocket_key) {
@@ -921,9 +959,10 @@ static int socket_server_read_header(int newclient_fd, char* websocket_key) {
     while (1) {
         /* Start of current line (until ':' for key-value pairs) */
         char* key = pbuffer;
-        /* Star of value in current line (part after ': '). */
+        /* Start of value in current line (part after ': '). */
         char* value = NULL;
 
+        /* Read a line of header, splitting key-value pairs if possible. */
         while (1) {
             if (n == 0) {
                 /* No more data in buffer: shift data so that key == buffer,
@@ -953,8 +992,8 @@ static int socket_server_read_header(int newclient_fd, char* websocket_key) {
                 break;
             }
 
-            /* Detect Key: Value pairs */
-            if (*pbuffer == ':' && !value) {
+            /* Detect "Key: Value" pairs, on all lines but the first one. */
+            if (!first && !value && *pbuffer == ':') {
                 value = pbuffer+2;
                 *pbuffer = '\0';
             }
@@ -1011,11 +1050,11 @@ static int socket_server_read_header(int newclient_fd, char* websocket_key) {
                 }
                 ok |= OK_VERSION;
             } else if (!strcmp(key, "Sec-WebSocket-Key")) {
-                if (strlen(value) != 24) {
+                if (strlen(value) != SECKEY_LEN) {
                     error("Invalid Sec-WebSocket-Key: '%s'.", value);
                     continue;
                 }
-                memcpy(websocket_key, value, 24);
+                memcpy(websocket_key, value, SECKEY_LEN);
                 ok |= OK_SEC_KEY;
             } else if (!strcmp(key, "Host")) {
                 char strbuf[32];
@@ -1054,7 +1093,7 @@ static void socket_server_accept() {
         return;
     }
 
-    /* key from client (16 bytes, base64 encoded: 24 bytes) + GUID (36 bytes) */
+    /* key from client + GUID */
     int websocket_keylen = SECKEY_LEN+strlen(GUID);
     char websocket_key[websocket_keylen];
 
@@ -1127,6 +1166,7 @@ static void socket_server_accept() {
 
     log(2, "Response sent.");
 
+    /* Close existing connection, if any. */
     if (client_fd >= 0)
         socket_client_close(1);
 
@@ -1201,7 +1241,7 @@ int main(int argc, char **argv) {
         }
     }
 
-    /* signal handler */
+    /* Termination signal handler. */
     memset(&act, 0, sizeof(act));
     act.sa_handler = signal_handler;
 
@@ -1212,7 +1252,8 @@ int main(int argc, char **argv) {
         return 2;
     }
 
-    /* Ignore SIGPIPE in all cases */
+    /* Ignore SIGPIPE in all cases: it may happen, since we write to pipes, but
+     * it is not fatal. */
     sigemptyset(&sigmask);
     sigaddset(&sigmask, SIGPIPE);
 
@@ -1221,7 +1262,8 @@ int main(int argc, char **argv) {
         return 2;
     }
 
-    /* Ignore terminating signals except when ppoll is running */
+    /* Ignore terminating signals, except when ppoll is running. Save current
+     * mask in sigmask_orig. */
     sigemptyset(&sigmask);
     sigaddset(&sigmask, SIGHUP);
     sigaddset(&sigmask, SIGINT);
@@ -1256,7 +1298,8 @@ int main(int argc, char **argv) {
                    fds[0].revents, fds[1].revents, fds[2].revents);
 
         if (n < 0) {
-            if (verbose >= 1)
+            /* Do not print error when ppoll is interupted by a signal. */
+            if (errno != EINTR || verbose >= 1)
                 syserror("ppoll error.");
             break;
         }
@@ -1288,7 +1331,7 @@ int main(int argc, char **argv) {
     log(1, "Terminating...");
 
     if (client_fd)
-        socket_client_close(1); /* Going away */
+        socket_client_close(1);
 
     return 0;
 }
