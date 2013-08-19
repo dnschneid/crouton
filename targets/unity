@@ -13,7 +13,7 @@ CHROOTBIN='startunity gnome-session-wrapper'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
-install unity unity-2d ubuntu-artwork gnome-session nautilus \
+install unity unity-2d ubuntu-artwork gnome-session nautilus ubuntu-desktop \
         ubuntu-settings,ubuntu~precise= -- network-manager brasero firefox
 
 TIPS="$TIPS
