@@ -53,7 +53,8 @@ list_uninstalled_dist() {
     local suffix="$1" pkg
     shift
     for pkg in "$@"; do
-        if ! dpkg-query -s "$pkg" 2>/dev/null >/dev/null; then
+        if ! dpkg-query -Wf'${Status}\n' "$pkg" 2>/dev/null |
+                 grep -q '^\(install\|hold\) '; then
             echo -n "$pkg$suffix "
         fi
     done
