@@ -49,10 +49,24 @@ remove_dist() {
 
 
 # list_uninstalled_dist: see list_uninstalled() in prepare.sh for details.
+# If the package is virtual (e.g. libc-dev), we need to find the binary package
+# corresponding to it (e.g. libc6-dev), so that we can remove it afterwards
+# ("apt-get remove libc-dev" does not remove libc6-dev).
 list_uninstalled_dist() {
     local suffix="$1" pkg
     shift
     for pkg in "$@"; do
+        # If $pkg is a binary package, apt-cache returns the package name
+        # itself, so $pkg value stays the same.
+        # If $pkg is a virtual package, it returns a list of binary packages
+        # that are able to provide it. If there is a single match, use that.
+        # If not, we still use $pkg, but apt-get will probably fail if we try
+        # to install that package.
+        realpkg="`apt-cache search --names-only "^$pkg\$" |
+                      cut -f 1 -d ' ' | tr '\n' ';'`"
+        if [ -n "$realpkg" -a "${realpkg%;*;}" = "$realpkg" ]; then
+            pkg="${realpkg%;}"
+        fi
         if ! dpkg-query -Wf'${Status}\n' "$pkg" 2>/dev/null |
                  grep -q '^\(install\|hold\) '; then
             echo -n "$pkg$suffix "
