@@ -44,7 +44,7 @@ install_pkg_dist() {
 
 # remove_dist: see remove() in prepare.sh for details.
 remove_dist() {
-    apt-get -y --purge autoremove "$@"
+    apt-get -y --purge remove "$@"
 }
 
 
