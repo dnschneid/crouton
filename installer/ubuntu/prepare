@@ -11,11 +11,24 @@ DISTROAKA='debian'
 
 # install_dist: see install() in prepare.sh for details.
 install_dist() {
-    local pkgs='' params=''
-    if [ "$1" = '--minimal' ]; then
-        params='--no-install-recommends'
-        shift
-    fi
+    local pkgs='' pkgsasdeps='' params='' asdeps='' loop='y'
+    while [ -n "$loop" ]; do
+        case $1 in
+        '--minimal')
+            params='--no-install-recommends'
+            loop='y'
+            shift
+            ;;
+        '--asdeps')
+            asdeps='y'
+            loop='y'
+            shift
+            ;;
+        *)
+            loop=''
+            ;;
+        esac
+    done
     while [ ! "$#" = 0 ]; do
         if [ "$1" = '--' ]; then
             shift
@@ -24,7 +37,13 @@ install_dist() {
         pkgs="$pkgs $1"
         shift
     done
+    if [ -n "$asdeps" ]; then
+        pkgsasdeps="`list_uninstalled_dist '' $pkgs`"
+    fi
     apt-get -y $params install $pkgs `list_uninstalled_dist - "$@"`
+    if [ -n "$pkgsasdeps" ]; then
+        apt-mark auto $pkgsasdeps
+    fi
 }
 
 
