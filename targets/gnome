@@ -22,7 +22,9 @@ if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
     fi
     GENTOO_PROFILE=$"`eselect profile list | grep gnome | grep -P -o '(?<=\[)[0-9]*(?=\])'`"
     if [ -n $GENTOO_PROFILE ]; then
-        eselect profile "$PROFILE_ACTION" "$GENTOO_PROFILE"
+        if ! [ "`eselect profile list | grep gnome | grep \*`" ]; then
+            eselect profile "$PROFILE_ACTION" "$GENTOO_PROFILE"
+        fi
     fi
 fi
 
