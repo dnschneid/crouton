@@ -1,0 +1,13 @@
+Don't use an unwanted dpms workaround.
+
+--- xprintidle-0.2/xprintidle.c.orig
++++ xprintidle-0.2/xprintidle.c
+@@ -65,7 +65,7 @@
+     return 1;
+   }
+   
+-  printf("%lu\n", workaroundCreepyXServer(dpy, ssi.idle));
++  printf("%lu\n", ssi.idle);
+   
+   XCloseDisplay(dpy);
+   return 0;
