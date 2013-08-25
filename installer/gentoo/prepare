@@ -11,9 +11,9 @@ NJOBS=$((`grep -c '^processor' /proc/cpuinfo`+1))
 
 # install_dist: see install() in prepare.sh for details.
 install_dist() {
-    local pkgs='' params=''
+    local pkgs='' params='-D'
     if [ "$1" = '--minimal' ]; then
-        params='--oneshot'
+        params=''
         shift
     fi
     while [ ! "$#" = 0 ]; do
@@ -54,12 +54,19 @@ list_uninstalled_dist() {
     done
 }
 # Bootstrap portage
+if ! [ -d "/usr/portage" ]; then
+    if [ $RELEASE = "gentoo" ]; then
+        emerge-webrsync
+    fi
+fi
 emerge --sync
 #Set MAKEOPTS and jobs based on processor cores
 if ! grep -q 'MAKEOPTS' '/etc/portage/make.conf' 2>/dev/null; then
     echo "MAKEOPTS=\"-j$NJOBS\"" >> /etc/portage/make.conf
 fi
-
+if ! grep -q 'PORTDIR_OVERLAY' '/etc/portage/make.conf' 2>/dev/null; then
+    echo "PORTDIR_OVERLAY=\"/usr/local/portage/crouton-overlay\"" >> /etc/portage/make.conf
+fi
 # Update portage
 install --minimal portage
 

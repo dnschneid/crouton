@@ -9,9 +9,26 @@ CHROOTBIN='startgnome gnome-session-wrapper'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
-install --minimal evolution-data-server gnome-control-center \
-        gnome-screensaver gnome-session gnome-session-fallback \
-        gnome-shell gnome-themes-standard gvfs-backends nautilus
+
+
+# Gentoo's light gnome meta package takes care of the minimal dependencies below
+
+
+if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
+# Set Gnome profile if available
+    PROFILE_ACTION="set"
+    if [ $RELEASE = "funtoo" ]; then
+        PROFILE_ACTION="add"
+    fi
+    GENTOO_PROFILE=$"`eselect profile list | grep gnome | grep -P -o '(?<=\[)[0-9]*(?=\])'`"
+    if [ -n $GENTOO_PROFILE ]; then
+        eselect profile "$PROFILE_ACTION" "$GENTOO_PROFILE"
+    fi
+fi
+
+install --minimal gentoo=,evolution-data-server gentoo=,gnome-control-center \
+        gentoo=,gnome-screensaver gentoo=gnome-light,gnome-session gentoo=,gnome-session-fallback \
+        gentoo=,gnome-shell gentoo=,gnome-themes-standard gentoo=,gvfs-backends gentoo=,nautilus
 
 TIPS="$TIPS
 You can start GNOME via the startgnome host command: sudo startgnome

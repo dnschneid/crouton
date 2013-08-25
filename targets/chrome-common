@@ -19,17 +19,20 @@ echo 'chromium' >> "${TARGETDEDUPFILE:-/dev/null}"
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
-url="https://dl.google.com/linux/direct/google-chrome-${CHANNEL}_current_$ARCH.$PKGEXT"
-pkg="/tmp/chrome.$PKGEXT"
-rm -f "$pkg"
+if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
+    url="https://dl.google.com/linux/direct/google-chrome-${CHANNEL}_current_$ARCH.$PKGEXT"
+    pkg="/tmp/chrome.$PKGEXT"
+    rm -f "$pkg"
 
-# We need wget to download, and Chrome needs xdg-utils to configure at all; the
-# rest of the dependencies we will resolve afterwards.
-install wget xdg-utils
+    # We need wget to download, and Chrome needs xdg-utils to configure at all; the
+    # rest of the dependencies we will resolve afterwards.
+    install wget xdg-utils
 
-# We don't have the right root certificates in the bare install.
-wget --no-check-certificate "$url" -O "$pkg"
+    # We don't have the right root certificates in the bare install.
+    wget --no-check-certificate "$url" -O "$pkg"
 
-# Install the package and delete it.
-install_pkg "$pkg"
-rm -f "$pkg"
+    # Install the package and delete it.
+    install_pkg "$pkg"
+    rm -f "$pkg"
+fi
+install gentoo=google-chrome

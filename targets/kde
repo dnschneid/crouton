@@ -8,6 +8,19 @@ HOSTBIN='startkde'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
+
+if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
+# Set KDE profile if available
+    PROFILE_ACTION="set"
+    if [ $RELEASE = "funtoo" ]; then
+        PROFILE_ACTION="add"
+    fi
+    GENTOO_PROFILE=$"`eselect profile list | grep kde | grep -P -o '(?<=\[)[0-9]*(?=\])'`"
+    if [ -n $GENTOO_PROFILE ]; then
+        eselect profile "$PROFILE_ACTION" "$GENTOO_PROFILE"
+    fi
+fi
+
 install gentoo=kdebase-meta,kde-standard -- gentoo=networkmanager,network-manager
 
 TIPS="$TIPS

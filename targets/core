@@ -99,7 +99,7 @@ if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
         locale-gen --lang en_US.UTF-8
         update-locale LANG=en_US.UTF-8
     fi
-elif [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
+elif [ "$RELEASE" = 'gentoo' ]; then
     if [ ! -f '/etc/env.d/02locale' ]; then
         cp /etc/locale.gen /etc/locale.gen.croutonorig
         sed -i -e 's/^#en_US.UTF-8/en_US.UTF-8/' /etc/locale.gen

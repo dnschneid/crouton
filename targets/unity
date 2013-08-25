@@ -6,6 +6,9 @@ if [ ! "$TARGETS" = 'help' -a ! "${ARCH#arm}" = "$ARCH" \
      -a ! "$RELEASE" = 'precise' ]; then
     error 1 "unity target does not work in xephyr in $RELEASE due to missing egl support."
 fi
+if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
+    error 1 "unity target is not supported in $RELEASE.  Please visit http://wiki.gentoo.org/wiki/Unity"
+fi
 REQUIRES='chromium gtk-extra'
 DESCRIPTION='Installs the Unity desktop environment. (Approx. 700MB)'
 HOSTBIN='startunity'
