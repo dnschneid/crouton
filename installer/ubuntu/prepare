@@ -86,8 +86,7 @@ list_uninstalled_dist() {
         if [ -n "$realpkg" -a "${realpkg%;*;}" = "$realpkg" ]; then
             pkg="${realpkg%;}"
         fi
-        if ! dpkg-query -Wf'${Status}\n' "$pkg" 2>/dev/null |
-                 grep -q '^\(install\|hold\) '; then
+        if ! dpkg-query -l "$pkg" 2>/dev/null | grep -q '^[ih]'; then
             echo -n "$pkg$suffix "
         fi
     done
