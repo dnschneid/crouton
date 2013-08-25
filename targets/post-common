@@ -15,15 +15,16 @@ HOSTBIN='enter-chroot delete-chroot edit-chroot mount-chroot unmount-chroot'
 ### Append to prepare.sh:
 
 # Add the primary user
-groups='audio,video'
+groups='audio,video,plugdev'
 if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
-    USERADDGROUPS="$USERADDGROUPS,sudo,plugdev"
+    groups="$groups,sudo"
 elif [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
-    USERADDGROUPS="$USERADDGROUPS,users,wheel,portage"
+    groups="$groups,users,wheel,portage"
     install sudo
     if [ ! -e /etc/sudoers.d/00-wheel ]; then
         echo '%wheel ALL=(ALL) ALL' > /etc/sudoers.d/00-wheel
     fi
+    groupadd -r -f plugdev
 fi
 if ! grep -q ':1000:' /etc/passwd; then
     while ! echo "$username" | grep -q '^[a-z][-a-z0-9_]*$'; do

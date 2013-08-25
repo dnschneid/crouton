@@ -7,4 +7,18 @@ DESCRIPTION="Chromium browser. Uses the distro's version, which may be old."
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
-install gentoo=chromium,chromium-browser
+if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
+# Set dependency useflags
+    mkdir -p /etc/portage/package.use
+    if [ $"`equery u media-video/ffmpeg | grep opus`" = "-opus" ]; then
+        euse -p media-video/ffmpeg --enable opus;
+    fi
+    if [ $"`equery u dev-libs/libxml2 | grep icu`" = "-icu" ]; then
+        euse -p dev-libs/libxml2 --enable icu;
+    fi
+    if [ $"`equery u sys-libs/zlib | grep minizip`" = "-minizip" ]; then
+        euse -p sys-libs/zlib --enable minizip;
+    fi
+fi
+# ffmpeg is a workaround for a broken ebuild, it really shouldn't be here
+install gentoo=ffmpeg gentoo=chromium,chromium-browser

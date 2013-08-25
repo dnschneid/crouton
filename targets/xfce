@@ -23,6 +23,19 @@ EOF
     apt-get update
 fi
 
+
+if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
+# Set XFCE profile if available
+    PROFILE_ACTION="set"
+    if [ $RELEASE = "funtoo" ]; then
+        PROFILE_ACTION="add"
+    fi
+    GENTOO_PROFILE=$"`eselect profile list | grep xfce | grep -P -o '(?<=\[)[0-9]*(?=\])'`"
+    if [ -n $GENTOO_PROFILE ]; then
+        eselect profile "$PROFILE_ACTION" "$GENTOO_PROFILE"
+    fi
+fi
+
 install gentoo=xfce4-meta,xfce4 gentoo=,xfce4-goodies ubuntu=shimmer-themes, \
         -- gentoo=,dictionaries-common hddtemp gentoo=xorg-x11,xorg
 

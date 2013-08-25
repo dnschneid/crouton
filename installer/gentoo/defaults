@@ -9,17 +9,27 @@
 # I'm not sure what the options are here, there are gentoo builds for
 # numerous architectures.  Are all i.86 results really 64-bit?  This also
 # assumes that hard floating point arm v7 is the right architecture to choose
-# but this is a not particularly educated guess.  I don't have arm hardware
+# but this is not a particularly educated guess.  I don't have arm hardware
 # for testing.
 if [ -z "$ARCH" ]; then
     ARCH="`uname -m | sed -e 's i.86 i386 ;s x86_64 amd64 ;s arm.* arm ;'`"
 fi
 
-if [ -z "$MIRROR" ]; then
-    if [ "$ARCH" = 'amd64' -o "$ARCH" = 'i386' ]; then
-        MIRROR='ftp://mirrors.rit.edu/gentoo/releases/amd64/current-stage3'
-    else
-        MIRROR='ftp://ftp.gtlib.gatech.edu/pub/gentoo/releases/arm/autobuilds/current-stage3-armv7a_hardfp'
+if [ $RELEASE = "gentoo" ]; then
+    if [ -z "$MIRROR" ]; then
+        if [ "$ARCH" = 'amd64' -o "$ARCH" = 'i386' ]; then
+            MIRROR='ftp://mirrors.rit.edu/gentoo/releases/amd64/current-stage3'
+        else
+            MIRROR='ftp://ftp.gtlib.gatech.edu/pub/gentoo/releases/arm/autobuilds/current-stage3-armv7a'
+        fi
     fi
 fi
-
+if [ $RELEASE = "funtoo" ]; then
+    if [ -z "$MIRROR" ]; then
+        if [ "$ARCH" = 'amd64' -o "$ARCH" = 'i386' ]; then
+            MIRROR='http://ftp.osuosl.org/pub/funtoo/funtoo-current/x86-64bit/corei7'
+        else
+            MIRROR='http://ftp.osuosl.org/pub/funtoo/funtoo-current/arm-32bit/armv7a_hardfp'
+        fi
+    fi
+fi

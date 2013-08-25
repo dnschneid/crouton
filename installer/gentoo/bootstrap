@@ -9,14 +9,24 @@
 
 # Grab the latest release of Gentoo
 
-# Do we not need to explicitly presrve permissions?  The tarball contains a 
+# Do we not need to explicitly preserve permissions?  The tarball contains a 
 # populated dev directory but we bindmount host dev nodes overwriting the 
 # directory.  Is it better to not extract dev at all?  Is it ok to create the
 # the subdirectory here?
 mkdir $tmp/$subdir
-if ! wget -O- --no-verbose --timeout=60 -t2 "$MIRROR/stage3-$ARCH*.tar.bz2"  \
-        | tar -C "$tmp/$subdir" --strip-components=1 -jx 2>/dev/null; then
-        error 2 'Failed to download stage 3 tarball.
-Check your internet connection or proxy settings and try again.'
+if [ $RELEASE = "gentoo" ]; then
+    if ! wget -O- --no-verbose --timeout=60 -t2 "$MIRROR/stage3-$ARCH*.tar.bz2"  \
+            | tar -C "$tmp/$subdir" --strip-components=1 -jxp 2>/dev/null; then
+            error 2 'Failed to download stage 3 tarball.
+    Check your internet connection or proxy settings and try again.'
+    fi
 fi
-
+if [ $RELEASE = "funtoo" ]; then
+    if ! wget -O- --no-verbose --timeout=60 -t2 "$MIRROR/stage3-latest.tar.xz"  \
+            | tar -C "$tmp/$subdir" --strip-components=1 -Jxp 2>/dev/null; then
+            error 2 'Failed to download stage 3 tarball.
+    Check your internet connection or proxy settings and try again.'
+    fi
+fi
+# Install crouton overlay for Gentoo assuming we never need to update it
+mkdir -p $tmp/$subdir/usr/local/portage

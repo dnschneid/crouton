@@ -8,7 +8,17 @@ HOSTBIN='starte17'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
-install gentoo=enlightenment,e17
+
+GENTOO_E17=enlightenment:0.17
+if [ $RELEASE = "gentoo" ]; then
+# e17 is only available on gentoo unstable
+    if ! grep -q "~$ARCH" '/etc/portage/make.conf' 2>/dev/null; then
+        echo "e17 is only supported on Gentoo unstable"
+	GENTOO_E17=''
+    fi
+fi
+
+install gentoo=$GENTOO_E17,e17
 
 TIPS="$TIPS
 You can start e17 via the starte17 host command: sudo starte17

@@ -7,6 +7,18 @@ if [ ! "$TARGETS" = 'help' -a ! "${ARCH#arm}" = "$ARCH" ]; then
     TARGET=xephyr
     . "${TARGETSDIR:="$PWD"}/$TARGET"
 fi
+# This is not a good way to update the overlay, but I can't think of
+# an alternative to clobbering it on each re-run of the X11 target.
+# Overlays are usually updated using either rsync or git.
+if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
+    rm -r $CHROOT/usr/local/portage/crouton-overlay
+    mkdir -p $CHROOT/usr/local/portage/crouton-overlay
+    cp -RL $INSTALLERDIR/$DISTRO/crouton-overlay/$RELEASE/* $CHROOT/usr/local/portage/crouton-overlay
+    mkdir -p $CHROOT/etc/portage/package.accept_keywords
+    echo "x11-libs/geis ~$ARCH\nx11-libs/frame ~$ARCH\nx11-libs/evemu ~$ARCH\
+        \nx11-libs/grail ~$ARCH\nx11-misc/touchegg ~$ARCH\nx11-misc/xprintidle ~$ARCH" \
+        > $CHROOT/etc/portage/package.accept_keywords/crouton-overlay
+fi
 REQUIRES='core'
 DESCRIPTION='Basic X11 install. Does not install any desktop environment.'
 CHROOTBIN='croutoncycle croutonpowerd croutonxinitrc-wrapper setres xinit'
@@ -16,25 +28,32 @@ CHROOTETC='xbindkeysrc.scm xserverrc-x11'
 ### Append to prepare.sh:
 XMETHOD=x11
 
-#xorg doesn't build a video driver by default, is there some way to automatically detect it?
+# xorg doesn't build a video driver by default, is there some way to automatically detect it?
 if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
 # Set desktop profile
-    GENTOO_PROFILE=$"`eselect profile list | grep desktop | grep -P -o '(?<=\[)[0-9]*(?=\])'`"
-    if [-n $GENTOO_PROFILE]; then
-        eselect profile set "$GENTOO_PROFILE"
+    PROFILE_ACTION="set"
+    if [ $RELEASE = "funtoo" ]; then
+        PROFILE_ACTION="set-flavor"
+    fi
+    GENTOO_PROFILE=$"`eselect profile list | grep desktop | grep -P -o '(?<=\[)[0-9]*(?=\])' | head -n 1`"
+    if [ -n $GENTOO_PROFILE ]; then
+        eselect profile "$PROFILE_ACTION" "$GENTOO_PROFILE"
     fi
     if ! `/bin/grep -q 'VIDEO_CARDS' /etc/portage/make.conf`; then
 #        echo -e "Your graphics hardware is reported as:  `/usr/sbin/lspci | grep -i vga` \r\nPlease select a corresponding driver:  "
 #        read videodriver
         echo -e "VIDEO_CARDS=\"intel fbdev\"" >> /etc/portage/make.conf
     fi
-#Do we need to compile the synaptics touchpad driver?  Gentoo seems to not include this by default
-    if [ ! `/bin/grep -q 'INPUT_DEVICES' /etc/portage/make.conf` ]; then
+# Do we need to compile the synaptics touchpad driver?  Gentoo seems to not include this by default
+    if ! `/bin/grep -q 'INPUT_DEVICES' /etc/portage/make.conf`; then
         echo -e "INPUT_DEVICES=\"evdev keyboard mouse synaptics\"" >> /etc/portage/make.conf
     fi
 fi
 
-install gentoo=xorg-x11,xorg gentoo=,dmz-cursor-theme gentoo=,kbd
+# The xorg-server package is fairly minimal, Gentoo usually recommends installing
+# a much larger xorg-x11 package
+
+install gentoo=xorg-server,xorg gentoo=,dmz-cursor-theme gentoo=,kbd
 
 # Fix launching X11 from inside crosh (user doesn't own a TTY)
 if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then

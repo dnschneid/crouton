@@ -32,7 +32,12 @@ if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
 fi
 if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
     install setxkbmap
-    emerge xkeyboard-config
+    mkdir -p /etc/portage/package.mask/
+    if [ -e /etc/portage/package.mask/crouton-xkeyboard-config ]; then
+        rm /etc/portage/package.mask/crouton-xkeyboard-config
+    fi
+    emerge -q xkeyboard-config
+    echo ">$(equery l xkeyboard-config)" > /etc/portage/package.mask/crouton-keyboard-config
 fi
 XKBROOT='/usr/share/X11/xkb'
 XKBROOTTMP="`mktemp -d crouton-xkb.XXXXXX --tmpdir=/tmp`"

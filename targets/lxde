@@ -8,7 +8,11 @@ HOSTBIN='startlxde'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
-install gentoo=lxde-meta,lxde -- gentoo=,dictionaries-common gentoo=chromium,chromium-browser
+
+# Chromium takes a _very_ long time to build on Gentoo, we're also already
+# pulling in the chromium target, so it seems superfluous
+
+install gentoo=lxde-meta,lxde -- gentoo=,dictionaries-common gentoo=,chromium-browser
 
 TIPS="$TIPS
 You can start LXDE via the startlxde host command: sudo startlxde
