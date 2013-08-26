@@ -12,22 +12,15 @@ DISTROAKA='debian'
 # install_dist: see install() in prepare.sh for details.
 install_dist() {
     local pkgs='' pkgsasdeps='' params='' asdeps='' loop='y'
-    while [ -n "$loop" ]; do
-        case $1 in
-        '--minimal')
+    while [ ! "$#" = 0 ]; do
+        if [ "$1" = "--minimal" ]; then
             params='--no-install-recommends'
-            loop='y'
-            shift
-            ;;
-        '--asdeps')
+        elif [ "$1" = "--asdeps" ]; then
             asdeps='y'
-            loop='y'
-            shift
-            ;;
-        *)
-            loop=''
-            ;;
-        esac
+        else
+            break
+        fi
+        shift
     done
     while [ ! "$#" = 0 ]; do
         if [ "$1" = '--' ]; then
@@ -79,13 +72,13 @@ list_uninstalled_dist() {
         # itself, so $pkg value stays the same.
         # If $pkg is a virtual package, it returns a list of binary packages
         # that are able to provide it. If there is a single match, use that.
-        # If not, we still use $pkg, but apt-get will probably fail if we try
-        # to install that package.
-        realpkg="`apt-cache search --names-only "^$pkg\$" |
-                      cut -f 1 -d ' ' | tr '\n' ';'`"
-        if [ -n "$realpkg" -a "${realpkg%;*;}" = "$realpkg" ]; then
-            pkg="${realpkg%;}"
-        fi
+        # If there is no match, it may mean that we are checking for a package
+        # that we installed manually from a .deb file, so we still use $pkg.
+        # If there is more than one match, we use $pkg, and apt-get install
+        # will fail due to selection ambiguity (it is not the purpose of this
+        # function to pick one of the alternative).
+        pkg="`apt-cache search --names-only "^$pkg\$" |
+                  awk 'x{x=""; exit} !x{x=$1} END{print x?x:"'"$pkg"'"}'`"
         if ! dpkg-query -l "$pkg" 2>/dev/null | grep -q '^[ih]'; then
             echo -n "$pkg$suffix "
         fi
