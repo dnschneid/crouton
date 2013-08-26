@@ -47,9 +47,6 @@ fi
 # Operate on the Chromium OS X11 server
 eval "`/usr/local/bin/host-x11`"
 
-# Wait for ratpoison to come up
-while ! xprop -root _NET_WM_NAME | grep -q 'ratpoison'; do sleep .1; done 2>&-
-
 # Get the aura root window number (hex)
 aura="`xwininfo -root -children | mawk '/aura_root/ {print $1}'`"
 

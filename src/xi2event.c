@@ -2,10 +2,8 @@
  * Use of this source code is governed by a BSD-style license that can be
  * found in the LICENSE file.
  *
- * Monitors the specified X11 server for cursor change events, and copies the
- * cursor image over to the X11 server specified in DISPLAY.
- *
- * Inspired from xinput/test-xi2.c (Copyright © 2009 Red Hat, Inc.)
+ * Monitors and displays XInput 2 raw events, such as key presses, mouse
+ * motion/clicks, etc.
  */
 
 /* gcc xi2event.c -o croutonxi2event -lXi -lX11 */
@@ -96,7 +94,7 @@ int main(int argc, char *argv[]) {
     eventmask.deviceid = XIAllMasterDevices;
     eventmask.mask_len = XIMaskLen(XI_LASTEVENT);
     unsigned char mask[eventmask.mask_len];
-    bzero(mask, eventmask.mask_len);
+    memset(mask, 0, eventmask.mask_len);
     XISetMask(mask, XI_RawKeyPress);
     XISetMask(mask, XI_RawKeyRelease);
     XISetMask(mask, XI_RawButtonPress);

@@ -87,15 +87,16 @@ else
     # screen may already dim after X-DAEMONSLEEP seconds of inactivity. This is
     # not noticeable if DAEMONSLEEP is much smaller than X (usually, X=300s).
 
-    while [ 1 ]; do
+    while sleep "$DAEMONSLEEP"; do
         if [ "`"$xdgs" status 2>/dev/null`" = 'disabled' ]; then
             # Screensaver disabled: ping
             pingpowerd
-        elif ! jobs "%-" >/dev/null 2>&1; then
+        elif ! kill -0 $xi2pid 2>/dev/null; then
             # croutonxi2event subshell is not running
 
-            # Fail if return status from process != 0 (through -e)
-            if [ -z "xi2pid" ]; then
+            if [ -n "$xi2pid" ]; then
+                # Fail if return status from process != 0: wait returns the exit
+                # status of the child, and this shell exits on error (-e)
                 wait $xi2pid
             fi
 
@@ -103,7 +104,6 @@ else
             ( croutonxi2event -1 >/dev/null 2>&1 && pingpowerd ) &
             xi2pid=$!
         fi
-        sleep "$DAEMONSLEEP"
     done
 fi
 
