@@ -5,28 +5,7 @@
  * Monitors the specified X11 server for cursor change events, and copies the
  * cursor image over to the X11 server specified in DISPLAY.
  *
- * This is an heavily simplified version of xinput/test-xi2.c:
- *
- * Copyright © 2009 Red Hat, Inc.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a
- * copy of this software and associated documentation files (the "Software"),
- * to deal in the Software without restriction, including without limitation
- * the rights to use, copy, modify, merge, publish, distribute, sublicense,
- * and/or sell copies of the Software, and to permit persons to whom the
- * Software is furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice (including the next
- * paragraph) shall be included in all copies or substantial portions of the
- * Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
- * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
- * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
- * DEALINGS IN THE SOFTWARE.
+ * Inspired from xinput/test-xi2.c (Copyright © 2009 Red Hat, Inc.)
  */
 
 /* gcc xi2event.c -o croutonxi2event -lXi -lX11 */
@@ -77,9 +56,7 @@ void usage(char* argv0) {
 }
 
 int main(int argc, char *argv[]) {
-    XIEventMask mask;
-    Window win;
-    int event, error;
+    int firstev, firsterr;
     int xi_opcode = -1;
     int one_event = 0;
     int terminate = 0;
@@ -106,41 +83,42 @@ int main(int argc, char *argv[]) {
     }
 
     if (!XQueryExtension(display, "XInputExtension",
-                         &xi_opcode, &event, &error)) {
+                         &xi_opcode, &firstev, &firsterr)) {
         fprintf(stderr, "X Input extension not available.\n");
         exit(1);
     }
 
     /* Listen on root window so that we do not need to create our own. */
-    win = DefaultRootWindow(display);
+    Window win = DefaultRootWindow(display);
 
-    /* Register all raw input events. */
-    mask.deviceid = XIAllMasterDevices;
-    mask.mask_len = XIMaskLen(XI_LASTEVENT);
-    mask.mask = calloc(mask.mask_len, sizeof(char));
-    XISetMask(mask.mask, XI_RawKeyPress);
-    XISetMask(mask.mask, XI_RawKeyRelease);
-    XISetMask(mask.mask, XI_RawButtonPress);
-    XISetMask(mask.mask, XI_RawButtonRelease);
-    XISetMask(mask.mask, XI_RawMotion);
-    XISetMask(mask.mask, XI_RawTouchBegin);
-    XISetMask(mask.mask, XI_RawTouchUpdate);
-    XISetMask(mask.mask, XI_RawTouchEnd);
+    XIEventMask eventmask;
 
-    XISelectEvents(display, win, &mask, 1);
-    XSync(display, False);
+    eventmask.deviceid = XIAllMasterDevices;
+    eventmask.mask_len = XIMaskLen(XI_LASTEVENT);
+    unsigned char mask[eventmask.mask_len];
+    bzero(mask, eventmask.mask_len);
+    XISetMask(mask, XI_RawKeyPress);
+    XISetMask(mask, XI_RawKeyRelease);
+    XISetMask(mask, XI_RawButtonPress);
+    XISetMask(mask, XI_RawButtonRelease);
+    XISetMask(mask, XI_RawMotion);
+    XISetMask(mask, XI_RawTouchBegin);
+    XISetMask(mask, XI_RawTouchUpdate);
+    XISetMask(mask, XI_RawTouchEnd);
+    eventmask.mask = mask;
 
-    free(mask.mask);
+    /* select on the window */
+    XISelectEvents(display, win, &eventmask, 1);
 
-    while(!terminate) {
-        XEvent ev;
-        XGenericEventCookie *cookie = (XGenericEventCookie*)&ev.xcookie;
-        XNextEvent(display, (XEvent*)&ev);
+    XEvent event;
+    XGenericEventCookie *cookie = &event.xcookie;
 
-        if (XGetEventData(display, cookie) &&
-            cookie->type == GenericEvent &&
-            cookie->extension == xi_opcode) {
-            switch (cookie->evtype) {
+    while (!terminate) {
+        XNextEvent(display, &event);
+
+        if (XGetEventData(display, cookie)) {
+            if (cookie->extension == xi_opcode && cookie->type == GenericEvent) {
+                switch(cookie->evtype) {
                 case XI_RawKeyPress:
                 case XI_RawKeyRelease:
                 case XI_RawButtonPress:
@@ -155,13 +133,11 @@ int main(int argc, char *argv[]) {
                     break;
                 default:
                     break;
+                }
             }
+            XFreeEventData(display, cookie);
         }
-
-        XFreeEventData(display, cookie);
     }
 
-    XDestroyWindow(display, win);
-
-    return EXIT_SUCCESS;
+    return 0;
 }
