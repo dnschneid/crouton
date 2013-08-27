@@ -92,9 +92,8 @@ int main(int argc, char *argv[]) {
     XIEventMask eventmask;
 
     eventmask.deviceid = XIAllMasterDevices;
-    eventmask.mask_len = XIMaskLen(XI_LASTEVENT);
-    unsigned char mask[eventmask.mask_len];
-    memset(mask, 0, eventmask.mask_len);
+    unsigned char mask[XIMaskLen(XI_LASTEVENT)];
+    memset(mask, 0, sizeof(mask));
     XISetMask(mask, XI_RawKeyPress);
     XISetMask(mask, XI_RawKeyRelease);
     XISetMask(mask, XI_RawButtonPress);
@@ -104,6 +103,7 @@ int main(int argc, char *argv[]) {
     XISetMask(mask, XI_RawTouchUpdate);
     XISetMask(mask, XI_RawTouchEnd);
     eventmask.mask = mask;
+    eventmask.mask_len = sizeof(mask);
 
     /* select on the window */
     XISelectEvents(display, win, &eventmask, 1);
