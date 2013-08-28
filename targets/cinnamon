@@ -3,9 +3,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 if [ ! "$ARCH" = 'amd64' -a ! "$ARCH" = 'i386' ] && \
-    [ "$RELEASE" = 'precise' -o "$RELEASE" = 'quantal' ]; then
+    [ "$RELEASE" = 'precise' -o "$RELEASE" = 'quantal' -o \
+      "$DISTRO" = 'debian' ]; then
     error 1 "cinnamon target not supported in $RELEASE on $ARCH because no packages are available."
-elif [ "$RELEASE" = 'wheezy' ]; then
+elif [ "$RELEASE" = 'wheezy' -o "$RELEASE" = 'jessie' ]; then
     error 1 "cinnamon target not supported in $RELEASE because no packages are available."
 fi
 REQUIRES='chromium gtk-extra'
