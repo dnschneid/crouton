@@ -91,7 +91,7 @@ else
         if [ "`"$xdgs" status 2>/dev/null`" = 'disabled' ]; then
             # Screensaver disabled: ping
             pingpowerd
-        elif ! kill -0 $xi2pid 2>/dev/null; then
+        elif [ -z "$xi2pid" ] || ! kill -0 "$xi2pid" 2>/dev/null; then
             # croutonxi2event subshell is not running
 
             if [ -n "$xi2pid" ]; then
