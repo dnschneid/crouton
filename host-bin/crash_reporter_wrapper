@@ -13,9 +13,10 @@ APPLICATION="${0##*/}"
 CORE_PATTERN_PARAMS='%p %s %u %e'
 CORE_PATTERN_PARAMS_COUNT=4
 CORE_PATTERN="|`readlink -f "$0"` $CORE_PATTERN_PARAMS"
-CORE_PATTERN_FILE='/var/run/core_pattern'
+CORE_PATTERN_FILE="/var/run/$APPLICATION/core_pattern"
 CORE_PATTERN_PROC='/proc/sys/kernel/core_pattern'
 DEFAULT_CHROOT_PATTERN=''
+IDEAL_LOCATION="/var/run/$APPLICATION/$APPLICATION"
 
 USAGE="$APPLICATION register
 $APPLICATION $CORE_PATTERN_PARAMS
@@ -95,12 +96,25 @@ if [ "$#" = 1 -a "$1" != 'register' ]; then
     exit 2
 fi
 
-if [ "${UID:-0}" != 0 -a "${USER:-root}" != 'root' ]; then
+if [ "${UID:-0}" != 0 -o "${USER:-root}" != 'root' ]; then
     echo "$APPLICATION must be run as root." 1>&2
     exit 2
 fi
 
 if [ "$#" = 1 ]; then
+    # Always register the script from /var/run for safety
+    if [ "$0" != "$IDEAL_LOCATION" ]; then
+        dir="${IDEAL_LOCATION%/*}"
+        if ! mountpoint "$dir" >/dev/null 2>/dev/null; then
+            mkdir -p "$dir"
+            mount -t tmpfs \
+                  -o 'rw,nosuid,nodev,exec,noatime,mode=700,size=128K' \
+                  tmpfs "$dir"
+        fi
+        cp -fT "$0" "$IDEAL_LOCATION"
+        chmod 500 "$IDEAL_LOCATION"
+        exec "$IDEAL_LOCATION" "$@"
+    fi
     # Store Chromium OS's core pattern for passthrough usage
     if [ ! -f "$CORE_PATTERN_FILE" ]; then
         cat "$CORE_PATTERN_PROC" > "$CORE_PATTERN_FILE"
