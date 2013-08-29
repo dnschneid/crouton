@@ -22,6 +22,19 @@ EOF
     # Update database
     apt-get update
 fi
+
+# Fix icons by setting default icon theme to Tango
+mkdir -p /etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml
+cat > '/etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xsettings.xml' <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+
+<channel name="xsettings" version="1.0">
+  <property name="Net" type="empty">
+    <property name="IconThemeName" type="string" value="Tango"/>
+  </property>
+</channel>
+EOF
+
 install xfce4 xfce4-goodies ubuntu=shimmer-themes, \
         -- dictionaries-common hddtemp xorg
 
