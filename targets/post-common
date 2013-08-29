@@ -10,6 +10,7 @@
 REQUIRES=''
 DESCRIPTION=''
 HOSTBIN='enter-chroot delete-chroot edit-chroot mount-chroot unmount-chroot'
+HOSTBIN="$HOSTBIN crash_reporter_wrapper"
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:

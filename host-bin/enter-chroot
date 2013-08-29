@@ -121,6 +121,13 @@ if [ -z "$CHROOT" ]; then
 sufficient space available, then re-install the chroot and try again.'
 fi
 
+# Register the crash_reporter_wrapper to properly handle coredumps
+if [ -f "$BINDIR/crash_reporter_wrapper" ]; then
+    if ! sh -e "$BINDIR/crash_reporter_wrapper" register; then
+        echo 'WARNING: Unable to register core dump handler.' 1>&2
+    fi
+fi
+
 if [ -z "$CROUTON_NO_UNMOUNT" ]; then
     # Auto-unmount everything below and including the chroot upon exit
     addtrap "sh -e '$BINDIR/unmount-chroot' -yc '$CHROOTS' '$NAME' || true"
