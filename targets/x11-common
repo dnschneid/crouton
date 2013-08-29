@@ -22,6 +22,9 @@ install --minimal xbindkeys
 touch /etc/skel/.Xauthority
 chmod 600 /etc/skel/.Xauthority
 
+# Make xscreensaver default to blank only
+echo 'mode: blank' > /etc/skel/.xscreensaver
+
 # Create /usr/share/desktop-directories to avoid issues with xdg-desktop-menu
 mkdir -p /usr/share/desktop-directories
 
