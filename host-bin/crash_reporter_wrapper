@@ -44,9 +44,7 @@ get_parameter() {
         echo -n '%'
         return
     elif [ "$param" = '%c' ]; then
-        awk '/^Max core file size/ {
-                printf ($5=="unlimited") ? -1 : $5; exit
-            }' "/proc/$pid/limits"
+        echo -n "$core_limit"
         return
     fi
     shift
@@ -174,8 +172,17 @@ if [ "${pattern#|}" != "$pattern" ]; then
     fi
 fi
 
+# Get the core size limit for the process
+core_limit="`awk '/^Max core file size/ {
+                printf ($5=="unlimited") ? -1 : $5; exit
+            }' "/proc/$pid/limits"`"
+
 # Prepare the file to operate on
 if [ -z "$ispipe" ]; then
+    # Don't bother if core file size limit is 0
+    if [ "$core_limit" = 0 ]; then
+        exit 0
+    fi
     # If this is not a pipe, we need to expand the %'s here.
     file="`expand_parameters "$pattern" "$@"`"
 else
@@ -200,7 +207,9 @@ if [ -z "$ispipe" ]; then
             echo \"Not overwriting '$file'; it is not a regular file\" 1>&2
         elif [ -f '$file' ] && [ \"\`stat -c '%h' '$file'\`\" != 1 ]; then
             echo \"Not overwriting '$file'; it is multiply linked\" 1>&2
-        elif cat > '$file'; then
+        elif [ '$core_limit' = -1 ] && cat > '$file'; then
+            exit 0
+        elif [ '$core_limit' != -1 ] && head -c '$core_limit' > '$file'; then
             exit 0
         fi
         exit 1
