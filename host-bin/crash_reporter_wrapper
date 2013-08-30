@@ -43,6 +43,11 @@ get_parameter() {
     if [ "$param" = '%%' ]; then
         echo -n '%'
         return
+    elif [ "$param" = '%c' ]; then
+        awk '/^Max core file size/ {
+                printf ($5=="unlimited") ? -1 : $5; exit
+            }' "/proc/$pid/limits"
+        return
     fi
     shift
     while [ "$param" != "${param_names%% *}" ]; do
