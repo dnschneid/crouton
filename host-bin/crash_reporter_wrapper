@@ -10,13 +10,13 @@ if [ ! -t 0 ]; then
 fi
 
 APPLICATION="${0##*/}"
-CORE_PATTERN_PARAMS='%p %s %u %e'
-CORE_PATTERN_PARAMS_COUNT=4
+CORE_PATTERN_PARAMS='%p %s %u %g %e %h %t %E'
+CORE_PATTERN_PARAMS_COUNT=8
 CORE_PATTERN="|`readlink -f "$0"` $CORE_PATTERN_PARAMS"
-CORE_PATTERN_FILE="/var/run/$APPLICATION/core_pattern"
+CORE_PATTERN_FILE='/var/run/crw/core_pattern'
 CORE_PATTERN_PROC='/proc/sys/kernel/core_pattern'
 DEFAULT_CHROOT_PATTERN=''
-IDEAL_LOCATION="/var/run/$APPLICATION/$APPLICATION"
+IDEAL_LOCATION='/var/run/crw/crw'
 
 USAGE="$APPLICATION register
 $APPLICATION $CORE_PATTERN_PARAMS
@@ -41,7 +41,7 @@ kernel's handling of the core_pattern proc entry."
 get_parameter() {
     local param="%${1#%}" param_names="$CORE_PATTERN_PARAMS "
     if [ "$param" = '%%' ]; then
-        echo '%'
+        echo -n '%'
         return
     fi
     shift
@@ -49,7 +49,7 @@ get_parameter() {
         param_names="${param_names#* }"
         if [ -z "$param_names" ]; then
             echo "$param not provided for core_pattern" 1>&2
-            echo "$param"
+            echo -n "$param"
             return
         fi
         shift
