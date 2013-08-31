@@ -20,7 +20,7 @@ if [ "$xmethod" = 'xephyr' ]; then
 fi
 
 # Otherwise, determine current tty and X11 ttys
-curtty="tty`fgconsole`"
+curtty="`cat '/sys/class/tty/tty0/active'`"
 seltty=''
 prevtty=''
 for tty in `ps -CX -CXorg -otname= | sort`; do
