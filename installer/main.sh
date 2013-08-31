@@ -407,11 +407,21 @@ fi
 # Ensure that /usr/local/bin and /etc/crouton exist
 mkdir -p "$CHROOT/usr/local/bin" "$CHROOT/etc/crouton"
 
+# If this script was called with '-x' or '-v', pass that to prepare.sh
+SETOPTIONS=""
+if set -o | grep -q '^xtrace *on$'; then
+    SETOPTIONS="-x"
+fi
+if set -o | grep -q '^verbose *on$'; then
+    SETOPTIONS="$SETOPTIONS -v"
+fi
+
 # Create the setup script inside the chroot
 echo 'Preparing chroot environment...' 1>&2
 VAREXPAND="s #ARCH $ARCH ;s #MIRROR $MIRROR ;"
 VAREXPAND="${VAREXPAND}s #DISTRO $DISTRO ;s #RELEASE $RELEASE ;"
 VAREXPAND="${VAREXPAND}s #PROXY $PROXY ;s #VERSION $VERSION ;"
+VAREXPAND="${VAREXPAND}s/#SETOPTIONS/$SETOPTIONS/;"
 installscript "$INSTALLERDIR/prepare.sh" "$CHROOT/prepare.sh" "$VAREXPAND"
 # Append the distro-specific prepare.sh
 cat "$DISTRODIR/prepare" >> "$CHROOT/prepare.sh"
