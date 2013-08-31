@@ -40,6 +40,7 @@ fi
 
 echo 'Cleaning up' 1>&2
 if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
+    apt-get -y --purge autoremove
     apt-get clean
 fi
 rm -f "$0"
