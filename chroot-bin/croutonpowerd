@@ -54,23 +54,19 @@ if [ "$CMD" = 'p' ]; then
     exec "${EXEC:-"true"}" "$@"
 elif [ "$CMD" = 'i' ]; then
     # Inhibit
-    pid=''
+    while pingpowerd; do
+        sleep "$INHIBITSLEEP"
+    done &
+    pid=$!
+    trap "kill $pid 2>/dev/null || true" INT HUP 0
     if [ -n "$EXEC" ]; then
-        "$EXEC" "$@" &
-        pid=$!
+        "$EXEC" "$@"
     elif [ -n "$2" ]; then
         shift
-        "$@" &
-        pid=$!
+        "$@"
+    else
+        wait $pid
     fi
-    if [ -n "$pid" ]; then
-        TRAP="kill $pid 2>/dev/null || true;$TRAP"
-        trap "$TRAP" INT HUP 0
-    fi
-    while [ -z "$pid" -o -d "/proc/$pid" ]; do
-        pingpowerd
-        sleep "$INHIBITSLEEP"
-    done
 else
     # Daemon
     idlethresh="$(($DAEMONSLEEP * 1000 - 100))"
