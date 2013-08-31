@@ -18,7 +18,7 @@ Options:
                            inhibition are passed on to Chromium OS's powerd."
 
 INHIBITSLEEP='30'
-DAEMONSLEEP='2'
+DAEMONSLEEP='15'
 
 # Check if we need to pass through to another command
 EXEC="${0##*/}"
@@ -69,16 +69,37 @@ elif [ "$CMD" = 'i' ]; then
     fi
 else
     # Daemon
-    idlethresh="$(($DAEMONSLEEP * 1000 - 100))"
-    lastidle=0
     xdgs='/usr/bin/xdg-screensaver'
-    while idle="`xprintidle`"; do
-        if [ "$idle" -lt "$(($lastidle + $idlethresh))" ] \
-                || [ "`"$xdgs" status 2>/dev/null`" = 'disabled' ]; then
+    xi2pid=''
+
+    # Send pings to powerd at regular intervals, if the user is active (i.e.
+    # there are input events), or if the screensaver is disabled.
+    # For performance reason, we probably do not want to monitor every single
+    # X input events. Therefore, we start a subshell that pings powerd upon
+    # receiving a single event, then quits.
+    # Every $DAEMONSLEEP seconds we check if that subshell if alive, and
+    # restart it if necessary. This means that we miss events during up to 
+    # $DAEMONSLEEP seconds, and, if powerd timeout is X seconds, then the
+    # screen may already dim after X-DAEMONSLEEP seconds of inactivity. This is
+    # not noticeable if DAEMONSLEEP is much smaller than X (usually, X=300s).
+
+    while sleep "$DAEMONSLEEP"; do
+        if [ "`"$xdgs" status 2>/dev/null`" = 'disabled' ]; then
+            # Screensaver disabled: ping
             pingpowerd
+        elif [ -z "$xi2pid" ] || ! kill -0 "$xi2pid" 2>/dev/null; then
+            # croutonxi2event subshell is not running
+
+            if [ -n "$xi2pid" ]; then
+                # Fail if return status from process != 0: wait returns the exit
+                # status of the child, and this shell exits on error (-e)
+                wait $xi2pid
+            fi
+
+            # Wait for input event, then ping immediately
+            ( croutonxi2event -1 >/dev/null 2>&1 && pingpowerd ) &
+            xi2pid=$!
         fi
-        lastidle="$idle"
-        sleep "$DAEMONSLEEP"
     done
 fi
 
