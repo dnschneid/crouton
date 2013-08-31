@@ -3,7 +3,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# Usage: prepare.sh arch mirror distro release proxy version
+# Usage: prepare.sh arch mirror distro release proxy version setoptions
 ARCH="${1:-"#ARCH"}"
 # MIRROR may contain variables (e.g., $repo): make sure we do not expand it
 MIRROR=${2:-'#MIRROR'}
@@ -11,6 +11,12 @@ DISTRO="${3:-"#DISTRO"}"
 RELEASE="${4:-"#RELEASE"}"
 PROXY="${5:-"#PROXY"}"
 VERSION="${6:-"#VERSION"}"
+SETOPTIONS="${7:-"#SETOPTIONS"}"
+
+# Additional set options: -x or -v can be added for debugging (-e is always on)
+if [ -n "$SETOPTIONS" ]; then
+    set $SETOPTIONS
+fi
 
 # We need all paths to do administrative things
 export PATH='/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin'
