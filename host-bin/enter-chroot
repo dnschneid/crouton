@@ -8,6 +8,7 @@ BACKGROUND=''
 BINDIR="`dirname "$0"`"
 CHROOTS="`readlink -f "$BINDIR/../chroots"`"
 KEYFILE=''
+LOGIN=''
 NAME=''
 TARGET=''
 USERNAME='1000'
@@ -24,6 +25,8 @@ You can specify a command and parameters to run instead of an interactive shell.
 Options:
     -b          Fork and run the specified command silently in the background.
     -c CHROOTS  Directory the chroots are in. Default: $CHROOTS
+    -l          Make the command part of a login. Parameters are passed directly
+                to the chroot command, and a call to su is appended.
     -k KEYFILE  Override the auto-detected encryption key location.
     -n NAME     Name of the chroot to enter. Default: first one found in CHROOTS
     -t TARGET   Only enter the chroot if it contains the specified TARGET.
@@ -36,11 +39,12 @@ Options:
 . "$BINDIR/../installer/functions"
 
 # Process arguments
-while getopts 'bc:k:n:t:u:x' f; do
+while getopts 'bc:k:ln:t:u:x' f; do
     case "$f" in
     b) BACKGROUND='y';;
     c) CHROOTS="`readlink -f "$OPTARG"`";;
     k) KEYFILE="$OPTARG";;
+    l) LOGIN='y';;
     n) NAME="$OPTARG";;
     t) TARGET="$OPTARG";;
     u) USERNAME="$OPTARG";;
@@ -420,8 +424,8 @@ else
         fi
     fi
 
-    if [ $# = 0 ]; then
-        env -i TERM="$TERM" chroot "$CHROOT" su - "$USERNAME" || ret=$?
+    if [ $# = 0 -o -n "$LOGIN" ]; then
+        env -i TERM="$TERM" chroot "$CHROOT" "$@" su - "$USERNAME" || ret=$?
     else
         # Escape out the command
         cmd="export SHELL='$CHROOTSHELL';"

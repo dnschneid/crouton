@@ -4,7 +4,12 @@
 # found in the LICENSE file.
 REQUIRES='core'
 DESCRIPTION='Basic CLI tools such as wget and ssh.'
+HOSTBIN='startcli'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
-install wget openssh-client
+install wget openssh-client kbd
+
+TIPS="$TIPS
+You can start a shell in a new VT via the startcli host command: sudo startcli
+"
