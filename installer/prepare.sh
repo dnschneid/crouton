@@ -108,13 +108,17 @@ distropkgs() {
 }
 
 
-# install: For the specified crouton-style package names (see distropkgs()),
-# installs the first set, while avoiding installing the second set if they are
-# not already installed. The two groups are separated by a -- entry.
-# If the first parameter is --minimal, avoids installing unnecessary packages.
-# Unlike --minimal, the second set of packages is useful for allowing
-# "recommended" dependencies to be brought in while avoiding installing specific
-# ones. Distros without "recommended" dependencies can ignore the second set.
+# install [--minimal] [--asdeps] <packages> -- <avoid packages>
+# For the specified crouton-style package names (see distropkgs()), installs
+# <packages>, while avoiding installing <avoid packages> if they are not
+# already installed.
+# If --minimal is specified, avoids installing unnecessary packages.
+# Unlike --minimal, <avoid packages> is useful for allowing "recommended"
+# dependencies to be brought in while avoiding installing specific ones.
+# Distros without "recommended" dependencies can ignore <avoid packages>.
+# --asdeps installs the packages, but marks them as dependencies if they are not
+# already installed. Running the distro-equivalent of 'autoremove' at the end
+# of his script will uninstall such packages, as they are considered as orphans.
 install() {
     install_dist `distropkgs "$@"`
 }
@@ -178,14 +182,12 @@ compile() {
     echo "Installing dependencies for $out..." 1>&2
     shift 2
     local pkgs="gcc libc-dev $*"
-    local remove="`list_uninstalled '' $pkgs`"
-    install --minimal $pkgs
+    install --minimal --asdeps $pkgs
     echo "Compiling $out..." 1>&2
     ret=0
     if ! gcc -xc -Os - $linker -o "$out" || ! strip "$out"; then
         ret=1
     fi
-    remove $remove
     return $ret
 }
 
