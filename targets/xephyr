@@ -15,21 +15,8 @@ XMETHOD=xephyr
 
 if [ "$RELEASE" = 'quantal' ]; then
     # As of 2013-01-08, Quantal's Xephyr lacks GLX. Download one manually.
-    install wget
-    url="$MIRROR/pool/universe/x/xorg-server/"
-    xvers="`wget -O- "$url" \
-        | sed -n 's/.*\(xserver-xephyr_1\.11\.4-0ubuntu[0-9][0-9]\.[0-9]*_'"$ARCH"'\.deb\).*/\1/p' \
-        | sort -V | tail -n1`"
-    if [ -z "$xvers" ]; then
-        error 1 'Error retreiving latest Xephyr version.'
-    fi
-    url="$url/$xvers"
-    deb='/tmp/xephyr.deb'
-    rm -f "$deb"
-    wget --no-check-certificate "$url" -O "$deb"
-    # Install the package and delete it.
-    install_pkg "$deb"
-    rm -f "$deb"
+    install_mirror_package 'xserver-xephyr' 'pool/universe/x/xorg-server' \
+                           '1\.11\.4-0ubuntu[0-9][0-9]\.[0-9]*'
     # Add the apt preference to avoid immediate upgrade
     cat > /etc/apt/preferences.d/xserver-xephyr <<EOF
 Package: xserver-xephyr
