@@ -14,6 +14,12 @@ HOSTBIN='enter-chroot delete-chroot edit-chroot mount-chroot unmount-chroot'
 
 ### Append to prepare.sh:
 
+echo 'Cleaning up' 1>&2
+if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
+    apt-get -y --purge autoremove
+    apt-get clean
+fi
+
 # Add the primary user
 groups='audio,video,sudo,plugdev'
 if ! grep -q ':1000:' /etc/passwd; then
@@ -38,15 +44,10 @@ else
     usermod -a -G "$groups" "$username"
 fi
 
-echo 'Cleaning up' 1>&2
-if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
-    apt-get -y --purge autoremove
-    apt-get clean
-fi
-rm -f "$0"
-
 if [ -n "$TIPS" ]; then
     echo "
 Here's some tips:
 $TIPS" 1>&2
 fi
+
+rm -f "$0"
