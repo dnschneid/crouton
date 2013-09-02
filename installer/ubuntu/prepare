@@ -73,11 +73,12 @@ install_mirror_package() {
     install wget
     local package="$1"
     local url="$MIRROR/$2/"
-    local regex="${3:-.*}"
-    # Find package in directory listing. We assume that each file is on a
-    # separate line, and look for filenames enclosed in quotes (a href value).
-    local xvers="`wget -O- "$url" \
-        | sed -n 's/.*"\('"$package"'_'"$regex"'_'"$ARCH"'\.deb\)".*/\1/p' \
+    local regex="^${package}_${3:-.*}_${ARCH}\.deb$"
+    # Find package in directory listing:
+    # Filenames are HTML <a href> values, enclosed in quotes.
+    local xvers="`wget -O- "$url" -nv \
+        | awk 'BEGIN { RS="<[aA][^>]* [hH][rR][eE][fF]=\\""; FS="\\"" }
+               NR > 1 && $1 ~ /'"$regex"'/ { print $1 }' \
         | sort -V | tail -n 1`"
     if [ -z "$xvers" ]; then
         error 1 "Error retrieving $package."
