@@ -46,6 +46,12 @@ fi
 # Launch the powerd poker daemon
 croutonpowerd --daemon &
 
+# PATCH: launch the touchpad scroller daemon
+if [ -f "$HOME/.croutonwheel" ]; then
+    CROUTON_WHEEL_PARAMS="`head -n1 "$HOME/.croutonwheel"`"
+fi
+croutonwheel $CROUTON_WHEEL_PARAMS <&- &
+
 # Apply the Chromebook keyboard map if installed.
 if [ -f '/usr/share/X11/xkb/compat/chromebook' ]; then
     setxkbmap -model chromebook
