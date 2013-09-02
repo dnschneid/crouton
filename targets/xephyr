@@ -28,7 +28,7 @@ fi
 # xserver-xephyr won't auto replace the manually-downloaded version.
 install --minimal \
     xserver-xephyr xinit ratpoison dmz-cursor-theme libgl1-mesa-dri \
-    x11-utils x11-xserver-utils xautomation xdotool xinput xterm
+    x11-utils x11-xserver-utils xautomation xinput xterm
 
 # Compile croutoncursor
 compile cursor '-lX11 -lXfixes -lXrender' \
