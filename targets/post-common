@@ -34,8 +34,11 @@ if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
     apt-get clean
 fi
 
+# Add cras audio group
+groupadd -f -r cras
+
 # Add the primary user
-groups='audio,video,sudo,plugdev'
+groups='audio,video,sudo,plugdev,cras'
 if ! grep -q ':1000:' /etc/passwd; then
     while ! echo "$username" | grep -q '^[a-z][-a-z0-9_]*$'; do
         if [ -n "$username" ]; then

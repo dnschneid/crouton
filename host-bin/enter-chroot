@@ -195,7 +195,7 @@ fi
 # so that users have access to shared hardware, such as video and audio.
 gfile="$CHROOT/etc/group"
 if [ -f "$gfile" ]; then
-    for group in audio video usb:plugdev; do
+    for group in audio video usb:plugdev cras; do
         hostgroup="${group%:*}"
         chrootgroup="${group#*:}"
         gid="`awk -F: '$1=="'"$hostgroup"'"{print $3; exit}' '/etc/group'`"
@@ -324,6 +324,7 @@ tmpfsmount /var/run 'noexec,nosuid,mode=0755,size=10%'
 tmpfsmount /var/run/lock 'noexec,nosuid,nodev,size=5120k'
 bindmount /var/run/dbus /var/host/dbus
 bindmount /var/run/shill /var/host/shill
+bindmount /var/run/cras /var/run/cras
 bindmount /var/lib/timezone /var/host/timezone
 for m in /lib/modules/*; do
     if [ -d "$m" ]; then
