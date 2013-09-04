@@ -55,8 +55,7 @@ EOF
     fi
 
     # Only update sources.list if MIRROR is specified
-    if [ -n "$MIRROR" -a ! "$MIRROR" = 'unspecified' \
-                      -a ! "$MIRROR" = '#MIRROR' ]; then
+    if [ -n "$MIRROR" -a "$MIRROR" != 'unspecified' ]; then
         if [ "$DISTRO" = 'ubuntu' ]; then
             cat > /etc/apt/sources.list <<EOF
 deb $MIRROR $RELEASE main restricted universe multiverse
@@ -78,11 +77,6 @@ deb-src $MIRROR $RELEASE-updates main contrib
 EOF
             fi
         fi
-    elif [ ! -s "/etc/apt/sources.list" ]; then
-        echo \
-"WARNING: /etc/apt/sources.list is empty: you probably won't be able to install
-new packages. You can regenerate this file by running the installer with
-\"-u -u\", optionally specifying a mirror with \"-m <mirror URL>\"." 1>&2
     fi
 
     apt-get -y update
