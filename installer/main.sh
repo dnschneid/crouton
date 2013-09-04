@@ -55,6 +55,9 @@ Options:
                 first encryption, or auto-detected on existing chroots.
     -m MIRROR   Mirror to use for bootstrapping and apt-get.
                 Default depends on the release chosen.
+                Can only be specified during chroot creation and forced updates
+                (-u -u). After installation, the mirror can be modified using
+                the distribution's recommended way.
     -n NAME     Name of the chroot. Default is the release name.
     -p PREFIX   The root directory in which to install the bin and chroot
                 subdirectories and data. Default: $PREFIX
@@ -113,6 +116,16 @@ fi
 # Download only + update doesn't make sense
 if [ -n "$DOWNLOADONLY" -a -n "$UPDATE" ]; then
     error 2 "$USAGE"
+fi
+
+# MIRROR must not be specified on update
+if [ "$UPDATE" = 1 ]; then
+    if [ -z "$MIRROR" ]; then
+        # Makes sure MIRROR does not get overriden by distribution default
+        MIRROR='unspecified'
+    else
+        error 2 "$USAGE"
+    fi
 fi
 
 # There should never be any extra parameters.
