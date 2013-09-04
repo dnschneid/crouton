@@ -53,7 +53,7 @@ Options:
     -k KEYFILE  File or directory to store the (encrypted) encryption keys in.
                 If unspecified, the keys will be stored in the chroot if doing a
                 first encryption, or auto-detected on existing chroots.
-    -m MIRROR   Mirror to use for bootstrapping and apt-get.
+    -m MIRROR   Mirror to use for bootstrapping and package installation.
                 Default depends on the release chosen.
                 Can only be specified during chroot creation and forced updates
                 (-u -u). After installation, the mirror can be modified using
