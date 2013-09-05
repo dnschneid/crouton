@@ -204,43 +204,15 @@ addtrap "rm -rf '$CRASBUILDTMP' 2>/dev/null"
     /usr/bin/install -sD cras_test_client "$CRASBINDIR/"
 ) # End compilation subshell
 
-TIPSEXTRA=''
+cat > /usr/share/alsa/alsa.conf.d/10-cras.conf <<EOF
+pcm.cras {
+        type cras
+}
+ctl.cras {
+        type cras
+}
 
-# PulseAudio is installed
-if which pulseaudio >/dev/null; then
-    echo "PulseAudio installed: trying to remove it." 1>&2
-
-    # Try to remove pulseaudio without removing dependencies
-    if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
-        # Check if it is installed manually
-        if apt-mark showmanual | grep -q '^pulseaudio$'; then
-            TIPSEXTRA=",\nbecause it has been installed manually"
-        # Try to remove it: will succeed only if no package requires it
-        # (it will still be uninstalled if some packages recommend it)
-        elif ! dpkg -P pulseaudio; then
-            TIPSEXTRA=",\nbecause some packages depend on it"
-        fi
-    fi
-fi
-
-if which pulseaudio >/dev/null; then
-        TIPS="$TIPS
-WARNING: PulseAudio is installed in the chroot, and cannot be removed$TIPSEXTRA.
-Audio forwarding from the chroot to CRAS (Chromium OS audio server) will not
-work.
-"
-else
-    # Make sure PulseAudio does not get installed later on
-    if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
-        cat > /etc/apt/preferences.d/pulseaudio <<EOF
-Package: pulseaudio
-Pin: release *
-Pin-Priority: -1
-EOF
-    fi
-
-    cat > /etc/asound.conf <<EOF
-# Route all audio through the CRAS plugin.
+# Default: route all audio through the CRAS plugin.
 pcm.!default {
         type cras
 }
@@ -249,11 +221,35 @@ ctl.!default {
 }
 EOF
 
-    TIPS="$TIPS
+TIPS="$TIPS
 Audio from the chroot will now be forwarded to CRAS (Chromium OS audio server),
 through an ALSA plugin.
 
 Future Chromium OS upgrades may break compatibility with the installed version
 of CRAS. Should this happen, simply update your chroot.
+"
+
+# Configure pulseaudio (if installed)
+paconfig='/etc/pulse/default.pa'
+if [ -f "$paconfig" ]; then
+    newpaconfig="$paconfig.new"
+    {
+        awk '/^### begin/{x=1}!x;/^### end/{x=0}' "$paconfig"
+        cat <<EOF
+
+### begin crouton-generated CRAS forwarding
+load-module module-alsa-sink device=cras sink_name=cras-sink
+load-module module-alsa-source device=cras source_name=cras-source
+set-default-sink cras-sink
+set-default-source cras-source
+### end crouton-generated CRAS forwarding
+EOF
+    } > "$newpaconfig"
+    mv -f "$newpaconfig" "$paconfig"
+else
+    TIPS="$TIPS
+Finally, PulseAudio was not detected in your chroot. There is nothing wrong
+with that, but audio will break if you install it. If this happens, updating
+the chroot will make PulseAudio aware of CRAS, and fix the problem.
 "
 fi
