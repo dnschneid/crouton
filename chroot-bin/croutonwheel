@@ -65,10 +65,10 @@ aura="`xwininfo -root -children | mawk '/aura_root/ {print $1}'`"
     trap "kill $! $xi 2>&- || true" INT TERM HUP 0
     wait
 } <&- | mawk -W interactive '
-    # Test if x is a non-zero real number (i.e. not nan, inf, or 0)
+    # Test if x is a non-zero real number (i.e. not nan, inf, "", or 0)
     # (x+0 != x+1) tests if the number is not nan or inf.
     function isnonzero(x) {
-        return (x+0 != x+1) && (x != 0)
+        return (int(x) != 0) && (x+0 != x+1)
     }
 
     m {
