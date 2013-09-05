@@ -105,7 +105,7 @@ install_mirror_package() {
     if [ -z "$mirror" ]; then
         error 1 "Cannot detect mirror."
     fi
-    local url="$mirror/$2/"
+    local url="${mirror%/}/${2#/}/"
     local regex="^${package}_${3:-.*}_${ARCH}\.deb$"
     # Find package in directory listing:
     # Filenames are HTML <a href> values, enclosed in quotes.
