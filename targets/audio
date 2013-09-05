@@ -16,10 +16,8 @@ install --minimal --asdeps gcc libc-dev pkg-config \
     libdbus-1-dev libasound2-dev libspeexdsp-dev
 
 # SBC is not available in older Debian/Ubuntu: fetch it manually
-if [ "$DISTRO" = 'ubuntu' -a \
-                "$RELEASE" != 'raring' -a "$RELEASE" != 'saucy' ] ||
-   [ "$DISTRO" = 'debian' -a \
-                "$RELEASE" != 'jessie' -a "$RELEASE" != 'sid' ]; then
+if [ "$RELEASE" = 'precise' -o "$RELEASE" = 'quantal' -o \
+     "$RELEASE" = 'wheezy' ]; then
     install_mirror_package 'libsbc1' 'pool/main/s/sbc' '1\.1.*'
     install_mirror_package 'libsbc-dev' 'pool/main/s/sbc' '1\.1.*'
     apt-mark auto libsbc-dev
@@ -32,177 +30,179 @@ fi
 
 CRASBUILDTMP="`mktemp -d crouton-cras.XXXXXX --tmpdir=/tmp`"
 
-addtrap "cd /; rm -rf '$CRASBUILDTMP' 2>/dev/null"
+addtrap "rm -rf '$CRASBUILDTMP' 2>/dev/null"
 
-cd "$CRASBUILDTMP"
+( # Start subshell for compilation
+    cd "$CRASBUILDTMP"
 
-# Full Chrome OS version (e.g. 4100.86.0)
-CROS_VER="`sed -n 's/^CHROMEOS_RELEASE_VERSION=//p' /var/host/lsb-release`"
-# Major version (e.g. 4100)
-CROS_VER_1="${CROS_VER%%.*}"
+    # Fetch list of branches from repository
+    wget --no-check-certificate -O adhd.refs \
+'https://chromium.googlesource.com/chromiumos/third_party/adhd/+refs/heads?format=TEXT'
 
-# Fetch list of branches from repository
-wget --no-check-certificate -O adhd.refs \
-    'https://git.chromium.org/chromiumos/third_party/adhd.git/info/refs'
+    # Full Chrome OS version (e.g. 4100.86.0)
+    CROS_VER="`sed -n 's/^CHROMEOS_RELEASE_VERSION=//p' /var/host/lsb-release`"
 
-# Prefer release branch (in the form release-R<XX>-<CROS_VER_1>.B)
-ADHD_HEAD="`sed -n \
-    's|.*\trefs/heads/\(release-R[0-9]*-'"$CROS_VER_1"'\([^0-9].*\)*\)$|\1|p' \
-            adhd.refs | sort -V | tail -n 1`"
+    # Find suitable branch (generate patterns in a subshell)
+    for pattern in `echo -n "$CROS_VER" | (
+        IFS="." read CROS_VER_1 CROS_VER_2 CROS_VER_3
+        # Prefer release branch (in the form release-R<XX>-<CROS_VER_1>.B)
+        echo 'release-R[0-9]*-'"$CROS_VER_1"
+        # Otherwise, find the longest matching stabilize branch
+        echo 'stabilize-'"$CROS_VER_1"'\(\.'"$CROS_VER_2"'\(\.'"$CROS_VER_3"'\)*\)*'
+    )`; do
+        ADHD_HEAD="`sed -n \
+            's|^.* refs/heads/\('"$pattern"'\([^0-9].*\)*\)$|\1|p' \
+                    adhd.refs | sort -V | tail -n 1`"
+        if [ -n "$ADHD_HEAD" ]; then
+            break
+        fi
+    done
 
-# Otherwise, find the longest matching stabilize branch
-while [ -z "$ADHD_HEAD" ]; do
-    ADHD_HEAD="`sed -n \
-        's|.*\trefs/heads/\(stabilize-'"$CROS_VER"'\([^0-9].*\)*\)|\1|p' \
-                adhd.refs | sort -V | tail -n 1`"
-    if [ "$CROS_VER" = "$CROS_VER_1" ]; then
-        break
-    fi
-    CROS_VER="${CROS_VER%.*}"
-done
+    # Fallback on master
+    ADHD_HEAD="${ADHD_HEAD:-master}"
 
-# Fallback on master
-ADHD_HEAD="${ADHD_HEAD:-master}"
+    echo "Fetching CRAS (branch $ADHD_HEAD)..." 1>&2
 
-echo "Fetching adhd (branch $ADHD_HEAD)..." 1>&2
+    wget --no-check-certificate -O adhd.tar.gz \
+'https://chromium.googlesource.com/chromiumos/third_party/adhd/+archive/'"$ADHD_HEAD"'.tar.gz'
 
-wget --no-check-certificate -O adhd.tar.gz \
-'https://gerrit.chromium.org/gitweb/?p=chromiumos/third_party/adhd.git;a=snapshot;h=refs/heads/'"$ADHD_HEAD"';sf=tgz'
+    # -m prevents "time stamp is in the future" spam
+    tar -xmf adhd.tar.gz cras/src
+    cd cras/src
 
-tar xf adhd.tar.gz --wildcards 'adhd*/cras/src' --strip 2
-cd src
+    # Directory to install CRAS library/binaries
+    CRASLIBDIR="/usr/local/lib"
+    CRASBINDIR="/usr/local/bin"
 
-# Directory to install CRAS library/binaries
-CRASLIBDIR="/usr/local/lib"
-CRASBINDIR="/usr/local/bin"
+    echo "Compiling CRAS..." 1>&2
+    # Convert Makefile.am to a shell script, and run it.
+    {
+        echo '
+            top_srcdir=".."
+            SBC_LIBS="'"`pkg-config --libs sbc`"'"
+            SBC_CFLAGS="'"`pkg-config --cflags sbc`"'"
+            DBUS_LIBS="'"`pkg-config --libs dbus-1`"'"
+            DBUS_CFLAGS="'"`pkg-config --cflags dbus-1`"'"
+        '
+        sed -e '
+            # Concatenate lines ending in \
+            : start; /\\$/{N; b start}
+            s/ *\\\n[ \t]*/ /g
+            # Convert automake to shell
+            s/^[^ ]*:/#\0/
+            s/^\t/#\0/
+            s/ *= */=/
+            s/\([^ ]*\) *+= */\1=${\1}\ /
+            s/ /\\ /g
+            y/()/{}/
+        ' 'Makefile.am'
+        echo '
+            # buildsources: Build all source files for target
+            #  $1: target
+            #  $2: additional gcc flags
+            # Prints a list of .o files
+            buildsources() {
+                local target="$1"
+                local extragccflags="$2"
 
-echo "Compiling CRAS..." 1>&2
-# Convert Makefile.am to a shell script, and run it.
-{
-    echo '
-        top_srcdir=".."
-        SBC_LIBS="'`pkg-config --libs sbc`'"
-        SBC_CFLAGS="'`pkg-config --cflags sbc`'"
-        DBUS_LIBS="'`pkg-config --libs dbus-1`'"
-        DBUS_CFLAGS="'`pkg-config --cflags dbus-1`'"
-    '
-    sed -e '
-        # Concatenate lines ending in \
-        : start; /\\$/{N; b start}
-        s/ *\\\n[ \t]*/ /g
-        # Convert automake to shell
-        s/^[^ ]*:/#\0/
-        s/^\t/#\0/
-        s/ *= */=/
-        s/\([^ ]*\) *+= */\1=${\1}\ /
-        s/ /\\ /g
-        y/()/{}/
-    ' 'Makefile.am'
-    echo '
-        # buildsources: Build all source files for target
-        #  $1: target
-        #  $2: additional gcc flags
-        # Prints a list of .o files
-        buildsources() {
-            local target="$1"
-            local extragccflags="$2"
+                eval local sources=\"\$${target}_SOURCES\"
+                eval local cppflags=\"\$${target}_CPPFLAGS\"
 
-            eval local sources=\"\$${target}_SOURCES\"
-            eval local cppflags=\"\$${target}_CPPFLAGS\"
+                for dep in $sources; do
+                    if [ "${dep%.c}" != "$dep" ]; then
+                        ofile="${dep%.c}.o"
+                        gcc -c "$dep" -o "$ofile" $cppflags $extragccflags 1>&2
+                        echo -n "$ofile "
+                    fi
+                done
+            }
 
-            for dep in $sources; do
-                if [ "${dep%.c}" != "$dep" ]; then
-                    ofile="${dep%.c}.o"
-                    gcc -c "$dep" -o "$ofile" $cppflags $extragccflags 1>&2
-                    echo "$ofile"
+            # fixlibadd: Fix list of libraries ($1): replace lib<x>.la by -l<x>
+            fixlibadd() {
+                for libdep in $*; do
+                    if [ "${libdep%.la}" != "$libdep" ]; then
+                        libdep="${libdep%.la}"
+                        libdep="-l${libdep#lib}"
+                    fi
+                    echo -n "$libdep "
+                done
+            }
+
+            # buildlib: Build a library
+            #  $1: library name
+            #  $2: additional linker flags
+            buildlib() {
+                local lib="$1"
+                local extraflags="$2"
+                local ofiles="`buildsources "${lib}_la" "-fPIC -DPIC"`"
+
+                eval local libadd=\"\$${lib}_la_LIBADD\"
+                eval local ldflags=\"\$${lib}_la_LDFLAGS\"
+
+                libadd="`fixlibadd $libadd`"
+
+                # Detect library version (e.g. 0.0.0)
+                local fullver="`echo -n "$ldflags" | \
+                  sed -n '\''y/:/./; s/.*-version-info \([0-9.]*\)$/\\1/p'\''`"
+                local shortver=""
+                # Get "short" library version (e.g. 0)
+                if [ -n "$fullver" ]; then
+                    shortver=".${fullver%%.*}"
+                    fullver=".$fullver"
                 fi
-            done
-        }
-
-        # fixlibadd: Fix list of libraries ($1): replace lib<x>.la by -l<x>
-        fixlibadd() {
-            for libdep in $1; do
-                if [ "${libdep%.la}" != "$libdep" ]; then
-                    libdep="${libdep%.la}"
-                    libdep="-l${libdep#lib}"
+                local fullso="$lib.so$fullver"
+                local shortso="$lib.so$shortver"
+                gcc -shared -fPIC -DPIC $ofiles $libadd -o "$fullso" \
+                    $extraflags -Wl,-soname,"$shortso"
+                if [ -n "$fullver" ]; then
+                    ln -sf "$fullso" "$shortso"
+                    # Needed at link-time only
+                    ln -sf "$shortso" "$lib.so"
                 fi
-                echo "$libdep"
-            done
-        }
+            }
 
-        # buildlib: Build a library
-        #  $1: library name
-        #  $2: additional linker flags
-        buildlib() {
-            local lib="$1"
-            local extraflags="$2"
-            local ofiles="`buildsources "${lib}_la" "-fPIC -DPIC"`"
+            # buildexe: Build an executable file
+            #  $1: executable file name
+            #  $2: additional linker flags
+            buildexe() {
+                local exe="$1"
+                local extraflags="$2"
+                local ofiles="`buildsources "$exe" ""`"
 
-            eval local libadd=\"\$${lib}_la_LIBADD\"
-            eval local ldflags=\"\$${lib}_la_LDFLAGS\"
+                eval local ldadd=\"\$${exe}_LDADD\"
+                eval local ldflags=\"\$${exe}_LDFLAGS\"
 
-            libadd="`fixlibadd "$libadd"`"
+                ldadd="`fixlibadd $ldadd`"
 
-            # Detect library version (e.g. 0.0.0)
-            local fullver="`echo -n "$ldflags" | \
-                sed -n '"'"'y/:/./; s/.*-version-info \([0-9.]*\)$/\\1/p'"'"'`"
-            local shortver=""
-            # Get "short" library version (e.g. 0)
-            if [ -n "$fullver" ]; then
-                shortver=".${fullver%%.*}"
-                fullver=".$fullver"
-            fi
-            gcc -shared -fPIC -DPIC $ofiles $libadd -o "$lib.so$fullver" \
-               $extraflags -Wl,-soname -Wl,"$lib.so$shortver"
-            if [ -n "$fullver" ]; then
-                ln -sf $lib.so$fullver $lib.so$shortver
-                # Needed at link-time only
-                ln -sf $lib.so$shortver $lib.so
-            fi
-        }
+                gcc $ofiles $ldadd -o "$exe" $extraflags
+            }
 
-        # buildexe: Build an executable file
-        #  $1: executable file name
-        #  $2: additional linker flags
-        buildexe() {
-            local exe="$1"
-            local extraflags="$2"
-            local ofiles="`buildsources "$exe" ""`"
+            buildlib libcras
 
-            eval local ldadd=\"\$${exe}_LDADD\"
-            eval local ldflags=\"\$${exe}_LDFLAGS\"
+            # Pass -rpath=$CRASLIBDIR to linker, so we do not need to add the
+            # directory to ldconfig search path (some distributions do not
+            # include /usr/local/lib in /etc/ld.so.conf).
+            # We also need to add "-L." as we are not using .la files.
+            extraflags="-Wl,-rpath="'"$CRASLIBDIR"'" -L."
 
-            ldadd="`fixlibadd $ldadd`"
+            buildlib libasound_module_pcm_cras "$extraflags"
+            buildlib libasound_module_ctl_cras "$extraflags"
+            buildexe cras_test_client "$extraflags"
+        '
+    } | sh -s -e $SETOPTIONS
 
-            gcc $ofiles $ldadd -o "$exe" $extraflags
-        }
+    echo "Installing CRAS..." 1>&2
 
-        buildlib libcras
+    ALSALIBDIR="`pkg-config --variable=libdir alsa`/alsa-lib"
 
-        # Pass -rpath=$CRASLIBDIR to linker, so we do not need to add the
-        # directory to ldconfig search path (some distributions do not include
-        # /usr/local/lib in /etc/ld.so.conf).
-        # We also need to add "-L." as we are not using .la files.
-        extraflags="-Wl,-rpath="'"$CRASLIBDIR"'" -L."
-
-        buildlib libasound_module_pcm_cras "$extraflags"
-        buildlib libasound_module_ctl_cras "$extraflags"
-        buildexe cras_test_client "$extraflags"
-    '
-} | sh -es
-
-echo "Installing CRAS..." 1>&2
-
-ALSALIBDIR="`pkg-config --variable=libdir alsa`/alsa-lib/"
-
-mkdir -p "$CRASLIBDIR" "$CRASBINDIR" "$ALSALIBDIR"
-# Only copy libcras.so.X and libcras.so.X.Y.Z
-cp -a libcras.so.* "$CRASLIBDIR"
-/usr/bin/install libasound_module_pcm_cras.so "$ALSALIBDIR"
-/usr/bin/install libasound_module_ctl_cras.so "$ALSALIBDIR"
-/usr/bin/install cras_test_client "$CRASBINDIR"
-
-cd /
+    # Only install libcras.so.X.Y.Z
+    /usr/bin/install -sD libcras.so.*.* "$CRASLIBDIR/"
+    # Generate symbolic link to libcras.so.X
+    ldconfig -l "$CRASLIBDIR"/libcras.so.*.*
+    /usr/bin/install -sD libasound_module_pcm_cras.so "$ALSALIBDIR/"
+    /usr/bin/install -sD libasound_module_ctl_cras.so "$ALSALIBDIR/"
+    /usr/bin/install -sD cras_test_client "$CRASBINDIR/"
+) # End compilation subshell
 
 TIPSEXTRA=''
 
@@ -253,8 +253,7 @@ EOF
 Audio from the chroot will now be forwarded to CRAS (Chromium OS audio server),
 through an ALSA plugin.
 
-When Chromium OS is upgraded (current version: $CROS_VER), the forwarding may
-break as cras is sometimes not compatible across versions. If this happens,
-you need to reinstall the audio target.
+Future Chromium OS upgrades may break compatibility with the installed version
+of CRAS. Should this happen, simply update your chroot.
 "
 fi
