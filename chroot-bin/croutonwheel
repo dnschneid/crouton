@@ -68,7 +68,7 @@ aura="`xwininfo -root -children | mawk '/aura_root/ {print $1}'`"
     # Test if x is a non-zero real number (i.e. not nan, inf, "", or 0)
     # (x+0 != x+1) tests if the number is not nan or inf.
     function isnonzero(x) {
-        return (int(x) != 0) && (x+0 != x+1)
+        return (x != "") && (x != 0) && (x+0 != x+1)
     }
 
     m {
@@ -88,8 +88,8 @@ aura="`xwininfo -root -children | mawk '/aura_root/ {print $1}'`"
     }
 
     !w && /^EVENT type 17/ {
-        # Valuators start at $10
-        if (isnonzero($19) || isnonzero($22)) {
+        # Valuators start at $10; >=10 valuators implies a trackpad
+        if ($19 != "") {
             dx = $14
             dy = $15
             tp = 1
