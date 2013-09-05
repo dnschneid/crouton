@@ -34,11 +34,11 @@ if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
     apt-get clean
 fi
 
-# Add cras audio group
-groupadd -f -r cras
+# Add hwaudio group, for users who want access to hardware audio devices.
+groupadd -f -r hwaudio
 
 # Add the primary user
-groups='audio,video,sudo,plugdev,cras'
+groups='audio,video,sudo,plugdev'
 if ! grep -q ':1000:' /etc/passwd; then
     while ! echo "$username" | grep -q '^[a-z][-a-z0-9_]*$'; do
         if [ -n "$username" ]; then
