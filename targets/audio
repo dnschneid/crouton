@@ -39,27 +39,28 @@ addtrap "rm -rf '$CRASBUILDTMP' 2>/dev/null"
     wget --no-check-certificate -O adhd.refs \
 'https://chromium.googlesource.com/chromiumos/third_party/adhd/+refs/heads?format=TEXT'
 
-    # Full Chrome OS version (e.g. 4100.86.0)
+    # Chrome OS version (e.g. 4100.86.0)
     CROS_VER="`sed -n 's/^CHROMEOS_RELEASE_VERSION=//p' /var/host/lsb-release`"
 
-    # Find suitable branch (generate patterns in a subshell)
-    for pattern in `echo -n "$CROS_VER" | (
-        IFS="." read CROS_VER_1 CROS_VER_2 CROS_VER_3
-        # Prefer release branch (in the form release-R<XX>-<CROS_VER_1>.B)
-        echo 'release-R[0-9]*-'"$CROS_VER_1"
-        # Otherwise, find the longest matching stabilize branch
-        echo 'stabilize-'"$CROS_VER_1"'\(\.'"$CROS_VER_2"'\(\.'"$CROS_VER_3"'\)*\)*'
-    )`; do
-        ADHD_HEAD="`sed -n \
-            's|^.* refs/heads/\('"$pattern"'\([^0-9].*\)*\)$|\1|p' \
-                    adhd.refs | sort -V | tail -n 1`"
-        if [ -n "$ADHD_HEAD" ]; then
-            break
-        fi
-    done
-
-    # Fallback on master
-    ADHD_HEAD="${ADHD_HEAD:-master}"
+    ADHD_HEAD="`mawk '
+        BEGIN {
+            # Default to master if nothing else is found
+            print 0, "master"
+            len = split("'"$CROS_VER"'", crosvers, ".")
+            # Prepare a regex with each additional version component optional
+            for (i = len; i >= 2; i--)
+                verregex = "(\." crosvers[i] verregex ")?"
+            verregex = crosvers[1] verregex "($|\.)"
+        }
+        # Release branches get the highest score
+        $2 ~ "release-(R[^-]*-)?" crosvers[1] "($|\.)" {
+            print 99, $2
+        }
+        # Stabilize branches are scored based on how much of the version they match
+        match($2, "stabilize-" verregex) {
+            print RLENGTH, $2
+        }
+    ' adhd.refs | sort -V | tail -n 1 | cut -d' ' -f2`"
 
     echo "Fetching CRAS (branch $ADHD_HEAD)..." 1>&2
 
@@ -206,18 +207,26 @@ addtrap "rm -rf '$CRASBUILDTMP' 2>/dev/null"
 
 cat > /usr/share/alsa/alsa.conf.d/10-cras.conf <<EOF
 pcm.cras {
-        type cras
+    type cras
+    hint {
+        show on
+        description "Chromium OS Audio Server"
+    }
 }
 ctl.cras {
-        type cras
+    type cras
 }
 
 # Default: route all audio through the CRAS plugin.
 pcm.!default {
-        type cras
+    type cras
+    hint {
+        show on
+        description "Default ALSA Output (currently Chromium OS Audio Server)"
+    }
 }
 ctl.!default {
-        type cras
+    type cras
 }
 EOF
 
@@ -235,21 +244,20 @@ if [ -f "$paconfig" ]; then
     newpaconfig="$paconfig.new"
     {
         awk '/^### begin/{x=1}!x;/^### end/{x=0}' "$paconfig"
+        echo '### begin crouton-generated CRAS forwarding'
         cat <<EOF
-
-### begin crouton-generated CRAS forwarding
 load-module module-alsa-sink device=cras sink_name=cras-sink
 load-module module-alsa-source device=cras source_name=cras-source
 set-default-sink cras-sink
 set-default-source cras-source
-### end crouton-generated CRAS forwarding
 EOF
+        echo '### end crouton-generated CRAS forwarding'
     } > "$newpaconfig"
     mv -f "$newpaconfig" "$paconfig"
 else
     TIPS="$TIPS
-Finally, PulseAudio was not detected in your chroot. There is nothing wrong
-with that, but audio will break if you install it. If this happens, updating
-the chroot will make PulseAudio aware of CRAS, and fix the problem.
+PulseAudio was not detected in your chroot. There is nothing wrong with that,
+but audio will break if you install it later on. Updating the chroot will make
+it work again.
 "
 fi
