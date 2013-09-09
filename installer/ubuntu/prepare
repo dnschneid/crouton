@@ -116,6 +116,13 @@ install_mirror_package() {
     if [ -z "$xvers" ]; then
         error 1 "Error retrieving $package."
     fi
+    # Check if installed version is already up to date
+    local installed="`dpkg-query -l "$package" 2>/dev/null | \
+        awk '$1 ~ /^[hi]i/ { sub(/^[0-9]+:/, "", $3); print $2 "_" $3 }'`"
+    if [ "${xvers%_${ARCH}.deb}" = "$installed" ]; then
+        echo "$package is already up to date ($installed)."
+        return
+    fi
     url="$url$xvers"
     # Download the package to a temporary file
     local deb="`mktemp crouton.XXXXXX --tmpdir=/tmp`"
