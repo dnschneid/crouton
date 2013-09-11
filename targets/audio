@@ -4,6 +4,7 @@
 # found in the LICENSE file.
 REQUIRES='core'
 DESCRIPTION='Forward audio to Chromium OS by installing CRAS plugin for ALSA.'
+CHROOTETC='pulseaudio-default.pa'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
@@ -230,42 +231,30 @@ ctl.!default {
 }
 EOF
 
-# Configure pulseaudio, even if it is not installed (yet).
-# We use ~/.config/pulse/default.pa for this purpose, as /etc/pulse/default.pa
-# would get erased.
+# Configure pulseaudio even if it is not installed (yet).
+# We use ~/.config/pulse/default.pa for this purpose, but the main user may
+# not have been created yet, so we add a script in /etc/profile.d to link
+# ~/.config/pulse/default.pa to /etc/crouton/pulseaudio-default.pa.
 
-# Find main user home directory. Fall back on /etc/skel if no user exists yet
-userinfo="`awk -F: '$3 == "1000" { print }' /etc/passwd`"
-if [ -z "$userinfo" ]; then
-    user="root"
-    userhome="/etc/skel"
-else
-    user="`echo -n "$userinfo" | cut -d: -f 1`"
-    userhome="`echo -n "$userinfo" | cut -d: -f 6`"
-fi
-
+paconfigdir='$HOME/.config/pulse'
 # Old versions of pulseaudio use ~/.pulse/default.pa
 if [ "$RELEASE" = 'precise' -o "$RELEASE" = 'quantal' -o \
      "$RELEASE" = 'wheezy' ]; then
-    paconfigdir="$userhome/.pulse"
-else
-    paconfigdir="$userhome/.config/pulse"
+    paconfigdir='$HOME/.pulse'
 fi
 
-# Create directory and file as user, to make sure permissions are correct
-su "$user" -c "mkdir -p '$paconfigdir'"
-su "$user" -c "cat > '$paconfigdir/default.pa'" <<EOF
-#!/usr/bin/pulseaudio -nF
+profiledsh='/etc/profile.d/crouton-pulseaudio-cras.sh'
+# Make sure symbolic link is setup on login
+echo '#!/bin/sh
 
-# Include default configuration first
-.include /etc/pulse/default.pa
+defaultpa="'"$paconfigdir"'/default.pa"
+# Do not install if user is root, or $HOME does not exist
+if [ "`id -u`" -ne 0 -a -d "$HOME" -a ! -e "$defaultpa" ]; then
+    mkdir -p "'"$paconfigdir"'"
+    ln -sfT /etc/crouton/pulseaudio-default.pa "$defaultpa"
+fi' > "$profiledsh"
 
-# Forward audio to Chromium OS audio server
-load-module module-alsa-sink device=cras sink_name=cras-sink
-load-module module-alsa-source device=cras source_name=cras-source
-set-default-sink cras-sink
-set-default-source cras-source
-EOF
+chmod 755 "$profiledsh"
 
 TIPS="$TIPS
 Audio from the chroot will now be forwarded to CRAS (Chromium OS audio server),
