@@ -28,11 +28,11 @@ installscript() {
         # This should never happen.
         error 1 "Unable to find common functions file."
     fi
-    sed -e "${3:-;}" "$src" | awk '/^\. .*\/installer\/functions/ {
+    awk '/^\. .*\/installer\/functions/ {
         system("'"awk 'ok; !ok && /^###/ {ok=1}' '$thisfile'"'");
         next
     }
-    1' > "$dst"
+    1' "$src" | sed -e "${3:-;}" > "$dst"
 }
 
 ### Everything after this line will be statically inserted into scripts.
@@ -65,4 +65,46 @@ addtrap() {
 undotrap() {
     TRAP="$OLDTRAP"
     settrap "$TRAP"
+}
+
+# Compares $RELEASE to the specified releases, assuming $DISTRO/releases is
+# sorted oldest to newest. Every two parameters are considered criteria that are
+# ANDed together. The first parameter is the comparator, as provided to test.
+# The second parameter is the release to compare to. If a release is not found,
+# the entire comparison fails. Alternatively, you can specify a list of releases
+# that match, in which case $DISTRO/releases isn't consulted.
+# Returns 1 if the release doesn't match, 2 if the comparison wasn't found
+# Example:  release -ge quantal -le saucy
+#           release quantal raring saucy
+release() {
+    if [ "${1#-}" = "$1" ]; then
+        # It's just a list of releases to match
+        while [ "$#" != 0 ]; do
+            if [ "$RELEASE" = "$1" ]; then
+                return 0
+            fi
+            shift
+        done
+        return 1
+    fi
+    if [ "$(($#/2*2))" != "$#" ]; then
+        error 3 "invalid parameters to release(): $*"
+    fi
+    # Load up the list of releases; this will be replaced with a literal list
+    local releases="`cat "$DISTRODIR/releases" 2>/dev/null`"
+    if [ -z "$releases" ]; then
+        error 3 "list of releases for $DISTRO not found"
+    fi
+    local relnum="`echo "$releases" | grep -nm1 "$RELEASE" | cut -d: -f1`"
+    while [ "$#" -ge 2 ]; do
+        local cmp="`echo "$releases" | grep -nm1 "$2" | cut -d: -f1`"
+        if [ -z "$cmp" ]; then
+            return 2
+        fi
+        if [ ! "$relnum" "$1" "$cmp" ]; then
+            return 1
+        fi
+        shift 2
+    done
+    return 0
 }
