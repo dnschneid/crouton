@@ -11,7 +11,7 @@ DISTROAKA='debian'
 
 # install_dist: see install() in prepare.sh for details.
 install_dist() {
-    local pkgs='' pkgsasdeps='' params='' asdeps='' loop='y'
+    local pkgs='' pkgsasdeps='' params='' asdeps=''
     while [ ! "$#" = 0 ]; do
         if [ "$1" = "--minimal" ]; then
             params='--no-install-recommends'
