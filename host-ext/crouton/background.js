@@ -4,7 +4,7 @@
 
 /* Constants */
 var URL = "ws://localhost:30001/";
-var VERSION = "1";
+var VERSION = 1; /* Note: the extension must always be backward compatible */
 var MAXLOGGERLEN = 20;
 var RETRY_TIMEOUT = 5;
 /* String to copy to the clipboard if it should be empty */
@@ -194,7 +194,7 @@ function websocketMessage(evt) {
     /* Only accept version packets until we have received it. */
     if (!active_) {
         if (cmd == 'V') { /* Version */
-            if (payload != VERSION) {
+            if (payload >= 1 && payload <= VERSION) {
                 websocket_.send("EInvalid version (!= " + VERSION + ")");
                 error("Invalid server version " +
                                 payload + " != " + VERSION + ".", false);

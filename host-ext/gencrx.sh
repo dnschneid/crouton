@@ -3,6 +3,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 #
+# This script generates a crx extension package, and is meant to be used by
+# developers: Users should download the extension from the Web Store.
+#
 # We could leverage on Chrome to build the extension, using something like
 # /opt/google/chrome/chrome --pack-extension=crouton
 # However many versions cannot build the package without crashing:
@@ -10,10 +13,7 @@
 #    looks fine.
 #  - 28.0.1500.95 aborts before creating the extension.
 #
-# zip package is not available in Chromium OS, so we cannot run this script
-# during setup.
-#
-# This script is loosely based a script found along the CRX file format
+# This code is loosely based a script found along the CRX file format
 # specification: http://developer.chrome.com/extensions/crx.html
 
 EXTNAME="crouton"

@@ -8,7 +8,6 @@ SCRIPTS := \
 	$(wildcard chroot-bin/*) \
 	$(wildcard chroot-etc/*) \
 	$(wildcard host-bin/*) \
-	$(wildcard host-ext/crouton.crx) \
 	$(wildcard installer/*.sh) installer/functions \
 	$(wildcard installer/*/*) \
 	$(wildcard src/*) \
