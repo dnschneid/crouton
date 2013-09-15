@@ -3,7 +3,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 REQUIRES='core'
-DESCRIPTION='Forward audio to Chromium OS by installing CRAS plugin for ALSA.'
+DESCRIPTION='Support audio playback via Chromium OS'\''s audio system.'
 CHROOTETC='pulseaudio-default.pa'
 . "${TARGETSDIR:="$PWD"}/common"
 
