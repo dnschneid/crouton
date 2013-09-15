@@ -191,13 +191,13 @@ function websocketMessage(evt) {
 
     printLog("Message is received (" + received_msg + ")", LogLevel.DEBUG);
 
-    /* Only accept version packets until we have received it. */
+    /* Only accept version packets until we have received one. */
     if (!active_) {
         if (cmd == 'V') { /* Version */
-            if (payload >= 1 && payload <= VERSION) {
-                websocket_.send("EInvalid version (!= " + VERSION + ")");
+            if (payload < 1 || payload > VERSION) {
+                websocket_.send("EInvalid version (> " + VERSION + ")");
                 error("Invalid server version " +
-                                payload + " != " + VERSION + ".", false);
+                                payload + " > " + VERSION + ".", false);
             }
             /* Set active_ to true */
             setStatus("Connection established.", true);
