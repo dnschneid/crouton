@@ -7,7 +7,7 @@ if [ ! "$TARGETS" = 'help' -a ! "${ARCH#arm}" = "$ARCH" ]; then
     TARGET=xephyr
     . "${TARGETSDIR:="$PWD"}/$TARGET"
 fi
-REQUIRES='core'
+REQUIRES='core audio'
 DESCRIPTION='Basic X11 install. Does not install any desktop environment.'
 CHROOTBIN='croutoncycle croutonpowerd croutonxinitrc-wrapper setres xinit'
 CHROOTETC='xbindkeysrc.scm xserverrc-x11'
