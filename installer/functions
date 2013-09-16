@@ -77,7 +77,7 @@ undotrap() {
 # Returns non-zero if the release doesn't match
 # Example:  release -ge quantal -ge wheezy
 release() {
-    if [ "$(($#/2*2))" != "$#" ]; then
+    if [ "$(($# % 2))" -ne 0 ]; then
         error 3 "invalid parameters to release(): $*"
     fi
     # Load up the list of releases; this will be replaced with a literal list
