@@ -7,7 +7,7 @@ DESCRIPTION='Touchscreen and limited generic gesture support.'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
-if release -ge raring; then
+if release -lt raring; then
     # As of 2013-01-30, pre-Raring touchegg is useless. Download it manually.
     install_mirror_package 'touchegg' 'pool/universe/t/touchegg'
 else
