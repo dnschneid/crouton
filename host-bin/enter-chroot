@@ -195,7 +195,7 @@ fi
 # so that users have access to shared hardware, such as video and audio.
 gfile="$CHROOT/etc/group"
 if [ -f "$gfile" ]; then
-    for group in audio video usb:plugdev; do
+    for group in audio:hwaudio cras:audio video usb:plugdev; do
         hostgroup="${group%:*}"
         chrootgroup="${group#*:}"
         gid="`awk -F: '$1=="'"$hostgroup"'"{print $3; exit}' '/etc/group'`"
@@ -324,6 +324,7 @@ tmpfsmount /var/run 'noexec,nosuid,mode=0755,size=10%'
 tmpfsmount /var/run/lock 'noexec,nosuid,nodev,size=5120k'
 bindmount /var/run/dbus /var/host/dbus
 bindmount /var/run/shill /var/host/shill
+bindmount /var/run/cras /var/host/cras
 bindmount /var/lib/timezone /var/host/timezone
 for m in /lib/modules/*; do
     if [ -d "$m" ]; then
@@ -336,6 +337,9 @@ ln -sfT /dev/shm "`fixabslinks '/var/run'`/shm"
 
 # Add a /run/udev symlink for later versions of udev
 ln -sfT /dev/.udev "`fixabslinks '/var/run'`/udev"
+
+# Add a /var/host/cras symlink for CRAS clients
+ln -sfT /var/host/cras "`fixabslinks '/var/run'`/cras"
 
 # Bind-mount /media, specifically the removable directory
 destmedia="`fixabslinks '/var/host/media'`"
