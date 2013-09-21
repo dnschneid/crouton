@@ -132,8 +132,6 @@ if [ -r /debootstrap ]; then
     # We also can't detect the mounts properly due to the chroot, so we have to
     # hardcode the mounts.
     umount '/sys/fs/fuse/connections' '/var/run/lock' '/var/run'
-    # Our custom /etc/resolv.conf link gets clobbered after bootstrap; save it
-    mv -f /etc/resolv.conf /etc/resolv.conf.save
     # Start the bootstrap
     /debootstrap/debootstrap --second-stage
     # Fix the keyboard mode in case it got reverted to raw
