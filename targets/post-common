@@ -34,9 +34,6 @@ if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
     apt-get clean
 fi
 
-# Add hwaudio group, for users who want access to hardware audio devices.
-groupadd -f -r hwaudio
-
 # Add the primary user
 groups='audio,video,sudo,plugdev'
 if ! grep -q ':1000:' /etc/passwd; then

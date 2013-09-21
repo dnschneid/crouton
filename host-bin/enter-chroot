@@ -207,10 +207,12 @@ if [ -f "$gfile" ]; then
         if [ "$gid" = "$curgid" ]; then
             continue
         elif [ -z "$curgid" ]; then
-            echo "Couldn't find $chrootgroup group in chroot!" 1>&2
-            continue
+            echo "Creating $chrootgroup group with GID $gid..." 1>&2
+            groupcmd=groupadd
+        else
+            echo "Changing $chrootgroup GID from $curgid to $gid..." 1>&2
+            groupcmd=groupmod
         fi
-        echo "Changing $chrootgroup GID from $curgid to $gid..." 1>&2
         move="`awk -F: '$3=='"$gid"'{print $1; exit}' "$gfile"`"
         if [ -n "$move" ]; then
             ngid="$gid"
@@ -218,9 +220,9 @@ if [ -f "$gfile" ]; then
                 ngid="$((ngid+1))"
             done
             echo "Moving $move GID from $gid to $ngid..." 1>&2
-            sed -i "s/:$gid:/:$ngid:/" "$gfile"
+            chroot "$CHROOT" groupmod -g "$ngid" "$move"
         fi
-        sed -i "s/:$curgid:/:$gid:/" "$gfile"
+        chroot "$CHROOT" "$groupcmd" -g "$gid" "$chrootgroup"
     done
 fi
 
