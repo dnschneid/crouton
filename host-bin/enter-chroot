@@ -38,6 +38,11 @@ Options:
 # Common functions
 . "$BINDIR/../installer/functions"
 
+# Safely launch a command ($*) via /bin/sh within the chroot as the root user.
+chrootcmd() {
+    env -i chroot "$CHROOT" su -s '/bin/sh' -c "$*" - root
+}
+
 # Process arguments
 while getopts 'bc:k:ln:t:u:x' f; do
     case "$f" in
@@ -220,9 +225,9 @@ if [ -f "$gfile" ]; then
                 ngid="$((ngid+1))"
             done
             echo "Moving $move GID from $gid to $ngid..." 1>&2
-            chroot "$CHROOT" groupmod -g "$ngid" "$move"
+            chrootcmd groupmod -g "$ngid" "$move"
         fi
-        chroot "$CHROOT" "$groupcmd" -g "$gid" "$chrootgroup"
+        chrootcmd "$groupcmd" -g "$gid" "$chrootgroup"
     done
 fi
 
@@ -383,7 +388,7 @@ if [ ! "$NOLOGIN" = 1 ] && grep -q '^root:' "$passwd" 2>/dev/null; then
     dbususer="`echo "cat /busconfig/user/text()" \
         | xmllint --shell "$CHROOT/etc/dbus-1/system.conf" 2>/dev/null \
         | grep '^[a-z][-a-z0-9_]*$' || true`"
-    env -i chroot "$CHROOT" su -s '/bin/sh' -c "
+    chrootcmd "
         if ! hash dbus-daemon 2>/dev/null; then
             exit 0
         fi
@@ -400,7 +405,7 @@ if [ ! "$NOLOGIN" = 1 ] && grep -q '^root:' "$passwd" 2>/dev/null; then
         dbususer="`id -un "$dbususer" 2>/dev/null || echo "messagebus"`"
         dbusgrp="`id -gn "$dbususer" 2>/dev/null || echo "messagebus"`"
         chown "$dbususer:$dbusgrp" /var/run/dbus
-        dbus-daemon --system --fork' - root
+        dbus-daemon --system --fork'
 fi
 
 # Start the chroot and any specified command
@@ -421,8 +426,7 @@ if [ -n "$NOLOGIN" ]; then
 else
     # Run rc.local
     if [ -n "$firstrun" -a -x "$CHROOT/etc/rc.local" ]; then
-        env -i chroot "$CHROOT" su -s '/bin/sh' -c \
-            'exec /etc/rc.local >/dev/null 2>/dev/null </dev/null' - root \
+        chrootcmd 'exec /etc/rc.local >/dev/null 2>/dev/null </dev/null' \
             || ret=$?
         if [ ! "$ret" = 0 ]; then
             echo "WARNING: /etc/rc.local failed with code $ret" 1>&2
