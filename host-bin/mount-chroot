@@ -4,8 +4,8 @@
 # found in the LICENSE file.
 
 APPLICATION="${0##*/}"
-BINDIR="`dirname "$0"`"
-CHROOTS="`readlink -f "\`dirname "$0"\`/../chroots"`"
+BINDIR="`dirname "\`readlink -f "$0"\`"`"
+CHROOTS="`readlink -f "$BINDIR/../chroots"`"
 CREATE=''
 ENCRYPT=''
 KEYFILE=''

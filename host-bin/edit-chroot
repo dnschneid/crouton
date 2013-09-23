@@ -5,8 +5,8 @@
 
 APPLICATION="${0##*/}"
 BACKUP=''
-BINDIR="`dirname "$0"`"
-CHROOTS="`readlink -f "\`dirname "$0"\`/../chroots"`"
+BINDIR="`dirname "\`readlink -f "$0"\`"`"
+CHROOTS="`readlink -f "$BINDIR/../chroots"`"
 DELETE=''
 ENCRYPT=''
 KEYFILE=''

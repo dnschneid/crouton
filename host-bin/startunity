@@ -12,4 +12,5 @@ By default, it will log into the primary user on the first chroot found.
 
 Options are directly passed to enter-chroot; run enter-chroot to list them."
 
-exec sh -e "`dirname "$0"`/enter-chroot" -t unity "$@" exec startunity
+exec sh -e "`dirname "\`readlink -f "$0"\`"`/enter-chroot" -t unity "$@" \
+    exec startunity

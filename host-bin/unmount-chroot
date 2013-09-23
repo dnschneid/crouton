@@ -5,7 +5,8 @@
 
 APPLICATION="${0##*/}"
 ALLCHROOTS=''
-CHROOTS="`readlink -f "\`dirname "$0"\`/../chroots"`"
+BINDIR="`dirname "\`readlink -f "$0"\`"`"
+CHROOTS="`readlink -f "$BINDIR/../chroots"`"
 EXCLUDEROOT=''
 FORCE=''
 PRINT=''

@@ -5,7 +5,7 @@
 
 APPLICATION="${0##*/}"
 BACKGROUND=''
-BINDIR="`dirname "$0"`"
+BINDIR="`dirname "\`readlink -f "$0"\`"`"
 CHROOTS="`readlink -f "$BINDIR/../chroots"`"
 KEYFILE=''
 LOGIN=''
