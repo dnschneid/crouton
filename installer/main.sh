@@ -178,11 +178,18 @@ if [ "$RELEASE" = 'list' -o "$RELEASE" = 'help' ]; then
         DISTRODIR="${DISTRODIR%/}"
         DISTRO="${DISTRODIR##*/}"
         echo "Recognized $DISTRO releases:" 1>&2
-        echo -n '   ' 1>&2
+        accum=''
         while read RELEASE; do
-            echo -n " $RELEASE" 1>&2
+            newaccum="${accum:-"   "} $RELEASE"
+            if [ "${#newaccum}" -gt 80 ]; then
+                echo "$accum" 1>&2
+                newaccum="    $RELEASE"
+            fi
+            accum="$newaccum"
         done < "$DISTRODIR/releases"
-        echo 1>&2
+        if [ -n "$accum" ]; then
+            echo "$accum" 1>&2
+        fi
     done
     exit 2
 fi
