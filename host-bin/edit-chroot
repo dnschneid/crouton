@@ -114,7 +114,16 @@ fi
 # If we're restoring and specified a tarball and no name, detect the name.
 if [ -n "$RESTORE" -a -n "$TARBALL" -a $# = 0 ]; then
     echo 'Detecting chroot name...' 1>&2
-    NAME="`tar -tf "$TARBALL" 2>/dev/null | head -n 1`"
+    label="`tar --test-label -f "$TARBALL" 2>/dev/null`"
+    if [ -n "$label" ]; then
+        if [ "${label#crouton:backup}" = "$label" ]; then
+            error 2 "$TARBALL doesn't appear to be a valid crouton backup."
+        fi
+        NAME="${label#*-}"
+    else
+        # Old backups just use the first folder name
+        NAME="`tar -tf "$TARBALL" 2>/dev/null | head -n 1`"
+    fi
     if [ -z "$NAME" ]; then
         error 2 "$TARBALL doesn't appear to be a valid tarball."
     fi
@@ -207,8 +216,9 @@ for NAME in "$@"; do
     # Backup the chroot
     if [ -n "$BACKUP" ]; then
         dest="$TARBALL"
+        date="`date '+%Y%m%d-%H%M'`"
         if [ -z "$dest" -o -d "$TARBALL" ]; then
-            dest="$TARBALL$NAME-`date '+%Y%m%d-%H%M'`.tar"
+            dest="$TARBALL$NAME-$date.tar"
             # Only compress if it's not encrypted (it'd be a waste of time)
             if [ ! -f "$CHROOT/.ecryptfs" ]; then
                 dest="$dest.gz"
@@ -216,6 +226,7 @@ for NAME in "$@"; do
         fi
         echo -n "  Backing up $CHROOT to $dest..." 1>&2
         tar --checkpoint=100 --checkpoint-action=exec=echo --one-file-system \
+            -V "crouton:backup.${date%-*}${date#*-}-$NAME" \
             -caf "$dest" -C "$CHROOTS" "$NAME" | spinner
         echo "Finished backing up $CHROOT to $dest" 1>&2
     fi
@@ -233,7 +244,7 @@ for NAME in "$@"; do
                     continue
                 fi
                 # Confirm it's a tarball
-                if ! tar --test-label -f "$file" 2>/dev/null; then
+                if ! tar --test-label -f "$file" >/dev/null 2>&1; then
                     continue
                 fi
                 # Since * alphabetizes, always keep the last one
@@ -243,7 +254,7 @@ for NAME in "$@"; do
                 error 2 "Unable to find a tarball for $NAME. You can specify one with -f."
             fi
             echo "Found $src for restoring $NAME." 1>&2
-        elif ! tar --test-label -f "$src" 2>/dev/null; then
+        elif ! tar --test-label -f "$src" >/dev/null 2>&1; then
             error 2 "$src doesn't appear to be a valid tarball."
         fi
         if [ -n "$EXISTS" ]; then

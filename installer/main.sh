@@ -139,8 +139,21 @@ if [ -z "$DOWNLOADONLY" -a -n "$TARBALL" ]; then
         error 2 "$TARBALL not found."
     fi
     echo 'Detecting archive release and architecture...' 1>&2
-    releasearch="`tar -tf "$TARBALL" 2>/dev/null | head -n 1`"
-    releasearch="${releasearch%%/*}"
+    label="`tar --test-label -f "$TARBALL" 2>/dev/null`"
+    if [ -n "$label" ]; then
+        if [ "${label#crouton:bootstrap}" = "$label" ]; then
+            echo "$TARBALL doesn't appear to be a valid crouton bootstrap." 1>&2
+            echo "Proceeding anyway..." 1>&2
+            label=''
+            # FIXME(dnschneid): this is an error once we add a restore command
+            # error 2 "$TARBALL doesn't appear to be a valid crouton bootstrap."
+        fi
+        releasearch="${label#*.}"
+    else
+        # Old bootstraps just use the first folder name
+        releasearch="`tar -tf "$TARBALL" 2>/dev/null | head -n 1`"
+        releasearch="${releasearch%%/*}"
+    fi
     if [ ! "${releasearch#*-}" = "$releasearch" ]; then
         ARCH="${releasearch#*-}"
         RELEASE="${releasearch%-*}"
