@@ -219,13 +219,13 @@ $passphrase" | ecryptfs-rewrap-passphrase "$wrappedfnek" -
 
         # Add keys to keychain and extract
         keysig="`echo -n "$passphrase" \
-            | ecryptfs-unwrap-passphrase "$wrappedkey" - \
-            | ecryptfs-add-passphrase - \
-            | sed 's/.*\[\(.*\)\].*/\1/'`"
+            | ecryptfs-unwrap-passphrase "$wrappedkey" - 2>/dev/null \
+            | ecryptfs-add-passphrase - 2>/dev/null \
+            | sed -n 's/.*\[\([0-9a-zA-Z]*\)\].*/\1/p'`"
         fneksig="`echo -n "$passphrase" \
-            | ecryptfs-unwrap-passphrase "$wrappedfnek" - \
-            | ecryptfs-add-passphrase - \
-            | sed 's/.*\[\(.*\)\].*/\1/'`"
+            | ecryptfs-unwrap-passphrase "$wrappedfnek" - 2>/dev/null \
+            | ecryptfs-add-passphrase - 2>/dev/null \
+            | sed -n 's/.*\[\([0-9a-zA-Z]*\)\].*/\1/p'`"
         if [ -z "$keysig" -o -z "$fneksig" ]; then
             error 1 "Failed to decrypt $NAME."
         fi
