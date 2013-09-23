@@ -81,6 +81,7 @@ addtrap "rm -rf '$CRASBUILDTMP' 2>/dev/null"
     {
         echo '
             top_srcdir=".."
+            top_builddir=".."
             SBC_LIBS="'"`pkg-config --libs sbc`"'"
             SBC_CFLAGS="'"`pkg-config --cflags sbc`"'"
             DBUS_LIBS="'"`pkg-config --libs dbus-1`"'"
