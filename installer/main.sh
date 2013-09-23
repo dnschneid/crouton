@@ -107,6 +107,16 @@ while getopts 'a:def:k:m:n:p:P:r:s:t:T:uV' f; do
 done
 shift "$((OPTIND-1))"
 
+# Check against the minimum version of Chromium OS
+if ! awk -F= '/_RELEASE_VERSION=/ { exit int($2) < '"${CROS_MIN_VERS:-0}"' }' \
+        '/etc/lsb-release' 2>/dev/null; then
+    error 2 "Your version of Chromium OS is extraordinarily old.
+If there are updates pending, please reboot and try again.
+Otherwise, you may not be getting automatic updates, in which case you should
+post your update_engine.log from chrome://system to http://crbug.com/296768 and
+restore your device using a recovery USB: http://goo.gl/AZ74hj"
+fi
+
 # If targets weren't specified, we should just print help text.
 if [ -z "$DOWNLOADONLY" -a -z "$UPDATE" -a -z "$TARGETS" -a -z "$TARGETFILE" \
         -a ! "$RELEASE" = 'list' -a ! "$RELEASE" = 'help' ]; then
@@ -447,7 +457,7 @@ fi
 echo 'Preparing chroot environment...' 1>&2
 VAREXPAND="s #ARCH $ARCH ;s #MIRROR $MIRROR ;"
 VAREXPAND="${VAREXPAND}s #DISTRO $DISTRO ;s #RELEASE $RELEASE ;"
-VAREXPAND="${VAREXPAND}s #PROXY $PROXY ;s #VERSION $VERSION ;"
+VAREXPAND="${VAREXPAND}s #PROXY $PROXY ;s #VERSION ${VERSION:-"git"} ;"
 VAREXPAND="${VAREXPAND}s/#SETOPTIONS/$SETOPTIONS/;"
 installscript "$INSTALLERDIR/prepare.sh" "$CHROOT/prepare.sh" "$VAREXPAND"
 # Append the distro-specific prepare.sh

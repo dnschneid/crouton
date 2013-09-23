@@ -36,6 +36,9 @@
 
 VERSION='git'
 
+# Minimum Chromium OS version is R28 stable
+CROS_MIN_VERS=4100
+
 if [ "$1" = '-x' -a "$#" -le 2 ]; then
     # Extract to the specified directory.
     SCRIPTDIR="${2:-"${0##*/}.unbundled"}"
