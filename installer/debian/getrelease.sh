@@ -17,7 +17,7 @@ if [ ! -f "$sources" ]; then
 fi
 
 rel="`awk '/^deb /{print $3; exit}' "${1%/}/etc/apt/sources.list"`"
-if [ -z "$rel" ] || ! grep -q "^$rel\$" "`dirname "$0"`/releases"; then
+if [ -z "$rel" ] || ! grep -q "^$rel\\>" "`dirname "$0"`/releases"; then
     exit 1
 fi
 

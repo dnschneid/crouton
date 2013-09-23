@@ -191,6 +191,7 @@ if [ "$RELEASE" = 'list' -o "$RELEASE" = 'help' ]; then
             echo "$accum" 1>&2
         fi
     done
+    echo 'Releases marked with * are unsupported, but may work with some effort.' 1>&2
     exit 2
 fi
 
@@ -201,7 +202,14 @@ if [ -n "$RELEASE" -o -z "$UPDATE" ]; then
     fi
     for DISTRODIR in "$INSTALLERDIR"/*/; do
         DISTRODIR="${DISTRODIR%/}"
-        if grep -q "^$RELEASE\$" "$DISTRODIR/releases"; then
+        releaseline="`grep "^$RELEASE\\>" "$DISTRODIR/releases" || true`"
+        if [ -n "$releaseline" ]; then
+            if [ "${releaseline%"*"}" != "$releaseline" ]; then
+                echo "WARNING: $RELEASE is an unsupported release.
+You will likely run into issues, but things may work with some effort.
+Press Ctrl-C to abort; installation will continue in 5 seconds." 1>&2
+                sleep 5
+            fi
             DISTRO="${DISTRODIR##*/}"
             . "$DISTRODIR/defaults"
             break

@@ -85,12 +85,14 @@ release() {
     if [ -z "$releases" ]; then
         error 3 "list of releases for $DISTRO not found"
     fi
-    local relnum="`echo "$releases" | awk "/^$RELEASE/ {print NR; exit}"`"
+    # End-of-word regex for awk
+    local eow='([^a-z]|$)'
+    local relnum="`echo "$releases" | awk "/^$RELEASE$eow/ {print NR; exit}"`"
     if [ -z "$relnum" ]; then
         error 3 "$RELEASE not found in $DISTRO"
     fi
     while [ "$#" -ge 2 ]; do
-        local cmp="`echo "$releases" | awk "/^$2/ {print NR; exit}"`"
+        local cmp="`echo "$releases" | awk "/^$2$eow/ {print NR; exit}"`"
         if [ -n "$cmp" ] && test "$relnum" "$1" "$cmp"; then
             return 0
         fi
