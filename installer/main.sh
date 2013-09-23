@@ -416,7 +416,8 @@ if [ -z "$NODOWNLOAD" ] && [ -n "$DOWNLOADONLY" -o -z "$TARBALL" ]; then
     # Tar it up if we're only downloading
     if [ -n "$DOWNLOADONLY" ]; then
         echo 'Compressing bootstrap files...' 1>&2
-        $FAKEROOT tar -C "$tmp" -cajf "$TARBALL" "$subdir"
+        $FAKEROOT tar -C "$tmp" -V "crouton:bootstrap.$subdir" \
+                      -cajf "$TARBALL" "$subdir"
         echo 'Done!' 1>&2
         exit 0
     fi
