@@ -187,7 +187,7 @@ compile() {
     local tmp="`mktemp crouton.XXXXXX --tmpdir=/tmp`"
     addtrap "rm -f '$tmp' 2>/dev/null"
     gcc -xc -Os - $linker -o "$tmp"
-    /usr/bin/install -sD "$tmp" "$out"
+    /usr/bin/install -sDT "$tmp" "$out"
 }
 
 
