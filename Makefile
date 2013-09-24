@@ -3,7 +3,6 @@
 # found in the LICENSE file.
 
 TARGET = crouton
-TARGETTMP = .$(TARGET).tmp
 WRAPPER = build/wrapper.sh
 SCRIPTS := \
 	$(wildcard chroot-bin/*) \
@@ -18,20 +17,21 @@ VERSION = 0
 TARPARAMS ?= -j
 
 $(TARGET): $(WRAPPER) $(SCRIPTS) $(GENVERSION) Makefile
-	sed -e "s/\$$TARPARAMS/$(TARPARAMS)/" \
-		-e "s/VERSION=.*/VERSION='$(shell $(GENVERSION) $(VERSION))'/" \
-		$(WRAPPER) > $(TARGETTMP)
-	tar --owner=root --group=root -c $(TARPARAMS) $(SCRIPTS) >> $(TARGETTMP)
-	chmod +x $(TARGETTMP)
-	mv -f $(TARGETTMP) $(TARGET)
+	{ \
+		sed -e "s/\$$TARPARAMS/$(TARPARAMS)/" \
+			-e "s/VERSION=.*/VERSION='$(shell $(GENVERSION) $(VERSION))'/" \
+			$(WRAPPER) \
+		&& tar --owner=root --group=root -c $(TARPARAMS) $(SCRIPTS) \
+		&& chmod +x /dev/stdout \
+	;} > $(TARGET)
 
 croutoncursor: src/cursor.c Makefile
 	gcc -g -Wall -Werror src/cursor.c -lX11 -lXfixes -lXrender -o croutoncursor
 
-croutonticks: src/ticks.c Makefile
-	gcc -g -Wall -Werror src/ticks.c -lrt -o croutonticks
+croutonxi2event: src/xi2event.c Makefile
+	gcc -g -Wall -Werror src/xi2event.c -lX11 -lXi -o croutonxi2event
 
 clean:
-	rm -f $(TARGETTMP) $(TARGET) croutoncursor croutonticks
+	rm -f $(TARGET) croutoncursor croutonxi2event
 
 .PHONY: clean
