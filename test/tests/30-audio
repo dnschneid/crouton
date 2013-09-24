@@ -11,6 +11,23 @@ if [ -z "$release" ]; then
 fi
 
 snapshot "$release" core
+
+# FIXME: We are lacking a test for arch non-multilib here...
+# Arch: Enable multilib repository
+if [ "`uname -m`" = "x86_64" ]; then
+    echo '
+        if  [ "${DISTROAKA:-"$DISTRO"}" = "arch" ]; then
+            # Enable multilib
+            cat >> /etc/pacman.conf << END
+[multilib]
+Include = /etc/pacman.d/mirrorlist
+END
+            pacman --noconfirm -Sy
+            yes | pacman -S gcc-libs-multilib
+        fi
+    ' | crouton -T -U -n "$release"
+fi
+
 crouton -u -n "$release" -t audio
 
 # We pass -fdat to aplay/arecord, which means 48kHz, 16-bit, stereo.
@@ -32,6 +49,19 @@ if [ "`uname -m`" = "x86_64" ]; then
                 dpkg -x alsa-utils_*_i386.deb .
                 mv usr/bin/* .
             )
+        elif  [ "${DISTROAKA:-"$DISTRO"}" = "arch" ]; then
+            (
+                cd /home/tmp
+                mirror="`sed -n \
+                    -e '\''s/^Server *= *//p'\'' /etc/pacman.d/mirrorlist | \
+                            head -n 1 | sed -e '\''s/$repo/extra/'\'' \
+                                            -e '\''s/$arch/i686/'\''`"
+                filename="`wget "$mirror" -O- -q \
+           | sed -n -e '\''s/.*"\(alsa-utils-[^\"]*.tar\.[^\."]*\)".*/\1/p'\'' \
+                    | head -n 1`"
+                wget "$mirror/$filename"
+                tar xf $filename usr/bin --strip-components=2
+            )
         else
             # Other distributions must be implemented or explicitly ignored
             error 1 "Cannot fetch alsa-utils:i386 for $DISTRO"
@@ -47,7 +77,7 @@ if [ "`uname -m`" = "x86_64" ]; then
     '
 fi
 
-echo 'install pulseaudio pulseaudio-utils' | \
+echo 'install pulseaudio arch=,pulseaudio-utils arch=pulseaudio-alsa,' | \
     crouton -T -U -n "$release"
 exitswithin 0 30 host enter-chroot -n "$release" sh -exc '
     pulseaudio --start
