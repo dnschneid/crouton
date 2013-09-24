@@ -23,7 +23,7 @@ $(TARGET): $(WRAPPER) $(SCRIPTS) $(GENVERSION) Makefile
 			$(WRAPPER) \
 		&& tar --owner=root --group=root -c $(TARPARAMS) $(SCRIPTS) \
 		&& chmod +x /dev/stdout \
-	;} > $(TARGET)
+	;} > $(TARGET) || ! rm -f $(TARGET)
 
 croutoncursor: src/cursor.c Makefile
 	gcc -g -Wall -Werror src/cursor.c -lX11 -lXfixes -lXrender -o croutoncursor
