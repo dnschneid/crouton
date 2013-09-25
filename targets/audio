@@ -43,18 +43,18 @@ addtrap "rm -rf '$CRASBUILDTMP' 2>/dev/null"
     # Chrome OS version (e.g. 4100.86.0)
     CROS_VER="`sed -n 's/^CHROMEOS_RELEASE_VERSION=//p' /var/host/lsb-release`"
 
-    ADHD_HEAD="`mawk '
+    ADHD_HEAD="`awk '
         BEGIN {
             # Default to master if nothing else is found
             print 0, "master"
             len = split("'"$CROS_VER"'", crosvers, ".")
             # Prepare a regex with each additional version component optional
             for (i = len; i >= 2; i--)
-                verregex = "(\." crosvers[i] verregex ")?"
-            verregex = crosvers[1] verregex "($|\.)"
+                verregex = "(\\\\." crosvers[i] verregex ")?"
+            verregex = crosvers[1] verregex "($|\\\\.)"
         }
         # Release branches get the highest score
-        $2 ~ "release-(R[^-]*-)?" crosvers[1] "($|\.)" {
+        $2 ~ "release-(R[^-]*-)?" crosvers[1] "($|\\\\.)" {
             print 99, $2
         }
         # Stabilize branches are scored based on how much of the version they match
