@@ -158,13 +158,20 @@ relaunch_setup() {
 
 
 # Fixes the tty keyboard mode. keyboard-configuration puts tty1~6 in UTF8 mode,
-# assuming they are consoles. Since everything other than tty2 can be an X11
-# session, we need to revert those back to RAW. keyboard-configuration could be
-# reconfigured after bootstrap, dpkg --configure -a, or dist-upgrade.
+# assuming they are consoles. This isn't true for Chromium OS and crouton, and
+# X11 sessions need to be in RAW mode. We do the smart thing and revert ttys
+# with X sessions back to RAW.  keyboard-configuration could be reconfigured
+# after bootstrap, dpkg --configure -a, or dist-upgrade.
 fixkeyboardmode() {
     if hash kbd_mode 2>/dev/null; then
-        for tty in 1 3 4 5 6; do
-            kbd_mode -s -C "/dev/tty$tty"
+        for tty in `ps -CX -CXorg -otname=`; do
+            # On some systems, the tty of Chromium OS returns ?
+            if [ "$tty" = "?" ]; then
+                tty='tty1'
+            fi
+            if [ -e "/dev/$tty" ]; then
+                kbd_mode -s -C "/dev/$tty"
+            fi
         done
     fi
 }

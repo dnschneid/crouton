@@ -134,8 +134,6 @@ if [ -r /debootstrap ]; then
     umount '/sys/fs/fuse/connections' '/var/run/lock' '/var/run'
     # Start the bootstrap
     /debootstrap/debootstrap --second-stage
-    # Fix the keyboard mode in case it got reverted to raw
-    fixkeyboardmode
     # Clean contents of /var/run (since we'll always be mounting over it).
     rm -rf /var/run/*
     # Request a script restart to refresh the mount environment
