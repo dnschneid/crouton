@@ -2,7 +2,7 @@
 # Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-DESCRIPTION='Google Chrome browser, beta. Replaces Chromium if specified first.'
+DESCRIPTION='Google Chrome browser, beta channel.'
 . "${TARGETSDIR:="$PWD"}/chrome-common"
 
 ### Append to prepare.sh:

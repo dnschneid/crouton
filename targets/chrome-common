@@ -15,7 +15,6 @@ if [ ! "$TARGETS" = 'help' -a ! "${ARCH#arm}" = "$ARCH" ]; then
     . "${TARGETSDIR:="$PWD"}/$TARGET"
 fi
 REQUIRES='x11'
-echo 'chromium' >> "${TARGETDEDUPFILE:-/dev/null}"
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:

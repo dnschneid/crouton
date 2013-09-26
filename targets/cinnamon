@@ -10,7 +10,7 @@ if [ ! "$TARGETS" = 'help' ]; then
         error 1 "cinnamon target not available on $RELEASE."
     fi
 fi
-REQUIRES='chromium gtk-extra'
+REQUIRES='gtk-extra'
 DESCRIPTION='Installs the Cinnamon desktop environment. (Approx. 300MB)'
 HOSTBIN='startcinnamon'
 CHROOTBIN='startcinnamon gnome-session-wrapper'
