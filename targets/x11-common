@@ -29,6 +29,9 @@ echo 'mode: blank' > /etc/skel/.xscreensaver
 # Create /usr/share/desktop-directories to avoid issues with xdg-desktop-menu
 mkdir -p /usr/share/desktop-directories
 
+# Prevent Upstart from taking over X sessions
+echo > /etc/upstart-xsessions
+
 # Update policies for mounting and unmounting devices with udisks2
 mkdir -p '/etc/polkit-1/localauthority/10-vendor.d'
 cat > '/etc/polkit-1/localauthority/10-vendor.d/10-crouton-udisks2.pkla' <<EOF
