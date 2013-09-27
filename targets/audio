@@ -198,13 +198,14 @@ addtrap "rm -rf '$CRASBUILDTMP' 2>/dev/null"
 
     ALSALIBDIR="`pkg-config --variable=libdir alsa`/alsa-lib"
 
+    mkdir -p "$CRASLIBDIR/" "$ALSALIBDIR/"
     # Only install libcras.so.X.Y.Z
-    /usr/bin/install -sD libcras.so.*.* "$CRASLIBDIR/"
+    /usr/bin/install -s libcras.so.*.* "$CRASLIBDIR/"
     # Generate symbolic link to libcras.so.X
     ldconfig -l "$CRASLIBDIR"/libcras.so.*.*
-    /usr/bin/install -sD libasound_module_pcm_cras.so "$ALSALIBDIR/"
-    /usr/bin/install -sD libasound_module_ctl_cras.so "$ALSALIBDIR/"
-    /usr/bin/install -sD cras_test_client "$CRASBINDIR/"
+    /usr/bin/install -s libasound_module_pcm_cras.so "$ALSALIBDIR/"
+    /usr/bin/install -s libasound_module_ctl_cras.so "$ALSALIBDIR/"
+    /usr/bin/install -s cras_test_client "$CRASBINDIR/"
 ) # End compilation subshell
 
 cat > /usr/share/alsa/alsa.conf.d/10-cras.conf <<EOF
