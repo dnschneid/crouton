@@ -109,8 +109,7 @@ elif [ -n "$TARGET" ]; then
     fi
 fi
 
-# Prevent kernel panic due to hung task timeout when doing large I/O transfers
-# to slow devices.
+# Avoid kernel panics due to slow I/O
 disablehungtask
 
 # Make sure we always exit with echo on the tty.

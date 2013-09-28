@@ -144,10 +144,7 @@ if [ ! $# = 0 ]; then
 fi
 
 if [ "$USER" = root -o "$UID" = 0 ]; then
-    # If running as root, prevent kernel panic due to hung task timeout when
-    # doing large I/O transfers to slow devices. This is also done in
-    # enter-chroot, but we need to do it earlier to avoid the issue while
-    # restoring from tarball or bootstrapping.
+    # Avoid kernel panics due to slow I/O when restoring or bootstrapping
     disablehungtask
 fi
 

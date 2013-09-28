@@ -67,14 +67,11 @@ undotrap() {
     settrap "$TRAP"
 }
 
-# Do not panic on hung task timeout.
-# Large writes on the Samsung ARM Chromebook, especially to external devices
-# (SD card or USB stick) can cause a task to be stuck for longer than 120
-# seconds, which would cause a kernel panic (and an immediate reboot).
-# Instead of disabling the timeout altogether, we just make sure the kernel
-# does not panic (this is the default configuration of a vanilla kernel).
-# See http://code.google.com/p/chromium/issues/detail?id=260955 for details,
-# and why this may not be fixed upstream.
+# Large writes to slow devices (e.g. SD card or USB stick) can cause a task to
+# be stuck for longer than 120 seconds, which triggers a kernel panic (and an
+# immediate reboot). Instead of disabling the timeout altogether, we just make
+# sure the kernel does not panic (this is the default configuration of a vanilla
+# kernel). See crbug.com/260955 for details.
 disablehungtask() {
     echo 0 > /proc/sys/kernel/hung_task_panic
 }
