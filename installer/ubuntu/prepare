@@ -106,7 +106,7 @@ install_mirror_package() {
         error 1 "Cannot detect mirror."
     fi
     local url="${mirror%/}/${2#/}/"
-    local regex="^${package}_${3:-.*}_${ARCH}\.deb$"
+    local regex="^${package}_${3:-.*}_(${ARCH}|all)\.deb$"
     # Find package in directory listing:
     # Filenames are HTML <a href> values, enclosed in quotes.
     local xvers="`wget -O- "$url" -nv \
@@ -119,7 +119,7 @@ install_mirror_package() {
     # Check if installed version is already up to date
     local installed="`dpkg-query -l "$package" 2>/dev/null | \
         awk '$1 ~ /^[hi]i/ { sub(/^[0-9]+:/, "", $3); print $2 "_" $3 }'`"
-    if [ "${xvers%_${ARCH}.deb}" = "$installed" ]; then
+    if [ "${xvers%_*}" = "$installed" ]; then
         echo "$package is already up to date ($installed)."
         return
     fi
