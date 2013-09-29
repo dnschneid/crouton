@@ -8,3 +8,11 @@ DESCRIPTION='GTK-based tools including gdebi, gksu, and a simple browser.'
 
 ### Append to prepare.sh:
 install gdebi gksu netsurf-gtk
+
+# Add netsurf-gtk to Debian-alternatives if not already there
+netsurf='/usr/bin/netsurf-gtk'
+for link in x-www-browser gnome-www-browser; do
+    if ! update-alternatives --query "$link" | grep -q "$netsurf"; then
+        update-alternatives --install "/usr/bin/$link" "$link" "$netsurf" 10
+    fi
+done
