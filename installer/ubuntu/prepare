@@ -79,7 +79,7 @@ list_uninstalled_dist() {
         # function to pick one of the alternative).
         pkg="`apt-cache search --names-only "^$pkg\$" |
                   awk 'x{x=""; exit} !x{x=$1} END{print x?x:"'"$pkg"'"}'`"
-        if ! dpkg-query -l "$pkg" 2>/dev/null | grep -q '^[ih]'; then
+        if ! dpkg-query -l "$pkg" 2>/dev/null | grep -q '^[ih]i'; then
             echo -n "$pkg$suffix "
         fi
     done
