@@ -82,7 +82,7 @@ toucheggconf='/etc/touchegg.conf'
 if [ -f "$toucheggconf" ]; then
     mkdir -p "$HOME/.config/touchegg"
     ln -sf "$toucheggconf" "$HOME/.config/touchegg/"
-    touchegg &
+    touchegg 2>/dev/null &
 fi
 
 # Configure trackpad settings if needed
