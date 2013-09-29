@@ -7,4 +7,4 @@ DESCRIPTION='Installs LXDE along with common applications. (Approx. 800MB)'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
-install lubuntu-desktop -- chromium-browser network-manager
+install lubuntu-desktop -- network-manager
