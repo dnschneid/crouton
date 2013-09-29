@@ -191,11 +191,10 @@ compile() {
     local pkgs="gcc libc6-dev $*"
     install --minimal --asdeps $pkgs </dev/null
     echo "Compiling $out..." 1>&2
-    ret=0
-    if ! gcc -xc -Os - $linker -o "$out" || ! strip "$out"; then
-        ret=1
-    fi
-    return $ret
+    local tmp="`mktemp crouton.XXXXXX --tmpdir=/tmp`"
+    addtrap "rm -f '$tmp' 2>/dev/null"
+    gcc -xc -Os - $linker -o "$tmp"
+    /usr/bin/install -sDT "$tmp" "$out"
 }
 
 
