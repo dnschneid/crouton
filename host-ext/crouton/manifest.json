@@ -15,6 +15,7 @@
   },
   "permissions": [
     "clipboardRead",
-    "clipboardWrite"
+    "clipboardWrite",
+    "tabs"
   ]
 }

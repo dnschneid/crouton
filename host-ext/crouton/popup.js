@@ -1,3 +1,3 @@
 document.addEventListener('DOMContentLoaded', function() {
-    chrome.extension.getBackgroundPage().refreshPopup();
+    chrome.extension.getBackgroundPage().refreshUI();
 });

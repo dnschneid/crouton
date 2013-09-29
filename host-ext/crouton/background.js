@@ -31,7 +31,20 @@ var dummystr_ = false; /* true if the last string we copied was the dummy string
 var status_ = "";
 var logger_ = []; /* Array of status messages: [LogLevel, time, message] */
 
-function updateIcon() {
+/* Set the current status string.
+ * active is a boolean, true if the WebSocket connection is established. */
+function setStatus(status, active) {
+    active_ = active;
+    status_ = status;
+    refreshUI();
+}
+
+function showHelp() {
+    chrome.tabs.create({url: "first.html"});
+}
+
+/* Update the icon, and refresh the popup page */
+function refreshUI() {
     if (error_)
         icon = "icon-error-38.png"
     else if (!enabled_)
@@ -42,24 +55,17 @@ function updateIcon() {
         icon = "icon-offline-38.png";
 
     chrome.browserAction.setIcon({path: icon});
-}
 
-/* Set the current status string.
- * active is a boolean, true if the WebSocket connection is established. */
-function setStatus(status, active) {
-    active_ = active;
-    updateIcon();
-
-    status_ = status;
-    refreshPopup();
-}
-
-/* Refresh the popup page */
-function refreshPopup() {
     var views = chrome.extension.getViews({type: "popup"});
     for (var i = 0; i < views.length; views++) {
         /* Make sure page is ready */
         if (document.readyState === "complete") {
+            /* Update icon */
+            popupicon = views[i].document.getElementById("icon");
+            popupicon.src = icon;
+            /* Update "help" link */
+            helplink = views[i].document.getElementById("help");
+            helplink.onclick = showHelp;
             /* Update enable/disable link. */
             /* FIXME: Sometimes, there is a little box coming around the link */
             enablelink = views[i].document.getElementById("enable");
@@ -72,7 +78,7 @@ function refreshPopup() {
                         websocket_.close();
                     else
                         websocketConnect(); /* Clear timeout and display message */
-                    refreshPopup();
+                    refreshUI();
                 }
             } else {
                 enablelink.textContent = "Enable";
@@ -81,7 +87,7 @@ function refreshPopup() {
                     enabled_ = true;
                     if (websocket_ == null)
                         websocketConnect();
-                    refreshPopup();
+                    refreshUI();
                 }
             }
 
@@ -89,7 +95,7 @@ function refreshPopup() {
             debugcheck = views[i].document.getElementById("debugcheck");
             debugcheck.onclick = function() {
                 debug_ = debugcheck.checked;
-                refreshPopup();
+                refreshUI();
             }
             debugcheck.checked = debug_;
 
@@ -156,7 +162,6 @@ function websocketConnect() {
 
     printLog("Opening a web socket", LogLevel.DEBUG);
     error_ = false;
-    updateIcon();
     setStatus("Connecting...", false);
     websocket_ = new WebSocket(URL);
     websocket_.onopen = websocketOpen;
@@ -316,7 +321,7 @@ function printLog(str, level) {
         if (logger_.length > MAXLOGGERLEN) {
             logger_.pop();
         }
-        refreshPopup();
+        refreshUI();
     }
 }
 
@@ -325,7 +330,7 @@ function error(str, enabled) {
     printLog(str, LogLevel.ERROR);
     enabled_ = enabled;
     error_ = true;
-    updateIcon();
+    refreshUI();
     websocket_.close();
 }
 
@@ -339,3 +344,11 @@ onerror = function(msg, url, line) {
 
 /* Start the extension as soon as the background page is loaded */
 document.addEventListener('DOMContentLoaded', clipboardStart);
+
+chrome.runtime.onInstalled.addListener(function(details) {
+    if (details.reason == "install") {
+        /* Open help tab on first install */
+        showHelp();
+    }
+}
+)
