@@ -28,11 +28,11 @@ installscript() {
         # This should never happen.
         error 1 "Unable to find common functions file."
     fi
-    sed -e "${3:-;}" "$src" | awk '/^\. .*\/installer\/functions/ {
+    awk '/^\. .*\/installer\/functions/ {
         system("'"awk 'ok; !ok && /^###/ {ok=1}' '$thisfile'"'");
         next
     }
-    1' > "$dst"
+    1' "$src" | sed -e "${3:-;}" > "$dst"
 }
 
 ### Everything after this line will be statically inserted into scripts.
@@ -65,4 +65,36 @@ addtrap() {
 undotrap() {
     TRAP="$OLDTRAP"
     settrap "$TRAP"
+}
+
+# Compares $RELEASE to the specified releases, assuming $DISTRODIR/releases is
+# sorted oldest to newest. Every two parameters are considered criteria that are
+# ORed together. The first parameter is the comparator, as provided to "test".
+# The second parameter is the release to compare to. A comparison against a
+# release from a different distro always fails. Since either $DISTRODIR/releases
+# has to be readable or the release list has to be embedded, and RELEASE has to
+# be set properly, this function should only be used in the context of targets.
+# Returns non-zero if the release doesn't match
+# Example:  release -ge quantal -ge wheezy
+release() {
+    if [ "$(($# % 2))" -ne 0 ]; then
+        error 3 "invalid parameters to release(): $*"
+    fi
+    # Load up the list of releases; this will be replaced with a literal list
+    local releases="`cat "$DISTRODIR/releases" 2>/dev/null`"
+    if [ -z "$releases" ]; then
+        error 3 "list of releases for $DISTRO not found"
+    fi
+    local relnum="`echo "$releases" | awk "/^$RELEASE/ {print NR; exit}"`"
+    if [ -z "$relnum" ]; then
+        error 3 "$RELEASE not found in $DISTRO"
+    fi
+    while [ "$#" -ge 2 ]; do
+        local cmp="`echo "$releases" | awk "/^$2/ {print NR; exit}"`"
+        if [ -n "$cmp" ] && test "$relnum" "$1" "$cmp"; then
+            return 0
+        fi
+        shift 2
+    done
+    return 1
 }

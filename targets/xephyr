@@ -13,7 +13,7 @@ echo 'x11' >> "${TARGETDEDUPFILE:-/dev/null}"
 ### Append to prepare.sh:
 XMETHOD=xephyr
 
-if [ "$RELEASE" = 'quantal' ]; then
+if release -eq quantal; then
     # As of 2013-01-08, Quantal's Xephyr lacks GLX. Download one manually.
     install_mirror_package 'xserver-xephyr' 'pool/universe/x/xorg-server' \
                            '1\.11\.4-0ubuntu[0-9][0-9]\.[0-9]*'
