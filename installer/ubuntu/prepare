@@ -118,7 +118,7 @@ install_mirror_package() {
     fi
     # Check if installed version is already up to date
     local installed="`dpkg-query -l "$package" 2>/dev/null | \
-        awk '$1 ~ /^[hi]i/ { sub(/^[0-9]+:/, "", $3); print $2 "_" $3 }'`"
+        awk '/^[hi]i/ { sub(/^[0-9]+:/, "", $3); print $2 "_" $3 }'`"
     if [ "${xvers%_*}" = "$installed" ]; then
         echo "$package is already up to date ($installed)."
         return
