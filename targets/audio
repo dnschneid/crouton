@@ -13,7 +13,7 @@ CHROOTETC='pulseaudio-default.pa'
 
 install --minimal wget alsa-utils dbus libasound2 libspeexdsp1
 
-install --minimal --asdeps gcc libc-dev pkg-config \
+install --minimal --asdeps gcc libc6-dev pkg-config \
     libdbus-1-dev libasound2-dev libspeexdsp-dev
 
 # SBC is not available in older Debian/Ubuntu: fetch it manually

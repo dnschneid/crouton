@@ -188,7 +188,7 @@ compile() {
     local out="/usr/local/bin/crouton$1" linker="$2"
     echo "Installing dependencies for $out..." 1>&2
     shift 2
-    local pkgs="gcc libc-dev $*"
+    local pkgs="gcc libc6-dev $*"
     install --minimal --asdeps $pkgs
     echo "Compiling $out..." 1>&2
     ret=0
