@@ -143,6 +143,11 @@ if [ ! $# = 0 ]; then
     error 2 "$USAGE"
 fi
 
+if [ "$USER" = root -o "$UID" = 0 ]; then
+    # Avoid kernel panics due to slow I/O when restoring or bootstrapping
+    disablehungtask
+fi
+
 # If we specified a tarball, we need to detect the ARCH and RELEASE
 if [ -z "$DOWNLOADONLY" -a -n "$TARBALL" ]; then
     if [ ! -f "$TARBALL" ]; then

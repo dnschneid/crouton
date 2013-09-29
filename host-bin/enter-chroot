@@ -109,6 +109,9 @@ elif [ -n "$TARGET" ]; then
     fi
 fi
 
+# Avoid kernel panics due to slow I/O
+disablehungtask
+
 # Make sure we always exit with echo on the tty.
 addtrap "stty echo 2>/dev/null || true"
 

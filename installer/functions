@@ -100,3 +100,12 @@ release() {
     done
     return 1
 }
+
+# Large writes to slow devices (e.g. SD card or USB stick) can cause a task to
+# be stuck for longer than 120 seconds, which triggers a kernel panic (and an
+# immediate reboot). Instead of disabling the timeout altogether, we just make
+# sure the kernel does not panic (this is the default configuration of a vanilla
+# kernel). See crbug.com/260955 for details.
+disablehungtask() {
+    echo 0 > /proc/sys/kernel/hung_task_panic
+}
