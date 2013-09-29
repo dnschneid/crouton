@@ -125,6 +125,9 @@ install_mirror_package() {
     install_pkg "$deb"
 }
 
+# Run dpkg in non-interactive mode
+export DEBIAN_FRONTEND=noninteractive
+
 # Run debootstrap second stage if it hasn't already happened
 if [ -r /debootstrap ]; then
     # Debootstrap doesn't like anything mounted under /sys or /var when it runs
