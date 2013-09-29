@@ -189,7 +189,7 @@ compile() {
     echo "Installing dependencies for $out..." 1>&2
     shift 2
     local pkgs="gcc libc6-dev $*"
-    install --minimal --asdeps $pkgs
+    install --minimal --asdeps $pkgs </dev/null
     echo "Compiling $out..." 1>&2
     ret=0
     if ! gcc -xc -Os - $linker -o "$out" || ! strip "$out"; then
