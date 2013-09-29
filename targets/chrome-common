@@ -14,21 +14,40 @@ if [ ! "$TARGETS" = 'help' -a ! "${ARCH#arm}" = "$ARCH" ]; then
     TARGET=chromium
     . "${TARGETSDIR:="$PWD"}/$TARGET"
 fi
+if [ "$TARGETS" != 'help' -a "$TARGETS" != 'check' \
+        -a "$TARGET" != 'chrome' ]; then
+    # Avoid installing multiple chrome targets
+    if grep -q "^chrome\$" "${TARGETDEDUPFILE:-/dev/null}"; then
+        exit
+    else
+        echo "chrome" >> "${TARGETDEDUPFILE:-/dev/null}"
+    fi
+fi
 REQUIRES='x11'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
-url="https://dl.google.com/linux/direct/google-chrome-${CHANNEL}_current_$ARCH.$PKGEXT"
-pkg="/tmp/chrome.$PKGEXT"
-rm -f "$pkg"
+# Only download if it's not already installed, since it auto-updates
+pkg="google-chrome-$CHANNEL"
+if [ -n "`list_uninstalled '' "$pkg"`" ]; then
+    # We need wget to download, and Chrome needs xdg-utils to configure
+    install wget xdg-utils
 
-# We need wget to download, and Chrome needs xdg-utils to configure at all; the
-# rest of the dependencies we will resolve afterwards.
-install wget xdg-utils
+    url="https://dl.google.com/linux/direct/${pkg}_current_$ARCH.$PKGEXT"
+    tmp="`mktemp crouton.XXXXXX --tmpdir=/tmp`"
+    addtrap "rm -f '$tmp' 2>/dev/null"
 
-# We don't have the right root certificates in the bare install.
-wget --no-check-certificate "$url" -O "$pkg"
+    # We don't have the right root certificates in the bare install.
+    wget --no-check-certificate "$url" -O "$tmp"
 
-# Install the package and delete it.
-install_pkg "$pkg"
-rm -f "$pkg"
+    # Remove other providers of google-chrome, then install the package
+    for c in stable beta dev; do
+        c="google-chrome-$c"
+        if [ -z "`list_uninstalled '' "$c"`" ]; then
+            remove "$c"
+        fi
+    done
+    install_pkg "$tmp"
+else
+    echo "$pkg is already installed."
+fi
