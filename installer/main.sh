@@ -202,7 +202,7 @@ if [ -n "$RELEASE" -o -z "$UPDATE" ]; then
     fi
     for DISTRODIR in "$INSTALLERDIR"/*/; do
         DISTRODIR="${DISTRODIR%/}"
-        releaseline="`grep "^$RELEASE\\>" "$DISTRODIR/releases" || true`"
+        releaseline="`grep "^$RELEASE[^a-z]*$" "$DISTRODIR/releases" || true`"
         if [ -n "$releaseline" ]; then
             if [ "${releaseline%"*"}" != "$releaseline" ]; then
                 echo "WARNING: $RELEASE is an unsupported release.
