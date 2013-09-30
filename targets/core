@@ -12,6 +12,7 @@ echo 'Preparing environment...' 1>&2
 if [ ! "$VERSION" = '#VERSION' ]; then
     sed -e "s ^VERSION=.*\$ VERSION='$VERSION' ;" \
         -e "s ^RELEASE=.*\$ RELEASE='$RELEASE' ;" \
+        -e "s ^ARCH=.*\$ ARCH='$ARCH' ;" \
         -i '/usr/local/bin/croutonversion'
 fi
 
