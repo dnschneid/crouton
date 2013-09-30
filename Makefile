@@ -16,7 +16,14 @@ GENVERSION = build/genversion.sh
 VERSION = 0
 TARPARAMS ?= -j
 
-$(TARGET): $(WRAPPER) $(SCRIPTS) $(GENVERSION) Makefile
+ifeq ($(wildcard .git/HEAD),)
+	GITHEAD =
+else
+	GITHEAD = .git/HEAD .git/refs/heads/$(shell cut -d/ -f3 '.git/HEAD')
+endif
+
+
+$(TARGET): $(WRAPPER) $(SCRIPTS) $(GENVERSION) $(GITHEAD) Makefile
 	{ \
 		sed -e "s/\$$TARPARAMS/$(TARPARAMS)/" \
 			-e "s/VERSION=.*/VERSION='$(shell $(GENVERSION) $(VERSION))'/" \
