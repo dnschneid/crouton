@@ -3,21 +3,24 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# Grabs the release or arch from the specified chroot and prints it on stdout.
-# Fails with an error code of 1 if the chroot does not belong to this distro.
-# Returns 'incompatible' for the arch if it cannot be run on this system.
+USAGE="${0##*/} -a|-r /path/to/chroot
+
+Detects the release (-r) or arch (-a) of the chroot and prints it on stdout.
+Fails with an error code of 1 if the chroot does not belong to this distro.
+Returns 'incompatible' for the arch if it cannot be run on this system."
 
 if [ "$#" != 2 ] || [ "$1" != '-a' -a "$1" != '-r' ]; then
-    echo "Usage: ${0##*/} -a|-r chroot" 1>&2
+    echo "$USAGE" 1>&2
     exit 2
 fi
 
 sources="${2%/}/etc/apt/sources.list"
-if [ ! -f "$sources" ]; then
+if [ ! -s "$sources" ]; then
     exit 1
 fi
 
-rel="`awk '/^deb /{print $3; exit}' "${2%/}/etc/apt/sources.list"`"
+rel="`awk '/^deb .* main( .*)?$/ { print $3; exit }' \
+          "$sources" "$sources.d"/*.list 2>/dev/null`"
 if [ -z "$rel" ] || ! grep -q "^$rel[^a-z]*$" "`dirname "$0"`/releases"; then
     exit 1
 fi
