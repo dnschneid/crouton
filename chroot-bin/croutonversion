@@ -5,6 +5,7 @@
 
 VERSION='unknown'
 RELEASE='unknown'
+ARCH='unknown'
 
 APPLICATION="${0##*/}"
 CHANGES=''
@@ -65,6 +66,7 @@ fi
 if [ -z "$CHANGES$DOWNLOAD$UPDATES" ]; then
     echo "crouton: version $VERSION"
     echo "release: $RELEASE"
+    echo "architecture: $ARCH"
     hostrel='/var/host/lsb-release'
     if [ -r "$hostrel" ]; then
         host="`awk -F= '/_RELEASE_DESCRIPTION=/{print $2}' "$hostrel"`"

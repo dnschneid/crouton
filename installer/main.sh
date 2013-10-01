@@ -43,8 +43,8 @@ This must be run as root unless -d is specified AND fakeroot is installed AND
 It is highly recommended to run this from a crosh shell (Ctrl+Alt+T), not VT2.
 
 Options:
-    -a ARCH     The architecture to prepare the chroot for.
-                Default: autodetected for the current system.
+    -a ARCH     The architecture to prepare a new chroot or bootstrap for.
+                Default: autodetected for the current chroot or system.
     -d          Downloads the bootstrap tarball but does not prepare the chroot.
     -e          Encrypt the chroot with ecryptfs using a passphrase.
                 If specified twice, prompt to change the encryption passphrase.
@@ -126,6 +126,11 @@ fi
 # Download only + update doesn't make sense
 if [ -n "$DOWNLOADONLY" -a -n "$UPDATE" ]; then
     error 2 "$USAGE"
+fi
+
+# ARCH cannot be specified upon update
+if [ -n "$UPDATE" -a -n "$ARCH" ]; then
+    error 2 'Architecture cannot be specified when updating.'
 fi
 
 # MIRROR must not be specified on update
@@ -305,7 +310,6 @@ CHROOT="$CHROOTS/${NAME:="${RELEASE:-"$DEFAULTRELEASE"}"}"
 TARGETDEDUPFILE="$CHROOT/.crouton-targets"
 
 # Confirm we have write access to the directory before starting.
-NODOWNLOAD=''
 if [ -z "$DOWNLOADONLY" ]; then
     create='-n'
     if [ -d "$CHROOT" ] && ! rmdir "$CHROOT" 2>/dev/null; then
@@ -313,7 +317,6 @@ if [ -z "$DOWNLOADONLY" ]; then
             error 1 "$CHROOT already has stuff in it!
 Either delete it, specify a different name (-n), or specify -u to update it."
         fi
-        NODOWNLOAD='y'
         create=''
         echo "$CHROOT already exists; updating it..." 1>&2
     elif [ -n "$UPDATE" ]; then
@@ -334,8 +337,8 @@ Either delete it, specify a different name (-n), or specify -u to update it."
                     -y -c '$CHROOTS' '$NAME' 2>/dev/null || true"
 
     # Sanity-check the release if we're updating
-    if [ -n "$NODOWNLOAD" -a -n "$RELEASE" ] &&
-        [ ! "`sh -e "$DISTRODIR/getrelease.sh" "$CHROOT"`" = "$RELEASE" ]; then
+    if [ -n "$UPDATE" -a -n "$RELEASE" ] &&
+        [ "`sh -e "$DISTRODIR/getrelease.sh" -r "$CHROOT"`" != "$RELEASE" ]; then
         if [ ! "$UPDATE" = 2 ]; then
             error 1 \
 "Release doesn't match! Please correct the -r option, or specify a second -u to
@@ -345,11 +348,11 @@ change the release, upgrading the chroot (dangerous)."
             echo "Press Control-C to abort; upgrade will continue in 5 seconds." 1>&2
             sleep 5
         fi
-    elif [ -n "$NODOWNLOAD" -a -z "$RELEASE" ]; then
+    elif [ -n "$UPDATE" -a -z "$RELEASE" ]; then
         # Detect the release
         for DISTRODIR in "$INSTALLERDIR"/*/; do
             DISTRODIR="${DISTRODIR%/}"
-            if RELEASE="`sh -e "$DISTRODIR/getrelease.sh" "$CHROOT"`"; then
+            if RELEASE="`sh -e "$DISTRODIR/getrelease.sh" -r "$CHROOT"`"; then
                 DISTRO="${DISTRODIR##*/}"
                 . "$DISTRODIR/defaults"
                 break
@@ -357,6 +360,14 @@ change the release, upgrading the chroot (dangerous)."
         done
         if [ -z "$DISTRO" ]; then
             error 2 "Unable to determine the release in $CHROOT. Please specify it with -r."
+        fi
+    fi
+
+    # Enforce the correct architecture
+    if [ -n "$UPDATE" ]; then
+        ARCH="`sh -e "$DISTRODIR/getrelease.sh" -a "$CHROOT"`"
+        if [ "$ARCH" = 'incompatible' ]; then
+            error 1 "$CHROOT is incompatible with this system's architecture."
         fi
     fi
 
@@ -417,19 +428,19 @@ elif [ -z "$DOWNLOADONLY" ] && \
 fi
 
 # Unpack the tarball if appropriate
-if [ -z "$NODOWNLOAD" -a -z "$DOWNLOADONLY" ]; then
+if [ -z "$UPDATE" -a -z "$DOWNLOADONLY" ]; then
     echo "Installing $RELEASE-$ARCH chroot to $CHROOT" 1>&2
     if [ -n "$TARBALL" ]; then
         # Unpack the chroot
         echo 'Unpacking chroot environment...' 1>&2
         tar -C "$CHROOT" --strip-components=1 -xf "$TARBALL"
     fi
-elif [ -z "$NODOWNLOAD" ]; then
+elif [ -z "$UPDATE" ]; then
     echo "Downloading $RELEASE-$ARCH bootstrap to $TARBALL" 1>&2
 fi
 
 # Download the bootstrap data if appropriate
-if [ -z "$NODOWNLOAD" ] && [ -n "$DOWNLOADONLY" -o -z "$TARBALL" ]; then
+if [ -z "$UPDATE" ] && [ -n "$DOWNLOADONLY" -o -z "$TARBALL" ]; then
     # Create the temporary directory and delete it upon exit
     tmp="`mktemp -d --tmpdir=/tmp "$APPLICATION.XXX"`"
     subdir="$RELEASE-$ARCH"
