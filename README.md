@@ -123,8 +123,8 @@ Examples
   1. Check for updates, download the latest version, and see what's new by
      running `croutonversion -u -d -c` from the chroot (run `croutonversion -h`
      to see what those parameters actually do).
-  2. Exit the chroot and run `sudo sh -e ~/Downloads/crouton -u`. It will update
-     all installed targets.
+  2. Exit the chroot and run `sudo sh -e ~/Downloads/crouton -u -n chrootname`.
+     It will update all installed targets.
   3. You can use this with `-e` to encrypt a non-encrypted chroot, but make sure
      you don't interrupt the operation.
 
