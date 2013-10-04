@@ -149,7 +149,9 @@ fi
 # enabled otherwise we will lose the file-system after a suspend event.
 if [ ! "${CHROOT#/media}" = "$CHROOT" ]; then
     for usbp in /sys/bus/usb/devices/*/power/persist; do
-        echo 1 > "$usbp"
+        if [ -e "$usbp" ]; then
+            echo 1 > "$usbp"
+        fi
     done
 fi
 
