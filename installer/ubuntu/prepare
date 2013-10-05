@@ -98,6 +98,7 @@ list_uninstalled_dist() {
 #     If the package is a dependency of other packages (e.g. a library), you
 #     should select the earliest version that provides the required features,
 #     to prevent breakage during release upgrade.
+# $4: Architecture (e.g. i386). Defaults to $ARCH
 install_mirror_package() {
     install wget
     local package="$1"
@@ -108,7 +109,8 @@ install_mirror_package() {
         error 1 "Cannot detect mirror."
     fi
     local url="${mirror%/}/${2#/}/"
-    local regex="^${package}_${3:-.*}_(${ARCH}|all)\.deb$"
+    local arch="${4:-$ARCH}"
+    local regex="^${package}_${3:-.*}_(${arch}|all)\.deb$"
     # Find package in directory listing:
     # Filenames are HTML <a href> values, enclosed in quotes.
     local xvers="`wget -O- "$url" -nv \
@@ -119,7 +121,7 @@ install_mirror_package() {
         error 1 "Error retrieving $package."
     fi
     # Check if installed version is already up to date
-    local installed="`dpkg-query -l "$package" 2>/dev/null | \
+    local installed="`dpkg-query -l "$package:$arch" 2>/dev/null | \
         awk '/^[hi]i/ { sub(/^[0-9]+:/, "", $3); print $2 "_" $3 }'`"
     if [ "${xvers%_*}" = "$installed" ]; then
         echo "$package is already up to date ($installed)."
