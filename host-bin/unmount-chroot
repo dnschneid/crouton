@@ -281,7 +281,9 @@ done
 # have chroots running with a root in removable media
 if checkusage /media; then
     for usbp in /sys/bus/usb/devices/*/power/persist; do
-        echo 0 > "$usbp"
+        if [ -e "$usbp" ]; then
+            echo 0 > "$usbp"
+        fi
     done
 fi
 
