@@ -42,8 +42,13 @@ case "$1" in
     exec "$EXEC" "$@";;
 esac
 
+hostdbus=''
+if hash host-dbus 2>/dev/null; then
+    hostdbus='host-dbus'
+fi
+
 pingpowerd() {
-    host-dbus dbus-send --system --dest=org.chromium.PowerManager \
+    $hostdbus dbus-send --system --dest=org.chromium.PowerManager \
                         --type=method_call /org/chromium/PowerManager \
                         org.chromium.PowerManager.HandleUserActivity || true
 }
