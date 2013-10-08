@@ -3,15 +3,14 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# Usage: prepare.sh arch mirror distro release proxy version setoptions
-ARCH="${1:-"#ARCH"}"
-# MIRROR may contain variables (e.g., $repo): make sure we do not expand it
-MIRROR=${2:-'#MIRROR'}
-DISTRO="${3:-"#DISTRO"}"
-RELEASE="${4:-"#RELEASE"}"
-PROXY="${5:-"#PROXY"}"
-VERSION="${6:-"#VERSION"}"
-SETOPTIONS="${7:-"#SETOPTIONS"}"
+ARCH='#ARCH'
+MIRROR='#MIRROR'
+DISTRO='#DISTRO'
+RELEASE='#RELEASE'
+PROXY='#PROXY'
+VERSION='#VERSION'
+USERNAME='#USERNAME'
+SETOPTIONS='#SETOPTIONS'
 
 # Additional set options: -x or -v can be added for debugging (-e is always on)
 if [ -n "$SETOPTIONS" ]; then

@@ -126,10 +126,13 @@ for NAME in "$@"; do
             error 2 'STDIN is not a terminal; cannot request passwords.'
         fi
 
-        # Ensure that there's a root password set before decrypting the chroot
+        # Ensure that there's a root password set before decrypting the chroot,
+        # unless the passphrase was specified via env, which isn't secure anyway
         if [ ! -f '/mnt/stateful_partition/etc/devmode.passwd' ]; then
             echo 'You must have a root password in Chromium OS to mount encrypted chroots.' 1>&2
-            chromeos-setdevpasswd
+            if [ -z "$CROUTON_PASSPHRASE$CROUTON_NEW_PASSPHRASE" ]; then
+                chromeos-setdevpasswd
+            fi
         fi
 
         # Detect the key file
@@ -157,7 +160,7 @@ for NAME in "$@"; do
         chmod 700 "$CHROOTS/.secure"
 
         # If we just created it, choose and create the keyfile.
-        passphrase=''
+        passphrase="${CROUTON_PASSPHRASE:-"$CROUTON_NEW_PASSPHRASE"}"
         if [ ! -f "$CHROOTSRC/.ecryptfs" ]; then
             if [ -e "$KEYFILE" ]; then
                 error 1 "Encryption key file $KEYFILE already exists. Refusing to overwrite!"
@@ -188,7 +191,9 @@ $passphrase" | ecryptfs-wrap-passphrase "$wrappedfnek" -
         else
             echo -n "Enter encryption passphrase for $NAME: " 1>&2
             stty -echo
-            read passphrase
+            if [ -z "$passphrase" ]; then
+                read passphrase
+            fi
             stty echo
             echo 1>&2
 
@@ -203,7 +208,7 @@ $passphrase" | ecryptfs-wrap-passphrase "$wrappedfnek" -
             # Change the passphrase if requested
             if [ "${ENCRYPT:-0}" -ge 2 ]; then
                 oldpassphrase="$passphrase"
-                unset passphrase
+                passphrase="$CROUTON_NEW_PASSPHRASE"
                 promptNewPassphrase
 
                 echo "Applying passphrase change" 1>&2
@@ -257,7 +262,15 @@ del  -- You do not like these files and want them deleted permanently.
 list -- You do not know what these files are and want to list them.
 no   -- You don't want to decide one way or another quite yet.
 > " 1>&2
-            read response
+            # Don't allow a response to be specified in env unless the password
+            # was also specified in env.
+            if [ -n "$CROUTON_PASSPHRASE" -a \
+                    -n "$CROUTON_MOUNT_RESPONSE" ]; then
+                response="$CROUTON_MOUNT_RESPONSE"
+                echo "$response" 1>&2
+            else
+                read response
+            fi
             break
         fi
     done

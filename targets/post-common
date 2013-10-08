@@ -42,10 +42,19 @@ if ! grep -q ':1000:' /etc/passwd; then
             echo 'Username must be lowercase letters, numbers, or dashes.' 1>&2
         fi
         echo -n 'Please specify a username for the primary user: ' 1>&2
-        read username junk
+        if [ -n "$USERNAME" ]; then
+            username="$USERNAME"
+            echo "$username" 1>&2
+        else
+            read username junk
+        fi
     done
     useradd -u 1000 -G "$groups" -s '/bin/bash' -m "$username"
-    tries=0
+    if [ -t 0 ]; then
+        tries=0
+    else
+        tries=3
+    fi
     while [ "$tries" -lt 3 ] && ! passwd "$username"; do
         tries="$((tries+1))"
     done

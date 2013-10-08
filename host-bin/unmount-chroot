@@ -220,7 +220,12 @@ for NAME in "$@"; do
             printonly=''
             if [ "${YES#[Aa]}" = "$YES" ]; then
                 echo -n "Failed to unmount $CHROOT. Kill processes? [a/k/y/p/N] " 1>&2
-                read YES
+                if [ -n "$CROUTON_UNMOUNT_RESPONSE" ]; then
+                    YES="$CROUTON_UNMOUNT_RESPONSE"
+                    echo "$YES" 1>&2
+                else
+                    read YES
+                fi
                 if [ ! "${YES#[Kk]}" = "$YES" ]; then
                     SIGNAL='KILL'
                 elif [ ! "${YES#[Pp]}" = "$YES" ]; then

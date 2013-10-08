@@ -201,7 +201,12 @@ for NAME in "$@"; do
         # Confirm deletion
         if [ "${YES#[Aa]}" = "$YES" ]; then
             echo -n "Delete $CHROOT? [a/y/N] " 1>&2
-            read YES
+            if [ -n "$CROUTON_EDIT_RESPONSE" ]; then
+                YES="$CROUTON_EDIT_RESPONSE"
+                echo "$YES" 1>&2
+            else
+                read YES
+            fi
             if [ "${YES#[AaYy]}" = "$YES" ]; then
                  error 2 "Aborting deletion of $CHROOT"
             fi
@@ -353,7 +358,12 @@ for NAME in "$@"; do
             # Confirm long operation
             if [ "${YES#[Aa]}" = "$YES" ]; then
                 echo -n "Are you sure you want to continue? [a/y/N] " 1>&2
-                read YES
+                if [ -n "$CROUTON_EDIT_RESPONSE" ]; then
+                    YES="$CROUTON_EDIT_RESPONSE"
+                    echo "$YES" 1>&2
+                else
+                    read YES
+                fi
                 if [ "${YES#[AaYy]}" = "$YES" ]; then
                      error 2 "Aborting move of $CHROOT"
                 fi
