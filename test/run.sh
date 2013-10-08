@@ -164,13 +164,27 @@ export CROUTON_UNMOUNT_RESPONSE='y'
 mkdir -p "$TESTDIR" "$PREFIX"
 addtrap "echo 'Cleaning up...' 1>&2; rm -rf --one-file-system '$PREFIX' || true"
 
-for t in "$SCRIPTDIR/test/tests"/*; do
-    if [ ! -s "$t" ]; then
-        continue
-    fi
-    tname="${t##*/}"
-    tlog="$TESTDIR/$tname"
-    log "$TESTDIR/$tname" . "$t"
+# If no arguments were passed, match all tests
+if [ "$#" = 0 ]; then
+    set -- ''
+fi
+
+# Run all tests matching the supplied prefixes
+tname=''
+for p in "$@"; do
+    for t in "$SCRIPTDIR/test/tests/$p"*; do
+        if [ ! -s "$t" ]; then
+            continue
+        fi
+        tname="${t##*/}"
+        tlog="$TESTDIR/$tname"
+        log "$TESTDIR/$tname" . "$t"
+    done
 done
 
-echo "All tests passed!" 1>&2
+if [ -n "$tname" ]; then
+    echo "All tests passed!" 1>&2
+else
+    echo "No tests found matching $*" 1>&2
+    exit 2
+fi
