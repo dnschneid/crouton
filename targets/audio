@@ -64,18 +64,17 @@ if [ "`dpkg --print-architecture`" = 'amd64' ]; then
     cras_extra_archs="i386"
 fi
 
-# A blank cras_arch means we native architecture. We start by building
-# "foreign" architectures: this helps to make sure that most of the packages
-# we leave installed are native (some i386 and amd64 packages cannot be
-# installed simultaneously)
+# A blank cras_arch means we are building for the native architecture.
 for cras_arch in $cras_extra_archs ""; do
     pkgsuffix=''
     pkgdepextra=''
+    pkgconfigpath=''
     archgccflags=''
     archextrapath=''
     if [ "$cras_arch" = 'i386' ]; then
         pkgsuffix=':i386'
         pkgdepextra='gcc-multilib'
+        pkgconfigpath='/usr/lib/i386-linux-gnu/pkgconfig'
         archgccflags='-m32'
         archextrapath='/i386-linux-gnu'
 
@@ -88,12 +87,26 @@ for cras_arch in $cras_extra_archs ""; do
     fi
 
     # Install CRAS dependencies
-    install --minimal alsa-utils dbus \
+    install --minimal alsa-utils \
         libasound2$pkgsuffix libspeexdsp1$pkgsuffix
 
     install --minimal --asdeps gcc $pkgdepextra libc6-dev$pkgsuffix \
-        pkg-config$pkgsuffix libdbus-1-dev$pkgsuffix libasound2-dev$pkgsuffix \
-        libspeexdsp-dev$pkgsuffix
+        pkg-config libspeexdsp-dev$pkgsuffix
+
+    # precise does not allow libasound2-dev and libasound2-dev:i386 to be
+    # installed simultaneously
+    if release -le precise && [ -n "$cras_arch" ]; then
+        install --minimal --asdeps libasound2-dev
+        # Manually link .so file
+        libasoundso="/usr/lib$archextrapath/libasound.so"
+        addtrap "rm -f '$libasoundso' 2>/dev/null"
+        ln -sfT libasound.so.2 "$libasoundso"
+        ALSALIBDIR="/usr/lib$archextrapath/alsa-lib"
+    else
+        install --minimal --asdeps libasound2-dev$pkgsuffix
+        ALSALIBDIR="`PKG_CONFIG_PATH="$pkgconfigpath" pkg-config \
+                                            --variable=libdir alsa`/alsa-lib"
+    fi
 
     # SBC is not available in older Debian/Ubuntu: fetch it manually
     if release -le quantal; then
@@ -123,10 +136,10 @@ for cras_arch in $cras_extra_archs ""; do
             echo '
                 top_srcdir=".."
                 top_builddir=".."
-                SBC_LIBS="'"`pkg-config --libs sbc`"'"
-                SBC_CFLAGS="'"`pkg-config --cflags sbc`"'"
-                DBUS_LIBS="'"`pkg-config --libs dbus-1`"'"
-                DBUS_CFLAGS="'"`pkg-config --cflags dbus-1`"'"
+                SBC_LIBS="'"`PKG_CONFIG_PATH="$pkgconfigpath" pkg-config \
+                                                            --libs sbc`"'"
+                SBC_CFLAGS="'"`PKG_CONFIG_PATH="$pkgconfigpath" pkg-config \
+                                                            --cflags sbc`"'"
             '
             sed -e '
                 # Concatenate lines ending in \
@@ -239,8 +252,6 @@ for cras_arch in $cras_extra_archs ""; do
         } | sh -s -e $SETOPTIONS
 
         echo "Installing CRAS..." 1>&2
-
-        ALSALIBDIR="`pkg-config --variable=libdir alsa`/alsa-lib"
 
         mkdir -p "$CRASBINDIR/" "$CRASLIBDIR/" "$ALSALIBDIR/"
         # Only install libcras.so.X.Y.Z
