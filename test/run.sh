@@ -10,7 +10,7 @@ TESTDIR="$SCRIPTDIR/test/run"
 TESTNAME="`sh -e "$SCRIPTDIR/build/genversion.sh" test`"
 TESTDIR="$TESTDIR/$TESTNAME"
 # PREFIX intentionally includes a space. Run in /usr/local to avoid encryption
-PREFIX="/usr/local/$TESTNAME prefix"
+PREFIXROOT="/usr/local/$TESTNAME prefix"
 
 # Common functions
 . "$SCRIPTDIR/installer/functions"
@@ -20,7 +20,7 @@ if [ ! "$USER" = root -a ! "$UID" = 0 ]; then
     error 2 "${0##*/} must be run as root."
 fi
 
-echo "Running tests in $PREFIX"
+echo "Running tests in $PREFIXROOT"
 echo "Logging to $TESTDIR"
 
 # Logs all output to the specified file with the date and time prefixed.
@@ -71,14 +71,25 @@ crouton() {
     return "$ret"
 }
 
-# Downloads a bootstrap if not done already and returns the tarball
+# Downloads a bootstrap if not done already and returns the tarball.
+# Safe to run in parallel.
 # $1: the release to bootstrap
 # returns the path on stdout.
 bootstrap() {
-    local file="$PREFIX/$1-bootstrap.tar.gz"
+    local file="$PREFIXROOT/$1-bootstrap.tar.gz"
     echo "$file"
     if [ ! -s "$file" ]; then
-        crouton -r "$1" -f "$file" -d 1>&2
+        # Use flock so that bootstrap can ba called in parallel
+        if flock -n 3 && [ ! -s "$file" ]; then
+            crouton -r "$1" -f "$file" -d 1>&2
+        else
+            echo "Waiting for bootstrap for $1 to complete..." 1>&2
+            flock 3
+        fi 3>"$file"
+        if [ ! -s "$file" ]; then
+            echo "FAILED due to incomplete bootstrap for $1" 1>&2
+            return 1
+        fi
     fi
 }
 
@@ -161,8 +172,9 @@ export CROUTON_MOUNT_RESPONSE='y'
 export CROUTON_UNMOUNT_RESPONSE='y'
 
 # Run all the tests
-mkdir -p "$TESTDIR" "$PREFIX"
-addtrap "echo 'Cleaning up...' 1>&2; rm -rf --one-file-system '$PREFIX' || true"
+mkdir -p "$TESTDIR" "$PREFIXROOT"
+addtrap "echo 'Cleaning up...' 1>&2"
+addtrap "rm -rf --one-file-system '$PREFIXROOT' || true"
 
 # If no arguments were passed, match all tests
 if [ "$#" = 0 ]; then
@@ -178,7 +190,9 @@ for p in "$@"; do
         fi
         tname="${t##*/}"
         tlog="$TESTDIR/$tname"
+        PREFIX="`mktemp -d --tmpdir="$PREFIXROOT" "$tname.XXX"`"
         log "$TESTDIR/$tname" . "$t"
+        rm -rf --one-file-system "$PREFIX"
     done
 done
 
