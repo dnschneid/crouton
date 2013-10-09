@@ -47,7 +47,7 @@ ADHD_HEAD="`awk '
 echo "Fetching CRAS (branch $ADHD_HEAD)..." 1>&2
 
 wget --no-check-certificate -O "$CRASBUILDTMP/adhd.tar.gz" \
-'https://chromium.googlesource.com/chromiumos/third_party/adhd/+archive/'"$ADHD_HEAD"'.tar.gz'
+"https://chromium.googlesource.com/chromiumos/third_party/adhd/+archive/$ADHD_HEAD.tar.gz"
 
 # -m prevents "time stamp is in the future" spam
 tar -C "$CRASBUILDTMP" -xmf "$CRASBUILDTMP/adhd.tar.gz" cras/src
@@ -69,8 +69,8 @@ build_cras() {
         archgccflags='-m32'
 
         # Add foreign architecture, if necessary
-        if ! dpkg --print-foreign-architectures \
-                        | grep "^$cras_arch$" 2>/dev/null; then
+        if ! dpkg --print-foreign-architectures | grep -q "^$cras_arch$"; then
+            echo "Adding foreign architecture $cras_arch to dpkg..." 1>&2
             dpkg --add-architecture "$cras_arch"
             apt-get update
         fi

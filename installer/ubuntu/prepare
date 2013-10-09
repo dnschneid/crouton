@@ -142,7 +142,7 @@ install_mirror_package() {
     # Install the package
     install_pkg "$deb"
     if [ -n "$asdeps" ]; then
-        apt-mark auto $package:$arch
+        apt-mark auto "$package:$arch"
     fi
 }
 
