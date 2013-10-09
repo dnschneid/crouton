@@ -17,71 +17,61 @@ CRASBUILDTMP="`mktemp -d crouton-cras.XXXXXX --tmpdir=/tmp`"
 
 addtrap "rm -rf --one-file-system '$CRASBUILDTMP'"
 
-( # Start subshell for fetching
-    cd "$CRASBUILDTMP"
-
-    # Fetch list of branches from repository
-    wget --no-check-certificate -O adhd.refs \
+# Fetch list of branches from repository
+wget --no-check-certificate -O "$CRASBUILDTMP/adhd.refs" \
 'https://chromium.googlesource.com/chromiumos/third_party/adhd/+refs/heads?format=TEXT'
 
-    # Chrome OS version (e.g. 4100.86.0)
-    CROS_VER="`sed -n 's/^CHROMEOS_RELEASE_VERSION=//p' /var/host/lsb-release`"
+# Chrome OS version (e.g. 4100.86.0)
+CROS_VER="`sed -n 's/^CHROMEOS_RELEASE_VERSION=//p' /var/host/lsb-release`"
 
-    ADHD_HEAD="`awk '
-        BEGIN {
-            # Default to master if nothing else is found
-            print 0, "master"
-            len = split("'"$CROS_VER"'", crosvers, ".")
-            # Prepare a regex with each additional version component optional
-            for (i = len; i >= 2; i--)
-                verregex = "(\\\\." crosvers[i] verregex ")?"
-            verregex = crosvers[1] verregex "($|\\\\.)"
-        }
-        # Release branches get the highest score
-        $2 ~ "release-(R[^-]*-)?" crosvers[1] "($|\\\\.)" {
-            print 99, $2
-        }
-        # Stabilize branches are scored based on how much of the version they match
-        match($2, "stabilize-" verregex) {
-            print RLENGTH, $2
-        }
-    ' adhd.refs | sort -V | tail -n 1 | cut -d' ' -f2`"
+ADHD_HEAD="`awk '
+    BEGIN {
+        # Default to master if nothing else is found
+        print 0, "master"
+        len = split("'"$CROS_VER"'", crosvers, ".")
+        # Prepare a regex with each additional version component optional
+        for (i = len; i >= 2; i--)
+            verregex = "(\\\\." crosvers[i] verregex ")?"
+        verregex = crosvers[1] verregex "($|\\\\.)"
+    }
+    # Release branches get the highest score
+    $2 ~ "release-(R[^-]*-)?" crosvers[1] "($|\\\\.)" {
+        print 99, $2
+    }
+    # Stabilize branches are scored based on how much of the version they match
+    match($2, "stabilize-" verregex) {
+        print RLENGTH, $2
+    }
+' "$CRASBUILDTMP/adhd.refs" | sort -V | tail -n 1 | cut -d' ' -f2`"
 
-    echo "Fetching CRAS (branch $ADHD_HEAD)..." 1>&2
+echo "Fetching CRAS (branch $ADHD_HEAD)..." 1>&2
 
-    wget --no-check-certificate -O adhd.tar.gz \
+wget --no-check-certificate -O "$CRASBUILDTMP/adhd.tar.gz" \
 'https://chromium.googlesource.com/chromiumos/third_party/adhd/+archive/'"$ADHD_HEAD"'.tar.gz'
 
-    # -m prevents "time stamp is in the future" spam
-    tar -xmf adhd.tar.gz cras/src
-)
+# -m prevents "time stamp is in the future" spam
+tar -C "$CRASBUILDTMP" -xmf "$CRASBUILDTMP/adhd.tar.gz" cras/src
 
-cras_extra_archs=""
-
-# On x86_64, the ALSA plugin needs to be compiled for both 32-bit and 64-bit
-# to allow audio playback using 32-bit applications.
-if [ "`dpkg --print-architecture`" = 'amd64' ]; then
-    cras_extra_archs="i386"
-fi
-
-# A blank cras_arch means we are building for the native architecture.
-for cras_arch in $cras_extra_archs ""; do
-    pkgsuffix=''
-    pkgdepextra=''
-    pkgconfigpath=''
-    archgccflags=''
-    archextrapath=''
-    if [ "$cras_arch" = 'i386' ]; then
-        pkgsuffix=':i386'
+# Build CRAS ALSA plugin for the given architecture ($1)
+# A blank parameter means we are building for the native architecture.
+build_cras() {
+    local cras_arch="$1"
+    local pkgsuffix=''
+    local pkgdepextra=''
+    local archextrapath=''
+    local pkgconfigpath=''
+    local archgccflags=''
+    if [ -n "$cras_arch" ]; then
+        pkgsuffix=":$cras_arch"
         pkgdepextra='gcc-multilib'
-        pkgconfigpath='/usr/lib/i386-linux-gnu/pkgconfig'
+        archextrapath="/$cras_arch-linux-gnu"
+        pkgconfigpath="/usr/lib$archextrapath/pkgconfig"
         archgccflags='-m32'
-        archextrapath='/i386-linux-gnu'
 
-        # Add i386 as foreign architecture, if necessary
+        # Add foreign architecture, if necessary
         if ! dpkg --print-foreign-architectures \
-                        | grep "^i386$" 2>/dev/null; then
-            dpkg --add-architecture i386
+                        | grep "^$cras_arch$" 2>/dev/null; then
+            dpkg --add-architecture "$cras_arch"
             apt-get update
         fi
     fi
@@ -99,31 +89,36 @@ for cras_arch in $cras_extra_archs ""; do
         install --minimal --asdeps libasound2-dev
         # Manually link .so file
         libasoundso="/usr/lib$archextrapath/libasound.so"
-        addtrap "rm -f '$libasoundso' 2>/dev/null"
-        ln -sfT libasound.so.2 "$libasoundso"
+        if [ ! -f "$libasoundso" ]; then
+            addtrap "rm -f '$libasoundso' 2>/dev/null"
+            ln -sfT libasound.so.2 "$libasoundso"
+        fi
         ALSALIBDIR="/usr/lib$archextrapath/alsa-lib"
     else
         install --minimal --asdeps libasound2-dev$pkgsuffix
-        ALSALIBDIR="`PKG_CONFIG_PATH="$pkgconfigpath" pkg-config \
-                                            --variable=libdir alsa`/alsa-lib"
+        ALSALIBDIR="`PKG_CONFIG_PATH="$pkgconfigpath" \
+                                pkg-config --variable=libdir alsa`/alsa-lib"
     fi
 
     # SBC is not available in older Debian/Ubuntu: fetch it manually
     if release -le quantal; then
-        install_mirror_package 'libsbc1' 'pool/main/s/sbc' '1\.0-.*' $cras_arch
-        install_mirror_package 'libsbc-dev' 'pool/main/s/sbc' '1\.0-.*' $cras_arch
-        apt-mark auto libsbc-dev$pkgsuffix
+        install_mirror_package 'libsbc1' \
+                            'pool/main/s/sbc' '1\.0-.*' $cras_arch
+        install_mirror_package --asdeps 'libsbc-dev' \
+                            'pool/main/s/sbc' '1\.0-.*' $cras_arch
     elif release -le wheezy; then
         # wheezy provides a backport for libsbc1
-        install_mirror_package 'libsbc1' 'pool/main/s/sbc' '.*~bpo7\+.*' $cras_arch
-        install_mirror_package 'libsbc-dev' 'pool/main/s/sbc' '.*~bpo7\+.*' $cras_arch
-        apt-mark auto libsbc-dev$pkgsuffix
+        install_mirror_package 'libsbc1' \
+                            'pool/main/s/sbc' '.*~bpo7\+.*' $cras_arch
+        install_mirror_package --asdeps 'libsbc-dev' \
+                            'pool/main/s/sbc' '.*~bpo7\+.*' $cras_arch
     else
         install --minimal libsbc1$pkgsuffix
         install --minimal --asdeps libsbc-dev$pkgsuffix
     fi
 
-    ( # Start subshell for compilation
+    # Start subshell for compilation
+    (
         cd "$CRASBUILDTMP"/cras/src
 
         # Directory to install CRAS library/binaries
@@ -136,10 +131,10 @@ for cras_arch in $cras_extra_archs ""; do
             echo '
                 top_srcdir=".."
                 top_builddir=".."
-                SBC_LIBS="'"`PKG_CONFIG_PATH="$pkgconfigpath" pkg-config \
-                                                            --libs sbc`"'"
-                SBC_CFLAGS="'"`PKG_CONFIG_PATH="$pkgconfigpath" pkg-config \
-                                                            --cflags sbc`"'"
+                SBC_LIBS="'"`PKG_CONFIG_PATH="$pkgconfigpath" \
+                                                pkg-config --libs sbc`"'"
+                SBC_CFLAGS="'"`PKG_CONFIG_PATH="$pkgconfigpath" \
+                                                pkg-config --cflags sbc`"'"
             '
             sed -e '
                 # Concatenate lines ending in \
@@ -262,7 +257,16 @@ for cras_arch in $cras_extra_archs ""; do
         /usr/bin/install -s libasound_module_ctl_cras.so "$ALSALIBDIR/"
         /usr/bin/install -s cras_test_client "$CRASBINDIR/"
     ) # End compilation subshell
-done # End loop over build architectures
+}
+
+# On x86_64, the ALSA plugin needs to be compiled for both 32-bit and 64-bit
+# to allow audio playback using 32-bit applications.
+if [ "$ARCH" = 'amd64' ]; then
+    build_cras 'i386'
+fi
+
+# Build CRAS for native architecture
+build_cras
 
 cat > /usr/share/alsa/alsa.conf.d/10-cras.conf <<EOF
 pcm.cras {
