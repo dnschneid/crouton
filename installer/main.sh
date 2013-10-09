@@ -366,9 +366,6 @@ change the release, upgrading the chroot (dangerous)."
     # Enforce the correct architecture
     if [ -n "$UPDATE" ]; then
         ARCH="`sh -e "$DISTRODIR/getrelease.sh" -a "$CHROOT"`"
-        if [ "$ARCH" = 'incompatible' ]; then
-            error 1 "$CHROOT is incompatible with this system's architecture."
-        fi
     fi
 
     mkdir -p "$BIN"

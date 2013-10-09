@@ -40,7 +40,12 @@ Options:
 
 # Safely launch a command ($*) via /bin/sh within the chroot as the root user.
 chrootcmd() {
+    # env may be overridden when running in the background; don't let it fork.
     env -i chroot "$CHROOT" su -s '/bin/sh' -c "$*" - root
+    local pid="$!"
+    if [ -n "$BACKGROUND" ]; then
+        wait "$pid"
+    fi
 }
 
 # Process arguments
@@ -201,41 +206,6 @@ else
     CHROOTSHELL='/bin/sh'
 fi
 
-# Fix group numbers for critical groups to match Chromium OS. This is necessary
-# so that users have access to shared hardware, such as video and audio.
-gfile="$CHROOT/etc/group"
-if [ -f "$gfile" ]; then
-    for group in audio:hwaudio cras:audio video usb:plugdev; do
-        hostgroup="${group%:*}"
-        chrootgroup="${group#*:}"
-        gid="`awk -F: '$1=="'"$hostgroup"'"{print $3; exit}' '/etc/group'`"
-        if [ -z "$gid" ]; then
-            echo "Couldn't find $hostgroup group in Chromium OS!" 1>&2
-            continue
-        fi
-        curgid="`awk -F: '$1=="'"$chrootgroup"'"{print $3; exit}' "$gfile"`"
-        if [ "$gid" = "$curgid" ]; then
-            continue
-        elif [ -z "$curgid" ]; then
-            echo "Creating $chrootgroup group with GID $gid..." 1>&2
-            groupcmd=groupadd
-        else
-            echo "Changing $chrootgroup GID from $curgid to $gid..." 1>&2
-            groupcmd=groupmod
-        fi
-        move="`awk -F: '$3=='"$gid"'{print $1; exit}' "$gfile"`"
-        if [ -n "$move" ]; then
-            ngid="$gid"
-            while grep -q ":$ngid:" "$gfile"; do
-                ngid="$((ngid+1))"
-            done
-            echo "Moving $move GID from $gid to $ngid..." 1>&2
-            chrootcmd groupmod -g "$ngid" "$move"
-        fi
-        chrootcmd "$groupcmd" -g "$gid" "$chrootgroup"
-    done
-fi
-
 # Save the chroot name to the chroot
 echo "$NAME" > "$CHROOT/etc/crouton/name"
 
@@ -366,6 +336,41 @@ fi
 localdownloads='/home/chronos/user/Downloads'
 if [ -z "$NOLOGIN" -a -n "$CHROOTHOME" -a -d "$localdownloads" ]; then
     bindmount "$localdownloads" "$CHROOTHOME/Downloads" exec
+fi
+
+# Fix group numbers for critical groups to match Chromium OS. This is necessary
+# so that users have access to shared hardware, such as video and audio.
+gfile="$CHROOT/etc/group"
+if [ -f "$gfile" ]; then
+    for group in audio:hwaudio cras:audio video usb:plugdev; do
+        hostgroup="${group%:*}"
+        chrootgroup="${group#*:}"
+        gid="`awk -F: '$1=="'"$hostgroup"'"{print $3; exit}' '/etc/group'`"
+        if [ -z "$gid" ]; then
+            echo "Couldn't find $hostgroup group in Chromium OS!" 1>&2
+            continue
+        fi
+        curgid="`awk -F: '$1=="'"$chrootgroup"'"{print $3; exit}' "$gfile"`"
+        if [ "$gid" = "$curgid" ]; then
+            continue
+        elif [ -z "$curgid" ]; then
+            echo "Creating $chrootgroup group with GID $gid..." 1>&2
+            groupcmd=groupadd
+        else
+            echo "Changing $chrootgroup GID from $curgid to $gid..." 1>&2
+            groupcmd=groupmod
+        fi
+        move="`awk -F: '$3=='"$gid"'{print $1; exit}' "$gfile"`"
+        if [ -n "$move" ]; then
+            ngid="$gid"
+            while grep -q ":$ngid:" "$gfile"; do
+                ngid="$((ngid+1))"
+            done
+            echo "Moving $move GID from $gid to $ngid..." 1>&2
+            chrootcmd groupmod -g "$ngid" "$move"
+        fi
+        chrootcmd "$groupcmd" -g "$gid" "$chrootgroup"
+    done
 fi
 
 # To run silently, we override the env command to launch a background process,

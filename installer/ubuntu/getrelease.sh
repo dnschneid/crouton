@@ -6,8 +6,7 @@
 USAGE="${0##*/} -a|-r /path/to/chroot
 
 Detects the release (-r) or arch (-a) of the chroot and prints it on stdout.
-Fails with an error code of 1 if the chroot does not belong to this distro.
-Returns 'incompatible' for the arch if it cannot be run on this system."
+Fails with an error code of 1 if the chroot does not belong to this distro."
 
 if [ "$#" != 2 ] || [ "$1" != '-a' -a "$1" != '-r' ]; then
     echo "$USAGE" 1>&2
@@ -27,12 +26,10 @@ fi
 
 # Print the architecture if requested
 if [ "$1" = '-a' ]; then
-    if ! env -i chroot "$2" su -s '/bin/sh' \
-            -c 'dpkg --print-architecture' - root 2>/dev/null; then
-        echo 'incompatible'
-    fi
-    exit 0
+    awk '/^Package: dpkg$/ {ok=1} ok && /^Architecture: / {print $2; exit}' \
+        "${2%/}/var/lib/dpkg/status"
+else
+    echo "$rel"
 fi
 
-echo "$rel"
 exit 0
