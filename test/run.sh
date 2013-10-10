@@ -171,10 +171,26 @@ export CROUTON_EDIT_RESPONSE='y'
 export CROUTON_MOUNT_RESPONSE='y'
 export CROUTON_UNMOUNT_RESPONSE='y'
 
+# Prevent powerd from sleeping the system
+sh -e "$SCRIPTDIR/chroot-bin/croutonpowerd" -i &
+croutonpowerd="$!"
+
 # Run all the tests
 mkdir -p "$TESTDIR" "$PREFIXROOT"
-addtrap "echo 'Cleaning up...' 1>&2"
-addtrap "rm -rf --one-file-system '$PREFIXROOT' || true"
+addtrap "
+    echo 'Cleaning up...' 1>&2
+    set +e
+    for m in '$PREFIXROOT/'*; do
+        if [ -d \"\$m/chroots\" ]; then
+            sh -e '$SCRIPTDIR/host-bin/unmount-chroot' -a -y -c \"\$m/chroots\"
+        fi
+        if mountpoint -q \"\$m\"; then
+            umount -l \"\$m\" 2>/dev/null
+        fi
+    done
+    rm -rf --one-file-system '$PREFIXROOT'
+    kill '$croutonpowerd' 2>/dev/null
+"
 
 # If no arguments were passed, match all tests
 if [ "$#" = 0 ]; then
@@ -191,7 +207,13 @@ for p in "$@"; do
         tname="${t##*/}"
         tlog="$TESTDIR/$tname"
         PREFIX="`mktemp -d --tmpdir="$PREFIXROOT" "$tname.XXX"`"
+        # Remount PREFIX noexec/etc to make the environment as harsh as possible
+        mount --bind "$PREFIX" "$PREFIX"
+        mount -i -o remount,nosuid,nodev,noexec "$PREFIX"
+        # Run the test
         log "$TESTDIR/$tname" . "$t"
+        # Clean up
+        umount -l "$PREFIX"
         rm -rf --one-file-system "$PREFIX"
     done
 done
