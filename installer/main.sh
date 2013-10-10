@@ -23,6 +23,7 @@ NAME=''
 PREFIX='/usr/local'
 PROXY='unspecified'
 RELEASE=''
+RESTORE=''
 DEFAULTRELEASE='precise'
 TARBALL=''
 TARGETS=''
@@ -30,15 +31,20 @@ TARGETFILE=''
 UPDATE=''
 
 USAGE="$APPLICATION [options] -t targets
-$APPLICATION [options] -d -f tarball
+$APPLICATION [options] -f backup_tarball
+$APPLICATION [options] -d -f bootstrap_tarball
 
 Constructs a chroot for running a more standard userspace alongside Chromium OS.
 
-If run with -f, a tarball is used to bootstrap the chroot. If specified with -d,
-the tarball is created for later use with -f.
+If run with -f, where the tarball is a backup previously made using edit-chroot,
+the chroot is restored and relevant scripts installed.
 
-This must be run as root unless -d is specified AND fakeroot is installed AND
-/tmp is mounted exec and dev.
+If run with -d, a bootstrap tarball is created to speed up chroot creation in
+the future. You can use bootstrap tarballs generated this way by passing them
+to -f the next time you create a chroot with the same architecture and release.
+
+$APPLICATION must be run as root unless -d is specified AND fakeroot is
+installed AND /tmp is mounted exec and dev.
 
 It is highly recommended to run this from a crosh shell (Ctrl+Alt+T), not VT2.
 
@@ -48,8 +54,8 @@ Options:
     -d          Downloads the bootstrap tarball but does not prepare the chroot.
     -e          Encrypt the chroot with ecryptfs using a passphrase.
                 If specified twice, prompt to change the encryption passphrase.
-    -f TARBALL  The tarball to use, or download to in the case of -d.
-                When using a prebuilt tarball, -a and -r are ignored.
+    -f TARBALL  The bootstrap or backup tarball to use, or to download to in the
+                case of -d. When using an existing tarball, -a and -r are ignored.
     -k KEYFILE  File or directory to store the (encrypted) encryption keys in.
                 If unspecified, the keys will be stored in the chroot if doing a
                 first encryption, or auto-detected on existing chroots.
@@ -140,9 +146,8 @@ if [ "$RELEASE" = 'list' -o "$RELEASE" = 'help' ]; then
     exit 2
 fi
 
-# If targets weren't specified, we should just print help text.
-if [ -z "$DOWNLOADONLY" -a -z "$UPDATE" -a -z "$TARGETS" -a -z "$TARGETFILE" \
-        -a ! "$RELEASE" = 'list' -a ! "$RELEASE" = 'help' ]; then
+# Either a tarball, update, or target must be specified.
+if [ -z "$TARBALL$UPDATE$TARGETS$TARGETFILE" ]; then
     error 2 "$USAGE"
 fi
 
@@ -176,35 +181,49 @@ if [ "$USER" = root -o "$UID" = 0 ]; then
     disablehungtask
 fi
 
-# If we specified a tarball, we need to detect the ARCH and RELEASE
+# If we specified a tarball, we need to detect the tarball type
 if [ -z "$DOWNLOADONLY" -a -n "$TARBALL" ]; then
     if [ ! -f "$TARBALL" ]; then
         error 2 "$TARBALL not found."
     fi
-    echo 'Detecting archive release and architecture...' 1>&2
     label="`tar --test-label -f "$TARBALL" 2>/dev/null`"
     if [ -n "$label" ]; then
-        if [ "${label#crouton:bootstrap}" = "$label" ]; then
-            echo "$TARBALL doesn't appear to be a valid crouton bootstrap." 1>&2
-            echo "Proceeding anyway..." 1>&2
-            label=''
-            # FIXME(dnschneid): this is an error once we add a restore command
-            # error 2 "$TARBALL doesn't appear to be a valid crouton bootstrap."
+        if [ "${label#crouton:backup}" != "$label" ]; then
+            releasearch=''
+            if [ -z "$NAME" ]; then
+                NAME="${label#*-}"
+            fi
+        elif [ "${label#crouton:bootstrap}" != "$label" ]; then
+            releasearch="${label#*.}"
+        else
+            error 2 "$TARBALL doesn't appear to be a valid crouton bootstrap."
         fi
-        releasearch="${label#*.}"
     else
         # Old bootstraps just use the first folder name
+        echo "WARNING: $TARBALL is an old-style bootstrap or backup." 1>&2
         releasearch="`tar -tf "$TARBALL" 2>/dev/null | head -n 1`"
         releasearch="${releasearch%%/*}"
     fi
-    if [ ! "${releasearch#*-}" = "$releasearch" ]; then
+    if [ "${releasearch#*-}" != "$releasearch" ]; then
         ARCH="${releasearch#*-}"
         RELEASE="${releasearch%-*}"
     else
-        echo 'Unable to detect archive release and architecture. Using flags.' 1>&2
+        RESTORE='y'
+        if [ -z "$NAME" ]; then
+            NAME="$releasearch"
+        fi
     fi
+elif [ -n "$DOWNLOADONLY" -a -s "$TARBALL" ]; then
+    error 2 "$TARBALL already exists; refusing to overwrite it!"
 fi
 
+# If we're not restoring, updating, or bootstrapping, targets must be specified
+if [ -z "$RESTORE$UPDATE$DOWNLOADONLY$TARGETS$TARGETFILE" ]; then
+    error 2 "$USAGE"
+fi
+
+if [ -n "$RESTORE" -a -n "$TARGETS$TARGETFILE" -a -z "$UPDATE" ]; then
+    error 2 "Specify -u if you want to add targets when you restore a chroot."
 fi
 
 # Detect which distro the release belongs to.
@@ -315,14 +334,22 @@ TARGETDEDUPFILE="$CHROOT/.crouton-targets"
 if [ -z "$DOWNLOADONLY" ]; then
     create='-n'
     if [ -d "$CHROOT" ] && ! rmdir "$CHROOT" 2>/dev/null; then
-        if [ -z "$UPDATE" ]; then
+        if [ -n "$RESTORE" ]; then
+            error 1 "$CHROOT already has stuff in it!
+Either delete it, specify a different name (-n), or use edit-chroot to restore."
+        elif [ -z "$UPDATE" ]; then
             error 1 "$CHROOT already has stuff in it!
 Either delete it, specify a different name (-n), or specify -u to update it."
         fi
         create=''
         echo "$CHROOT already exists; updating it..." 1>&2
-    elif [ -n "$UPDATE" ]; then
+    elif [ -n "$UPDATE" -a -z "$RESTORE" ]; then
         error 1 "$CHROOT does not exist; cannot update."
+    fi
+
+    # Restore the chroot now
+    if [ -n "$RESTORE" ]; then
+        sh -e "$HOSTBINDIR/edit-chroot" -r -f "$TARBALL" -c "$CHROOTS" "$NAME"
     fi
 
     # Mount the chroot and update CHROOT path
@@ -427,14 +454,14 @@ elif [ -z "$DOWNLOADONLY" ] && \
 fi
 
 # Unpack the tarball if appropriate
-if [ -z "$UPDATE" -a -z "$DOWNLOADONLY" ]; then
+if [ -z "$RESTORE" -a -z "$UPDATE" -a -z "$DOWNLOADONLY" ]; then
     echo "Installing $RELEASE-$ARCH chroot to $CHROOT" 1>&2
     if [ -n "$TARBALL" ]; then
         # Unpack the chroot
         echo 'Unpacking chroot environment...' 1>&2
         tar -C "$CHROOT" --strip-components=1 -xf "$TARBALL"
     fi
-elif [ -z "$UPDATE" ]; then
+elif [ -z "$RESTORE" -a -z "$UPDATE" ]; then
     echo "Downloading $RELEASE-$ARCH bootstrap to $TARBALL" 1>&2
 fi
 
@@ -537,9 +564,15 @@ while [ -n "$t" ]; do
         (. "$TARGETSDIR/$TARGET") >> "$CHROOT/prepare.sh"
     fi
 done
-chmod 500 "$CHROOT/prepare.sh"
 
-# Run the setup script inside the chroot
-sh -e "$HOSTBINDIR/enter-chroot" -c "$CHROOTS" -n "$NAME" -xx
+if [ -z "$RESTORE" -o -n "$UPDATE" ]; then
+    chmod 500 "$CHROOT/prepare.sh"
+
+    # Run the setup script inside the chroot
+    sh -e "$HOSTBINDIR/enter-chroot" -c "$CHROOTS" -n "$NAME" -xx
+else
+    # We don't actually need to run the prepare.sh when only restoring
+    rm -f "$CHROOT/prepare.sh"
+fi
 
 echo "Done! You can enter the chroot using enter-chroot." 1>&2
