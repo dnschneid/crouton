@@ -177,8 +177,7 @@ croutonpowerd="$!"
 
 # Run all the tests
 mkdir -p "$TESTDIR" "$PREFIXROOT"
-addtrap "
-    echo 'Cleaning up...' 1>&2
+addtrap "echo 'Cleaning up...' 1>&2
     set +e
     for m in '$PREFIXROOT/'*; do
         if [ -d \"\$m/chroots\" ]; then
@@ -189,8 +188,7 @@ addtrap "
         fi
     done
     rm -rf --one-file-system '$PREFIXROOT'
-    kill '$croutonpowerd' 2>/dev/null
-"
+    kill '$croutonpowerd' 2>/dev/null"
 
 # If no arguments were passed, match all tests
 if [ "$#" = 0 ]; then
