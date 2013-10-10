@@ -117,6 +117,29 @@ post your update_engine.log from chrome://system to http://crbug.com/296768 and
 restore your device using a recovery USB: http://goo.gl/AZ74hj"
 fi
 
+# If the release is "list" or "help", print out all the valid releases.
+if [ "$RELEASE" = 'list' -o "$RELEASE" = 'help' ]; then
+    for DISTRODIR in "$INSTALLERDIR"/*/; do
+        DISTRODIR="${DISTRODIR%/}"
+        DISTRO="${DISTRODIR##*/}"
+        echo "Recognized $DISTRO releases:" 1>&2
+        accum=''
+        while read RELEASE; do
+            newaccum="${accum:-"   "} $RELEASE"
+            if [ "${#newaccum}" -gt 80 ]; then
+                echo "$accum" 1>&2
+                newaccum="    $RELEASE"
+            fi
+            accum="$newaccum"
+        done < "$DISTRODIR/releases"
+        if [ -n "$accum" ]; then
+            echo "$accum" 1>&2
+        fi
+    done
+    echo 'Releases marked with * are unsupported, but may work with some effort.' 1>&2
+    exit 2
+fi
+
 # If targets weren't specified, we should just print help text.
 if [ -z "$DOWNLOADONLY" -a -z "$UPDATE" -a -z "$TARGETS" -a -z "$TARGETFILE" \
         -a ! "$RELEASE" = 'list' -a ! "$RELEASE" = 'help' ]; then
@@ -182,27 +205,6 @@ if [ -z "$DOWNLOADONLY" -a -n "$TARBALL" ]; then
     fi
 fi
 
-# If the release is "list" or "help", print out all the valid releases.
-if [ "$RELEASE" = 'list' -o "$RELEASE" = 'help' ]; then
-    for DISTRODIR in "$INSTALLERDIR"/*/; do
-        DISTRODIR="${DISTRODIR%/}"
-        DISTRO="${DISTRODIR##*/}"
-        echo "Recognized $DISTRO releases:" 1>&2
-        accum=''
-        while read RELEASE; do
-            newaccum="${accum:-"   "} $RELEASE"
-            if [ "${#newaccum}" -gt 80 ]; then
-                echo "$accum" 1>&2
-                newaccum="    $RELEASE"
-            fi
-            accum="$newaccum"
-        done < "$DISTRODIR/releases"
-        if [ -n "$accum" ]; then
-            echo "$accum" 1>&2
-        fi
-    done
-    echo 'Releases marked with * are unsupported, but may work with some effort.' 1>&2
-    exit 2
 fi
 
 # Detect which distro the release belongs to.
