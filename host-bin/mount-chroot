@@ -52,7 +52,7 @@ if [ ! "$USER" = root -a ! "$UID" = 0 ]; then
 fi
 
 # Make sure we always exit with echo on the tty.
-addtrap "stty echo 2>/dev/null || true"
+addtrap "stty echo 2>/dev/null"
 
 # Function to prompt the user for a passphrase. Sets $passphrase.
 promptNewPassphrase() {

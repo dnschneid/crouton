@@ -144,7 +144,7 @@ if [ -n "$BACKUP$RESTORE" -a -z "$TARBALL" -a "$PWD" = '/' \
 fi
 
 # Make sure we always exit with echo on the tty.
-addtrap "stty echo 2>/dev/null || true"
+addtrap "stty echo 2>/dev/null"
 
 # Returns the mountpoint a path is on. The path doesn't need to exist.
 # $1: the path to check

@@ -191,7 +191,7 @@ compile() {
     install --minimal --asdeps $pkgs </dev/null
     echo "Compiling $out..." 1>&2
     local tmp="`mktemp crouton.XXXXXX --tmpdir=/tmp`"
-    addtrap "rm -f '$tmp' 2>/dev/null"
+    addtrap "rm -f '$tmp'"
     gcc -xc -Os - $linker -o "$tmp"
     /usr/bin/install -sDT "$tmp" "$out"
 }

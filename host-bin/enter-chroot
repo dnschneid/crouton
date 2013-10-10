@@ -118,7 +118,7 @@ fi
 disablehungtask
 
 # Make sure we always exit with echo on the tty.
-addtrap "stty echo 2>/dev/null || true"
+addtrap "stty echo 2>/dev/null"
 
 # Mount the chroot and update our CHROOT path
 if [ -n "$KEYFILE" ]; then
@@ -147,7 +147,7 @@ fi
 
 if [ -z "$CROUTON_NO_UNMOUNT" ]; then
     # Auto-unmount everything below and including the chroot upon exit
-    addtrap "sh -e '$BINDIR/unmount-chroot' -yc '$CHROOTS' '$NAME' || true"
+    addtrap "sh -e '$BINDIR/unmount-chroot' -yc '$CHROOTS' '$NAME'"
 fi
 
 # If our root is on an external disk we need to ensure USB device persistence is

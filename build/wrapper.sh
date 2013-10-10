@@ -46,7 +46,7 @@ if [ "$1" = '-x' -a "$#" -le 2 ]; then
 else
     # Make a temporary directory and auto-remove it when the script ends.
     SCRIPTDIR="`mktemp -d --tmpdir=/tmp "${0##*/}.XXX"`"
-    TRAP="rm -rf '$SCRIPTDIR';$TRAP"
+    TRAP="rm -rf --one-file-system '$SCRIPTDIR';$TRAP"
     trap "$TRAP" INT HUP 0
 fi
 

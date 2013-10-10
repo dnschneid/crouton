@@ -30,7 +30,7 @@ fi
 
 CRASBUILDTMP="`mktemp -d crouton-cras.XXXXXX --tmpdir=/tmp`"
 
-addtrap "rm -rf '$CRASBUILDTMP' 2>/dev/null"
+addtrap "rm -rf --one-file-system '$CRASBUILDTMP'"
 
 ( # Start subshell for compilation
     cd "$CRASBUILDTMP"

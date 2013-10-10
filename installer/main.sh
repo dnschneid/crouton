@@ -301,7 +301,7 @@ fi
 
 # Done with parameter processing!
 # Make sure we always have echo when this script exits
-addtrap "stty echo 2>/dev/null || true"
+addtrap "stty echo 2>/dev/null"
 
 # Deterime directories, and fix NAME if it was not specified.
 BIN="$PREFIX/bin"
@@ -334,7 +334,7 @@ Either delete it, specify a different name (-n), or specify -u to update it."
 
     # Auto-unmount the chroot when the script exits
     addtrap "sh -e '$HOSTBINDIR/unmount-chroot' \
-                    -y -c '$CHROOTS' '$NAME' 2>/dev/null || true"
+                    -y -c '$CHROOTS' '$NAME' 2>/dev/null"
 
     # Sanity-check the release if we're updating
     if [ -n "$UPDATE" -a -n "$RELEASE" ] &&
@@ -377,7 +377,7 @@ fi
 # successful.
 vboot_is_safe() {
     local tmp="`mktemp -d --tmpdir=/tmp 'crouton-rwtest.XXX'`"
-    local unmount="umount '$tmp' 2>/dev/null || true; rmdir '$tmp'"
+    local unmount="umount -l '$tmp' 2>/dev/null; rmdir '$tmp'"
     addtrap "$unmount"
     mount --bind / "$tmp" >/dev/null
     local ret=1
@@ -441,12 +441,12 @@ if [ -z "$UPDATE" ] && [ -n "$DOWNLOADONLY" -o -z "$TARBALL" ]; then
     # Create the temporary directory and delete it upon exit
     tmp="`mktemp -d --tmpdir=/tmp "$APPLICATION.XXX"`"
     subdir="$RELEASE-$ARCH"
-    addtrap "rm -rf '$tmp'"
+    addtrap "rm -rf --one-file-system '$tmp'"
 
     # Ensure that the temporary directory has exec+dev, or mount a new tmpfs
     if [ "$NOEXECTMP" = 'y' ]; then
         mount -i -t tmpfs -o 'rw,dev,exec' tmpfs "$tmp"
-        addtrap "umount -f '$tmp'"
+        addtrap "umount -l '$tmp'"
     fi
 
     . "$DISTRODIR/bootstrap"
@@ -464,7 +464,7 @@ if [ -z "$UPDATE" ] && [ -n "$DOWNLOADONLY" -o -z "$TARBALL" ]; then
     echo 'Moving bootstrap files into the chroot...' 1>&2
     # Make sure we do not leave an incomplete chroot in case of interrupt or
     # error during the move
-    addtrap "rm -rf '$CHROOT'"
+    addtrap "rm -rf --one-file-system '$CHROOT'"
     mv -f "$tmp/$subdir/"* "$CHROOT"
     undotrap
 fi

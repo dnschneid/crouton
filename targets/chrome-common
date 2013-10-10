@@ -35,7 +35,7 @@ if [ -n "`list_uninstalled '' "$pkg"`" ]; then
 
     url="https://dl.google.com/linux/direct/${pkg}_current_$ARCH.$PKGEXT"
     tmp="`mktemp crouton.XXXXXX --tmpdir=/tmp`"
-    addtrap "rm -f '$tmp' 2>/dev/null"
+    addtrap "rm -f '$tmp'"
 
     # We don't have the right root certificates in the bare install.
     wget --no-check-certificate "$url" -O "$tmp"

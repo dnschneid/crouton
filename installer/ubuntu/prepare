@@ -125,7 +125,7 @@ install_mirror_package() {
     url="$url$xvers"
     # Download the package to a temporary file
     local deb="`mktemp crouton.XXXXXX --tmpdir=/tmp`"
-    addtrap "rm -f '$deb' 2>/dev/null"
+    addtrap "rm -f '$deb'"
     wget --no-check-certificate "$url" -O"$deb"
     # Install the package
     install_pkg "$deb"
@@ -144,7 +144,7 @@ if [ -r /debootstrap ]; then
     # Start the bootstrap
     /debootstrap/debootstrap --second-stage
     # Clean contents of /var/run (since we'll always be mounting over it).
-    rm -rf /var/run/*
+    rm -rf --one-file-system /var/run/*
     # Request a script restart to refresh the mount environment
     relaunch_setup
 else
