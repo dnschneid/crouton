@@ -93,6 +93,31 @@ bootstrap() {
     fi
 }
 
+# Downloads and installs a basic chroot with the specified targets, then backs
+# it up for quicker test starts. Safe to run in parallel; takes advantage of
+# bootstraps as well.
+# $1: the release to install
+# $2: comma-separated list of targets. defaults to 'core'
+# $3: name of the chroot to extract to; default is the release name
+snapshot() {
+    local targets="${2:-core}"
+    local file="$PREFIXROOT/$1-$targets-snapshot.tar.gz"
+    local name="${3:-"$1"}"
+    if [ ! -s "$file" ]; then
+        # Use flock so that snapshot can ba called in parallel
+        if flock -n 3 && [ ! -s "$file" ]; then
+            crouton -f "`bootstrap "$1"`" -t "$targets" -n "$name" 1>&2
+            host edit-chroot -y -b -f "$file" "$name"
+            return 0
+        else
+            echo "Waiting for snapshot for $1-$targets to complete..." 1>&2
+            flock 3
+        fi 3>"$file"
+    fi
+    # Restore the snapshot into place
+    crouton -f "$file" -n "$name"
+}
+
 # Runs a host command with the specified parameters
 # $1 command to run (enter-chroot, etc)
 # $2+ parameters
