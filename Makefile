@@ -17,9 +17,14 @@ VERSION = 0
 TARPARAMS ?= -j
 
 ifeq ($(wildcard .git/HEAD),)
-	GITHEAD =
+    GITHEAD :=
 else
-	GITHEAD = .git/HEAD .git/refs/heads/$(shell cut -d/ -f3 '.git/HEAD')
+    GITHEADFILE := .git/refs/heads/$(shell cut -d/ -f3 '.git/HEAD')
+    ifeq ($(wildcard $(GITHEADFILE)),)
+        GITHEAD := .git/HEAD
+    else
+        GITHEAD := .git/HEAD .git/refs/heads/$(shell cut -d/ -f3 '.git/HEAD')
+    endif
 endif
 
 

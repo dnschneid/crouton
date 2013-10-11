@@ -19,6 +19,8 @@ if [ -f "$git/HEAD" ]; then
     if [ -n "$source" ]; then
         if [ -f "$git/refs/heads/$source" ]; then
             source="$source:`head -c 8 "$git/refs/heads/$source"`"
+        else
+            source="${source%"${source#????????}"}"
         fi
         source="~$source"
     fi
