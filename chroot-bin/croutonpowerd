@@ -20,6 +20,9 @@ Options:
 INHIBITSLEEP='30'
 DAEMONSLEEP='15'
 
+# Common functions
+. "`dirname "$0"`/../installer/functions"
+
 # Check if we need to pass through to another command
 EXEC="${0##*/}"
 case "$EXEC" in
@@ -63,7 +66,7 @@ elif [ "$CMD" = 'i' ]; then
         sleep "$INHIBITSLEEP"
     done &
     pid=$!
-    trap "kill $pid 2>/dev/null || true" INT HUP 0
+    addtrap "kill '$pid' 2>/dev/null"
     if [ -n "$EXEC" ]; then
         "$EXEC" "$@"
     elif [ -n "$2" ]; then
