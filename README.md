@@ -134,6 +134,9 @@ Examples
      parameter when created or by the release name if -n was not specified.
   2. `sudo edit-chroot -r chrootname` restores the chroot from the most recent
      timestamped tarball. You can explicitly specify the tarball with `-f`
+  3. If your machine is new, powerwashed, or held upside-down and shaken, you
+     can use the crouton installer to restore a chroot and relevant scripts:
+     `sudo sh -e ~/Downloads/crouton -f mybackup.tar.gz`
 
 *Unlike with Chromium OS, the data in your chroot isn't synced to the cloud.*
 
