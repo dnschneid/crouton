@@ -165,15 +165,23 @@ if [ -z "$NOLOGIN" -a -f "$CHROOT$SETUPSCRIPT" ]; then
     echo 'A chroot setup script still exists inside the chroot.' 1>&2
     echo 'The chroot may not be fully set up.' 1>&2
     response=''
-    if tty -s; then
-        echo -n 'Would you like to finish the setup? [Y/n] ' 1>&2
+    # A finished setup script will have permissions 500
+    if [ ! -x "$CHROOT$SETUPSCRIPT" -o -w "$CHROOT$SETUPSCRIPT" ]; then
+        echo 'However, it appears the setup script is invalid.' 1>&2
+        response='d'
+    fi
+    if tty -s && [ -z "$response" ]; then
+        echo -n 'Would you like to finish the setup? [Y/n/d] ' 1>&2
         read response
     fi
-    if [ -z "$response" -o ! "${response#[Yy]}" = "$response" ]; then
+    if [ -z "$response" -o "${response#[Yy]}" != "$response" ]; then
         echo 'Preparing chroot environment...' 1>&2
         CROUTON_NO_UNMOUNT=1 sh -e "$BINDIR/enter-chroot" \
             -c "$CHROOTS" -n "$NAME" -xx
         echo 'Setup completed. Entering chroot...' 1>&2
+    elif [ "${response#[Dd]}" != "$response" ]; then
+        echo 'Removing the chroot setup script. You may want to update your chroot again.' 1>&2
+        rm -f "$CHROOT$SETUPSCRIPT"
     else
         echo 'Skipping setup. You will be prompted again next time.' 1>&2
     fi
