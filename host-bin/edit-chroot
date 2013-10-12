@@ -156,22 +156,28 @@ getmountpoint() {
     done
 }
 
-# Prints out a fancy spinner that updates every time a line is fed in.
+# Prints out a fancy spinner that updates every time a line is fed in, unless
+# the output is not to a tty, in which case it just prints a new line.
 # $1: number of lines between each update of the spinner (default: 1)
 # Erases the line each time, so it will always be at position 0.
 # Either expect this and put text later in the line, or give this its own line.
 spinner() {
-    mawk -Winteractive '
-        BEGIN {
-            printf "\r"
-        }
-        {
-            y = (y+1) % '"${1:-1}"'
-            if (y == 0) {
-                x = (x+1) % 4
-                printf substr("\|/-", x+1, 1) "\r"
+    if [ -t 2 ]; then
+        mawk -Winteractive '
+            BEGIN {
+                printf "\r"
             }
-        }' 1>&2
+            {
+                y = (y+1) % '"${1:-1}"'
+                if (y == 0) {
+                    x = (x+1) % 4
+                    printf substr("\|/-", x+1, 1) "\r"
+                }
+            }' 1>&2
+    else
+        echo 1>&2
+        cat > /dev/null
+    fi
 }
 
 # Process each chroot
