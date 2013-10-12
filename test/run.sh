@@ -5,6 +5,7 @@
 
 # Provides common functions and variables, then runs all of the tests in tests/
 
+APPLICATION="${0##*/}"
 SCRIPTDIR="`readlink -f "\`dirname "$0"\`/.."`"
 TESTDIR="$SCRIPTDIR/test/run"
 TESTNAME="`sh -e "$SCRIPTDIR/build/genversion.sh" test`"
@@ -12,8 +13,31 @@ TESTDIR="$TESTDIR/$TESTNAME"
 # PREFIX intentionally includes a space. Run in /usr/local to avoid encryption
 PREFIXROOT="/usr/local/$TESTNAME prefix"
 
+JOBS="`grep -c '^processor' /proc/cpuinfo`"
+
+USAGE="$APPLICATION [options] [test [...]]
+
+Runs tests of the crouton infrastructure. Omitting specific tests will run all
+of them in sequence. Alternatively, you can specify one or more test name
+prefixes that are matched against the test names and run.
+
+Tests are run out of a unique subdirectory in /usr/local, and the results are
+stored in a unique subdirectory of $SCRIPTDIR/test/run
+
+Options:
+    -j JOBS  Number of tests to run in parallel. Default: $JOBS"
+
 # Common functions
 . "$SCRIPTDIR/installer/functions"
+
+# Process arguments
+while getopts 'j:' f; do
+    case "$f" in
+    j) JOBS="$OPTARG";;
+    \?) error 2 "$USAGE";;
+    esac
+done
+shift "$((OPTIND-1))"
 
 # We need to run as root
 if [ ! "$USER" = root -a ! "$UID" = 0 ]; then
@@ -204,6 +228,8 @@ croutonpowerd="$!"
 mkdir -p "$TESTDIR" "$PREFIXROOT"
 addtrap "echo 'Cleaning up...' 1>&2
     set +e
+    kill \$jobpids 2>/dev/null
+    wait
     for m in '$PREFIXROOT/'*; do
         if [ -d \"\$m/chroots\" ]; then
             sh -e '$SCRIPTDIR/host-bin/unmount-chroot' -a -y -c \"\$m/chroots\"
@@ -220,6 +246,34 @@ if [ "$#" = 0 ]; then
     set -- ''
 fi
 
+jobpids=''
+
+# Waits for there to be fewer than $1 jobs running. Reads and updates $jobpids.
+# Fails if one of the jobs failed.
+# If $1 is omitted, uses $JOBS
+# If 0 is specified, assumes 1
+waitjobs() {
+    local j=0
+    while [ -n "$jobpids" -a "$j" -le 0 ]; do
+        j="${1:-"$JOBS"}"
+        if [ "$j" -lt 1 ]; then
+            j=1
+        fi
+        local newjobpids='' pid
+        for pid in $jobpids; do
+            if kill -0 "$pid" 2>/dev/null; then
+                j="$((j-1))"
+                newjobpids="$newjobpids $pid"
+            else
+                # Grab the return code
+                wait "$pid"
+            fi
+        done
+        jobpids="${newjobpids# }"
+        sleep 1
+    done
+}
+
 # Run all tests matching the supplied prefixes
 tname=''
 for p in "$@"; do
@@ -227,19 +281,28 @@ for p in "$@"; do
         if [ ! -s "$t" ]; then
             continue
         fi
+        waitjobs
         tname="${t##*/}"
         tlog="$TESTDIR/$tname"
-        PREFIX="`mktemp -d --tmpdir="$PREFIXROOT" "$tname.XXX"`"
-        # Remount PREFIX noexec/etc to make the environment as harsh as possible
-        mount --bind "$PREFIX" "$PREFIX"
-        mount -i -o remount,nosuid,nodev,noexec "$PREFIX"
         # Run the test
-        log "$TESTDIR/$tname" . "$t"
-        # Clean up
-        umount -l "$PREFIX"
-        rm -rf --one-file-system "$PREFIX"
+        (
+            PREFIX="`mktemp -d --tmpdir="$PREFIXROOT" "$tname.XXX"`"
+            # Remount PREFIX noexec/etc to make the environment as harsh as possible
+            mount --bind "$PREFIX" "$PREFIX"
+            mount -i -o remount,nosuid,nodev,noexec "$PREFIX"
+            # Clean up on exit
+            settrap "
+                umount -l '$PREFIX'
+                rm -rf --one-file-system '$PREFIX'
+            "
+            log "$TESTDIR/$tname" . "$t"
+        ) &
+        jobpids="$jobpids${jobpids:+" "}$!"
     done
 done
+
+# Wait for all jobs to finish
+waitjobs 0
 
 if [ -n "$tname" ]; then
     echo "All tests passed!" 1>&2
