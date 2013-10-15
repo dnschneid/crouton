@@ -33,18 +33,21 @@ Tests are run out of a unique subdirectory in /usr/local, and the results are
 stored in a unique subdirectory of $SCRIPTDIR/test/run
 
 Options:
-    -j JOBS     Number of tests to run in parallel. Default: $JOBS
-    -r RELEASE  Specify a release to use whenever it shouldn't matter.
-                Default is a random supported release, such as $RELEASE."
+    -j JOBS      Number of tests to run in parallel. Default: $JOBS
+    -r RELEASE   Specify a release to use whenever it shouldn't matter.
+                 Default is a random supported release, such as $RELEASE.
+    -R RELEASES  Limit the 'all supported releases' testing to a comma-separated
+                 list of releases. Default: all supported releases are tested."
 
 # Common functions
 . "$SCRIPTDIR/installer/functions"
 
 # Process arguments
-while getopts 'j:r:' f; do
+while getopts 'j:r:R:' f; do
     case "$f" in
     j) JOBS="$OPTARG";;
     r) RELEASE="$OPTARG";;
+    R) SUPPORTED_RELEASES="`echo "$OPTARG" | tr ',' ' '`";;
     \?) error 2 "$USAGE";;
     esac
 done
