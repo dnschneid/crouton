@@ -60,13 +60,13 @@ log() {
     echo "`date '+%F %T:'` Launching '$*'" | tee -a "$file" 1>&2
     local start="`date '+%s'`"
     local retpreamble="'$*' finished with exit code"
-    # srand() retuns system time
+    # srand() uses system time as seed but returns previous seed. Call it twice.
     ((ret=0; "$@" < /dev/null || ret=$?; sleep 1; echo "$retpreamble $ret") \
             | mawk -W interactive '
-                        {print (srand()-'"$start"') " [i] " $0}
+                        {srand(); print (srand()-'"$start"') " [i] " $0}
             ') 2>&1 | mawk -W interactive '
                         ($2 == "[i]") {print; next}
-                        {print (srand()-'"$start"') " [e] " $0}
+                        {srand(); print (srand()-'"$start"') " [e] " $0}
             ' >> "$file"
     # Output the return and relay success
     tail -n1 "$file" | tee /dev/stderr | grep -q "$retpreamble 0\$"
