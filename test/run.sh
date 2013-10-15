@@ -169,9 +169,10 @@ exitswithin() {
     echo "Expecting '$*' to exit with code $code within $seconds seconds"
     "$@" &
     local pid="$!"
-    (sleep "$seconds" && kill -TERM "$pid") &
+    (sleep "$seconds" && exec kill -TERM "$pid") &
     local sleepid="$!"
     wait "$pid" || ret="$?"
+    sleep .1
     if kill "$sleepid" 2>/dev/null; then
         if [ "$ret" = "$code" ]; then
             echo "SUCCESS: '$*' exited with code $ret within $seconds seconds" 1>&2
@@ -196,9 +197,10 @@ runslongerthan() {
     echo "Expecting '$*' to survive longer than $seconds seconds"
     "$@" &
     local pid="$!"
-    (sleep "$seconds" && kill -INT "$pid") &
+    (sleep "$seconds" && exec kill -INT "$pid") &
     local sleepid="$!"
     wait "$pid" || ret="$?"
+    sleep .1
     if kill "$sleepid" 2>/dev/null; then
         echo "FAILED: '$*' did not survive at least $seconds seconds (returned $ret)" 1>&2
         return 2
