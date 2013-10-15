@@ -3,7 +3,8 @@ for release in $SUPPORTED_RELEASES; do
     snapshot "$release" core
     crouton -u -n "$release" -t audio
     host enter-chroot -n "$release" sh -ec 'head -c32 /dev/zero | aplay -v'
-    echo 'install --minimal pulseaudio' | crouton -T -u -n "$release"
+    echo 'install --minimal pulseaudio pulseaudio-utils' \
+        | crouton -T -u -n "$release"
     host enter-chroot -n "$release" sh -ec 'echo | pacat -v'
     host delete-chroot -y "$release"
 done
