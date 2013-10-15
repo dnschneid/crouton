@@ -1,0 +1,9 @@
+# All supported releases should be able to create an audio chroot and play sound
+for release in $SUPPORTED_RELEASES; do
+    snapshot "$release" core
+    crouton -u -n "$release" -t audio
+    host enter-chroot -n "$release" sh -ec 'head -c32 /dev/zero | aplay -v'
+    echo 'install --minimal pulseaudio' | crouton -T -u -n "$release"
+    host enter-chroot -n "$release" sh -ec 'echo | pacat -v'
+    host delete-chroot -y "$release"
+done

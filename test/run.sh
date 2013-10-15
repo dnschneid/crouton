@@ -99,10 +99,32 @@ test() {
 }
 
 # Launches the installer with the specified parameters; auto-includes -p
+# If -T is the first parameter, passes stdin into /prepare.sh
 crouton() {
-    local ret='0'
-    echo "LAUNCHING: crouton $*"
-    sh -e "$SCRIPTDIR/installer/main.sh" -p "$PREFIX" "$@" || ret="$?"
+    local ret='0' tfile=''
+    if [ "$1" = '-T' ]; then
+        shift
+        tfile="`mktemp --tmpdir="$PREFIX" target.XXXXXX`"
+        {
+            echo 'REQUIRES="core"
+. "${TARGETSDIR:="$PWD"}/common"
+### Append to prepare.sh:'
+            cat
+        } > "$tfile"
+    fi
+    echo "LAUNCHING: crouton${tfile:+" -T "}$tfile $*"
+    if [ -n "$tfile" ]; then
+        echo "BEGIN $tfile CONTENTS"
+        cat "$tfile"
+        echo "END $tfile CONTENTS"
+        sh -e "$SCRIPTDIR/installer/main.sh" -T "$tfile" -p "$PREFIX" "$@" \
+            || ret="$?"
+    else
+        sh -e "$SCRIPTDIR/installer/main.sh" -p "$PREFIX" "$@" || ret="$?"
+    fi
+    if [ -n "$tfile" ]; then
+        rm -f "$tfile"
+    fi
     if [ "$ret" != 0 ]; then
         echo "FAILED with code $ret: crouton $*" 1>&2
     fi
