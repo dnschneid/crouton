@@ -242,7 +242,7 @@ addtrap "echo 'Cleaning up...' 1>&2
     set +e
     kill \$jobpids 2>/dev/null
     for pid in \$jobpids; do
-        wait $pid 2>/dev/null
+        wait \$pid 2>/dev/null
     done
     for m in '$PREFIXROOT/'*; do
         if [ -d \"\$m/chroots\" ]; then
