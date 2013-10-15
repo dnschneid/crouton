@@ -1,7 +1,7 @@
 # Tests some of the more complex testing functions, and records the system info
 
 # Save the basic system info to the log
-awk -F= '/_RELEASE_DESCRIPTION=/ {print $2}' /etc/lsb-release
+echo "$SYSTEM"
 
 # Make sure test(), exitswithin() and runslongerthan() work as expected
 test 1 -eq 1

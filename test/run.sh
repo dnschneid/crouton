@@ -7,11 +7,19 @@
 
 APPLICATION="${0##*/}"
 SCRIPTDIR="`readlink -f "\`dirname "$0"\`/.."`"
+# List of all supported (non-*'d) releases
+SUPPORTED_RELEASES="`awk '/[^*]$/ { printf $1 " " }' \
+                         "$SCRIPTDIR/installer/"*"/releases"`"
+SUPPORTED_RELEASES="${SUPPORTED_RELEASES%" "}"
+# System info
+SYSTEM="`awk -F= '/_RELEASE_DESCRIPTION=/ {print $2}' /etc/lsb-release`"
 TESTDIR="$SCRIPTDIR/test/run"
 TESTNAME="`sh -e "$SCRIPTDIR/build/genversion.sh" test`"
 TESTDIR="$TESTDIR/$TESTNAME"
 # PREFIX intentionally includes a space. Run in /usr/local to avoid encryption
 PREFIXROOT="/usr/local/$TESTNAME prefix"
+# Choose a random release as the test release when the release (shouldn't) matter
+RELEASE="`echo "$SUPPORTED_RELEASES" | tr ' ' "\n" | sort -R | head -n 1`"
 
 JOBS="`grep -c '^processor' /proc/cpuinfo`"
 
@@ -25,15 +33,18 @@ Tests are run out of a unique subdirectory in /usr/local, and the results are
 stored in a unique subdirectory of $SCRIPTDIR/test/run
 
 Options:
-    -j JOBS  Number of tests to run in parallel. Default: $JOBS"
+    -j JOBS     Number of tests to run in parallel. Default: $JOBS
+    -r RELEASE  Specify a release to use whenever it shouldn't matter.
+                Default is a random supported release, such as $RELEASE."
 
 # Common functions
 . "$SCRIPTDIR/installer/functions"
 
 # Process arguments
-while getopts 'j:' f; do
+while getopts 'j:r:' f; do
     case "$f" in
     j) JOBS="$OPTARG";;
+    r) RELEASE="$OPTARG";;
     \?) error 2 "$USAGE";;
     esac
 done
@@ -46,6 +57,9 @@ fi
 
 echo "Running tests in $PREFIXROOT"
 echo "Logging to $TESTDIR"
+echo "System: $SYSTEM"
+echo "Supported releases: $SUPPORTED_RELEASES"
+echo "Default release for this run: $RELEASE"
 
 # Logs all output to the specified file with the date and time prefixed.
 # File is always appended.
@@ -209,10 +223,6 @@ runslongerthan() {
     fi
     return 0
 }
-
-# Prepare a variable with all of the supported releases
-SUPPORTED_RELEASES="`awk '/[^*]$/ { printf $1 " " }' \
-                         "$SCRIPTDIR/installer/"*"/releases"`"
 
 # Default responses to questions
 export CROUTON_USERNAME='test'
