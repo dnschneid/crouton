@@ -200,7 +200,7 @@ runslongerthan() {
     local sleepid="$!"
     wait "$pid" || ret="$?"
     if kill "$sleepid" 2>/dev/null; then
-        echo "FAILED: '$*' did not survive at least $seconds seconds" 1>&2
+        echo "FAILED: '$*' did not survive at least $seconds seconds (returned $ret)" 1>&2
         return 2
     else
         echo "SUCCESS: '$*' survived for $seconds seconds (returned $ret)" 1>&2
