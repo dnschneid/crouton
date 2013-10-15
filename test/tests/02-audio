@@ -1,3 +1,8 @@
+#!/bin/sh -e
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
 # All supported releases should be able to create an audio chroot and play sound
 for release in $SUPPORTED_RELEASES; do
     snapshot "$release" core

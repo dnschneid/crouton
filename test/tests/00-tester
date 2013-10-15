@@ -1,3 +1,8 @@
+#!/bin/sh -e
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
 # Tests some of the more complex testing functions, and records the system info
 
 # Save the basic system info to the log
