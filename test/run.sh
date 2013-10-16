@@ -34,6 +34,8 @@ stored in a unique subdirectory of $SCRIPTDIR/test/run
 
 Options:
     -j JOBS      Number of tests to run in parallel. Default: $JOBS
+    -l LOGDIR    Put test logs in the specified directory.
+                 Default: $TESTDIR
     -r RELEASE   Specify a release to use whenever it shouldn't matter.
                  Default is a random supported release, such as $RELEASE.
     -R RELEASES  Limit the 'all supported releases' testing to a comma-separated
@@ -43,9 +45,10 @@ Options:
 . "$SCRIPTDIR/installer/functions"
 
 # Process arguments
-while getopts 'j:r:R:' f; do
+while getopts 'j:l:r:R:' f; do
     case "$f" in
     j) JOBS="$OPTARG";;
+    l) TESTDIR="${OPTARG%/}";;
     r) RELEASE="$OPTARG";;
     R) SUPPORTED_RELEASES="`echo "$OPTARG" | tr ',' ' '`";;
     \?) error 2 "$USAGE";;
