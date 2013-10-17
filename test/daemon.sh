@@ -74,8 +74,8 @@ statusmonitor() {
 
 # Get a consistent ID for the device in the form of board_xxxxxxxx
 if hash vpd 2>/dev/null; then
-    id="`awk -F= '/_RELEASE_BOARD=/ {print $2}' /etc/lsb-release`"
-    id="${id%%-*}_`vpd -g serial_number | sha1sum | head -c 8`"
+    id="`awk '/_RELEASE_DESCRIPTION=/ {print $NF}' /etc/lsb-release`"
+    id="${id}_`vpd -g serial_number | sha1sum | head -c 8`"
 else
     # Oh well. Random testing ID it is.
     id="test_`hexdump -v -n4 -e '"" 1/1 "%02x"' /dev/urandom`"
