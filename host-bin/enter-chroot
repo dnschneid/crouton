@@ -41,11 +41,15 @@ Options:
 # Safely launch a command ($*) via /bin/sh within the chroot as the root user.
 chrootcmd() {
     # env may be overridden when running in the background; don't let it fork.
-    env -i chroot "$CHROOT" su -s '/bin/sh' -c "$*" - root
+    local ret=0 oldtrap="$TRAP"
+    TRAP=''
+    env -i chroot "$CHROOT" su -s '/bin/sh' -c "$*" - root || ret=$?
     local pid="$!"
     if [ -n "$BACKGROUND" ]; then
-        wait "$pid"
+        wait "$pid" || ret=$?
     fi
+    TRAP="$oldtrap"
+    return "$ret"
 }
 
 # Process arguments
@@ -385,18 +389,20 @@ fi
 # and move the trap code to happen there.
 if [ -n "$BACKGROUND" ]; then
     env() {
-        local stdin=''
-        [ ! -t 0 ] && stdin="`readlink -m /dev/stdin`"
-        (
+        # Shuffle FDs around to preserve stdin
+        { (
             trap '' INT HUP
             trap "$TRAP" 0
-            [ -n "$stdin" ] && exec < "$stdin"
-            [ -t 1 ] && exec  > /dev/null
-            [ -t 2 ] && exec 2> /dev/null
+            exec 0<&9 9<&-
+            [ -t 0 ] && exec < /dev/null
+            [ -t 1 ] && exec > /dev/null
+            [ -t 2 ] && exec 2>&1
             /usr/bin/env "$@"
-        ) &
+        ) & } 9<&0
     }
 fi
+
+ret=0
 
 # Launch the system dbus unless we are entering a basic shell.
 if [ ! "$NOLOGIN" = 1 ] && grep -q '^root:' "$passwd" 2>/dev/null; then
@@ -423,11 +429,14 @@ if [ ! "$NOLOGIN" = 1 ] && grep -q '^root:' "$passwd" 2>/dev/null; then
         dbususer="`id -un "$dbususer" 2>/dev/null || echo "messagebus"`"
         dbusgrp="`id -gn "$dbususer" 2>/dev/null || echo "messagebus"`"
         chown "$dbususer:$dbusgrp" /var/run/dbus
-        dbus-daemon --system --fork'
+        exec dbus-daemon --system --fork' || ret=$?
+    if [ ! "$ret" = 0 ]; then
+        echo "WARNING: starting chroot system dbus daemon failed with code $ret" 1>&2
+        ret=0
+    fi
 fi
 
 # Start the chroot and any specified command
-ret=0
 if [ -n "$NOLOGIN" ]; then
     env -i TERM="$TERM" chroot "$CHROOT" "$@" || ret=$?
     # Handle the return value when running the setup script.
@@ -468,7 +477,7 @@ fi
 
 # We don't want to trap for this proccess if we're running in the background
 if [ -n "$BACKGROUND" ]; then
-    trap - INT HUP 0
+    settrap ''
 fi
 
 # Cleanup all happens in the exit trap
