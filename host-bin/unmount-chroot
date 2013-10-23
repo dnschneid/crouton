@@ -141,14 +141,11 @@ fixabslinks() {
     echo "$p"
 }
 
-# Unmount each chroot
-ret=0
-for NAME in "$@"; do
-    if [ -z "$NAME" ]; then
-        continue
-    fi
-
-    NAME="${NAME#"$CHROOTS/"}"
+# Unmount the specified chroot $1
+# sets oldstyle if the chroot was unmounted in an old location.
+# if oldstyle is set upon entry, skips the check for old-style mounts.
+unmount() {
+    NAME="${1#"$CHROOTS/"}"
 
     # Check for existence
     CHROOT="$CHROOTS/$NAME"
@@ -159,17 +156,23 @@ for NAME in "$@"; do
     fi
 
     # Switch to the true mount point, but sort of support old-style mounted
-    # chroots with minimal false-positives to ease transition
+    # chroots with minimal false-positives to ease transition. Don't unmount
+    # old-style twice in a row, though.
     CHROOTSRC="$CHROOT"
     oldencr="$CHROOTS/.secure/$NAME"
-    if mountpoint -q "$oldencr" && [ -d "$oldencr/etc/crouton" ]; then
+    if mountpoint -q "$oldencr" \
+            && [ -d "$oldencr/etc/crouton" -a -z "$oldstyle" ]; then
         # Old encrypted chroots
+        oldstyle='y'
         CHROOT="$oldencr"
         echo "$CHROOTSRC appears to be mounted in $CHROOT" 1>&2
-    elif mountpoint -q "$CHROOT" && [ -d "$CHROOT/etc/crouton" ]; then
+    elif mountpoint -q "$CHROOT" \
+            && [ -d "$CHROOT/etc/crouton" -a -z "$oldstyle" ]; then
         # Keep the chroot the same
+        oldstyle='y'
         echo "$CHROOTSRC appears to be mounted in place" 1>&2
     else
+        oldstyle=''
         CHROOT="$ROOT/${CHROOT#/}"
     fi
 
@@ -291,11 +294,22 @@ for NAME in "$@"; do
         fi
     done
 
-    # Attempt to clean up the $ROOT directory
-    rm -rf --one-file-system "$ROOT"
-
     # More sync for more safety
     sync
+}
+
+# Unmount each chroot
+ret=0
+for NAME in "$@"; do
+    if [ -z "$NAME" ]; then
+        continue
+    fi
+    oldstyle=''
+    unmount "$NAME"
+    # If we unmounted old-style, do it again in case the new-style was also mounted.
+    if [ -n "$oldstyle" ]; then
+        unmount "$NAME"
+    fi
 done
 
 # Re-disable USB persistence (the Chromium OS default) if we no longer
@@ -307,5 +321,8 @@ if checkusage "$ROOT/media"; then
         fi
     done
 fi
+
+# Attempt to clean up the $ROOT directory; failure is normal
+rm -rf --one-file-system "$ROOT" 2>/dev/null || true
 
 exit $ret
