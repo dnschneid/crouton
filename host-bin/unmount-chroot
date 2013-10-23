@@ -158,9 +158,20 @@ for NAME in "$@"; do
         continue
     fi
 
-    # Switch to the true mount point
+    # Switch to the true mount point, but sort of support old-style mounted
+    # chroots with minimal false-positives to ease transition
     CHROOTSRC="$CHROOT"
-    CHROOT="$ROOT/${CHROOT#/}"
+    oldencr="$CHROOTS/.secure/$NAME"
+    if mountpoint -q "$oldencr" && [ -d "$oldencr/etc/crouton" ]; then
+        # Old encrypted chroots
+        CHROOT="$oldencr"
+        echo "$CHROOTSRC appears to be mounted in $CHROOT" 1>&2
+    elif mountpoint -q "$CHROOT" && [ -d "$CHROOT/etc/crouton" ]; then
+        # Keep the chroot the same
+        echo "$CHROOTSRC appears to be mounted in place" 1>&2
+    else
+        CHROOT="$ROOT/${CHROOT#/}"
+    fi
 
     base="`readlink -f "$CHROOT"`"
 
