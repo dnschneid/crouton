@@ -152,7 +152,7 @@ unmount() {
     if [ ! -d "$CHROOT" ]; then
         echo "$CHROOT not found." 1>&2
         ret=1
-        continue
+        return 0
     fi
 
     # Switch to the true mount point, but sort of support old-style mounted
@@ -176,7 +176,7 @@ unmount() {
         CHROOT="$ROOT/${CHROOT#/}"
         if [ ! -d "$CHROOT" ]; then
             # Not mounted
-            continue
+            return 0
         fi
     fi
 
@@ -185,7 +185,7 @@ unmount() {
     if ! checkusage "$base"; then
         echo "Not unmounting $CHROOTSRC as another instance is using it." 1>&2
         ret=1
-        continue
+        return 0
     fi
 
     # Kill the chroot's system dbus if one is running; failure is fine
