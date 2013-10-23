@@ -173,6 +173,11 @@ if [ "$UPDATE" = 1 ]; then
     fi
 fi
 
+# Prefix must exist
+if [ ! -d "$PREFIX" ]; then
+    error 2 "$PREFIX is not a valid prefix"
+fi
+
 # There should never be any extra parameters.
 if [ ! $# = 0 ]; then
     error 2 "$USAGE"
