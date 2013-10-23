@@ -15,6 +15,7 @@ PRINT=''
 SIGNAL='TERM'
 TRIES=5
 YES=''
+ROOT='/var/run/crouton'
 
 USAGE="$APPLICATION [options] name [...]
 
@@ -157,15 +158,14 @@ for NAME in "$@"; do
         continue
     fi
 
-    # Switch to the unencrypted mount for encrypted chroots.
-    if [ -f "$CHROOT/.ecryptfs" ]; then
-        CHROOT="$CHROOTS/.secure/$NAME"
-    fi
+    # Switch to the true mount point
+    CHROOTSRC="$CHROOT"
+    CHROOT="$ROOT/${CHROOT#/}"
 
     base="`readlink -f "$CHROOT"`"
 
     if ! checkusage "$base"; then
-        echo "Not unmounting $CHROOT as another instance is using it." 1>&2
+        echo "Not unmounting $CHROOTSRC as another instance is using it." 1>&2
         ret=1
         continue
     fi
@@ -187,7 +187,7 @@ for NAME in "$@"; do
     if [ -z "$EXCLUDEROOT" ]; then
         echo "Unmounting $CHROOT..." 1>&2
     else
-        echo "Pruning $CHROOT mounts..." 1>&2
+        echo "Pruning $CHROOTSRC mounts..." 1>&2
     fi
     baseesc="`echo "$base" | sed 's= =//=g'`"
 
@@ -233,7 +233,7 @@ for NAME in "$@"; do
                 elif [ ! "${YES#[Pp]}" = "$YES" ]; then
                     printonly=y
                 elif [ "${YES#[AaYy]}" = "$YES" ]; then
-                    echo "Skipping unmounting of $CHROOT" 1>&2
+                    echo "Skipping unmounting of $CHROOTSRC" 1>&2
                     ret=1
                     break
                 fi
@@ -274,11 +274,14 @@ for NAME in "$@"; do
         fi
         sleep 1
         if ! checkusage "$base"; then
-            echo "Aborting unmounting $CHROOT as another instance has begun using it." 1>&2
+            echo "Aborting unmounting $CHROOTSRC as another instance has begun using it." 1>&2
             ret=1
             break
         fi
     done
+
+    # Attempt to clean up the $ROOT directory
+    rm -rf --one-file-system "$ROOT"
 
     # More sync for more safety
     sync
@@ -286,7 +289,7 @@ done
 
 # Re-disable USB persistence (the Chromium OS default) if we no longer
 # have chroots running with a root in removable media
-if checkusage /media; then
+if checkusage "$ROOT/media"; then
     for usbp in /sys/bus/usb/devices/*/power/persist; do
         if [ -e "$usbp" ]; then
             echo 0 > "$usbp"

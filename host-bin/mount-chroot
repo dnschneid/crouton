@@ -12,10 +12,12 @@ CREATE=''
 ENCRYPT=''
 KEYFILE=''
 PRINT=''
+ROOT='/var/run/crouton'
+MOUNTOPTS='rw,dev,exec,suid'
 
 USAGE="$APPLICATION [options] name [...]
 
-Mounts one or more encrypted chroots into a root-only directory.
+Mounts one or more chroots into a root-only subdirectory of $ROOT
 
 Options:
     -c CHROOTS  Directory the chroots are in. Default: $CHROOTS
@@ -89,40 +91,45 @@ for NAME in "$@"; do
 
     # Check for existence
     CHROOT="$CHROOTS/$NAME"
+    encryted="$ENCRYPT"
     movesrc=''
     if [ -d "$CHROOT" ]; then
-        if [ ! -f "$CHROOT/.ecryptfs" -a -z "$ENCRYPT" ]; then
-            if [ -n "$PRINT" ]; then
-                echo "$CHROOT"
-            fi
-            continue
+        if [ -f "$CHROOT/.ecryptfs" -o -n "$ENCRYPT" ]; then
+            encrypted='y'
+            # Check for non-encrypted files that we may need to move
+            for file in "$CHROOT/"*; do
+                if [ "${file#*/ECRYPTFS_FNEK_ENCRYPTED}" = "$file" ]; then
+                    movesrc="$CHROOT"
+                    break
+                fi
+            done
         fi
-        # Check for non-encrypted files, which means we may need to move them.
-        for file in "$CHROOT/"*; do
-            if [ "${file#*/ECRYPTFS_FNEK_ENCRYPTED}" = "$file" ]; then
-                movesrc="$CHROOT"
-                break
-            fi
-        done
     elif [ -z "$CREATE" ]; then
         error 1 "$CHROOT not found."
-    elif [ -z "$ENCRYPT" ]; then
+    else
         mkdir -p "$CHROOT"
-        if [ -n "$PRINT" ]; then
-            echo "$CHROOT"
-        fi
-        continue
     fi
 
     CHROOTSRC="$CHROOT"
-    CHROOT="$CHROOTS/.secure/$NAME"
-    mkdir -p "$CHROOTSRC"
+    CHROOT="$ROOT/${CHROOT#/}"
+
+    # Ensure there's a root-only folder for the bind-mounted chroot
+    mkdir -p -m 0700 "$CHROOT"
+    chown root:root "$ROOT"
+    chmod 700 "$ROOT"
+
     if [ -n "$PRINT" ]; then
         echo "$CHROOT"
     fi
 
     # Check if we actually need to mount
     if ! mountpoint -q "$CHROOT"; then
+        if [ -z "$encrypted" ]; then
+            mount --bind "$CHROOTSRC" "$CHROOT"
+            mount -i -o "remount,$MOUNTOPTS" "$CHROOT"
+            continue
+        fi
+
         # We must be on a terminal.
         if ! tty -s; then
             error 2 'STDIN is not a terminal; cannot request passwords.'
@@ -155,11 +162,6 @@ for NAME in "$@"; do
         if ! mkdir -p "`dirname "$KEYFILE"`"; then
             error 1 "Unable to create directory for $KEYFILE"
         fi
-
-        # Create a root-only mount directory and mount in there
-        mkdir -m 700 -p "$CHROOT"
-        chown root:root "$CHROOTS/.secure"
-        chmod 700 "$CHROOTS/.secure"
 
         # If we just created it, choose and create the keyfile.
         passphrase="${CROUTON_PASSPHRASE:-"$CROUTON_NEW_PASSPHRASE"}"
@@ -239,12 +241,11 @@ $passphrase" | ecryptfs-rewrap-passphrase "$wrappedfnek" -
 
         mnt="ecryptfs_sig=$keysig,ecryptfs_fnek_sig=$fneksig"
         mnt="$mnt,no_sig_cache,ecryptfs_cipher=aes,ecryptfs_key_bytes=16"
-        mnt="$mnt,ecryptfs_passthrough=n,ecryptfs_unlink_sigs"
+        mnt="$mnt,ecryptfs_passthrough=n,ecryptfs_unlink_sigs,$MOUNTOPTS"
 
         if ! mount -i -t ecryptfs -o "$mnt" "$CHROOTSRC" "$CHROOT"; then
             error 1 "Failed to mount $NAME."
         fi
-        mount --make-unbindable "$CHROOT"
     fi
 
     # Perform the move

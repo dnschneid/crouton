@@ -127,6 +127,7 @@ disablehungtask
 addtrap "stty echo 2>/dev/null"
 
 # Mount the chroot and update our CHROOT path
+CHROOTSRC="$CHROOT"
 if [ -n "$KEYFILE" ]; then
     CHROOT="`sh -e "$BINDIR/mount-chroot" \
                                      -k "$KEYFILE" -p -c "$CHROOTS" "$NAME"`"
@@ -158,7 +159,7 @@ fi
 
 # If our root is on an external disk we need to ensure USB device persistence is
 # enabled otherwise we will lose the file-system after a suspend event.
-if [ ! "${CHROOT#/media}" = "$CHROOT" ]; then
+if [ ! "${CHROOTSRC#/media}" = "$CHROOTSRC" ]; then
     for usbp in /sys/bus/usb/devices/*/power/persist; do
         if [ -e "$usbp" ]; then
             echo 1 > "$usbp"
@@ -197,7 +198,7 @@ fi
 passwd="$CHROOT/etc/passwd"
 if [ -z "$NOLOGIN" ]; then
     if [ ! -r "$passwd" ]; then
-        error 1 "$CHROOT doesn't appear to be a valid chroot."
+        error 1 "$CHROOTSRC doesn't appear to be a valid chroot."
     fi
     case "$USERNAME" in
     ''|*[!0-9]*)
@@ -284,9 +285,6 @@ bindmount() {
     mount --bind $bindopts "$1" "$target"
     if [ -n "$3" ]; then
         mount -i -o "remount,$3" "$target"
-        if [ -n "$4" ]; then
-            mount $4 "$target"
-        fi
     fi
 }
 
@@ -307,8 +305,6 @@ else
     firstrun='y'
 fi
 
-# Ensure the chroot is executable and writable by bind-mounting it to itself.
-bindmount "$CHROOT" / rw,dev,exec,suid --make-unbindable
 bindmount /dev
 bindmount /dev/pts
 bindmount /dev/shm
