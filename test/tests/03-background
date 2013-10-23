@@ -1,0 +1,51 @@
+#!/bin/sh -e
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Ensure backgrounding works properly and fails when it's supposed to
+
+# Release-independent.
+snapshot "$RELEASE" core
+
+waitfinish() {
+    while ! host unmount-chroot "$RELEASE"; do
+        sleep 1
+    done
+}
+
+# Should work by default
+host enter-chroot -b -n "$RELEASE" true
+waitfinish
+
+# Return value doesn't matter
+host enter-chroot -b -n "$RELEASE" false
+waitfinish
+
+# Piping should work
+s='PIPES ARE GO'
+echo "$s" | host enter-chroot -b -n "$RELEASE" cat | passes grep "$s"
+
+# Even with a failing rc.local it should work
+echo 'Making rc.local fail' 1>&2
+rclocal="$PREFIX/chroots/$RELEASE/etc/rc.local"
+mv -f "$rclocal" "$rclocal.bak"
+echo '#!/bin/sh -e
+exit 1' > "$rclocal"
+chmod a+rx "$rclocal"
+host enter-chroot -b -n "$RELEASE" true
+waitfinish
+mv -f "$rclocal.bak" "$rclocal"
+
+# Even with a failing dbus-daemon it should work
+echo 'Making dbus-daemon fail' 1>&2
+for dir in bin sbin usr/bin usr/sbin; do
+    dbusdaemon="$PREFIX/chroots/$RELEASE/$dir/dbus-daemon"
+    if [ -d "`dirname "$dbusdaemon"`" ]; then
+        echo '#!/bin/sh -e
+exit 1' > "$dbusdaemon"
+        chmod a+rx "$dbusdaemon"
+    fi
+done
+host enter-chroot -b -n "$RELEASE" true
+waitfinish
