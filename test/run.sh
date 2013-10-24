@@ -104,6 +104,12 @@ test() {
     fi
 }
 
+# Returns a temporary file in the prefix, so you don't have to clean it up
+# $1 (optional): specify a prefix
+tmpfile() {
+    mktemp --tmpdir="$PREFIX" "${1:-tmp}.XXXXXX"
+}
+
 # Launches the installer with the specified parameters; auto-includes -p
 # If -T is the first parameter, passes stdin into /prepare.sh
 crouton() {
@@ -248,6 +254,34 @@ runslongerthan() {
         return 2
     else
         echo "SUCCESS: '$*' survived for $seconds seconds (returned $ret)" 1>&2
+    fi
+    return 0
+}
+
+# Expects a successful return code from the provided command.
+passes() {
+    echo "Expecting '$*' to succeed" 1>&2
+    local ret=0
+    "$@" || ret=$?
+    if [ "$ret" = 0 ]; then
+        echo "SUCCESS: '$*' succeeded" 1>&2
+    else
+        echo "FAILED: '$*' returned $ret" 1>&2
+        return "$ret"
+    fi
+    return 0
+}
+
+# Expects a failure return code from the provided command.
+fails() {
+    echo "Expecting '$*' to fail" 1>&2
+    local ret=0
+    "$@" || ret=$?
+    if [ "$ret" != 0 ]; then
+        echo "SUCCESS: '$*' returned $ret" 1>&2
+    else
+        echo "FAILED: '$*' succeeded" 1>&2
+        return 1
     fi
     return 0
 }
