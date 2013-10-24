@@ -61,11 +61,11 @@ if [ ! "$USER" = root -a ! "$UID" = 0 ]; then
     error 2 "${0##*/} must be run as root."
 fi
 
-echo "Running tests in $PREFIXROOT"
-echo "Logging to $TESTDIR"
-echo "System: $SYSTEM"
-echo "Supported releases: $SUPPORTED_RELEASES"
-echo "Default release for this run: $RELEASE"
+echo "Running tests in $PREFIXROOT" 1>&2
+echo "Logging to $TESTDIR" 1>&2
+echo "System: $SYSTEM" 1>&2
+echo "Supported releases: $SUPPORTED_RELEASES" 1>&2
+echo "Default release for this run: $RELEASE" 1>&2
 
 # Logs all output to the specified file with the date and time prefixed.
 # File is always appended.
@@ -96,7 +96,7 @@ log() {
 # Returns 1 on failure
 test() {
     if [ "$@" ]; then
-        echo "SUCCESS: [ $* ]"
+        echo "SUCCESS: [ $* ]" 1>&2
         return 0
     else
         echo "FAILED: [ $* ]" 1>&2
@@ -118,11 +118,11 @@ crouton() {
             cat
         } > "$tfile"
     fi
-    echo "LAUNCHING: crouton${tfile:+" -T "}$tfile $*"
+    echo "LAUNCHING: crouton${tfile:+" -T "}$tfile $*" 1>&2
     if [ -n "$tfile" ]; then
-        echo "BEGIN $tfile CONTENTS"
-        cat "$tfile"
-        echo "END $tfile CONTENTS"
+        echo "BEGIN $tfile CONTENTS" 1>&2
+        cat "$tfile" 1>&2
+        echo "END $tfile CONTENTS" 1>&2
         sh -e "$SCRIPTDIR/installer/main.sh" -T "$tfile" -p "$PREFIX" "$@" \
             || ret="$?"
     else
@@ -190,10 +190,10 @@ snapshot() {
 host() {
     local cmd="$1" ret='0'
     shift
-    echo "LAUNCHING: $cmd $*"
+    echo "LAUNCHING: $cmd $*" 1>&2
     sh -e "$PREFIX/bin/$cmd" "$@" || ret="$?"
     if [ "$ret" = 0 ]; then
-        echo "SUCCESS: $cmd $*"
+        echo "SUCCESS: $cmd $*" 1>&2
     else
         echo "FAILED with code $ret: $cmd $*" 1>&2
     fi
@@ -208,7 +208,7 @@ host() {
 exitswithin() {
     local code="$1" seconds="$2" ret=0
     shift 2
-    echo "Expecting '$*' to exit with code $code within $seconds seconds"
+    echo "Expecting '$*' to exit with code $code within $seconds seconds" 1>&2
     "$@" &
     local pid="$!"
     (sleep "$seconds" && exec kill -TERM "$pid") &
@@ -236,7 +236,7 @@ exitswithin() {
 runslongerthan() {
     local seconds="$1" ret=0
     shift
-    echo "Expecting '$*' to survive longer than $seconds seconds"
+    echo "Expecting '$*' to survive longer than $seconds seconds" 1>&2
     "$@" &
     local pid="$!"
     (sleep "$seconds" && exec kill -INT "$pid") &
