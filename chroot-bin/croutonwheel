@@ -3,6 +3,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+. "`dirname "$0"`/../installer/functions"
+
 # Default button numbers
 u=4
 d=5
@@ -44,11 +46,14 @@ if [ $# -ge "$OPTIND" ]; then
     exit 1;
 fi
 
+# Detect if we are using mawk or gawk
+AWK=`detectawk`
+
 # Operate on the Chromium OS X11 server
 eval "`/usr/local/bin/host-x11`"
 
 # Get the aura root window number (hex)
-aura="`xwininfo -root -children | mawk '/aura_root/ {print $1}'`"
+aura="`xwininfo -root -children | awk '/aura_root/ {print $1}'`"
 
 # Monitor xinput2 events, reacting only to scroll events (axes 2 and 3).
 # Accumulate the x and y scrolls, but reduce the acceleration so it doesn't go
@@ -64,11 +69,15 @@ aura="`xwininfo -root -children | mawk '/aura_root/ {print $1}'`"
     xev -root <&- &
     trap "kill $! $xi 2>&- || true" INT TERM HUP 0
     wait
-} <&- | mawk -W interactive '
+} <&- | $AWK '
     # Test if x is a non-zero real number (i.e. not nan, inf, "", or 0)
-    # (x+0 != x+1) tests if the number is not nan or inf.
     function isnonzero(x) {
-        return (x != "") && (x != 0) && (x+0 != x+1)
+        return (x != "") && (x != 0) && (x != "nan") && (x != "inf")
+    }
+
+    function printflush(s) {
+        print s
+        fflush()
     }
 
     m {
@@ -107,11 +116,11 @@ aura="`xwininfo -root -children | mawk '/aura_root/ {print $1}'`"
                 x -= tp ? log(-dx) * '"$xs"' + '"$xc"' : 1
             }
             while (x >= 1) {
-                print "mouseclick '"$r"'"
+                printflush("mouseclick '"$r"'")
                 x -= 1
             }
             while (x <= -1) {
-                print "mouseclick '"$l"'"
+                printflush("mouseclick '"$l"'")
                 x += 1
             }
         }
@@ -124,11 +133,11 @@ aura="`xwininfo -root -children | mawk '/aura_root/ {print $1}'`"
                 y -= tp ? log(-dy) * '"$ys"' + '"$yc"' : 1
             }
             while (y >= 1) {
-                print "mouseclick '"$d"'"
+                printflush("mouseclick '"$d"'")
                 y -= 1
             }
             while (y <= -1) {
-                print "mouseclick '"$u"'"
+                printflush("mouseclick '"$u"'")
                 y += 1
             }
         }

@@ -110,3 +110,22 @@ release() {
 disablehungtask() {
     echo 0 > /proc/sys/kernel/hung_task_panic
 }
+
+# Detect a version of awk that can be asked not to buffer its output.
+# Prefer mawk, fallback on gawk (~50% slower).
+# mawk needs '-W interactive' to flush the output properly (fflush does not
+# work as documented, but apparently this behaviour is intentional, see
+# http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=593504).
+# Furthermore, fflush is not POSIX so we cannot use any other awk flavor.
+# In the awk code, all print must be followed by fflush, even if it is not
+# necessary with mawk.
+detectawk() {
+    if which mawk >/dev/null 2>&1; then
+        echo -n "mawk -W interactive"
+    elif which gawk >/dev/null 2>&1; then
+        echo -n "gawk"
+    else
+        echo "Cannot find mawk or gawk." 1>&2
+        return 1
+    fi
+}
