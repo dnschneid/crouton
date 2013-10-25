@@ -143,6 +143,9 @@ if [ -n "$BACKUP$RESTORE" -a -z "$TARBALL" -a "$PWD" = '/' \
     TARBALL="/home/chronos/user/Downloads/"
 fi
 
+# Avoid kernel panics due to slow I/O
+disablehungtask
+
 # Make sure we always exit with echo on the tty.
 addtrap "stty echo 2>/dev/null"
 
