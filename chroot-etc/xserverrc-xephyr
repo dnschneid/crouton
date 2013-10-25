@@ -4,4 +4,11 @@
 # found in the LICENSE file.
 
 export DISPLAY=':0' XAUTHORITY='/var/host/Xauthority'
-exec /usr/bin/Xephyr -fullscreen -host-cursor -nolisten tcp "$@"
+
+XMETHOD='xephyr'
+XARGS='-fullscreen -host-cursor -nolisten tcp'
+if [ -f /etc/crouton/xserverrc-local ]; then
+    . /etc/crouton/xserverrc-local
+fi
+
+exec /usr/bin/Xephyr $XARGS "$@"
