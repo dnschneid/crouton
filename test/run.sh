@@ -401,6 +401,10 @@ for p in "$@"; do
             mount -i -o remount,nosuid,nodev,noexec "$PREFIX"
             # Clean up on exit
             settrap "
+                if [ -d '$PREFIX/chroots' ]; then
+                    sh -e '$SCRIPTDIR/host-bin/unmount-chroot' \
+                        -a -y -c '$PREFIX/chroots'
+                fi
                 umount -l '$PREFIX'
                 rm -rf --one-file-system '$PREFIX'
             "
