@@ -335,7 +335,6 @@ croutonpowerd="$!"
 # Run all the tests
 mkdir -p "$TESTDIR" "$PREFIXROOT"
 addtrap "echo 'Cleaning up...' 1>&2
-    set +e
     pkill debootstrap 2>/dev/null
     kill \$jobpids 2>/dev/null
     for pid in \$jobpids; do
