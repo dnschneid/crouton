@@ -3,9 +3,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 if [ ! "$TARGETS" = 'help' ]; then
-    if [ ! "$ARCH" = 'amd64' -a ! "$ARCH" = 'i386' ] &&
-            ! release -gt quantal; then
-        error 1 "cinnamon target not available on $RELEASE on $ARCH."
+    if [ ! "$ARCH" = 'amd64' -a ! "$ARCH" = 'i386' ]; then
+        error 1 "cinnamon target not available on $ARCH."
     elif release -le jessie; then
         error 1 "cinnamon target not available on $RELEASE."
     fi
