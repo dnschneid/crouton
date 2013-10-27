@@ -27,6 +27,7 @@ var enabled_ = true; /* true if we are trying to connect */
 var active_ = false; /* true if we are connected to a server */
 var error_ = false; /* true if there was an error during the last connection */
 var dummystr_ = false; /* true if the last string we copied was the dummy string */
+var update_ = false; /* true if an update to the extension is available */
 
 var status_ = "";
 var logger_ = []; /* Array of status messages: [LogLevel, time, message] */
@@ -36,11 +37,36 @@ var logger_ = []; /* Array of status messages: [LogLevel, time, message] */
 function setStatus(status, active) {
     active_ = active;
     status_ = status;
+
+    /* Apply update if the extension is not active */
+    if (update_ && !active_)
+        chrome.runtime.reload();
+
     refreshUI();
 }
 
 function showHelp() {
     chrome.tabs.create({url: "first.html"});
+}
+
+function updateAvailable(version) {
+    printLog("A new version of the extension is available (" +
+             version + ").", LogLevel.INFO);
+
+    /* Apply update immediately if the extension is not active */
+    if (!active_)
+        chrome.runtime.reload();
+    else
+        update_ = true;
+}
+
+function checkUpdate() {
+    chrome.runtime.requestUpdateCheck(function (status, details) {
+        printLog("Update status=" + status, LogLevel.DEBUG);
+        if (status == "update_available") {
+            updateAvailable(details.version);
+        }
+    });
 }
 
 /* Update the icon, and refresh the popup page */
@@ -130,7 +156,8 @@ function refreshUI() {
 
 /* Start the extension */
 function clipboardStart() {
-    printLog("Crouton extension running!", LogLevel.DEBUG);
+    printLog("Crouton extension started (" +
+             chrome.runtime.getManifest().version + ")!", LogLevel.INFO);
     setStatus("Started...", false);
 
     clipboardholder_ = document.getElementById("clipboardholder");
@@ -294,6 +321,9 @@ function websocketClose() {
     }
 
     websocket_ = null;
+
+    /* Check for update on every disconnect */
+    checkUpdate();
 }
 
 function padstr0(i) {
@@ -314,7 +344,8 @@ function printLog(str, level) {
     if (str.length > 80)
         str = str.substring(0, 77) + "...";
     console.log(datestr + ": " + str);
-    /* Add to logger if this is not a debug message, or if debugging is enabled */
+
+    /* Add messages to logger */
     if (level != LogLevel.DEBUG || debug_) {
         logger_.unshift([level, datestr, str]);
         if (logger_.length > MAXLOGGERLEN) {
@@ -331,6 +362,8 @@ function error(str, enabled) {
     error_ = true;
     refreshUI();
     websocket_.close();
+    /* Check for extension update (possible reason for the error) */
+    checkUpdate();
 }
 
 /* On error: disconnect WebSocket, then log errors */
@@ -351,3 +384,7 @@ chrome.runtime.onInstalled.addListener(function(details) {
     }
 }
 )
+
+chrome.runtime.onUpdateAvailable.addListener(function(details) {
+    updateAvailable(details.version);
+});
