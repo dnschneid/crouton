@@ -95,6 +95,9 @@ list_uninstalled_dist() {
 # $3: Version regex (e.g. '1\.11\.4-0ubuntu[0-9][0-9]\.[0-9]*').
 #     If not specified, match any version (default regex: ".*").
 #     The latest version that matches the regex is selected.
+#     If the package is a dependency of other packages (e.g. a library), you
+#     should select the earliest version that provides the required features,
+#     to prevent breakage during release upgrade.
 install_mirror_package() {
     install wget
     local package="$1"

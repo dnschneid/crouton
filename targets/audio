@@ -17,9 +17,13 @@ install --minimal --asdeps gcc libc6-dev pkg-config \
     libdbus-1-dev libasound2-dev libspeexdsp-dev
 
 # SBC is not available in older Debian/Ubuntu: fetch it manually
-if release -le quantal -le wheezy; then
-    install_mirror_package 'libsbc1' 'pool/main/s/sbc' '1\.1.*'
-    install_mirror_package 'libsbc-dev' 'pool/main/s/sbc' '1\.1.*'
+if release -le quantal; then
+    install_mirror_package 'libsbc1' 'pool/main/s/sbc' '1\.0-.*'
+    install_mirror_package 'libsbc-dev' 'pool/main/s/sbc' '1\.0-.*'
+    apt-mark auto libsbc-dev
+elif release -le wheezy; then
+    install_mirror_package 'libsbc1' 'pool/main/s/sbc' '1\.1-1'
+    install_mirror_package 'libsbc-dev' 'pool/main/s/sbc' '1\.1-1'
     apt-mark auto libsbc-dev
 else
     install --minimal libsbc1
