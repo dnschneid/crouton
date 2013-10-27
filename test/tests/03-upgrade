@@ -1,0 +1,49 @@
+#!/bin/sh -e
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Test upgrade path from Ubuntu 12.04 (precise) to 14.04 (trusty),
+# via non-LTS releases (quantal, raring, saucy)
+# The critical targets that are likely to break are audio, touch and xephyr,
+# as they manually pull in packages from the mirror.
+
+FIRST="precise"
+NEXT="quantal raring saucy"
+DEV="trusty"
+
+TARGETS="core,audio,touch,xephyr"
+PACKAGES="libsbc1 touchegg xserver-xephyr"
+
+upgrade() {
+    host enter-chroot -n "$FIRST" -u 0 do-release-upgrade "$@" -f DistUpgradeViewNonInteractive
+    crouton -n "$FIRST" -u
+    versioninfo
+}
+
+# Dump version of critical packages
+# FIXME: Would be nice to have a way to output these to a separate file
+versioninfo() {
+    host enter-chroot -n "$FIRST" -u 0 sh -ec '
+            echo "=== Version info ==="
+            cat /etc/lsb-release | sed -n -e "s/DISTRIB_CODENAME=//p"
+            dpkg-query -W '"$PACKAGES"'
+        '
+}
+
+crouton -r "$FIRST" -t "$TARGETS"
+versioninfo
+
+host enter-chroot -n "$FIRST" -u 0 apt-get -y install update-manager-core python-apt
+host enter-chroot -n "$FIRST" -u 0 sed -i -e 's/Prompt=lts/Prompt=normal/' /etc/update-manager/release-upgrades
+
+for next in $NEXT; do
+    upgrade
+done
+
+# Then upgrade to latest development version as well
+if [ -n "$DEV" ]; then
+    upgrade -d
+fi
+
+host delete-chroot -y "$FIRST"
