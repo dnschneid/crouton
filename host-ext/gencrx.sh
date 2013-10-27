@@ -20,9 +20,9 @@ EXTNAME="crouton"
 
 cd "`dirname "$0"`"
 
-rm -f "$EXTNAME.crx"
+rm -f "$EXTNAME.crx" "$EXTNAME.zip"
 
-trap "rm -f '$EXTNAME.zip' '$EXTNAME.sig' '$EXTNAME.pub'" 0
+trap "rm -f '$EXTNAME.sig' '$EXTNAME.pub'" 0
 
 # Create zip file
 ( cd $EXTNAME; zip -qr -9 -X "../$EXTNAME.zip" . )
