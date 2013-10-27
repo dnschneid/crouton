@@ -46,23 +46,22 @@ function showHelp() {
 /* Update the icon, and refresh the popup page */
 function refreshUI() {
     if (error_)
-        icon = "icon-error-38.png"
+        icon = "error"
     else if (!enabled_)
-        icon = "icon-disabled-38.png"
+        icon = "disabled"
     else if (active_)
-        icon = "icon-online-38.png";
+        icon = "connected";
     else
-        icon = "icon-offline-38.png";
+        icon = "disconnected";
 
-    chrome.browserAction.setIcon({path: icon});
+    chrome.browserAction.setIcon(
+        {path: {'19': icon + '-19.png', '38': icon + '-38.png'}}
+    );
 
     var views = chrome.extension.getViews({type: "popup"});
     for (var i = 0; i < views.length; views++) {
         /* Make sure page is ready */
         if (document.readyState === "complete") {
-            /* Update icon */
-            popupicon = views[i].document.getElementById("icon");
-            popupicon.src = icon;
             /* Update "help" link */
             helplink = views[i].document.getElementById("help");
             helplink.onclick = showHelp;
