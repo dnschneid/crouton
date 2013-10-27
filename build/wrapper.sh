@@ -34,6 +34,8 @@
 # and then runs installer/main.sh with the parameters passed to it.
 # You can pass -x [directory] to extract the contents somewhere.
 
+set -e
+
 VERSION='git'
 
 # Minimum Chromium OS version is R28 stable
