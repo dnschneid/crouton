@@ -54,5 +54,3 @@ done
 if [ -n "$DEV" ]; then
     upgrade -d "$DEV"
 fi
-
-host delete-chroot -y "$FIRST"
