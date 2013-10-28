@@ -15,35 +15,44 @@ DEV="trusty"
 TARGETS="core,audio,touch,xephyr"
 PACKAGES="libsbc1 touchegg xserver-xephyr"
 
+# upgrade [-d] release
+# -d: upgrade to a development release
+# release: expected release after the upgrade
 upgrade() {
-    host enter-chroot -n "$FIRST" -u 0 do-release-upgrade "$@" -f DistUpgradeViewNonInteractive
+    extra=
+    if [ "$1" = "-d" ]; then
+        extra="$1"
+        shift
+    fi
+    host enter-chroot -n "$FIRST" -u 0 do-release-upgrade $extra \
+                        -f DistUpgradeViewNonInteractive
+    passes sh -e "$SCRIPTDIR/installer/ubuntu/getrelease.sh" \
+                        -r "$PREFIX/chroots/$FIRST" | passes grep -q "^$1$"
     crouton -n "$FIRST" -u
     versioninfo
 }
 
 # Dump version of critical packages
-# FIXME: Would be nice to have a way to output these to a separate file
 versioninfo() {
     host enter-chroot -n "$FIRST" -u 0 sh -ec '
-            echo "=== Version info ==="
-            cat /etc/lsb-release | sed -n -e "s/DISTRIB_CODENAME=//p"
+            sed -n -e "s/DISTRIB_CODENAME=/=== /p" /etc/lsb-release
             dpkg-query -W '"$PACKAGES"'
-        '
+        ' | tee -a "$TESTLOG-versions"
 }
 
-crouton -r "$FIRST" -t "$TARGETS"
+crouton -T -r "$FIRST" -t "$TARGETS" <<EOF
+install update-manager-core python-apt
+sed -i -e 's/Prompt=lts/Prompt=normal/' /etc/update-manager/release-upgrades
+EOF
 versioninfo
 
-host enter-chroot -n "$FIRST" -u 0 apt-get -y install update-manager-core python-apt
-host enter-chroot -n "$FIRST" -u 0 sed -i -e 's/Prompt=lts/Prompt=normal/' /etc/update-manager/release-upgrades
-
 for next in $NEXT; do
-    upgrade
+    upgrade "$next"
 done
 
 # Then upgrade to latest development version as well
 if [ -n "$DEV" ]; then
-    upgrade -d
+    upgrade -d "$DEV"
 fi
 
 host delete-chroot -y "$FIRST"
