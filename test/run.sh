@@ -360,7 +360,7 @@ for p in "$@"; do
         fi
         waitjobs
         tname="${t##*/}"
-        tlog="$TESTDIR/$tname"
+        TESTLOG="$TESTDIR/$tname"
         # Run the test
         (
             PREFIX="`mktemp -d --tmpdir="$PREFIXROOT" "$tname.XXX"`"
@@ -372,7 +372,7 @@ for p in "$@"; do
                 umount -l '$PREFIX'
                 rm -rf --one-file-system '$PREFIX'
             "
-            log "$TESTDIR/$tname" . "$t"
+            log "$TESTLOG" . "$t"
         ) &
         jobpids="$jobpids${jobpids:+" "}$!"
     done

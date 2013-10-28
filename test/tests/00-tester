@@ -8,6 +8,10 @@
 # Save the basic system info to the log
 echo "$SYSTEM"
 
+# Pipe some information to a secondary log file
+echo "$SYSTEM" | tee -a "$TESTLOG-test"
+date | tee -a "$TESTLOG-test"
+
 # Make sure test(), exitswithin() and runslongerthan(), passes(), fails()
 # work as expected
 test 1 -eq 1
