@@ -120,9 +120,9 @@ disablehungtask() {
 # In the awk code, all print must be followed by fflush, even if it is not
 # necessary with mawk.
 detectawk() {
-    if which mawk >/dev/null 2>&1; then
+    if hash mawk 2>/dev/null; then
         echo -n "mawk -W interactive"
-    elif which gawk >/dev/null 2>&1; then
+    elif hash gawk 2>/dev/null; then
         echo -n "gawk"
     else
         echo "Cannot find mawk or gawk." 1>&2
