@@ -4,7 +4,7 @@
   "name": "crouton integration",
   "short_name": "crouton",
   "description": "Improves integration with crouton. Synchronizes the clipboards and provides a means to forward URLs.",
-  "version": "0.1.7",
+  "version": "0.9",
   "icons": {
     "48": "icon-48.png",
     "128": "icon-128.png"
