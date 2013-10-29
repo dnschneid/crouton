@@ -49,8 +49,72 @@ echo "Fetching CRAS (branch $ADHD_HEAD)..." 1>&2
 wget --no-check-certificate -O "$CRASBUILDTMP/adhd.tar.gz" \
 "https://chromium.googlesource.com/chromiumos/third_party/adhd/+archive/$ADHD_HEAD.tar.gz"
 
-# -m prevents "time stamp is in the future" spam
-tar -C "$CRASBUILDTMP" -xmf "$CRASBUILDTMP/adhd.tar.gz" cras/src
+# Patch CRAS so that x86 client can connect to x86_64 server (multilib)
+# Assume current directory is "$CRASBUILDTMP"/cras/src
+patch_cras_x86_x86_64() {
+    common="common/cras_shm.h common/cras_messages.h common/cras_iodev_info.h \
+            common/cras_types.h common/cras_audio_format.c"
+
+    # Replace size_t/long by fixed-size integers corresponding to their
+    # respective sizes on x86_64, aligned on 8-byte boundaries
+    sed -i -e 's/uint64_t[ \t]/aligned_uint64_t /g
+               s/size_t[ \t]/aligned_uint64_t /g
+               s/long[ \t]/aligned_int64_t /g' $common
+
+    # Hack to make sure sizeof(struct cras_server/client_message) is a
+    # multiple of 8
+    sed -i -e \
+        's/\(enum CRAS_CLIENT_MESSAGE_ID\) id;/\1 __attribute__((aligned(8))) id;/
+         s/\(enum CRAS_SERVER_MESSAGE_ID\) id;/\1 __attribute__((aligned(8))) id;/' \
+        common/cras_messages.h
+
+    # Disable syslog to remove warnings about printf formats
+    sed -i -e '/#include <syslog.h>/a \
+#define syslog(...) do \{\} while(0)' \
+        common/cras_fmt_conv.c libcras/cras_client.c
+
+    # Replace timespec/timeval
+    sed -i -e 's/struct timespec[ \t]/struct cras_timespec /g
+               s/clock_gettime(/cras_clock_gettime(/' \
+        $common common/cras_util.h \
+        libcras/cras_client.h libcras/cras_client.c \
+        alsa_plugin/pcm_cras.c tests/cras_test_client.c
+    sed -i -e \
+        's/struct timeval/struct { aligned_int64_t tv_sec; aligned_int64_t tv_usec; }/' \
+        common/cras_iodev_info.h
+
+    # Add aligned integer definition, and wrapper allowing to replace timespec
+    # by generic cras_timespec
+    awk '/^#include <sys\/time.h>$/ {
+        print;
+        while ((getline line < "/dev/fd/3") > 0)
+                   print line
+        next
+    };1' common/cras_iodev_info.h > common/cras_iodev_info.h.new 3<<END
+
+typedef uint64_t __attribute__((aligned(8))) aligned_uint64_t;
+typedef int64_t  __attribute__((aligned(8))) aligned_int64_t;
+
+struct cras_timespec {
+       aligned_int64_t tv_sec;
+       aligned_int64_t tv_nsec;
+};
+
+static inline int cras_clock_gettime(clockid_t clk_id, struct cras_timespec *ctp) {
+    struct timespec tp;
+    int ret = clock_gettime(clk_id, &tp);
+    ctp->tv_sec = tp.tv_sec;
+    ctp->tv_nsec = tp.tv_nsec;
+    return ret;
+}
+END
+    mv common/cras_iodev_info.h.new common/cras_iodev_info.h
+
+    # Restore uncorrectly replaced timespec, add 2 necessary casts
+    sed -i -e 's/struct cras_timespec sleep_ts;/struct timespec sleep_ts;/
+               s/nodes\[i\].priority/(size_t)nodes[i].priority/
+               s/clients\[i\].id/(size_t)clients[i].id/' tests/cras_test_client.c
+}
 
 # Build CRAS ALSA plugin for the given architecture ($1)
 # A blank parameter means we are building for the native architecture.
@@ -119,7 +183,21 @@ build_cras() {
 
     # Start subshell for compilation
     (
-        cd "$CRASBUILDTMP"/cras/src
+        cd "$CRASBUILDTMP"
+
+        # Make sure we start fresh
+        rm -rf --one-file-system cras
+
+        # -m prevents "time stamp is in the future" spam
+        tar -xmf adhd.tar.gz cras/src
+
+        cd cras/src
+
+        # CRAS needs to be patched so that x86 client can access x86_64 server
+        if [ "`uname -m`" = "x86_64" ] &&
+           [ "$ARCH" = "i386" -o "$cras_arch" = "i386" ]; then
+            patch_cras_x86_x86_64
+        fi
 
         # Directory to install CRAS library/binaries
         CRASLIBDIR="/usr/local$archextrapath/lib"
