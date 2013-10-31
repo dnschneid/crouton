@@ -45,7 +45,8 @@ install --minimal cinnamon \
         ubuntu~precise+ubuntu~quantal=,ubuntu~raring=nautilus,nemo \
         ubuntu~precise=gir1.2-gjsdbus-1.0, \
         ubuntu=gnome-icon-theme-full,debian=gnome-icon-theme, \
-        gnome-themes-standard gnome-session gvfs-backends muffin python-cairo
+        gnome-themes-standard gnome-session gvfs-backends muffin python-cairo \
+        python-pam python-pexpect
 
 TIPS="$TIPS
 You can start Cinnamon via the startcinnamon host command: sudo startcinnamon
