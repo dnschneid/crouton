@@ -24,10 +24,10 @@ waitfinish
 
 # Piping should work
 s='PIPES ARE GO'
-echo "$s" | host enter-chroot -b -n "$RELEASE" cat | passes grep "$s"
+echo "$s" | host enter-chroot -b -n "$RELEASE" cat | passes grep "$s" | log
 
 # Even with a failing rc.local it should work
-echo 'Making rc.local fail' 1>&2
+log 'Making rc.local fail'
 rclocal="$PREFIX/chroots/$RELEASE/etc/rc.local"
 mv -f "$rclocal" "$rclocal.bak"
 echo '#!/bin/sh -e
@@ -38,7 +38,7 @@ waitfinish
 mv -f "$rclocal.bak" "$rclocal"
 
 # Even with a failing dbus-daemon it should work
-echo 'Making dbus-daemon fail' 1>&2
+log 'Making dbus-daemon fail'
 for dir in bin sbin usr/bin usr/sbin; do
     dbusdaemon="$PREFIX/chroots/$RELEASE/$dir/dbus-daemon"
     if [ -d "`dirname "$dbusdaemon"`" ]; then

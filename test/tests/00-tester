@@ -6,11 +6,7 @@
 # Tests some of the more complex testing functions, and records the system info
 
 # Save the basic system info to the log
-echo "$SYSTEM"
-
-# Pipe some information to a secondary log file
-echo "$SYSTEM" | tee -a "$TESTLOG-test"
-date | tee -a "$TESTLOG-test"
+log "$SYSTEM"
 
 # Make sure test(), exitswithin() and runslongerthan(), passes(), fails()
 # work as expected
@@ -21,7 +17,7 @@ exitswithin 0 1 true
 exitswithin 1 1 false
 runslongerthan 1 sleep 2
 
-echo 'BEGIN INTENTIONALLY FAILING TESTS' 1>&2
+log 'BEGIN INTENTIONALLY FAILING TESTS'
 ! test 1 -eq 0
 ! passes false
 ! fails true
@@ -30,4 +26,4 @@ echo 'BEGIN INTENTIONALLY FAILING TESTS' 1>&2
 ! exitswithin 0 1 sleep 2
 ! runslongerthan 1 false
 ! runslongerthan 1 true
-echo 'END INTENTIONALLY FAILING TESTS' 1>&2
+log 'END INTENTIONALLY FAILING TESTS'

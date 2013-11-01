@@ -68,38 +68,55 @@ echo "Supported releases: $SUPPORTED_RELEASES" 1>&2
 echo "Default release for this run: $RELEASE" 1>&2
 
 # Logs all output to the specified file with the date and time prefixed.
-# File is always appended.
+# File is always appended. Use "log" to output a line with a [t] prefix.
 # $1: log file or directory
-# $2+: command to log
-log() {
+# $2: script to source, run, and log
+logto() {
     local file="$1" line='{print strftime("%F %T: ") $0}'
     shift
     if [ -d "$file" ]; then
         file="$file/log"
     fi
-    echo "`date '+%F %T:'` Launching '$*'" | tee -a "$file" 1>&2
+    echo "`date '+%F %T:'` BEGIN TEST ${1##*/}" | tee -a "$file" 1>&2
     local start="`date '+%s'`"
-    local retpreamble="'$*' finished with exit code"
+    local retpreamble="${1##*/} finished with exit code"
+    local AWK='mawk -W interactive'
     # srand() uses system time as seed but returns previous seed. Call it twice.
-    ((ret=0; "$@" < /dev/null || ret=$?; sleep 1; echo "$retpreamble $ret") \
-            | mawk -W interactive '
-                        {srand(); print (srand()-'"$start"') " [i] " $0}
-            ') 2>&1 | mawk -W interactive '
-                        ($2 == "[i]") {print; next}
-                        {srand(); print (srand()-'"$start"') " [e] " $0}
-            ' >> "$file"
+    ((((ret=0
+        . "$1" </dev/null 3>&- || ret=$?
+        sleep 1
+        if [ "$ret" = 0 ]; then
+            log "TEST PASSED: $retpreamble $ret"
+        else
+            log "TEST FAILED: $retpreamble $ret"
+        fi
+        )      | $AWK '{srand(); print (srand()-'"$start"') " [i] " $0}' 1>&3
+        ) 2>&1 | $AWK '{srand(); print (srand()-'"$start"') " [e] " $0}' 1>&3
+        ) 9>&1 | $AWK '{srand(); print (srand()-'"$start"') " [t] " $0}' \
+                    | tee -a "$file-test" 1>&3
+    ) 3>> "$file"
     # Output the return and relay success
-    tail -n1 "$file" | tee /dev/stderr | grep -q "$retpreamble 0\$"
+    tail -n1 "$file-test" | tee /dev/stderr | grep -q "$retpreamble 0\$"
+}
+
+# Outputs a line to the log with a [t] prefix.
+# Either specify the text as a parameter, or stdin if no parameters are given.
+log() {
+    if [ "$#" != 0 ]; then
+        echo "$*" 1>&9
+    else
+        cat 1>&9
+    fi
 }
 
 # Tests and outputs success or failure. Parameters are the same as "test".
 # Returns 1 on failure
 test() {
     if [ "$@" ]; then
-        echo "SUCCESS: [ $* ]" 1>&2
+        log "PASS: [ $* ]"
         return 0
     else
-        echo "FAILED: [ $* ]" 1>&2
+        log "FAIL: [ $* ]"
         return 1
     fi
 }
@@ -124,11 +141,11 @@ crouton() {
             cat
         } > "$tfile"
     fi
-    echo "LAUNCHING: crouton${tfile:+" -T "}$tfile $*" 1>&2
+    log "LAUNCHING: crouton${tfile:+" -T "}$tfile $*"
     if [ -n "$tfile" ]; then
-        echo "BEGIN $tfile CONTENTS" 1>&2
-        cat "$tfile" 1>&2
-        echo "END $tfile CONTENTS" 1>&2
+        log "BEGIN $tfile CONTENTS"
+        cat "$tfile" | log
+        log "END $tfile CONTENTS"
         sh -e "$SCRIPTDIR/installer/main.sh" -T "$tfile" -p "$PREFIX" "$@" \
             || ret="$?"
     else
@@ -138,7 +155,7 @@ crouton() {
         rm -f "$tfile"
     fi
     if [ "$ret" != 0 ]; then
-        echo "FAILED with code $ret: crouton $*" 1>&2
+        log "FAIL with code $ret: crouton $*"
     fi
     return "$ret"
 }
@@ -155,11 +172,11 @@ bootstrap() {
         if flock -n 3 && [ ! -s "$file" ]; then
             crouton -r "$1" -f "$file" -d 1>&2
         else
-            echo "Waiting for bootstrap for $1 to complete..." 1>&2
+            log "Waiting for bootstrap for $1 to complete..."
             flock 3
         fi 3>"$file"
         if [ ! -s "$file" ]; then
-            echo "FAILED due to incomplete bootstrap for $1" 1>&2
+            log "FAIL due to incomplete bootstrap for $1"
             return 1
         fi
     fi
@@ -182,7 +199,7 @@ snapshot() {
             host edit-chroot -y -b -f "$file" "$name"
             return 0
         else
-            echo "Waiting for snapshot for $1-$targets to complete..." 1>&2
+            log "Waiting for snapshot for $1-$targets to complete..."
             flock 3
         fi 3>"$file"
     fi
@@ -196,12 +213,12 @@ snapshot() {
 host() {
     local cmd="$1" ret='0'
     shift
-    echo "LAUNCHING: $cmd $*" 1>&2
+    log "LAUNCHING: $cmd $*"
     sh -e "$PREFIX/bin/$cmd" "$@" || ret="$?"
     if [ "$ret" = 0 ]; then
-        echo "SUCCESS: $cmd $*" 1>&2
+        log "PASS: $cmd $*"
     else
-        echo "FAILED with code $ret: $cmd $*" 1>&2
+        log "FAIL with code $ret: $cmd $*"
     fi
     return "$ret"
 }
@@ -214,7 +231,7 @@ host() {
 exitswithin() {
     local code="$1" seconds="$2" ret=0
     shift 2
-    echo "Expecting '$*' to exit with code $code within $seconds seconds" 1>&2
+    log "Expecting '$*' to exit with code $code within $seconds seconds"
     "$@" &
     local pid="$!"
     (sleep "$seconds" && exec kill -TERM "$pid") &
@@ -223,13 +240,13 @@ exitswithin() {
     sleep .1
     if kill "$sleepid" 2>/dev/null; then
         if [ "$ret" = "$code" ]; then
-            echo "SUCCESS: '$*' exited with code $ret within $seconds seconds" 1>&2
+            log "PASS: '$*' exited with code $ret within $seconds seconds"
         else
-            echo "FAILED: '$*' exited with code $ret instead of $code" 1>&2
+            log "FAIL: '$*' exited with code $ret instead of $code"
             return 1
         fi
     else
-        echo "FAILED: '$*' took more than $seconds seconds to exit" 1>&2
+        log "FAIL: '$*' took more than $seconds seconds to exit"
         return 2
     fi
     return 0
@@ -242,7 +259,7 @@ exitswithin() {
 runslongerthan() {
     local seconds="$1" ret=0
     shift
-    echo "Expecting '$*' to survive longer than $seconds seconds" 1>&2
+    log "Expecting '$*' to survive longer than $seconds seconds"
     "$@" &
     local pid="$!"
     (sleep "$seconds" && exec kill -INT "$pid") &
@@ -250,23 +267,23 @@ runslongerthan() {
     wait "$pid" || ret="$?"
     sleep .1
     if kill "$sleepid" 2>/dev/null; then
-        echo "FAILED: '$*' did not survive at least $seconds seconds (returned $ret)" 1>&2
+        log "FAIL: '$*' did not survive at least $seconds seconds (returned $ret)"
         return 2
     else
-        echo "SUCCESS: '$*' survived for $seconds seconds (returned $ret)" 1>&2
+        log "PASS: '$*' survived for $seconds seconds (returned $ret)"
     fi
     return 0
 }
 
 # Expects a successful return code from the provided command.
 passes() {
-    echo "Expecting '$*' to succeed" 1>&2
+    log "Expecting '$*' to succeed"
     local ret=0
     "$@" || ret=$?
     if [ "$ret" = 0 ]; then
-        echo "SUCCESS: '$*' succeeded" 1>&2
+        log "PASS: '$*' succeeded"
     else
-        echo "FAILED: '$*' returned $ret" 1>&2
+        log "FAIL: '$*' returned $ret"
         return "$ret"
     fi
     return 0
@@ -274,13 +291,13 @@ passes() {
 
 # Expects a failure return code from the provided command.
 fails() {
-    echo "Expecting '$*' to fail" 1>&2
+    log "Expecting '$*' to fail"
     local ret=0
     "$@" || ret=$?
     if [ "$ret" != 0 ]; then
-        echo "SUCCESS: '$*' returned $ret" 1>&2
+        log "PASS: '$*' returned $ret"
     else
-        echo "FAILED: '$*' succeeded" 1>&2
+        log "FAIL: '$*' succeeded"
         return 1
     fi
     return 0
@@ -372,7 +389,7 @@ for p in "$@"; do
                 umount -l '$PREFIX'
                 rm -rf --one-file-system '$PREFIX'
             "
-            log "$TESTLOG" . "$t"
+            logto "$TESTLOG" "$t"
         ) &
         jobpids="$jobpids${jobpids:+" "}$!"
     done
