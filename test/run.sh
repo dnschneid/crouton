@@ -159,7 +159,9 @@ crouton() {
     if [ -n "$tfile" ]; then
         rm -f "$tfile"
     fi
-    if [ "$ret" != 0 ]; then
+    if [ "$ret" = 0 ]; then
+        log "PASS: crouton $*"
+    else
         log "FAIL with code $ret: crouton $*"
     fi
     return "$ret"
