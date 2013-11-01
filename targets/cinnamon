@@ -3,9 +3,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 if [ ! "$TARGETS" = 'help' ]; then
-    if [ ! "$ARCH" = 'amd64' -a ! "$ARCH" = 'i386' ] &&
-            ! release -gt quantal; then
-        error 1 "cinnamon target not available on $RELEASE on $ARCH."
+    if [ ! "$ARCH" = 'amd64' -a ! "$ARCH" = 'i386' ]; then
+        error 1 "cinnamon target not available on $ARCH."
     elif release -le jessie; then
         error 1 "cinnamon target not available on $RELEASE."
     fi
@@ -14,6 +13,7 @@ REQUIRES='gtk-extra'
 DESCRIPTION='Installs the Cinnamon desktop environment. (Approx. 300MB)'
 HOSTBIN='startcinnamon'
 CHROOTBIN='startcinnamon gnome-session-wrapper'
+CHROOTETC='nm-applet.desktop'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
@@ -31,15 +31,22 @@ deb-src http://ppa.launchpad.net/gwendal-lebihan-dev/cinnamon-stable/ubuntu $REL
 EOF
         # Update database
         apt-get update
-        install --minimal ubuntu~precise=,cinnamon-control-center cinnamon-screensaver nemo
+        install --minimal ubuntu~precise=,cinnamon-control-center \
+                cinnamon-screensaver nemo
     fi
 fi
+
+# Dummy nm-applet.desktop to allow cinnamon-session to start
+mkdir -p /usr/local/share/applications
+ln -sfT /etc/crouton/nm-applet.desktop \
+        /usr/local/share/applications/nm-applet.desktop
 
 install --minimal cinnamon \
         ubuntu~precise+ubuntu~quantal=,ubuntu~raring=nautilus,nemo \
         ubuntu~precise=gir1.2-gjsdbus-1.0, \
         ubuntu=gnome-icon-theme-full,debian=gnome-icon-theme, \
-        gnome-themes-standard gnome-session gvfs-backends muffin python-cairo
+        gnome-themes-standard gnome-session gvfs-backends muffin python-cairo \
+        python-pam python-pexpect
 
 TIPS="$TIPS
 You can start Cinnamon via the startcinnamon host command: sudo startcinnamon
