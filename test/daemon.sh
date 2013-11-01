@@ -72,13 +72,13 @@ statusmonitor() {
     fi
 }
 
-# Get a consistent ID for the device in the form of board_xxxxxxxx
+# Get a consistent ID for the device in the form of board-channel_xxxxxxxx
 if hash vpd 2>/dev/null; then
-    id="`awk '/_RELEASE_DESCRIPTION=/ {print $NF}' /etc/lsb-release`"
-    id="${id}_`vpd -g serial_number | sha1sum | head -c 8`"
+    id="`awk '/_RELEASE_DESCRIPTION=/{print $NF "-" $(NF-1)}' /etc/lsb-release`"
+    id="${id%"-channel"}_`vpd -g serial_number | sha1sum | head -c 8`"
 else
     # Oh well. Random testing ID it is.
-    id="test_`hexdump -v -n4 -e '"" 1/1 "%02x"' /dev/urandom`"
+    id="test-unknown_`hexdump -v -n4 -e '"" 1/1 "%02x"' /dev/urandom`"
 fi
 
 LOCALROOT="`mktemp -d --tmpdir='/tmp' 'crouton-autotest.XXX'`"
