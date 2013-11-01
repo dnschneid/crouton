@@ -81,7 +81,8 @@ logto() {
     if [ -d "$file" ]; then
         file="$file/log"
     fi
-    echo "`date '+%F %T:'` BEGIN TEST ${1##*/}" | tee -a "$file" 1>&2
+    local testlog="$file-test"
+    date "+%F %T: BEGIN TEST ${1##*/}" | tee -a "$file" "$testlog" 1>&2
     local start="`date '+%s'`"
     local retpreamble="${1##*/} finished with exit code"
     local AWK='mawk -W interactive'
@@ -97,10 +98,10 @@ logto() {
         )      | $AWK '{srand(); print (srand()-'"$start"') " [i] " $0}' 1>&3
         ) 2>&1 | $AWK '{srand(); print (srand()-'"$start"') " [e] " $0}' 1>&3
         ) 9>&1 | $AWK '{srand(); print (srand()-'"$start"') " [t] " $0}' \
-                    | tee -a "$file-test" 1>&3
+                    | tee -a "$testlog" 1>&3
     ) 3>> "$file"
     # Output the return and relay success
-    tail -n1 "$file-test" | tee /dev/stderr | grep -q "$retpreamble 0\$"
+    tail -n1 "$testlog" | tee /dev/stderr | grep -q "$retpreamble 0\$"
 }
 
 # Outputs a line to the log with a [t] prefix.
@@ -381,7 +382,6 @@ for p in "$@"; do
         fi
         waitjobs
         tname="${t##*/}"
-        TESTLOG="$TESTDIR/$tname"
         # Run the test
         (
             PREFIX="`mktemp -d --tmpdir="$PREFIXROOT" "$tname.XXX"`"
@@ -393,7 +393,7 @@ for p in "$@"; do
                 umount -l '$PREFIX'
                 rm -rf --one-file-system '$PREFIX'
             "
-            logto "$TESTLOG" "$t"
+            logto "$TESTDIR/$tname" "$t"
         ) &
         jobpids="$jobpids${jobpids:+" "}$!"
     done
