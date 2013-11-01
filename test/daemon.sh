@@ -12,6 +12,9 @@
 
 APPLICATION="${0##*/}"
 SCRIPTDIR="`readlink -f "\`dirname "$0"\`/.."`"
+LOGUPLOADINTERVAL=60
+POLLINTERVAL=10
+READYPINGINTERVAL=600
 QUEUEURL=''
 SCPBASEOPTIONS='-BCqr'
 SCPOPTIONS=''
@@ -52,25 +55,46 @@ if [ "$USER" != root -a "$UID" != 0 ]; then
     error 2 "$APPLICATION must be run as root."
 fi
 
-statusmonitor() {
+statusmonitor() { (
     local machinestatus="$LOCALROOT/status-$id"
     echo -n '' > "$machinestatus"
     if [ -n "$CURTESTROOT" ]; then
+        local sig='USR1'
         local teststatus="${CURTESTROOT%/}/status-$id"
+        local uploadcmd="scp $SCPBASEOPTIONS $SCPOPTIONS \
+                             '$machinestatus' '$CURTESTROOT' '$UPLOADROOT'"
         echo -n '' > "$teststatus"
+        trap '' "$sig"
+        (
+            updatetime=0
+            while sleep 1; do
+                if [ "$updatetime" = 0 ]; then
+                    trap '' "$sig"
+                    eval "$uploadcmd"
+                    trap "$uploadcmd" "$sig"
+                    updatetime="$LOGUPLOADINTERVAL"
+                else
+                    updatetime="$(($updatetime-1))"
+                fi
+            done
+        ) &
+        uploader="$!"
+        settrap "kill '$uploader' 2>/dev/null;"
         while read line; do
             echo "$line" >> "$machinestatus"
             echo "$line" >> "$teststatus"
-            scp $SCPBASEOPTIONS $SCPOPTIONS \
-                "$machinestatus" "$CURTESTROOT" "$UPLOADROOT"
+            kill -"$sig" "$uploader"
         done
+        kill "$uploader"
+        wait "$uploader"
+        eval "$uploadcmd"
     else
         while read line; do
             echo "$line" >> "$machinestatus"
             scp $SCPBASEOPTIONS $SCPOPTIONS "$machinestatus" "$UPLOADROOT"
         done
     fi
-}
+) }
 
 # Get a consistent ID for the device in the form of board-channel_xxxxxxxx
 if hash vpd 2>/dev/null; then
@@ -92,7 +116,9 @@ CROUTONROOT="$LOCALROOT/crouton"
 LASTFILE="$LOCALROOT/last"
 echo "2 `date '+%s'`" > "$LASTFILE"
 
-while sleep 10; do
+readypingtime=0
+
+while sleep "$POLLINTERVAL"; do
     read lastline last < "$LASTFILE"
     # Grab the queue, skip to the next interesting line, convert field
     # boundaries into pipe characters, and then parse the result.
@@ -140,4 +166,11 @@ while sleep 10; do
         done
         echo "$lastline $last" > "$LASTFILE"
     }
+    # Update the 'ready' file once every $READYPINGTIME seconds
+    if [ "$readypingtime" -le 0 ]; then
+        echo 'Ready' | statusmonitor
+        readypingtime="$READYPINGINTERVAL"
+    else
+        readypingtime="$(($readypingtime-$POLLINTERVAL))"
+    fi
 done
