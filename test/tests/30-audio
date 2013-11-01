@@ -10,9 +10,9 @@ for release in $SUPPORTED_RELEASES; do
 
     # We pass -fdat to aplay/arecord, which means 48kHz, 16-bit, stereo.
     # dd to writes/reads 8 blocks of 48000 bytes: 2 seconds worth of sound.
-    exitswithin 0 5 host enter-chroot -n "$release" \
+    host enter-chroot -n "$release" \
         sh -ec 'dd if=/dev/zero bs=48000 count=8 | aplay -fdat -v'
-    exitswithin 0 5 host enter-chroot -n "$release" \
+    host enter-chroot -n "$release" \
         sh -ec 'arecord -fdat -v | \
                 dd of=/dev/null bs=48000 count=8 iflag=fullblock'
     host enter-chroot -n "$release" cras_test_client --dump_server_info
@@ -31,9 +31,9 @@ for release in $SUPPORTED_RELEASES; do
             # Confirm that aplay is indeed the i386 version
             passes host enter-chroot -n "$release" file /usr/bin/aplay | \
                 tee /dev/stderr | passes grep -q "Intel 80386"
-            exitswithin 0 5 host enter-chroot -n "$release" \
+            host enter-chroot -n "$release" \
                 sh -ec 'dd if=/dev/zero bs=48000 count=8 | aplay -fdat -v'
-            exitswithin 0 5 host enter-chroot -n "$release" \
+            host enter-chroot -n "$release" \
                 sh -ec 'arecord -fdat -v | \
                         dd of=/dev/null bs=48000 count=8 iflag=fullblock'
             # Restore native alsa-utils
@@ -46,7 +46,7 @@ for release in $SUPPORTED_RELEASES; do
 
     host enter-chroot -n "$release" -u 0 \
         apt-get -y --no-install-recommends install pulseaudio pulseaudio-utils
-    exitswithin 0 10 host enter-chroot -n "$release" sh -exc '
+    host enter-chroot -n "$release" sh -exc '
         pulseaudio --start
         echo | pacat -v
         dd if=/dev/zero bs=48000 count=8 | aplay -f dat -Dpulse -v
