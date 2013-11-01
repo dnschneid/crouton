@@ -16,6 +16,17 @@ CHROOTBIN='startunity gnome-session-wrapper'
 install unity unity-2d ubuntu-artwork gnome-session nautilus \
         ubuntu-settings,ubuntu~precise= -- network-manager brasero firefox
 
+# unity-panel-service launches via upstart in saucy and later, so add dbus
+# service file
+if release -ge saucy; then
+    mkdir -p '/usr/local/share/dbus-1/services'
+    cat > '/usr/local/share/dbus-1/services/com.canonical.Unity.Panel.Service.service' <<EOF
+[D-BUS Service]
+Name=com.canonical.Unity.Panel.Service
+Exec=/usr/lib/unity/unity-panel-service
+EOF
+fi
+
 TIPS="$TIPS
 You can start Unity via the startunity host command: sudo startunity
 "
