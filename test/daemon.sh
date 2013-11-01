@@ -109,8 +109,6 @@ LOCALROOT="`mktemp -d --tmpdir='/tmp' 'crouton-autotest.XXX'`"
 addtrap "rm -rf --one-file-system '$LOCALROOT'"
 
 CURTESTROOT=''
-echo 'Ready' | statusmonitor
-
 CROUTONROOT="$LOCALROOT/crouton"
 
 LASTFILE="$LOCALROOT/last"
