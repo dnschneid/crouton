@@ -18,8 +18,7 @@ TESTNAME="`sh -e "$SCRIPTDIR/build/genversion.sh" test`"
 TESTDIR="$TESTDIR/$TESTNAME"
 # PREFIX intentionally includes a space. Run in /usr/local to avoid encryption
 PREFIXROOT="/usr/local/$TESTNAME prefix"
-# Choose a random release as the test release when the release (shouldn't) matter
-RELEASE="`echo "$SUPPORTED_RELEASES" | tr ' ' "\n" | sort -R | head -n 1`"
+RELEASE=''
 
 JOBS="`grep -c '^processor' /proc/cpuinfo`"
 
@@ -37,7 +36,7 @@ Options:
     -l LOGDIR    Put test logs in the specified directory.
                  Default: $TESTDIR
     -r RELEASE   Specify a release to use whenever it shouldn't matter.
-                 Default is a random supported release, such as $RELEASE.
+                 Default is a random supported release, considering -R.
     -R RELEASES  Limit the 'all supported releases' testing to a comma-separated
                  list of releases. Default: all supported releases are tested."
 
@@ -59,6 +58,11 @@ shift "$((OPTIND-1))"
 # We need to run as root
 if [ ! "$USER" = root -a ! "$UID" = 0 ]; then
     error 2 "${0##*/} must be run as root."
+fi
+
+# Choose a random release to test when the release (shouldn't) matter
+if [ -z "$RELEASE" ]; then
+    RELEASE="`echo "$SUPPORTED_RELEASES" | tr ' ' "\n" | sort -R | head -n 1`"
 fi
 
 echo "Running tests in $PREFIXROOT" 1>&2
