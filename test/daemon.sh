@@ -89,10 +89,8 @@ statusmonitor() { (
         wait "$uploader"
         eval "$uploadcmd"
     else
-        while read line; do
-            echo "$line" >> "$machinestatus"
-            scp $SCPBASEOPTIONS $SCPOPTIONS "$machinestatus" "$UPLOADROOT"
-        done
+        cat >> "$machinestatus"
+        scp $SCPBASEOPTIONS $SCPOPTIONS "$machinestatus" "$UPLOADROOT"
     fi
 ) }
 
@@ -113,6 +111,9 @@ CROUTONROOT="$LOCALROOT/crouton"
 
 LASTFILE="$LOCALROOT/last"
 echo "2 `date '+%s'`" > "$LASTFILE"
+
+READYFILE="$LOCALROOT/ready"
+echo 'READY' > "$READYFILE"
 
 readypingtime=0
 
@@ -150,23 +151,35 @@ while sleep "$POLLINTERVAL"; do
 
             # Start logging to the server
             {
-                echo "Starting test $tname"
+                echo "BEGIN TEST SUITE $tname"
+                ret=''
                 mkdir -p "$CROUTONROOT"
                 if wget -qO- "$tarball" \
                         | tar -C "$CROUTONROOT" -xz --strip-components=1; then
-                    sh -e "$CROUTONROOT/test/run.sh" -l "$logdir" $params || true
+                    ret=0
+                    sh -e "$CROUTONROOT/test/run.sh" -l "$logdir" $params \
+                        || ret=$?
                 fi
                 rm -rf --one-file-system "$CROUTONROOT"
+                if [ -z "$ret" ]; then
+                    result="TEST SUITE $tname FAILED: unable to download branch"
+                elif [ "$ret" != 0 ]; then
+                    result="TEST SUITE $tname FAILED: finished with exit code $ret"
+                else
+                    result="TEST SUITE $tname PASSED: finished with exit code $ret"
+                fi
+                echo "$result"
+                (echo 'READY'; echo "$result") > "$READYFILE"
             } 2>&1 | statusmonitor
 
             CURTESTROOT=''
-            echo 'Ready' | statusmonitor
+            cat "$READYFILE" | statusmonitor
         done
         echo "$lastline $last" > "$LASTFILE"
     }
     # Update the 'ready' file once every $READYPINGTIME seconds
     if [ "$readypingtime" -le 0 ]; then
-        echo 'Ready' | statusmonitor
+        cat "$READYFILE" | statusmonitor
         readypingtime="$READYPINGINTERVAL"
     else
         readypingtime="$(($readypingtime-$POLLINTERVAL))"
