@@ -86,7 +86,7 @@ statusmonitor() { (
             kill -"$sig" "$uploader"
         done
         kill "$uploader"
-        wait "$uploader"
+        wait "$uploader" || true
         eval "$uploadcmd"
     else
         cat >> "$machinestatus"
