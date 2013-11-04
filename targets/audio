@@ -9,208 +9,342 @@ CHROOTETC='pulseaudio-default.pa'
 
 ### Append to prepare.sh:
 
-# Install CRAS dependencies
+install --minimal wget
 
-install --minimal wget alsa-utils dbus libasound2 libspeexdsp1
-
-install --minimal --asdeps gcc libc6-dev pkg-config \
-    libdbus-1-dev libasound2-dev libspeexdsp-dev
-
-# SBC is not available in older Debian/Ubuntu: fetch it manually
-if release -le quantal; then
-    install_mirror_package 'libsbc1' 'pool/main/s/sbc' '1\.0-.*'
-    install_mirror_package 'libsbc-dev' 'pool/main/s/sbc' '1\.0-.*'
-    apt-mark auto libsbc-dev
-elif release -le wheezy; then
-    # wheezy provides a backport for libsbc1
-    install_mirror_package 'libsbc1' 'pool/main/s/sbc' '.*~bpo7\+.*'
-    install_mirror_package 'libsbc-dev' 'pool/main/s/sbc' '.*~bpo7\+.*'
-    apt-mark auto libsbc-dev
-else
-    install --minimal libsbc1
-    install --minimal --asdeps libsbc-dev
-fi
-
-# Build CRAS from source
+# Fetch CRAS source
 
 CRASBUILDTMP="`mktemp -d crouton-cras.XXXXXX --tmpdir=/tmp`"
 
 addtrap "rm -rf --one-file-system '$CRASBUILDTMP'"
 
-( # Start subshell for compilation
-    cd "$CRASBUILDTMP"
-
-    # Fetch list of branches from repository
-    wget --no-check-certificate -O adhd.refs \
+# Fetch list of branches from repository
+wget --no-check-certificate -O "$CRASBUILDTMP/adhd.refs" \
 'https://chromium.googlesource.com/chromiumos/third_party/adhd/+refs/heads?format=TEXT'
 
-    # Chrome OS version (e.g. 4100.86.0)
-    CROS_VER="`sed -n 's/^CHROMEOS_RELEASE_VERSION=//p' /var/host/lsb-release`"
+# Chrome OS version (e.g. 4100.86.0)
+CROS_VER="`sed -n 's/^CHROMEOS_RELEASE_VERSION=//p' /var/host/lsb-release`"
 
-    ADHD_HEAD="`awk '
-        BEGIN {
-            # Default to master if nothing else is found
-            print 0, "master"
-            len = split("'"$CROS_VER"'", crosvers, ".")
-            # Prepare a regex with each additional version component optional
-            for (i = len; i >= 2; i--)
-                verregex = "(\\\\." crosvers[i] verregex ")?"
-            verregex = crosvers[1] verregex "($|\\\\.)"
-        }
-        # Release branches get the highest score
-        $2 ~ "release-(R[^-]*-)?" crosvers[1] "($|\\\\.)" {
-            print 99, $2
-        }
-        # Stabilize branches are scored based on how much of the version they match
-        match($2, "stabilize-" verregex) {
-            print RLENGTH, $2
-        }
-    ' adhd.refs | sort -V | tail -n 1 | cut -d' ' -f2`"
+ADHD_HEAD="`awk '
+    BEGIN {
+        # Default to master if nothing else is found
+        print 0, "master"
+        len = split("'"$CROS_VER"'", crosvers, ".")
+        # Prepare a regex with each additional version component optional
+        for (i = len; i >= 2; i--)
+            verregex = "(\\\\." crosvers[i] verregex ")?"
+        verregex = crosvers[1] verregex "($|\\\\.)"
+    }
+    # Release branches get the highest score
+    $2 ~ "release-(R[^-]*-)?" crosvers[1] "($|\\\\.)" {
+        print 99, $2
+    }
+    # Stabilize branches are scored based on how much of the version they match
+    match($2, "stabilize-" verregex) {
+        print RLENGTH, $2
+    }
+' "$CRASBUILDTMP/adhd.refs" | sort -V | tail -n 1 | cut -d' ' -f2`"
 
-    echo "Fetching CRAS (branch $ADHD_HEAD)..." 1>&2
+echo "Fetching CRAS (branch $ADHD_HEAD)..." 1>&2
 
-    wget --no-check-certificate -O adhd.tar.gz \
-'https://chromium.googlesource.com/chromiumos/third_party/adhd/+archive/'"$ADHD_HEAD"'.tar.gz'
+wget --no-check-certificate -O "$CRASBUILDTMP/adhd.tar.gz" \
+"https://chromium.googlesource.com/chromiumos/third_party/adhd/+archive/$ADHD_HEAD.tar.gz"
 
-    # -m prevents "time stamp is in the future" spam
-    tar -xmf adhd.tar.gz cras/src
-    cd cras/src
+# Patch CRAS so that x86 client can connect to x86_64 server (multilib)
+# Assume current directory is "$CRASBUILDTMP"/cras/src
+patch_cras_x86_x86_64() {
+    common="common/cras_shm.h common/cras_messages.h common/cras_iodev_info.h \
+            common/cras_types.h common/cras_audio_format.c"
 
-    # Directory to install CRAS library/binaries
-    CRASLIBDIR="/usr/local/lib"
-    CRASBINDIR="/usr/local/bin"
+    # Replace size_t/long by fixed-size integers corresponding to their
+    # respective sizes on x86_64, aligned on 8-byte boundaries
+    sed -i -e 's/uint64_t[ \t]/aligned_uint64_t /g
+               s/size_t[ \t]/aligned_uint64_t /g
+               s/long[ \t]/aligned_int64_t /g' $common
 
-    echo "Compiling CRAS..." 1>&2
-    # Convert Makefile.am to a shell script, and run it.
-    {
-        echo '
-            top_srcdir=".."
-            top_builddir=".."
-            SBC_LIBS="'"`pkg-config --libs sbc`"'"
-            SBC_CFLAGS="'"`pkg-config --cflags sbc`"'"
-            DBUS_LIBS="'"`pkg-config --libs dbus-1`"'"
-            DBUS_CFLAGS="'"`pkg-config --cflags dbus-1`"'"
-        '
-        sed -e '
-            # Concatenate lines ending in \
-            : start; /\\$/{N; b start}
-            s/ *\\\n[ \t]*/ /g
-            # Convert automake to shell
-            s/^[^ ]*:/#\0/
-            s/^\t/#\0/
-            s/ *= */=/
-            s/\([^ ]*\) *+= */\1=${\1}\ /
-            s/ /\\ /g
-            y/()/{}/
-        ' 'Makefile.am'
-        echo '
-            # buildsources: Build all source files for target
-            #  $1: target
-            #  $2: additional gcc flags
-            # Prints a list of .o files
-            buildsources() {
-                local target="$1"
-                local extragccflags="$2"
+    # Hack to make sure sizeof(struct cras_server/client_message) is a
+    # multiple of 8
+    sed -i -e \
+        's/\(enum CRAS_CLIENT_MESSAGE_ID\) id;/\1 __attribute__((aligned(8))) id;/
+         s/\(enum CRAS_SERVER_MESSAGE_ID\) id;/\1 __attribute__((aligned(8))) id;/' \
+        common/cras_messages.h
 
-                eval local sources=\"\$${target}_SOURCES\"
-                eval local cppflags=\"\$${target}_CPPFLAGS\"
+    # Disable syslog to remove warnings about printf formats
+    sed -i -e '/#include <syslog.h>/a \
+#define syslog(...) do \{\} while(0)' \
+        common/cras_fmt_conv.c libcras/cras_client.c
 
-                for dep in $sources; do
-                    if [ "${dep%.c}" != "$dep" ]; then
-                        ofile="${dep%.c}.o"
-                        gcc -c "$dep" -o "$ofile" $cppflags $extragccflags 1>&2
-                        echo -n "$ofile "
+    # Replace timespec/timeval
+    sed -i -e 's/struct timespec[ \t]/struct cras_timespec /g
+               s/clock_gettime(/cras_clock_gettime(/' \
+        $common common/cras_util.h \
+        libcras/cras_client.h libcras/cras_client.c \
+        alsa_plugin/pcm_cras.c tests/cras_test_client.c
+    sed -i -e \
+        's/struct timeval/struct { aligned_int64_t tv_sec; aligned_int64_t tv_usec; }/' \
+        common/cras_iodev_info.h
+
+    # Add aligned integer definition, and wrapper allowing to replace timespec
+    # by generic cras_timespec
+    awk '/^#include <sys\/time.h>$/ {
+        print;
+        while ((getline line < "/dev/fd/3") > 0)
+                   print line
+        next
+    };1' common/cras_iodev_info.h > common/cras_iodev_info.h.new 3<<END
+
+typedef uint64_t __attribute__((aligned(8))) aligned_uint64_t;
+typedef int64_t  __attribute__((aligned(8))) aligned_int64_t;
+
+struct cras_timespec {
+       aligned_int64_t tv_sec;
+       aligned_int64_t tv_nsec;
+};
+
+static inline int cras_clock_gettime(clockid_t clk_id, struct cras_timespec *ctp) {
+    struct timespec tp;
+    int ret = clock_gettime(clk_id, &tp);
+    ctp->tv_sec = tp.tv_sec;
+    ctp->tv_nsec = tp.tv_nsec;
+    return ret;
+}
+END
+    mv common/cras_iodev_info.h.new common/cras_iodev_info.h
+
+    # Restore uncorrectly replaced timespec, add 2 necessary casts
+    sed -i -e 's/struct cras_timespec sleep_ts;/struct timespec sleep_ts;/
+               s/nodes\[i\].priority/(size_t)nodes[i].priority/
+               s/clients\[i\].id/(size_t)clients[i].id/' tests/cras_test_client.c
+}
+
+# Build CRAS ALSA plugin for the given architecture ($1)
+# A blank parameter means we are building for the native architecture.
+build_cras() {
+    local cras_arch="$1"
+    local pkgsuffix=''
+    local pkgdepextra=''
+    local archextrapath=''
+    local pkgconfigpath=''
+    local archgccflags=''
+    if [ -n "$cras_arch" ]; then
+        pkgsuffix=":$cras_arch"
+        pkgdepextra='gcc-multilib'
+        archextrapath="/$cras_arch-linux-gnu"
+        pkgconfigpath="/usr/lib$archextrapath/pkgconfig"
+        archgccflags='-m32'
+
+        # Add foreign architecture, if necessary
+        if ! dpkg --print-foreign-architectures | grep -q "^$cras_arch$"; then
+            echo "Adding foreign architecture $cras_arch to dpkg..." 1>&2
+            dpkg --add-architecture "$cras_arch"
+            apt-get update
+        fi
+    fi
+
+    # Install CRAS dependencies
+    install --minimal alsa-utils \
+        libasound2$pkgsuffix libspeexdsp1$pkgsuffix
+
+    install --minimal --asdeps gcc $pkgdepextra libc6-dev$pkgsuffix \
+        pkg-config libspeexdsp-dev$pkgsuffix
+
+    # precise does not allow libasound2-dev and libasound2-dev:i386 to be
+    # installed simultaneously
+    if release -le precise && [ -n "$cras_arch" ]; then
+        install --minimal --asdeps libasound2-dev
+        # Manually link .so file
+        libasoundso="/usr/lib$archextrapath/libasound.so"
+        if [ ! -f "$libasoundso" ]; then
+            addtrap "rm -f '$libasoundso' 2>/dev/null"
+            ln -sfT libasound.so.2 "$libasoundso"
+        fi
+        ALSALIBDIR="/usr/lib$archextrapath/alsa-lib"
+    else
+        install --minimal --asdeps libasound2-dev$pkgsuffix
+        ALSALIBDIR="`PKG_CONFIG_PATH="$pkgconfigpath" \
+                                pkg-config --variable=libdir alsa`/alsa-lib"
+    fi
+
+    # SBC is not available in older Debian/Ubuntu: fetch it manually
+    if release -le quantal; then
+        install_mirror_package 'libsbc1' \
+                            'pool/main/s/sbc' '1\.0-.*' $cras_arch
+        install_mirror_package --asdeps 'libsbc-dev' \
+                            'pool/main/s/sbc' '1\.0-.*' $cras_arch
+    elif release -le wheezy; then
+        # wheezy provides a backport for libsbc1
+        install_mirror_package 'libsbc1' \
+                            'pool/main/s/sbc' '.*~bpo7\+.*' $cras_arch
+        install_mirror_package --asdeps 'libsbc-dev' \
+                            'pool/main/s/sbc' '.*~bpo7\+.*' $cras_arch
+    else
+        install --minimal libsbc1$pkgsuffix
+        install --minimal --asdeps libsbc-dev$pkgsuffix
+    fi
+
+    # Start subshell for compilation
+    (
+        cd "$CRASBUILDTMP"
+
+        # Make sure we start fresh
+        rm -rf --one-file-system cras
+
+        # -m prevents "time stamp is in the future" spam
+        tar -xmf adhd.tar.gz cras/src
+
+        cd cras/src
+
+        # CRAS needs to be patched so that x86 client can access x86_64 server
+        if [ "`uname -m`" = "x86_64" ] &&
+           [ "$ARCH" = "i386" -o "$cras_arch" = "i386" ]; then
+            patch_cras_x86_x86_64
+        fi
+
+        # Directory to install CRAS library/binaries
+        CRASLIBDIR="/usr/local$archextrapath/lib"
+        CRASBINDIR="/usr/local$archextrapath/bin"
+
+        echo "Compiling CRAS (${cras_arch:-native})..." 1>&2
+        # Convert Makefile.am to a shell script, and run it.
+        {
+            echo '
+                top_srcdir=".."
+                top_builddir=".."
+                SBC_LIBS="'"`PKG_CONFIG_PATH="$pkgconfigpath" \
+                                                pkg-config --libs sbc`"'"
+                SBC_CFLAGS="'"`PKG_CONFIG_PATH="$pkgconfigpath" \
+                                                pkg-config --cflags sbc`"'"
+            '
+            sed -e '
+                # Concatenate lines ending in \
+                : start; /\\$/{N; b start}
+                s/ *\\\n[ \t]*/ /g
+                # Convert automake to shell
+                s/^[^ ]*:/#\0/
+                s/^\t/#\0/
+                s/ *= */=/
+                s/\([^ ]*\) *+= */\1=${\1}\ /
+                s/ /\\ /g
+                y/()/{}/
+            ' 'Makefile.am'
+            echo '
+                # buildsources: Build all source files for target
+                #  $1: target
+                #  $2: additional gcc flags
+                # Prints a list of .o files
+                buildsources() {
+                    local target="$1"
+                    local extragccflags="$2"
+
+                    eval local sources=\"\$${target}_SOURCES\"
+                    eval local cppflags=\"\$${target}_CPPFLAGS\"
+
+                    for dep in $sources; do
+                        if [ "${dep%.c}" != "$dep" ]; then
+                            ofile="${dep%.c}.o"
+                            gcc -c "$dep" -o "$ofile" \
+                                '"$archgccflags"' $cppflags $extragccflags 1>&2
+                            echo -n "$ofile "
+                        fi
+                    done
+                }
+
+                # fixlibadd:
+                # Fix list of libraries ($1): replace lib<x>.la by -l<x>
+                fixlibadd() {
+                    for libdep in $*; do
+                        if [ "${libdep%.la}" != "$libdep" ]; then
+                            libdep="${libdep%.la}"
+                            libdep="-l${libdep#lib}"
+                        fi
+                        echo -n "$libdep "
+                    done
+                }
+
+                # buildlib: Build a library
+                #  $1: library name
+                #  $2: additional linker flags
+                buildlib() {
+                    local lib="$1"
+                    local extraflags="$2"
+                    local ofiles="`buildsources "${lib}_la" "-fPIC -DPIC"`"
+
+                    eval local libadd=\"\$${lib}_la_LIBADD\"
+                    eval local ldflags=\"\$${lib}_la_LDFLAGS\"
+
+                    libadd="`fixlibadd $libadd`"
+
+                    # Detect library version (e.g. 0.0.0)
+                    local fullver="`echo -n "$ldflags" | \
+                      sed -n '\''y/:/./; \
+                                 s/.*-version-info \([0-9.]*\)$/\\1/p'\''`"
+                    local shortver=""
+                    # Get "short" library version (e.g. 0)
+                    if [ -n "$fullver" ]; then
+                        shortver=".${fullver%%.*}"
+                        fullver=".$fullver"
                     fi
-                done
-            }
-
-            # fixlibadd: Fix list of libraries ($1): replace lib<x>.la by -l<x>
-            fixlibadd() {
-                for libdep in $*; do
-                    if [ "${libdep%.la}" != "$libdep" ]; then
-                        libdep="${libdep%.la}"
-                        libdep="-l${libdep#lib}"
+                    local fullso="$lib.so$fullver"
+                    local shortso="$lib.so$shortver"
+                    gcc -shared -fPIC -DPIC $ofiles $libadd -o "$fullso" \
+                        '"$archgccflags"' $extraflags -Wl,-soname,"$shortso"
+                    if [ -n "$fullver" ]; then
+                        ln -sf "$fullso" "$shortso"
+                        # Needed at link-time only
+                        ln -sf "$shortso" "$lib.so"
                     fi
-                    echo -n "$libdep "
-                done
-            }
+                }
 
-            # buildlib: Build a library
-            #  $1: library name
-            #  $2: additional linker flags
-            buildlib() {
-                local lib="$1"
-                local extraflags="$2"
-                local ofiles="`buildsources "${lib}_la" "-fPIC -DPIC"`"
+                # buildexe: Build an executable file
+                #  $1: executable file name
+                #  $2: additional linker flags
+                buildexe() {
+                    local exe="$1"
+                    local extraflags="$2"
+                    local ofiles="`buildsources "$exe" ""`"
 
-                eval local libadd=\"\$${lib}_la_LIBADD\"
-                eval local ldflags=\"\$${lib}_la_LDFLAGS\"
+                    eval local ldadd=\"\$${exe}_LDADD\"
+                    eval local ldflags=\"\$${exe}_LDFLAGS\"
 
-                libadd="`fixlibadd $libadd`"
+                    ldadd="`fixlibadd $ldadd`"
 
-                # Detect library version (e.g. 0.0.0)
-                local fullver="`echo -n "$ldflags" | \
-                  sed -n '\''y/:/./; s/.*-version-info \([0-9.]*\)$/\\1/p'\''`"
-                local shortver=""
-                # Get "short" library version (e.g. 0)
-                if [ -n "$fullver" ]; then
-                    shortver=".${fullver%%.*}"
-                    fullver=".$fullver"
-                fi
-                local fullso="$lib.so$fullver"
-                local shortso="$lib.so$shortver"
-                gcc -shared -fPIC -DPIC $ofiles $libadd -o "$fullso" \
-                    $extraflags -Wl,-soname,"$shortso"
-                if [ -n "$fullver" ]; then
-                    ln -sf "$fullso" "$shortso"
-                    # Needed at link-time only
-                    ln -sf "$shortso" "$lib.so"
-                fi
-            }
+                    gcc $ofiles $ldadd -o "$exe" '"$archgccflags"' $extraflags
+                }
 
-            # buildexe: Build an executable file
-            #  $1: executable file name
-            #  $2: additional linker flags
-            buildexe() {
-                local exe="$1"
-                local extraflags="$2"
-                local ofiles="`buildsources "$exe" ""`"
+                buildlib libcras
 
-                eval local ldadd=\"\$${exe}_LDADD\"
-                eval local ldflags=\"\$${exe}_LDFLAGS\"
+                # Pass -rpath=$CRASLIBDIR to linker, so we do not need to add
+                # the directory to ldconfig search path (some distributions do
+                # not include /usr/local/lib in /etc/ld.so.conf).
+                # We also need to add "-L." as we are not using .la files.
+                extraflags="-Wl,-rpath='"$CRASLIBDIR"' -L."
 
-                ldadd="`fixlibadd $ldadd`"
+                buildlib libasound_module_pcm_cras "$extraflags"
+                buildlib libasound_module_ctl_cras "$extraflags"
+                buildexe cras_test_client "$extraflags"
+            '
+        } | sh -s -e $SETOPTIONS
 
-                gcc $ofiles $ldadd -o "$exe" $extraflags
-            }
+        echo "Installing CRAS..." 1>&2
 
-            buildlib libcras
+        mkdir -p "$CRASBINDIR/" "$CRASLIBDIR/" "$ALSALIBDIR/"
+        # Only install libcras.so.X.Y.Z
+        /usr/bin/install -s libcras.so.*.* "$CRASLIBDIR/"
+        # Generate symbolic link to libcras.so.X
+        ldconfig -l "$CRASLIBDIR"/libcras.so.*.*
+        /usr/bin/install -s libasound_module_pcm_cras.so "$ALSALIBDIR/"
+        /usr/bin/install -s libasound_module_ctl_cras.so "$ALSALIBDIR/"
+        /usr/bin/install -s cras_test_client "$CRASBINDIR/"
+    ) # End compilation subshell
+}
 
-            # Pass -rpath=$CRASLIBDIR to linker, so we do not need to add the
-            # directory to ldconfig search path (some distributions do not
-            # include /usr/local/lib in /etc/ld.so.conf).
-            # We also need to add "-L." as we are not using .la files.
-            extraflags="-Wl,-rpath='"$CRASLIBDIR"' -L."
+# On x86_64, the ALSA plugin needs to be compiled for both 32-bit and 64-bit
+# to allow audio playback using 32-bit applications.
+if [ "$ARCH" = 'amd64' ]; then
+    build_cras 'i386'
+fi
 
-            buildlib libasound_module_pcm_cras "$extraflags"
-            buildlib libasound_module_ctl_cras "$extraflags"
-            buildexe cras_test_client "$extraflags"
-        '
-    } | sh -s -e $SETOPTIONS
-
-    echo "Installing CRAS..." 1>&2
-
-    ALSALIBDIR="`pkg-config --variable=libdir alsa`/alsa-lib"
-
-    mkdir -p "$CRASLIBDIR/" "$ALSALIBDIR/"
-    # Only install libcras.so.X.Y.Z
-    /usr/bin/install -s libcras.so.*.* "$CRASLIBDIR/"
-    # Generate symbolic link to libcras.so.X
-    ldconfig -l "$CRASLIBDIR"/libcras.so.*.*
-    /usr/bin/install -s libasound_module_pcm_cras.so "$ALSALIBDIR/"
-    /usr/bin/install -s libasound_module_ctl_cras.so "$ALSALIBDIR/"
-    /usr/bin/install -s cras_test_client "$CRASBINDIR/"
-) # End compilation subshell
+# Build CRAS for native architecture
+build_cras
 
 cat > /usr/share/alsa/alsa.conf.d/10-cras.conf <<EOF
 pcm.cras {

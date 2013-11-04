@@ -86,20 +86,28 @@ list_uninstalled_dist() {
 }
 
 
-# install_mirror_package: Fetch and install a package directly from the mirror.
+# install_mirror_package [--asdeps] package path [regex arch]
+# Fetch and install a package directly from the mirror.
 # This allows to install a package from a different release, when the current
 # release does not provide the required package, or when the version it
 # provides is broken or outdated.
-# $1: Package name (e.g. xserver-xephyr)
-# $2: Mirror path (e.g. pool/universe/x/xorg-server)
-# $3: Version regex (e.g. '1\.11\.4-0ubuntu[0-9][0-9]\.[0-9]*').
-#     If not specified, match any version (default regex: ".*").
-#     The latest version that matches the regex is selected.
-#     If the package is a dependency of other packages (e.g. a library), you
-#     should select the earliest version that provides the required features,
-#     to prevent breakage during release upgrade.
+# --asdeps: Install as dependency
+# package:  Package name (e.g. xserver-xephyr)
+# path:     Mirror path (e.g. pool/universe/x/xorg-server)
+# regex:    Version regex (e.g. '1\.11\.4-0ubuntu[0-9][0-9]\.[0-9]*').
+#           If not specified, match any version (default regex: ".*").
+#           The latest version that matches the regex is selected.
+#           If the package is a dependency of other packages (e.g. a library),
+#           you should select the earliest version that provides the required
+#           features, to prevent breakage during release upgrade.
+# arch:     Architecture (e.g. i386). Defaults to $ARCH
 install_mirror_package() {
     install wget
+    local asdeps=''
+    if [ "$1" = "--asdeps" ]; then
+        asdeps='y'
+        shift
+    fi
     local package="$1"
     # Detect mirror: Find the first source that provides the "main" component
     local mirror="`awk '/^deb .* main( .*)?$/ { print $2; exit }' \
@@ -108,7 +116,8 @@ install_mirror_package() {
         error 1 "Cannot detect mirror."
     fi
     local url="${mirror%/}/${2#/}/"
-    local regex="^${package}_${3:-.*}_(${ARCH}|all)\.deb$"
+    local arch="${4:-$ARCH}"
+    local regex="^${package}_${3:-.*}_(${arch}|all)\.deb$"
     # Find package in directory listing:
     # Filenames are HTML <a href> values, enclosed in quotes.
     local xvers="`wget -O- "$url" -nv \
@@ -119,7 +128,7 @@ install_mirror_package() {
         error 1 "Error retrieving $package."
     fi
     # Check if installed version is already up to date
-    local installed="`dpkg-query -l "$package" 2>/dev/null | \
+    local installed="`dpkg-query -l "$package:$arch" 2>/dev/null | \
         awk '/^[hi]i/ { sub(/^[0-9]+:/, "", $3); print $2 "_" $3 }'`"
     if [ "${xvers%_*}" = "$installed" ]; then
         echo "$package is already up to date ($installed)."
@@ -132,6 +141,9 @@ install_mirror_package() {
     wget --no-check-certificate "$url" -O"$deb"
     # Install the package
     install_pkg "$deb"
+    if [ -n "$asdeps" ]; then
+        apt-mark auto "$package:$arch"
+    fi
 }
 
 # Run dpkg in non-interactive mode
