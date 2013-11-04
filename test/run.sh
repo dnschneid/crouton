@@ -5,6 +5,15 @@
 
 # Provides common functions and variables, then runs all of the tests in tests/
 
+# Tests numbering is categorical in 10's by the following guide:
+#   0*: meta-tests, e.g. tester
+#   1*: core tests, e.g. basic, background, upgrade
+#   2*: small-target/tech tests, e.g. cli-extra, audio
+#   5*: DE tests, e.g. xfce, xbmc
+#   9*: misc application tests, e.g. chrome
+# Numbering within a category is arbitrary and can have overlaps.
+# Tests are always run in alphanumeric order unless specified by parameters.
+
 APPLICATION="${0##*/}"
 SCRIPTDIR="`readlink -f "\`dirname "$0"\`/.."`"
 # List of all supported (non-*'d) releases
