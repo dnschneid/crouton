@@ -34,8 +34,9 @@ JOBS="`grep -c '^processor' /proc/cpuinfo`"
 USAGE="$APPLICATION [options] [test [...]]
 
 Runs tests of the crouton infrastructure. Omitting specific tests will run all
-of them in sequence. Alternatively, you can specify one or more test name
-prefixes that are matched against the test names and run.
+of the numbered tests in sequence (unnumbered tests are skipped).
+Alternatively, you can specify one or more test name prefixes that are matched
+against the test names and run.
 
 Tests are run out of a unique subdirectory in /usr/local, and the results are
 stored in a unique subdirectory of $SCRIPTDIR/test/run
@@ -351,9 +352,9 @@ addtrap "echo 'Cleaning up...' 1>&2
     rm -rf --one-file-system '$PREFIXROOT'
     kill '$croutonpowerd' 2>/dev/null"
 
-# If no arguments were passed, match all tests
+# If no arguments were passed, match all numbered tests
 if [ "$#" = 0 ]; then
-    set -- ''
+    set -- 0 1 2 3 4 5 6 7 8 9
 fi
 
 jobpids=''
