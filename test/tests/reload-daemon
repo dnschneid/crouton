@@ -4,8 +4,22 @@
 # found in the LICENSE file.
 
 # Reloads the daemon running the tester, if one exists, by killing it.
+
+# Find the first process that isn't the same script as this one
 pid="$$"
 while ps -p "$pid" -ocmd= | grep -q "$0"; do
-    pid="`ps -p "$pid" -oppid=`"
+    pid="`ps -p "$pid" -oppid= | tr -d ' '`"
 done
-kill "$pid"
+
+# Kill all the proccess of that script
+name="`ps -p "$pid" -ocmd=`"
+killpids=''
+while ps -p "$pid" -ocmd= | grep -q "$name"; do
+    killpids="$killpids $pid"
+    pid="`ps -p "$pid" -oppid= | tr -d ' '`"
+done
+
+test -n "$killpids"
+log "Killing$killpids"
+kill $killpids
+# This test doesn't actually complete
