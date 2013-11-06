@@ -37,7 +37,7 @@ versioninfo() {
     host enter-chroot -n "$FIRST" -u 0 sh -ec '
             sed -n -e "s/DISTRIB_CODENAME=/=== /p" /etc/lsb-release
             dpkg-query -W '"$PACKAGES"'
-        ' | tee -a "$TESTLOG-versions"
+        ' | log
 }
 
 crouton -T -r "$FIRST" -t "$TARGETS" <<EOF
