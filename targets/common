@@ -84,7 +84,7 @@ elif [ ! "$TARGETS" = 'check' ]; then
             }
             next;
         }
-        ok && /^compile / {
+        ok && /^ *compile / {
             src = "'"${SRCDIR:-$TARGETSDIR/../src}"'/" $2 ".c";
         }
         src && $NF != substr("\\\\", 1, 1) {
