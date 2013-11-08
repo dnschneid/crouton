@@ -58,6 +58,12 @@ elif [ ! "$TARGETS" = 'check' ]; then
         $SIMULATE installscript "$src" "$BIN/"
         [ ! -h "$src" ] && $SIMULATE chmod 755 "$BIN/$f"
     done
+
+    # Stop here if we are just restoring host-bin
+    if [ -n "$RESTOREHOSTBIN" ]; then
+        exit
+    fi
+
     for f in $CHROOTBIN; do
         echo "Installing $f into the chroot..." 1>&2
         src="${CHROOTBINDIR:-../chroot-bin}/$f"
