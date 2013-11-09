@@ -97,7 +97,7 @@ logto() {
     local retpreamble="${1##*/} finished with exit code"
     local AWK='mawk -W interactive'
     # srand() uses system time as seed but returns previous seed. Call it twice.
-    ((((ret=0
+    ((((ret=0; TRAP=''
         . "$1" </dev/null 3>&- || ret=$?
         sleep 1
         if [ "$ret" = 0 ]; then
