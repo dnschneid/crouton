@@ -46,9 +46,6 @@ if [ $# -ge "$OPTIND" ]; then
     exit 1;
 fi
 
-# Detect if we are using mawk or gawk
-AWK=`detectawk`
-
 # Operate on the Chromium OS X11 server
 eval "`/usr/local/bin/host-x11`"
 
@@ -69,15 +66,10 @@ aura="`xwininfo -root -children | awk '/aura_root/ {print $1}'`"
     xev -root <&- &
     trap "kill $! $xi 2>&- || true" INT TERM HUP 0
     wait
-} <&- | $AWK '
+} <&- | unbuffered_awk '
     # Test if x is a non-zero real number (i.e. not nan, inf, "", or 0)
     function isnonzero(x) {
         return (x != "") && (x != 0) && (x != "nan") && (x != "inf")
-    }
-
-    function printflush(s) {
-        print s
-        fflush()
     }
 
     m {
@@ -116,11 +108,11 @@ aura="`xwininfo -root -children | awk '/aura_root/ {print $1}'`"
                 x -= tp ? log(-dx) * '"$xs"' + '"$xc"' : 1
             }
             while (x >= 1) {
-                printflush("mouseclick '"$r"'")
+                output("mouseclick '"$r"'")
                 x -= 1
             }
             while (x <= -1) {
-                printflush("mouseclick '"$l"'")
+                output("mouseclick '"$l"'")
                 x += 1
             }
         }
@@ -133,11 +125,11 @@ aura="`xwininfo -root -children | awk '/aura_root/ {print $1}'`"
                 y -= tp ? log(-dy) * '"$ys"' + '"$yc"' : 1
             }
             while (y >= 1) {
-                printflush("mouseclick '"$d"'")
+                output("mouseclick '"$d"'")
                 y -= 1
             }
             while (y <= -1) {
-                printflush("mouseclick '"$u"'")
+                output("mouseclick '"$u"'")
                 y += 1
             }
         }
