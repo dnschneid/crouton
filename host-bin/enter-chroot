@@ -136,7 +136,7 @@ else
 fi
 
 if [ ! "$NOLOGIN" = 2 ]; then
-    echo "Entering $CHROOT..." 1>&2
+    echo "Entering $CHROOTSRC..." 1>&2
 fi
 
 # In disk full situations, mount-chroot can be empty. Good time to check sanity.

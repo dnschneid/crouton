@@ -239,7 +239,7 @@ unmount() {
             # ...but confirm first.
             printonly=''
             if [ "${YES#[Aa]}" = "$YES" ]; then
-                echo -n "Failed to unmount $CHROOT. Kill processes? [a/k/y/p/N] " 1>&2
+                echo -n "Failed to unmount $CHROOTSRC. Kill processes? [a/k/y/p/N] " 1>&2
                 if [ -n "$CROUTON_UNMOUNT_RESPONSE" ]; then
                     YES="$CROUTON_UNMOUNT_RESPONSE"
                     echo "$YES" 1>&2
@@ -257,7 +257,7 @@ unmount() {
                 fi
             fi
             if [ -z "$printonly" ]; then
-                echo "Sending SIG$SIGNAL to processes under $CHROOT..." 1>&2
+                echo "Sending SIG$SIGNAL to processes under $CHROOTSRC..." 1>&2
             fi
             for root in /proc/*/root; do
                 if [ ! -r "$root" ] \

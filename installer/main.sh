@@ -335,6 +335,7 @@ addtrap "stty echo 2>/dev/null"
 BIN="$PREFIX/bin"
 CHROOTS="$PREFIX/chroots"
 CHROOT="$CHROOTS/${NAME:="${RELEASE:-"$DEFAULTRELEASE"}"}"
+CHROOTSRC="$CHROOT"
 TARGETDEDUPFILE="$CHROOT/.crouton-targets"
 
 # Confirm we have write access to the directory before starting.
@@ -342,16 +343,16 @@ if [ -z "$DOWNLOADONLY" ]; then
     create='-n'
     if [ -d "$CHROOT" ] && ! rmdir "$CHROOT" 2>/dev/null; then
         if [ -n "$RESTORE" ]; then
-            error 1 "$CHROOT already has stuff in it!
+            error 1 "$CHROOTSRC already has stuff in it!
 Either delete it, specify a different name (-n), or use edit-chroot to restore."
         elif [ -z "$UPDATE" ]; then
-            error 1 "$CHROOT already has stuff in it!
+            error 1 "$CHROOTSRC already has stuff in it!
 Either delete it, specify a different name (-n), or specify -u to update it."
         fi
         create=''
-        echo "$CHROOT already exists; updating it..." 1>&2
+        echo "$CHROOTSRC already exists; updating it..." 1>&2
     elif [ -n "$UPDATE" -a -z "$RESTORE" ]; then
-        error 1 "$CHROOT does not exist; cannot update."
+        error 1 "$CHROOTSRC does not exist; cannot update."
     fi
 
     # Restore the chroot now
@@ -395,7 +396,7 @@ change the release, upgrading the chroot (dangerous)."
             fi
         done
         if [ -z "$DISTRO" ]; then
-            error 2 "Unable to determine the release in $CHROOT. Please specify it with -r."
+            error 2 "Unable to determine the release in $CHROOTSRC. Please specify it with -r."
         fi
     fi
 
@@ -462,7 +463,7 @@ fi
 
 # Unpack the tarball if appropriate
 if [ -z "$RESTORE" -a -z "$UPDATE" -a -z "$DOWNLOADONLY" ]; then
-    echo "Installing $RELEASE-$ARCH chroot to $CHROOT" 1>&2
+    echo "Installing $RELEASE-$ARCH chroot to $CHROOTSRC" 1>&2
     if [ -n "$TARBALL" ]; then
         # Unpack the chroot
         echo 'Unpacking chroot environment...' 1>&2
