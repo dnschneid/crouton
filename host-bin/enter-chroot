@@ -173,7 +173,7 @@ if [ -z "$NOLOGIN" -a -f "$CHROOT$SETUPSCRIPT" ]; then
     echo 'The chroot may not be fully set up.' 1>&2
     response=''
     # A finished setup script will have permissions 500
-    if [ ! -x "$CHROOT$SETUPSCRIPT" -o -w "$CHROOT$SETUPSCRIPT" ]; then
+    if [ "`stat -c '%a' "$CHROOT$SETUPSCRIPT"`" != '500' ]; then
         echo 'However, it appears the setup script is invalid.' 1>&2
         response='d'
     fi
@@ -183,13 +183,19 @@ if [ -z "$NOLOGIN" -a -f "$CHROOT$SETUPSCRIPT" ]; then
     fi
     if [ -z "$response" -o "${response#[Yy]}" != "$response" ]; then
         echo 'Preparing chroot environment...' 1>&2
-        CROUTON_NO_UNMOUNT=1 sh -e "$BINDIR/enter-chroot" \
-            -c "$CHROOTS" -n "$NAME" -xx
-        echo 'Setup completed. Entering chroot...' 1>&2
-    elif [ "${response#[Dd]}" != "$response" ]; then
+        if CROUTON_NO_UNMOUNT=1 sh -e "$BINDIR/enter-chroot" \
+                -c "$CHROOTS" -n "$NAME" -xx; then
+            echo 'Setup completed. Entering chroot...' 1>&2
+            response=''
+        else
+            echo 'The chroot setup script may be broken. Your chroot is not fully configured.' 1>&2
+            response='d'
+        fi
+    fi
+    if [ "${response#[Dd]}" != "$response" ]; then
         echo 'Removing the chroot setup script. You may want to update your chroot again.' 1>&2
         rm -f "$CHROOT$SETUPSCRIPT"
-    else
+    elif [ -n "$response" ]; then
         echo 'Skipping setup. You will be prompted again next time.' 1>&2
     fi
 fi
