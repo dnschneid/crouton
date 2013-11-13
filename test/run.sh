@@ -97,7 +97,7 @@ logto() {
     local retpreamble="${1##*/} finished with exit code"
     local AWK='mawk -W interactive'
     # srand() uses system time as seed but returns previous seed. Call it twice.
-    ((((ret=0
+    ((((ret=0; TRAP=''
         . "$1" </dev/null 3>&- || ret=$?
         sleep 1
         if [ "$ret" = 0 ]; then
@@ -335,7 +335,6 @@ croutonpowerd="$!"
 # Run all the tests
 mkdir -p "$TESTDIR" "$PREFIXROOT"
 addtrap "echo 'Cleaning up...' 1>&2
-    set +e
     pkill debootstrap 2>/dev/null
     kill \$jobpids 2>/dev/null
     for pid in \$jobpids; do
@@ -402,6 +401,10 @@ for p in "$@"; do
             mount -i -o remount,nosuid,nodev,noexec "$PREFIX"
             # Clean up on exit
             settrap "
+                if [ -d '$PREFIX/chroots' ]; then
+                    sh -e '$SCRIPTDIR/host-bin/unmount-chroot' \
+                        -a -y -c '$PREFIX/chroots'
+                fi
                 umount -l '$PREFIX'
                 rm -rf --one-file-system '$PREFIX'
             "

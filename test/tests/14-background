@@ -12,6 +12,10 @@ waitfinish() {
     while ! host unmount-chroot "$RELEASE"; do
         sleep 1
     done
+    # Make sure the chroot isn't being unmounted by the backgrounded process.
+    while pgrep -f unmount-chroot >/dev/null; do
+        sleep 1
+    done
 }
 
 # Should work by default

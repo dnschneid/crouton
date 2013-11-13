@@ -127,6 +127,7 @@ disablehungtask
 addtrap "stty echo 2>/dev/null"
 
 # Mount the chroot and update our CHROOT path
+CHROOTSRC="$CHROOT"
 if [ -n "$KEYFILE" ]; then
     CHROOT="`sh -e "$BINDIR/mount-chroot" \
                                      -k "$KEYFILE" -p -c "$CHROOTS" "$NAME"`"
@@ -135,7 +136,7 @@ else
 fi
 
 if [ ! "$NOLOGIN" = 2 ]; then
-    echo "Entering $CHROOT..." 1>&2
+    echo "Entering $CHROOTSRC..." 1>&2
 fi
 
 # In disk full situations, mount-chroot can be empty. Good time to check sanity.
@@ -158,7 +159,7 @@ fi
 
 # If our root is on an external disk we need to ensure USB device persistence is
 # enabled otherwise we will lose the file-system after a suspend event.
-if [ ! "${CHROOT#/media}" = "$CHROOT" ]; then
+if [ ! "${CHROOTSRC#/media}" = "$CHROOTSRC" ]; then
     for usbp in /sys/bus/usb/devices/*/power/persist; do
         if [ -e "$usbp" ]; then
             echo 1 > "$usbp"
@@ -172,7 +173,7 @@ if [ -z "$NOLOGIN" -a -f "$CHROOT$SETUPSCRIPT" ]; then
     echo 'The chroot may not be fully set up.' 1>&2
     response=''
     # A finished setup script will have permissions 500
-    if [ ! -x "$CHROOT$SETUPSCRIPT" -o -w "$CHROOT$SETUPSCRIPT" ]; then
+    if [ "`stat -c '%a' "$CHROOT$SETUPSCRIPT"`" != '500' ]; then
         echo 'However, it appears the setup script is invalid.' 1>&2
         response='d'
     fi
@@ -182,13 +183,19 @@ if [ -z "$NOLOGIN" -a -f "$CHROOT$SETUPSCRIPT" ]; then
     fi
     if [ -z "$response" -o "${response#[Yy]}" != "$response" ]; then
         echo 'Preparing chroot environment...' 1>&2
-        CROUTON_NO_UNMOUNT=1 sh -e "$BINDIR/enter-chroot" \
-            -c "$CHROOTS" -n "$NAME" -xx
-        echo 'Setup completed. Entering chroot...' 1>&2
-    elif [ "${response#[Dd]}" != "$response" ]; then
+        if CROUTON_NO_UNMOUNT=1 sh -e "$BINDIR/enter-chroot" \
+                -c "$CHROOTS" -n "$NAME" -xx; then
+            echo 'Setup completed. Entering chroot...' 1>&2
+            response=''
+        else
+            echo 'The chroot setup script may be broken. Your chroot is not fully configured.' 1>&2
+            response='d'
+        fi
+    fi
+    if [ "${response#[Dd]}" != "$response" ]; then
         echo 'Removing the chroot setup script. You may want to update your chroot again.' 1>&2
         rm -f "$CHROOT$SETUPSCRIPT"
-    else
+    elif [ -n "$response" ]; then
         echo 'Skipping setup. You will be prompted again next time.' 1>&2
     fi
 fi
@@ -197,7 +204,7 @@ fi
 passwd="$CHROOT/etc/passwd"
 if [ -z "$NOLOGIN" ]; then
     if [ ! -r "$passwd" ]; then
-        error 1 "$CHROOT doesn't appear to be a valid chroot."
+        error 1 "$CHROOTSRC doesn't appear to be a valid chroot."
     fi
     case "$USERNAME" in
     ''|*[!0-9]*)
@@ -284,9 +291,6 @@ bindmount() {
     mount --bind $bindopts "$1" "$target"
     if [ -n "$3" ]; then
         mount -i -o "remount,$3" "$target"
-        if [ -n "$4" ]; then
-            mount $4 "$target"
-        fi
     fi
 }
 
@@ -307,8 +311,6 @@ else
     firstrun='y'
 fi
 
-# Ensure the chroot is executable and writable by bind-mounting it to itself.
-bindmount "$CHROOT" / rw,dev,exec,suid --make-unbindable
 bindmount /dev
 bindmount /dev/pts
 bindmount /dev/shm
