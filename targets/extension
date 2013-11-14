@@ -6,10 +6,6 @@ REQUIRES='x11'
 DESCRIPTION='Clipboard synchronization and URL handling with Chromium OS.'
 CHROOTBIN='croutonclip croutonurlhandler'
 
-if [ ! "$TARGETS" = 'help' ] && [ ! "$TARGETS" = 'check' ]; then
-  cp "${SCRIPTDIR:-..}/host-ext/crouton.crx" /home/chronos/user/Downloads/
-fi
-
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
@@ -23,6 +19,6 @@ if [ "$XMETHOD" = 'x11' ]; then
 fi
 
 TIPS="$TIPS
-You must install the Chromium OS extension for integration with crouton to work:
-Open the file manager and double-click on Downloads/crouton.crx
+You must install the Chromium OS extension for integration with crouton to work.
 "
+#FIXME: Add link to Chrome WebStore
