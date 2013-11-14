@@ -243,6 +243,8 @@ function websocketMessage(evt) {
     case 'W': /* Write */
         var clip = readClipboard();
 
+        dummystr_ = false;
+
         /* Do not erase identical clipboard content */
         if (clip != payload) {
              /* We cannot write an empty string: Write DUMMY instead */
@@ -251,12 +253,10 @@ function websocketMessage(evt) {
                 dummystr_ = true;
             } else {
                 writeClipboard(payload);
-                dummystr_ = false;
             }
         } else if (payload == DUMMY_EMPTYSTRING) {
             /* Unlikely case where DUMMY string comes from the other side */
             writeClipboard(payload);
-            dummystr_ = false;
         } else {
             printLog("Not erasing content (identical).", LogLevel.DEBUG);
         }
