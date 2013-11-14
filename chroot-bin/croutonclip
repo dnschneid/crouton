@@ -135,11 +135,11 @@ xmethod="${xmethod##*-}"
 # This makes sure we do not miss any events and that we copy the clipboard
 # around in the right sequence.
 
-if [ "$xmethod" = 'xephyr' ]; then
-    # Assume current display is Chromium OS, as the awk script does not detect
-    # the current window
-    current=':0'
+# Assume current display is Chromium OS: avoid race as we may not be able to
+# detect the first VT/window change.
+current=':0'
 
+if [ "$xmethod" = 'xephyr' ]; then
     # Wait for ratpoison to come up
     while ! host-x11 xprop -root _NET_WM_NAME | grep -q 'ratpoison'; do
         sleep .1
@@ -158,6 +158,14 @@ if [ "$xmethod" = 'xephyr' ]; then
             echo "croutonclip: xev error ($?)"
         fi
     } | mawk -W interactive '
+        BEGIN {
+            # Detect current window in case we missed the first MapNotify.
+            while (("host-x11 xdpyinfo" | getline) > 0) {
+                if (match($0, /^focus:.*window 0x[0-9a-f]*/)) {
+                    print $3
+                }
+            }
+        }
         m {
             if ($6 == "NO") {
                 print $4 # Window id
@@ -187,9 +195,8 @@ if [ "$xmethod" = 'xephyr' ]; then
         done
     }
 elif [ "$xmethod" = 'x11' ]; then
-    # No need to set $current:
-    # croutonvtmonitor outputs the current tty right after it is started
-
+    # croutonvtmonitor first prints the current tty, so we are sure not to
+    # miss the initial VT change.
     {
         croutonvtmonitor &
         cpid=$!
