@@ -9,7 +9,7 @@ CHROOTBIN='croutonclip croutonurlhandler'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
-install xclip
+install x11-utils xclip
 
 compile websocket ''
 
