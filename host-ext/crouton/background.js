@@ -7,6 +7,7 @@ var URL = "ws://localhost:30001/";
 var VERSION = 1; /* Note: the extension must always be backward compatible */
 var MAXLOGGERLEN = 20;
 var RETRY_TIMEOUT = 5;
+var UPDATE_CHECK_INTERVAL = 15*60; /* Check for updates every 15' at most */
 /* String to copy to the clipboard if it should be empty */
 var DUMMY_EMPTYSTRING = "%";
 
@@ -28,6 +29,8 @@ var active_ = false; /* true if we are connected to a server */
 var error_ = false; /* true if there was an error during the last connection */
 var dummystr_ = false; /* true if the last string we copied was the dummy string */
 var update_ = false; /* true if an update to the extension is available */
+
+var lastupdatecheck_ = null;
 
 var status_ = "";
 var logger_ = []; /* Array of status messages: [LogLevel, time, message] */
@@ -60,13 +63,19 @@ function updateAvailable(version) {
         update_ = true;
 }
 
-function checkUpdate() {
-    chrome.runtime.requestUpdateCheck(function (status, details) {
-        printLog("Update status=" + status, LogLevel.DEBUG);
-        if (status == "update_available") {
-            updateAvailable(details.version);
-        }
-    });
+function checkUpdate(force) {
+    var currenttime = new Date().getTime();
+
+    if (force || lastupdatecheck_ == null ||
+            (currenttime-lastupdatecheck_) > 1000*UPDATE_CHECK_INTERVAL) {
+        chrome.runtime.requestUpdateCheck(function (status, details) {
+            printLog("Update status=" + status, LogLevel.DEBUG);
+            if (status == "update_available") {
+                updateAvailable(details.version);
+            }
+        });
+        lastupdatecheck_ = currenttime;
+    }
 }
 
 /* Update the icon, and refresh the popup page */
@@ -323,7 +332,7 @@ function websocketClose() {
     websocket_ = null;
 
     /* Check for update on every disconnect */
-    checkUpdate();
+    checkUpdate(false);
 }
 
 function padstr0(i) {
@@ -362,8 +371,8 @@ function error(str, enabled) {
     error_ = true;
     refreshUI();
     websocket_.close();
-    /* Check for extension update (possible reason for the error) */
-    checkUpdate();
+    /* Force check for extension update (possible reason for the error) */
+    checkUpdate(true);
 }
 
 /* On error: disconnect WebSocket, then log errors */
