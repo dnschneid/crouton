@@ -3,4 +3,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-exec /usr/bin/X -nolisten tcp "$@"
+XMETHOD='x11'
+XARGS='-nolisten tcp'
+if [ -f /etc/crouton/xserverrc-local ]; then
+    . /etc/crouton/xserverrc-local
+fi
+
+exec /usr/bin/X $XARGS "$@"
