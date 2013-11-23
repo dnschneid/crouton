@@ -43,6 +43,15 @@ static void apply_cursor(Display* d, Window w, XFixesCursorImage *image) {
         return;
     }
 
+    /* Collapse 64-bit pixels down to 32-bit pixels if needed */
+    if (sizeof(image->pixels[0]) == 8) {
+        int i;
+        int *pixels = (int *) image->pixels;
+        for (i = 0; i < image->width * image->height; ++i) {
+            pixels[i] = pixels[i*2];
+        }
+    }
+
     ximage.width = image->width;
     ximage.height = image->height;
     ximage.xoffset = 0;
