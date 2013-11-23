@@ -3,15 +3,14 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 REQUIRES='core audio'
-DESCRIPTION='Nested X11 install. Replaces X11 if specified first.'
+PROVIDES='x11'
+DESCRIPTION='Nested X11 backend. Improves compatibility but lacks GPU accel.'
 CHROOTBIN='croutoncycle croutonpowerd croutonwheel croutonwm croutonxinitrc-wrapper xinit'
-CHROOTETC='xbindkeysrc.scm xserverrc-xephyr'
-# Prevent X11 from being added if it hasn't already.
-echo 'x11' >> "${TARGETDEDUPFILE:-/dev/null}"
+CHROOTETC='xbindkeysrc.scm xserverrc-xephyr xserverrc-local.example'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
-XMETHOD=xephyr
+XMETHOD="${XMETHOD:-xephyr}"
 
 if release -eq quantal; then
     # As of 2013-01-08, Quantal's Xephyr lacks GLX. Download one manually.

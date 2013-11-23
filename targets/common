@@ -11,6 +11,9 @@
 # DESCRIPTION with the description of the target, and REQUIRES with a
 # space-separated list of other targets it needs.
 
+# The script can also specify a space-separated list of targets in PROVIDES;
+# this will prevent other targets from installing when this one is done first.
+
 # Finally, targets can set HOSTBIN, CHROOTBIN, and CHROOTETC with a
 # space-separated list of files to copy from host-bin, chroot-bin, and
 # chroot-etc into the appropriate places.
@@ -36,9 +39,14 @@ elif [ ! "$TARGETS" = 'check' ]; then
     else
         echo "$TARGET" >> "${TARGETDEDUPFILE:-/dev/null}"
     fi
+    # Avoid adding things already provided
+    for t in $PROVIDES; do
+        echo "$t" >> "${TARGETDEDUPFILE:-/dev/null}"
+    done
     # Source the prerequisites
     for t in $REQUIRES; do
-        (TARGET="$t" HOSTBIN='' CHROOTBIN='' CHROOTETC=''; . "$TARGETSDIR/$t")
+        (TARGET="$t" PROVIDES='' HOSTBIN='' CHROOTBIN='' CHROOTETC=''
+         . "$TARGETSDIR/$t")
     done
     # Add a print to the output
     echo ''
