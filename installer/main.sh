@@ -31,6 +31,7 @@ TARBALL=''
 TARGETS=''
 TARGETFILE=''
 UPDATE=''
+UPDATEIGNOREEXISTING=''
 
 USAGE="$APPLICATION [options] -t targets
 $APPLICATION [options] -f backup_tarball
@@ -82,6 +83,9 @@ Options:
                 You can use this to install new targets or update old ones.
                 Passing this parameter twice will force an update even if the
                 specified release does not match the one already installed.
+    -U          Same as -u, but does not reinstall existing targets.
+                Targets specified with -t will be installed, but not recorded
+                for future updates.
     -V          Prints the version of the installer to stdout.
 
 Be aware that dev mode is inherently insecure, even if you have a strong
@@ -94,7 +98,7 @@ secure as the passphrases you assign to them."
 . "$SCRIPTDIR/installer/functions"
 
 # Process arguments
-while getopts 'a:def:k:m:n:p:P:r:s:t:T:uV' f; do
+while getopts 'a:def:k:m:n:p:P:r:s:t:T:uUV' f; do
     case "$f" in
     a) ARCH="$OPTARG";;
     d) DOWNLOADONLY='y';;
@@ -109,6 +113,7 @@ while getopts 'a:def:k:m:n:p:P:r:s:t:T:uV' f; do
     t) TARGETS="$TARGETS${TARGETS:+","}$OPTARG";;
     T) TARGETFILE="$OPTARG";;
     u) UPDATE="$((UPDATE+1))";;
+    U) UPDATE="$((UPDATE+1))"; UPDATEIGNOREEXISTING='y';;
     V) echo "$APPLICATION: version ${VERSION:-"git"}"; exit 0;;
     \?) error 2 "$USAGE";;
     esac
@@ -531,32 +536,35 @@ VAREXPAND="${VAREXPAND}s/#SETOPTIONS/$SETOPTIONS/;"
 installscript "$INSTALLERDIR/prepare.sh" "$CHROOT/prepare.sh" "$VAREXPAND"
 # Append the distro-specific prepare.sh
 cat "$DISTRODIR/prepare" >> "$CHROOT/prepare.sh"
-# Read the explicit targets file in the chroot (if it exists)
-TARGETSFILE="$CHROOT/etc/crouton/targets"
-if [ -r "$TARGETSFILE" ]; then
-    read t < "$TARGETSFILE"
-    t="${t%,},"
-    while [ -n "$t" ]; do
-        TARGET="${t%%,*}"
-        t="${t#*,}"
-        if [ -z "$TARGET" ]; then
-            continue
-        fi
-        # Don't put duplicate entries in the targets list
-        tlist=",$TARGETS,"
-        if [ ! "${tlist%",$TARGET,"*}" = "$tlist" ]; then
-            continue
-        fi
-        if [ ! -r "$TARGETSDIR/$TARGET" ]; then
-            echo "Previously installed target '$TARGET' no longer exists." 1>&2
-            continue
-        fi
-        # Add the target
-        TARGETS="${TARGETS%,},$TARGET"
-    done
+# If -U was not specified, update existing targets.
+if [ -z "$UPDATEIGNOREEXISTING" ]; then
+    # Read the explicit targets file in the chroot (if it exists)
+    TARGETSFILE="$CHROOT/etc/crouton/targets"
+    if [ -r "$TARGETSFILE" ]; then
+        read t < "$TARGETSFILE"
+        t="${t%,},"
+        while [ -n "$t" ]; do
+            TARGET="${t%%,*}"
+            t="${t#*,}"
+            if [ -z "$TARGET" ]; then
+                continue
+            fi
+            # Don't put duplicate entries in the targets list
+            tlist=",$TARGETS,"
+            if [ ! "${tlist%",$TARGET,"*}" = "$tlist" ]; then
+                continue
+            fi
+            if [ ! -r "$TARGETSDIR/$TARGET" ]; then
+                echo "Previously installed target '$TARGET' no longer exists." 1>&2
+                continue
+            fi
+            # Add the target
+            TARGETS="${TARGETS%,},$TARGET"
+        done
+    fi
+    # Reset the installed target list files
+    echo "$TARGETS" > "$TARGETSFILE"
 fi
-# Reset the installed target list files
-echo "$TARGETS" > "$TARGETSFILE"
 echo -n '' > "$TARGETDEDUPFILE"
 # Run each target, appending stdout to the prepare script.
 unset SIMULATE
