@@ -1,0 +1,49 @@
+#!/bin/sh -e
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+PIPEDIR='/tmp/crouton-ext'
+PIPEIN="$PIPEDIR/in"
+PIPEOUT="$PIPEDIR/out"
+PIPELOCK="$PIPEDIR/lock"
+
+# Write a command to croutonwebsocket, and read back response
+websocketcommand() {
+    # Check that $PIPEDIR and the FIFO pipes exist
+    if ! [ -d "$PIPEDIR" -a -p "$PIPEIN" -a -p "$PIPEOUT" ]; then
+        echo "EError $PIPEIN or $PIPEOUT are not pipes."
+        exit 0
+    fi
+
+    (
+        flock 5
+        cat > "$PIPEIN"
+        cat "$PIPEOUT"
+    ) 5>"$PIPELOCK"
+}
+
+USAGE="${0##*/} [-s] URL
+Open an URL in Chromium OS (requires crouton extension).
+If -s is specified, switch to Chromium OS."
+
+switch=''
+if [ "$1" = '-s' ]; then
+    switch='y'
+    shift
+fi
+
+if [ -z "$*" ]; then
+    echo "$USAGE" 1>&2; exit 2;
+fi
+
+STATUS="`echo -n U"$*" | websocketcommand`"
+
+if [ ! "$STATUS" = 'UOK' ]; then
+    echo "${STATUS#?}" 1>&2
+    exit 1
+fi
+
+if [ -n "$switch" ]; then
+    croutoncycle cros
+fi

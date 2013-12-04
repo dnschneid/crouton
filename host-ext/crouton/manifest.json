@@ -1,0 +1,28 @@
+{
+  "manifest_version": 2,
+
+  "name": "crouton integration",
+  "short_name": "crouton",
+  "description": "Improves integration with crouton. Synchronizes the clipboards and provides a means to forward URLs.",
+  "version": "0.9",
+  "icons": {
+    "48": "icon-48.png",
+    "128": "icon-128.png"
+  },
+
+  "browser_action": {
+    "default_icon": {
+        "19": "disconnected-19.png",
+        "38": "disconnected-38.png"
+    },
+    "default_popup": "popup.html"
+  },
+  "background": {
+    "page": "background.html"
+  },
+  "permissions": [
+    "clipboardRead",
+    "clipboardWrite",
+    "tabs"
+  ]
+}
