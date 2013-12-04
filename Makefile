@@ -43,7 +43,13 @@ croutoncursor: src/cursor.c Makefile
 croutonxi2event: src/xi2event.c Makefile
 	gcc -g -Wall -Werror src/xi2event.c -lX11 -lXi -o croutonxi2event
 
+croutonvtmonitor: src/vtmonitor.c Makefile
+	gcc -g -Wall -Werror src/vtmonitor.c -o croutonvtmonitor
+
+croutonwebsocket: src/websocket.c Makefile
+	gcc -g -Wall -Werror src/websocket.c -o croutonwebsocket
+
 clean:
-	rm -f $(TARGET) croutoncursor croutonxi2event
+	rm -f $(TARGET) croutoncursor croutonxi2event croutonvtmonitor croutonwebsocket
 
 .PHONY: clean
