@@ -4,12 +4,13 @@
   "name": "crouton integration",
   "short_name": "crouton",
   "description": "Improves integration with crouton chroots.",
-  "version": "0.9.2",
+  "version": "0.9.3",
   "icons": {
     "48": "icon-48.png",
     "128": "icon-128.png"
   },
 
+  "offline_enabled": true,
   "browser_action": {
     "default_icon": {
         "19": "disconnected-19.png",
