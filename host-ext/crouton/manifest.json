@@ -22,7 +22,6 @@
   },
   "permissions": [
     "clipboardRead",
-    "clipboardWrite",
-    "tabs"
+    "clipboardWrite"
   ]
 }

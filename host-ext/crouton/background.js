@@ -49,7 +49,7 @@ function setStatus(status, active) {
 }
 
 function showHelp() {
-    chrome.tabs.create({url: "first.html"});
+    window.open("first.html", '_blank');
 }
 
 function updateAvailable(version) {
@@ -287,7 +287,7 @@ function websocketMessage(evt) {
         /* URL must be absolute: see RFC 3986 for syntax (section 3.1) */
         if (match = (/^([a-z][a-z0-9+-.]*):/i).exec(payload)) {
             /* FIXME: we could blacklist schemes using match[1] here */
-            chrome.tabs.create({ url: payload });
+            window.open(payload, '_blank');
             websocket_.send("UOK");
         } else {
             printLog("Received invalid URL: " + payload, LogLevel.ERROR);
