@@ -3,6 +3,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+USAGE="${0##*/} [-s] URL
+Open an URL in Chromium OS (requires crouton extension).
+Switches back to Chromium OS unless -n is specified."
+
 PIPEDIR='/tmp/crouton-ext'
 PIPEIN="$PIPEDIR/in"
 PIPEOUT="$PIPEDIR/out"
@@ -23,13 +27,9 @@ websocketcommand() {
     ) 5>"$PIPELOCK"
 }
 
-USAGE="${0##*/} [-s] URL
-Open an URL in Chromium OS (requires crouton extension).
-If -s is specified, switch to Chromium OS."
-
-switch=''
-if [ "$1" = '-s' ]; then
-    switch='y'
+noswitch=''
+if [ "$1" = '-n' ]; then
+    noswitch='y'
     shift
 fi
 
@@ -44,6 +44,6 @@ if [ ! "$STATUS" = 'UOK' ]; then
     exit 1
 fi
 
-if [ -n "$switch" ]; then
+if [ -z "$noswitch" ]; then
     croutoncycle cros
 fi

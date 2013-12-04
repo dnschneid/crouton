@@ -18,6 +18,14 @@ if [ "$XMETHOD" = 'x11' ]; then
     compile vtmonitor ''
 fi
 
+# Use croutonurlhandler as a fallback URL handler
+handler='/usr/local/bin/croutonurlhandler'
+for link in x-www-browser gnome-www-browser; do
+    if ! update-alternatives --query "$link" | grep -q "$handler"; then
+        update-alternatives --install "/usr/bin/$link" "$link" "$handler" 5
+    fi
+done
+
 TIPS="$TIPS
 You must install the Chromium OS extension for integration with crouton to work.
 The extension is available here: http://goo.gl/OVQOEt
