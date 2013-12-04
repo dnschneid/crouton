@@ -15,7 +15,8 @@
         "19": "disconnected-19.png",
         "38": "disconnected-38.png"
     },
-    "default_popup": "popup.html"
+    "default_popup": "popup.html",
+    "default_title": "crouton"
   },
   "background": {
     "page": "background.html"

@@ -92,6 +92,7 @@ function refreshUI() {
     chrome.browserAction.setIcon(
         {path: {'19': icon + '-19.png', '38': icon + '-38.png'}}
     );
+    chrome.browserAction.setTitle({title: 'crouton: ' + icon});
 
     var views = chrome.extension.getViews({type: "popup"});
     for (var i = 0; i < views.length; views++) {
@@ -375,25 +376,43 @@ function error(str, enabled) {
     checkUpdate(true);
 }
 
-/* On error: disconnect WebSocket, then log errors */
-onerror = function(msg, url, line) {
-    if (websocket_)
-        websocket_.close();
-    error("Uncaught JS error: " + msg, false);
-    return true;
-}
-
-/* Start the extension as soon as the background page is loaded */
-document.addEventListener('DOMContentLoaded', clipboardStart);
-
+/* Open help tab on first install on Chromium OS */
 chrome.runtime.onInstalled.addListener(function(details) {
     if (details.reason == "install") {
-        /* Open help tab on first install */
-        showHelp();
+        chrome.runtime.getPlatformInfo(function(platforminfo) {
+            if (platforminfo.os == 'cros') {
+                showHelp();
+            }
+        });
     }
-}
-)
+});
 
-chrome.runtime.onUpdateAvailable.addListener(function(details) {
-    updateAvailable(details.version);
+/* Initialize, taking into account the platform */
+chrome.runtime.getPlatformInfo(function(platforminfo) {
+    if (platforminfo.os == 'cros') {
+        /* On error: disconnect WebSocket, then log errors */
+        onerror = function(msg, url, line) {
+            if (websocket_)
+                websocket_.close();
+            error("Uncaught JS error: " + msg, false);
+            return true;
+        }
+
+        /* Start the extension as soon as the background page is loaded */
+        if (document.readyState == 'complete') {
+            clipboardStart();
+        } else {
+            document.addEventListener('DOMContentLoaded', clipboardStart);
+        }
+
+        chrome.runtime.onUpdateAvailable.addListener(function(details) {
+            updateAvailable(details.version);
+        });
+    } else {
+        /* Disable the icon on non-Chromium OS. */
+        chrome.browserAction.setTitle(
+            {title: 'crouton is not available on this platform'}
+        );
+        chrome.browserAction.disable();
+    }
 });
