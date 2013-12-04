@@ -127,7 +127,7 @@ disablehungtask
 addtrap "stty echo 2>/dev/null"
 
 # Mount the chroot and update our CHROOT path
-CHROOTSRC="$CHROOT"
+CHROOTSRC="$CHROOTS/$NAME"
 if [ -n "$KEYFILE" ]; then
     CHROOT="`sh -e "$BINDIR/mount-chroot" \
                                      -k "$KEYFILE" -p -c "$CHROOTS" "$NAME"`"
