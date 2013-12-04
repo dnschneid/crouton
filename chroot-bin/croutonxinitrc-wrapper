@@ -96,16 +96,32 @@ if synclient >/dev/null 2>&1; then
     fi
 fi
 
+# Shell is the leader of a process group, so signals sent to this process are
+# propagated to its children. We ignore signals in this process, but the child
+# handles them and exits. This process then runs exit commands, and terminates.
+trap "" HUP INT TERM
+
 # Run the client itself if it is executable, otherwise run it in a shell.
 ret=0
 if [ -n "$binary" -o -x "$cmd" ]; then
-    "$cmd" $extraargs "$@" || ret="$?"
+    "$cmd" $extraargs "$@" || ret=$?
 else
-    /bin/sh "$cmd" $extraargs "$@" || ret="$?"
+    /bin/sh "$cmd" $extraargs "$@" || ret=$?
 fi
+
+trap - HUP INT TERM
 
 # Run crouton-specific commands before the server exits:
 
-# Nothing currently
+echo "Running exit commands..." 1>&2
+
+# Kill croutonclip if there is no other X server running
+if pgrep -x croutonclip >/dev/null; then
+    # There is at least 2 servers running (the current one and Chromium OS)
+    if [ "`ps -CX -CXorg -CXephyr -opid= | wc -l`" -le 2 ]; then
+        echo "Killing croutonclip..." 1>&2
+        pkill -x croutonclip
+    fi
+fi
 
 exit "$ret"
