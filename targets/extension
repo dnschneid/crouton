@@ -20,5 +20,5 @@ fi
 
 TIPS="$TIPS
 You must install the Chromium OS extension for integration with crouton to work.
+The extension is available here: http://goo.gl/OVQOEt
 "
-#FIXME: Add link to Chrome WebStore
