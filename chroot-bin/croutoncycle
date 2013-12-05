@@ -3,59 +3,132 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-USAGE="${0##*/} next|prev|cros
+USAGE="${0##*/} next|prev|cros|list|#
 Cycles through running graphical chroots.
-\"cros\" switches back to Chromium OS."
+    next: switch to the next display
+    prev: switch to the previous display
+    cros: switch directly to Chromium OS
+    #: switch directly to the chroot owning the specified display number
+    list: list all of the active displays and the associated chroot name"
 
 case "$1" in
-[Cc]*) cmd='select 0';;
-[Pp]*) cmd='prev';;
-[Nn]*) cmd='next';;
+[Ll]*) cmd='l';;
+[Cc]*) cmd='0';;
+[Pp]*) cmd='p';;
+[Nn]*) cmd='n';;
+[0-9]*) cmd="$(($1))";;
 *) echo "$USAGE" 1>&2; exit 2;;
 esac
 
-# If we're using Xephyr, run ratpoison
-xmethod="`readlink -f '/etc/X11/xinit/xserverrc'`"
-xmethod="${xmethod##*-}"
-if [ "$xmethod" = 'xephyr' ]; then
-    exec /usr/local/bin/host-x11 ratpoison -c "$cmd"
-fi
-
-# cros: Switch to VT1
-if [ "$cmd" = 'select 0' ]; then
-    exec chvt 1
-fi
-
-# Otherwise, determine current tty and X11 ttys
-curtty="`cat '/sys/class/tty/tty0/active'`"
-seltty=''
-prevtty=''
-for tty in `ps -CX -CXorg -otname= | sort`; do
-    # On some systems, the tty of Chromium OS cannot be determined and returns ?
-    if [ "$tty" = '?' ]; then
-        tty='tty1'
-    fi
-    if [ "$cmd" = 'next' -a -z "$seltty" ]; then
-        seltty="$tty"
-    fi
-    if [ -z "$curtty" ]; then
-        seltty="$tty"
-        break
-    elif [ "$tty" = "$curtty" ]; then
-        # Make the tty selection.
-        if [ "$cmd" = 'prev' ]; then
-            seltty="$prevtty"
-        else
-            curtty=''
-        fi
-    fi
-    prevtty="$tty"
+# Prepare display list for easier looping
+displist=''
+for disp in /tmp/.X*-lock; do
+    disp="${disp#*X}"
+    displist="$displist${displist:+" "}${disp%-lock}"
 done
-if [ -z "$seltty" ]; then
-    seltty="$tty"
+
+# Figure out the current display number
+tty="`cat '/sys/class/tty/tty0/active'`"
+if [ "$tty" = 'tty1' ]; then
+    # Either in Chromium OS or an Aura chroot. Check the active window.
+    # Active window is the first entry in xwininfo
+    curdisp="`host-x11 xwininfo -root -children \
+                | awk 'ok { print $4; exit } /children:/ { ok=1 }'`"
+    if [ "${curdisp#:}" != "$curdisp" ]; then
+        curdisp="${curdisp%%.*}"
+        curdisp="${curdisp#:}"
+    else
+        curdisp='0'
+    fi
+else
+    # Poll the displays to figure out which one owns this VT
+    curdisp=''
+    for disp in ${displist#0}; do
+        if XAUTHORITY='' DISPLAY=":$disp" xprop -root 'XFree86_VT' \
+                | grep -q " ${tty#tty}\$"; then
+            curdisp="$disp"
+            break
+        fi
+    done
+    if [ -z "$curdisp" ]; then
+        curdisp="$tty"
+    fi
 fi
 
-# If we have a tty and it's not the same as the current one, switch
-if [ -n "$seltty" -a ! "$seltty" = "$curtty" ]; then
-    exec chvt "${seltty#tty}"
+# List the displays if requested
+if [ "$cmd" = 'l' ]; then
+    for disp in $displist; do
+        echo -n "$disp"
+        if [ "$disp" = "$curdisp" ]; then
+            echo -n '*'
+        fi
+        if [ "$disp" = '0' ]; then
+            echo " Chromium OS"
+        else
+            disp="`DISPLAY=":$disp" xprop -root CROUTON_NAME`"
+            if [ "${disp%\"}" != "$disp" ]; then
+                disp="${disp%\"}"
+                echo " ${disp#*\"}"
+            else
+                echo " Unknown"
+            fi
+        fi
+    done
+    exit 0
 fi
+
+# Determine the target display
+if [ -n "${cmd#[pn]}" ]; then
+    destdisp="$cmd"
+elif [ "${curdisp#tty}" != "$curdisp" ]; then
+    destdisp='0'
+elif [ "$cmd" = 'p' ]; then
+    destdisp="${displist## *}"
+    for disp in $displist; do
+        if [ "$disp" = "$curdisp" ]; then
+            break
+        fi
+        destdisp="$disp"
+    done
+elif [ "$cmd" = 'n' ]; then
+    destdisp=''
+    for disp in $displist; do
+        if [ -n "$destdisp" ]; then
+            destdisp="$disp"
+            break
+        elif [ "$disp" = "$curdisp" ]; then
+            destdisp="${displist%%* }"
+        fi
+    done
+else
+    destdisp='0'
+fi
+
+# No-op on no-op
+if [ "$destdisp" = "$curdisp" ]; then
+    exit 0
+fi
+
+# Determine if the target display is on a VT or Xephyr
+if [ "$destdisp" = '0' ]; then
+    dest='aura_root_0'
+else
+    dest="`XAUTHORITY='' DISPLAY=":$destdisp" xprop -root 'XFree86_VT'`"
+    dest="${dest## *}"
+    if [ "${dest#[0-9]}" = "$dest" ]; then
+        dest="Xephyr on :$destdisp.0"
+    fi
+fi
+
+# Map the right window before chvting
+if [ "${dest#[0-9]}" = "$dest" ]; then
+    id="`host-x11 xwininfo -int -root -children \
+            | awk "/$dest/ {print \$1; exit}"`"
+    if [ -n "$id" ]; then
+        croutonmapraised "$id"
+    fi
+    dest=1
+fi
+
+chvt "$dest"
+exit 0
