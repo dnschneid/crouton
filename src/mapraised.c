@@ -5,6 +5,12 @@
  * Maps and raises the specified window id (integer).
  */
 
+/* TODO: use XResizeWindow to do the +1 width ratpoison hack.
+ * And at this point, we might as well use XMoveResizeWindow, rename this to
+ * wmtool and unmap the previously-mapped window, and perhaps call the
+ * equivalent of XRefresh, eliminating the need for ratpoison entirely (!!).
+ */
+
 #include <X11/Xlib.h>
 #include <stdlib.h>
 
