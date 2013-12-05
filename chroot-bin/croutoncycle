@@ -61,6 +61,8 @@ if [ "$cmd" = 'l' ]; then
         echo -n "$disp"
         if [ "$disp" = "$curdisp" ]; then
             echo -n '*'
+        else
+            echo -n ' '
         fi
         if [ "$disp" = '0' ]; then
             echo " Chromium OS"
