@@ -20,6 +20,8 @@ case "$1" in
 *) echo "$USAGE" 1>&2; exit 2;;
 esac
 
+export XAUTHORITY=''
+
 # Prepare display list for easier looping
 displist=''
 for disp in /tmp/.X*-lock; do
@@ -44,7 +46,7 @@ else
     # Poll the displays to figure out which one owns this VT
     curdisp=''
     for disp in ${displist#0}; do
-        if XAUTHORITY='' DISPLAY=":$disp" xprop -root 'XFree86_VT' \
+        if DISPLAY=":$disp" xprop -root 'XFree86_VT' \
                 | grep -q " ${tty#tty}\$"; then
             curdisp="$disp"
             break
@@ -85,7 +87,7 @@ if [ -n "${cmd#[pn]}" ]; then
 elif [ "${curdisp#tty}" != "$curdisp" ]; then
     destdisp='0'
 elif [ "$cmd" = 'p' ]; then
-    destdisp="${displist## *}"
+    destdisp="${displist##* }"
     for disp in $displist; do
         if [ "$disp" = "$curdisp" ]; then
             break
@@ -99,7 +101,7 @@ elif [ "$cmd" = 'n' ]; then
             destdisp="$disp"
             break
         elif [ "$disp" = "$curdisp" ]; then
-            destdisp="${displist%%* }"
+            destdisp="${displist%% *}"
         fi
     done
 else
@@ -115,8 +117,8 @@ fi
 if [ "$destdisp" = '0' ]; then
     dest='aura_root_0'
 else
-    dest="`XAUTHORITY='' DISPLAY=":$destdisp" xprop -root 'XFree86_VT'`"
-    dest="${dest## *}"
+    dest="`DISPLAY=":$destdisp" xprop -root 'XFree86_VT'`"
+    dest="${dest##* }"
     if [ "${dest#[0-9]}" = "$dest" ]; then
         dest="Xephyr on :$destdisp.0"
     fi
@@ -125,12 +127,15 @@ fi
 # Map the right window before chvting
 if [ "${dest#[0-9]}" = "$dest" ]; then
     id="`host-x11 xwininfo -int -root -children \
-            | awk "/$dest/ {print \$1; exit}"`"
+            | awk "/$dest/"' {print $1; exit}'`"
     if [ -n "$id" ]; then
-        croutonmapraised "$id"
+        host-x11 croutonmapraised "$id"
     fi
     dest=1
 fi
 
 chvt "$dest"
+if [ "$destdisp" != 0 ] && hash xrefresh 2>/dev/null; then
+    DISPLAY=":$destdisp" xrefresh
+fi
 exit 0
