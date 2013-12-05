@@ -43,6 +43,11 @@ fi
 
 # Run crouton-specific commands:
 
+# Record the name of the chroot in the root window properties
+if [ -f '/etc/crouton/name' ] && hash xprop 2>/dev/null; then
+    xprop -root -f CROUTON_NAME 8s -set CROUTON_NAME "`cat '/etc/crouton/name'`"
+fi
+
 # Launch the powerd poker daemon
 croutonpowerd --daemon &
 
