@@ -55,3 +55,41 @@ for release in $SUPPORTED_RELEASES; do
     '
     host delete-chroot -y "$release"
 done
+
+# For a single release, check if the audio target can compile a number of recent
+# ADHD branches (release-*, stabilize-* and master branch).
+
+# Note: This assumes that branches are sorted alphabetically, and therefore
+# release branches appear before stabilize ones.
+# We match recent release-* branches, then stabilize-* branches ahead of the
+# latest release branch, and finally master.
+ADHD_HEADS="`wget --quiet --no-check-certificate -O- \
+'https://chromium.googlesource.com/chromiumos/third_party/adhd/+refs/heads?format=TEXT' \
+    | awk '
+    BEGIN {
+        # Do not test any release before R28 (stable as of 2013-07-30)
+        minrel=28
+    }
+    $2 ~ /.*release-R[0-9]+-[0-9]+/ {
+        split($2, s, /[-\.]R?/)
+        if (s[2] >= minrel) {
+           print $2
+           minstab=s[3]
+        }
+    }
+    minstab && $2 ~ /.*stabilize-[0-9]+/ {
+        split($2, s, /[-\.]/)
+        if (s[2] > minstab) {
+           print $2
+        }
+    }
+    END {
+        print "master"
+    }
+'`"
+
+for adhd_head in $ADHD_HEADS; do
+    snapshot "$RELEASE" core
+    echo "ADHD_HEAD='$adhd_head'" | crouton -T -u -n "$RELEASE" -t audio
+    host delete-chroot -y "$RELEASE"
+done
