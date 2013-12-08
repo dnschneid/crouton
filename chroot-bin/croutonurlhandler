@@ -3,7 +3,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-USAGE="${0##*/} [-s] URL
+USAGE="${0##*/} [-n] URL
 Open an URL in Chromium OS (requires crouton extension).
 Switches back to Chromium OS unless -n is specified."
 

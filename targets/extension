@@ -32,7 +32,7 @@ fi
 handler='/usr/local/bin/croutonurlhandler'
 for link in x-www-browser gnome-www-browser; do
     if ! update-alternatives --query "$link" | grep -q "$handler"; then
-        update-alternatives --install "/usr/bin/$link" "$link" "$handler" 5
+        update-alternatives --install "/usr/bin/$link" "$link" "$handler" 15
     fi
 done
 
