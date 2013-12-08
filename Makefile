@@ -3,6 +3,8 @@
 # found in the LICENSE file.
 
 TARGET = crouton
+EXTTARGET = crouton.zip
+SRCTARGETS = $(patsubst src/%.c,crouton%,$(wildcard src/*.c))
 WRAPPER = build/wrapper.sh
 SCRIPTS := \
 	$(wildcard chroot-bin/*) \
@@ -12,9 +14,13 @@ SCRIPTS := \
 	$(wildcard installer/*/*) \
 	$(wildcard src/*) \
 	$(wildcard targets/*)
+EXTSOURCES = $(wildcard host-ext/crouton/*)
 GENVERSION = build/genversion.sh
 VERSION = 0
 TARPARAMS ?= -j
+
+croutoncursor_LIBS = -lX11 -lXfixes -lXrender
+croutonxi2event_LIBS = -lX11 -lXi
 
 ifeq ($(wildcard .git/HEAD),)
     GITHEAD :=
@@ -37,19 +43,17 @@ $(TARGET): $(WRAPPER) $(SCRIPTS) $(GENVERSION) $(GITHEAD) Makefile
 		&& chmod +x /dev/stdout \
 	;} > $(TARGET) || ! rm -f $(TARGET)
 
-croutoncursor: src/cursor.c Makefile
-	gcc -g -Wall -Werror src/cursor.c -lX11 -lXfixes -lXrender -o croutoncursor
+$(EXTTARGET): $(EXTSOURCES) Makefile
+	rm -f $(EXTTARGET) && zip -q --junk-paths $(EXTTARGET) $(EXTSOURCES)
 
-croutonxi2event: src/xi2event.c Makefile
-	gcc -g -Wall -Werror src/xi2event.c -lX11 -lXi -o croutonxi2event
+$(SRCTARGETS): src/$(patsubst crouton%,src/%.c,$@) Makefile
+	gcc -g -Wall -Werror $(patsubst crouton%,src/%.c,$@) $($@_LIBS) -o $@
 
-croutonvtmonitor: src/vtmonitor.c Makefile
-	gcc -g -Wall -Werror src/vtmonitor.c -o croutonvtmonitor
+extension: $(EXTTARGET)
 
-croutonwebsocket: src/websocket.c Makefile
-	gcc -g -Wall -Werror src/websocket.c -o croutonwebsocket
+all: $(TARGET) $(SRCTARGETS) $(EXTTARGET)
 
 clean:
-	rm -f $(TARGET) croutoncursor croutonxi2event croutonvtmonitor croutonwebsocket
+	rm -f $(TARGET) $(EXTTARGET) $(SRCTARGETS)
 
-.PHONY: clean
+.PHONY: all clean extension
