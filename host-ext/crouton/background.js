@@ -53,8 +53,8 @@ function showHelp() {
 }
 
 function updateAvailable(version) {
-    printLog("A new version of the extension is available (" +
-             version + ").", LogLevel.INFO);
+    printLog("A new version of the extension is available (" + version + ")",
+             LogLevel.INFO);
 
     /* Apply update immediately if the extension is not active */
     if (!active_)
@@ -166,8 +166,8 @@ function refreshUI() {
 
 /* Start the extension */
 function clipboardStart() {
-    printLog("Crouton extension started (" +
-             chrome.runtime.getManifest().version + ")!", LogLevel.INFO);
+    printLog("Extension started (" + chrome.runtime.getManifest().version + ")",
+             LogLevel.INFO);
     setStatus("Started...", false);
 
     clipboardholder_ = document.getElementById("clipboardholder");
@@ -184,8 +184,8 @@ function websocketConnect() {
     }
 
     if (!enabled_) {
-        setStatus("No connection (extension disabled).", false);
-        printLog("Extension is disabled.", LogLevel.INFO);
+        setStatus("No connection (extension disabled)", false);
+        printLog("Extension is disabled", LogLevel.INFO);
         return;
     }
 
@@ -207,7 +207,7 @@ function websocketConnect() {
 
 /* Connection was established */
 function websocketOpen() {
-    printLog("Connection established.", LogLevel.INFO);
+    printLog("Connection established", LogLevel.INFO);
     setStatus("Connection established: checking version...", false);
 }
 
@@ -230,22 +230,22 @@ function websocketMessage(evt) {
     var cmd = received_msg[0];
     var payload = received_msg.substring(1);
 
-    printLog("Message is received (" + received_msg + ")", LogLevel.DEBUG);
+    printLog("Message received (" + received_msg + ")", LogLevel.DEBUG);
 
     /* Only accept version packets until we have received one. */
     if (!active_) {
         if (cmd == 'V') { /* Version */
             if (payload < 1 || payload > VERSION) {
                 websocket_.send("EInvalid version (> " + VERSION + ")");
-                error("Invalid server version " +
-                                payload + " > " + VERSION + ".", false);
+                error("Invalid server version " + payload + " > " + VERSION,
+                      false);
             }
             /* Set active_ to true */
-            setStatus("Connection established.", true);
+            setStatus("Connection established", true);
             websocket_.send("VOK");
             return;
         } else {
-            error("Received frame while waiting for version.", false);
+            error("Received frame while waiting for version", false);
         }
     }
 
@@ -268,7 +268,7 @@ function websocketMessage(evt) {
             /* Unlikely case where DUMMY string comes from the other side */
             writeClipboard(payload);
         } else {
-            printLog("Not erasing content (identical).", LogLevel.DEBUG);
+            printLog("Not erasing content (identical)", LogLevel.DEBUG);
         }
 
         websocket_.send("WOK");
@@ -292,7 +292,7 @@ function websocketMessage(evt) {
             websocket_.send("UOK");
         } else {
             printLog("Received invalid URL: " + payload, LogLevel.ERROR);
-            websocket_.send("EError: URL must be absolute.");
+            websocket_.send("EError: URL must be absolute");
         }
 
         break;
@@ -316,18 +316,17 @@ function websocketClose() {
     }
 
     if (enabled_) {
-        setStatus("No connection (retrying in " +
-                                    RETRY_TIMEOUT + " seconds)", false);
-        printLog("Connection is closed, trying again in " +
-                            RETRY_TIMEOUT + " seconds...", LogLevel.INFO);
+        setStatus("No connection (retrying in " + RETRY_TIMEOUT + " seconds)",
+                  false);
+        printLog("Connection closed. Retrying in "
+                    + RETRY_TIMEOUT + " seconds...", LogLevel.INFO);
         /* Retry in RETRY_TIMEOUT seconds */
         if (timeout_ == null) {
             timeout_ = setTimeout(websocketConnect, RETRY_TIMEOUT*1000);
         }
     } else {
-        setStatus("No connection (extension disabled).", false);
-        printLog("Connection is closed, extension is disabled: not retrying.",
-                                                            LogLevel.INFO);
+        setStatus("No connection (extension disabled)", false);
+        printLog("Connection closed. Extension is disabled.", LogLevel.INFO);
     }
 
     websocket_ = null;
