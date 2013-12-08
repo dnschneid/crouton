@@ -17,32 +17,36 @@ CRASBUILDTMP="`mktemp -d crouton-cras.XXXXXX --tmpdir=/tmp`"
 
 addtrap "rm -rf --one-file-system '$CRASBUILDTMP'"
 
-# Fetch list of branches from repository
-wget --no-check-certificate -O "$CRASBUILDTMP/adhd.refs" \
+# ADHD_HEAD is normally autodetected, but it can be set manually using a custom
+# target sourced before this one (used for automated testing)
+if [ -z "$ADHD_HEAD" ]; then
+    # Fetch list of branches from repository
+    wget --no-check-certificate -O "$CRASBUILDTMP/adhd.refs" \
 'https://chromium.googlesource.com/chromiumos/third_party/adhd/+refs/heads?format=TEXT'
 
-# Chrome OS version (e.g. 4100.86.0)
-CROS_VER="`sed -n 's/^CHROMEOS_RELEASE_VERSION=//p' /var/host/lsb-release`"
+    # Chrome OS version (e.g. 4100.86.0)
+    CROS_VER="`sed -n 's/^CHROMEOS_RELEASE_VERSION=//p' /var/host/lsb-release`"
 
-ADHD_HEAD="`awk '
-    BEGIN {
-        # Default to master if nothing else is found
-        print 0, "master"
-        len = split("'"$CROS_VER"'", crosvers, ".")
-        # Prepare a regex with each additional version component optional
-        for (i = len; i >= 2; i--)
-            verregex = "(\\\\." crosvers[i] verregex ")?"
-        verregex = crosvers[1] verregex "($|\\\\.)"
-    }
-    # Release branches get the highest score
-    $2 ~ "release-(R[^-]*-)?" crosvers[1] "($|\\\\.)" {
-        print 99, $2
-    }
-    # Stabilize branches are scored based on how much of the version they match
-    match($2, "stabilize-" verregex) {
-        print RLENGTH, $2
-    }
-' "$CRASBUILDTMP/adhd.refs" | sort -V | tail -n 1 | cut -d' ' -f2`"
+    ADHD_HEAD="`awk '
+        BEGIN {
+            # Default to master if nothing else is found
+            print 0, "master"
+            len = split("'"$CROS_VER"'", crosvers, ".")
+            # Prepare a regex with each additional version component optional
+            for (i = len; i >= 2; i--)
+                verregex = "(\\\\." crosvers[i] verregex ")?"
+            verregex = crosvers[1] verregex "($|\\\\.)"
+        }
+        # Release branches get the highest score
+        $2 ~ "release-(R[^-]*-)?" crosvers[1] "($|\\\\.)" {
+            print 99, $2
+        }
+        # Stabilize branches are scored based on how much of the version they match
+        match($2, "stabilize-" verregex) {
+            print RLENGTH, $2
+        }
+    ' "$CRASBUILDTMP/adhd.refs" | sort -V | tail -n 1 | cut -d' ' -f2`"
+fi
 
 echo "Fetching CRAS (branch $ADHD_HEAD)..." 1>&2
 
