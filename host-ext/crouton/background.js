@@ -208,7 +208,7 @@ function websocketConnect() {
 /* Connection was established */
 function websocketOpen() {
     printLog("Connection established", LogLevel.INFO);
-    setStatus("Connection established: checking version...", false);
+    setStatus("Connected: checking version...", false);
 }
 
 function readClipboard() {
@@ -241,7 +241,7 @@ function websocketMessage(evt) {
                       false);
             }
             /* Set active_ to true */
-            setStatus("Connection established", true);
+            setStatus("Connected", true);
             websocket_.send("VOK");
             return;
         } else {
@@ -315,18 +315,16 @@ function websocketClose() {
         return;
     }
 
+    printLog("Connection closed", active_ ? LogLevel.INFO : LogLevel.DEBUG);
     if (enabled_) {
-        setStatus("No connection (retrying in " + RETRY_TIMEOUT + " seconds)",
+        setStatus("Disconnected (retrying every " + RETRY_TIMEOUT + " seconds)",
                   false);
-        printLog("Connection closed. Retrying in "
-                    + RETRY_TIMEOUT + " seconds...", LogLevel.INFO);
         /* Retry in RETRY_TIMEOUT seconds */
         if (timeout_ == null) {
             timeout_ = setTimeout(websocketConnect, RETRY_TIMEOUT*1000);
         }
     } else {
-        setStatus("No connection (extension disabled)", false);
-        printLog("Connection closed. Extension is disabled.", LogLevel.INFO);
+        setStatus("Disconnected (extension disabled)", false);
     }
 
     websocket_ = null;
