@@ -150,10 +150,13 @@ crouton() {
         shift
         tfile="`mktemp --tmpdir="$PREFIX" target.XXXXXX`"
         {
-            echo 'REQUIRES="core"
+            echo 'REQUIRES=""
 . "${TARGETSDIR:="$PWD"}/common"
-### Append to prepare.sh:'
+### Append to prepare.sh:
+set -x'
             cat
+            echo '
+set +x'
         } > "$tfile"
     fi
     log "LAUNCHING: crouton${tfile:+" -T "}$tfile $*"
