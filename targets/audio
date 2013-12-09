@@ -245,8 +245,8 @@ build_cras() {
                     for dep in $sources; do
                         if [ "${dep%.c}" != "$dep" ]; then
                             ofile="${dep%.c}.o"
-                            gcc -c "$dep" -o "$ofile" \
-                                '"$archgccflags"' $cppflags $extragccflags 1>&2
+                            gcc -c "$dep" -o "$ofile" '"$archgccflags"' \
+                                $cppflags $extragccflags 1>&2 || return $?
                             echo -n "$ofile "
                         fi
                     done
@@ -270,7 +270,9 @@ build_cras() {
                 buildlib() {
                     local lib="$1"
                     local extraflags="$2"
-                    local ofiles="`buildsources "${lib}_la" "-fPIC -DPIC"`"
+                    local ofiles
+                    # local eats the return status: separate the 2 statements
+                    ofiles="`buildsources "${lib}_la" "-fPIC -DPIC"`"
 
                     eval local libadd=\"\$${lib}_la_LIBADD\"
                     eval local ldflags=\"\$${lib}_la_LDFLAGS\"
