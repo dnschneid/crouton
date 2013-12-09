@@ -123,6 +123,14 @@ fi
 # Avoid kernel panics due to slow I/O
 disablehungtask
 
+# Enable control of framebuffer compression (if used) by video users
+for fbc in '/sys/kernel/debug/dri/0/'*fbc*; do :; done
+if [ -f "$fbc" ] && ! grep -q 'disabled per module param' "$fbc"; then
+    fbc='/sys/module/i915/parameters/i915_enable_fbc'
+    chgrp video "$fbc"
+    chmod g+w "$fbc"
+fi
+
 # Make sure we always exit with echo on the tty.
 addtrap "stty echo 2>/dev/null"
 
