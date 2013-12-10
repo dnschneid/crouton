@@ -19,7 +19,7 @@ fi
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
-install x11-utils xclip
+install arch=xorg-utils,x11-utils xclip
 
 compile websocket ''
 
@@ -29,12 +29,33 @@ if [ "$XMETHOD" = 'x11' ]; then
 fi
 
 # Use croutonurlhandler as a fallback URL handler
-handler='/usr/local/bin/croutonurlhandler'
-for link in x-www-browser gnome-www-browser; do
-    if ! update-alternatives --query "$link" | grep -q "$handler"; then
-        update-alternatives --install "/usr/bin/$link" "$link" "$handler" 15
-    fi
-done
+if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
+    handler='/usr/local/bin/croutonurlhandler'
+    for link in x-www-browser gnome-www-browser; do
+        if ! update-alternatives --query "$link" | grep -q "$handler"; then
+            update-alternatives --install "/usr/bin/$link" "$link" "$handler" 15
+        fi
+    done
+elif [ "${DISTROAKA:-"$DISTRO"}" = 'arch' ]; then
+    install arch=desktop-file-utils,
+
+    cat > '/usr/local/share/applications/crouton.desktop' <<END
+[Desktop Entry]
+Encoding=UTF-8
+Type=Application
+Name=Crouton URL handler
+GenericName=Web Browser
+Comment=Open URL in Chromium OS via crouton extension
+Exec=/usr/local/bin/croutonurlhandler %U
+Icon=crouton
+Terminal=false
+StartupNotify=false
+Categories=Application;Network;
+MimeType=text/html;application/xhtml+xml;x-scheme-handler/http;x-scheme-handler/https;x-scheme-handler/geo;
+END
+
+    update-desktop-database -q
+fi
 
 if [ "$EXTENSION_INSTALLED" = 'y' ]; then
     TIPS="$TIPS
