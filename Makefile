@@ -16,7 +16,7 @@ SCRIPTS := \
 	$(wildcard targets/*)
 EXTSOURCES = $(wildcard host-ext/crouton/*)
 GENVERSION = build/genversion.sh
-VERSION = 0
+VERSION = 1
 TARPARAMS ?= -j
 
 croutoncursor_LIBS = -lX11 -lXfixes -lXrender
