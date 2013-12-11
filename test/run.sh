@@ -343,6 +343,10 @@ export CROUTON_UNMOUNT_RESPONSE='y'
 sh -e "$SCRIPTDIR/chroot-bin/croutonpowerd" -i &
 croutonpowerd="$!"
 
+# Bind mount urandom over random to avoid blocking on entropy
+mount --bind /dev/urandom /dev/random
+addtrap 'umount -l /dev/random 2>/dev/null'
+
 # Run all the tests
 mkdir -p "$TESTDIR" "$PREFIXROOT"
 addtrap "echo 'Cleaning up...' 1>&2
