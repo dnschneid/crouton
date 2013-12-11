@@ -91,11 +91,12 @@ for NAME in "$@"; do
 
     # Check for existence
     CHROOT="$CHROOTS/$NAME"
-    encryted="$ENCRYPT"
     movesrc=''
     if [ -d "$CHROOT" ]; then
         if [ -f "$CHROOT/.ecryptfs" -o -n "$ENCRYPT" ]; then
-            encrypted='y'
+            if [ -z "$ENCRYPT" ]; then
+                ENCRYPT=0
+            fi
             # Check for non-encrypted files that we may need to move
             for file in "$CHROOT/"*; do
                 if [ "${file#*/ECRYPTFS_FNEK_ENCRYPTED}" = "$file" ]; then
@@ -124,7 +125,7 @@ for NAME in "$@"; do
 
     # Check if we actually need to mount
     if ! mountpoint -q "$CHROOT"; then
-        if [ -z "$encrypted" ]; then
+        if [ -z "$ENCRYPT" ]; then
             mount --bind "$CHROOTSRC" "$CHROOT"
             mount -i -o "remount,$MOUNTOPTS" "$CHROOT"
             continue
