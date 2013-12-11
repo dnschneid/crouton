@@ -183,6 +183,18 @@ if [ ! $# = 0 ]; then
     error 2 "$USAGE"
 fi
 
+# If this script was called with '-x' or '-v', pass that to prepare.sh
+SETOPTIONS=""
+if set -o | grep -q '^xtrace *on$'; then
+    SETOPTIONS="-x"
+fi
+if set -o | grep -q '^verbose *on$'; then
+    SETOPTIONS="$SETOPTIONS -v"
+fi
+sh() {
+    /bin/sh $SETOPTIONS -e "$@"
+}
+
 if [ "$USER" = root -o "$UID" = 0 ]; then
     # Avoid kernel panics due to slow I/O when restoring or bootstrapping
     disablehungtask
@@ -357,25 +369,24 @@ Either delete it, specify a different name (-n), or specify -u to update it."
 
     # Restore the chroot now
     if [ -n "$RESTORE" ]; then
-        sh -e "$HOSTBINDIR/edit-chroot" -r -f "$TARBALL" -c "$CHROOTS" "$NAME"
+        sh "$HOSTBINDIR/edit-chroot" -r -f "$TARBALL" -c "$CHROOTS" "$NAME"
     fi
 
     # Mount the chroot and update CHROOT path
     if [ -n "$KEYFILE" ]; then
-        CHROOT="`sh -e "$HOSTBINDIR/mount-chroot" -k "$KEYFILE" \
+        CHROOT="`sh "$HOSTBINDIR/mount-chroot" -k "$KEYFILE" \
                             $create $ENCRYPT -p -c "$CHROOTS" "$NAME"`"
     else
-        CHROOT="`sh -e "$HOSTBINDIR/mount-chroot" \
+        CHROOT="`sh "$HOSTBINDIR/mount-chroot" \
                             $create $ENCRYPT -p -c "$CHROOTS" "$NAME"`"
     fi
 
     # Auto-unmount the chroot when the script exits
-    addtrap "sh -e '$HOSTBINDIR/unmount-chroot' \
-                    -y -c '$CHROOTS' '$NAME' 2>/dev/null"
+    addtrap "sh '$HOSTBINDIR/unmount-chroot' -y -c '$CHROOTS' '$NAME' 2>/dev/null"
 
     # Sanity-check the release if we're updating
     if [ -n "$UPDATE" -a -n "$RELEASE" ] &&
-        [ "`sh -e "$DISTRODIR/getrelease.sh" -r "$CHROOT"`" != "$RELEASE" ]; then
+            [ "`sh "$DISTRODIR/getrelease.sh" -r "$CHROOT"`" != "$RELEASE" ]; then
         if [ ! "$UPDATE" = 2 ]; then
             error 1 \
 "Release doesn't match! Please correct the -r option, or specify a second -u to
@@ -389,7 +400,7 @@ change the release, upgrading the chroot (dangerous)."
         # Detect the release
         for DISTRODIR in "$INSTALLERDIR"/*/; do
             DISTRODIR="${DISTRODIR%/}"
-            if RELEASE="`sh -e "$DISTRODIR/getrelease.sh" -r "$CHROOT"`"; then
+            if RELEASE="`sh "$DISTRODIR/getrelease.sh" -r "$CHROOT"`"; then
                 DISTRO="${DISTRODIR##*/}"
                 . "$DISTRODIR/defaults"
                 break
@@ -402,7 +413,7 @@ change the release, upgrading the chroot (dangerous)."
 
     # Enforce the correct architecture
     if [ -n "$UPDATE" ]; then
-        ARCH="`sh -e "$DISTRODIR/getrelease.sh" -a "$CHROOT"`"
+        ARCH="`sh "$DISTRODIR/getrelease.sh" -a "$CHROOT"`"
     fi
 
     mkdir -p "$BIN"
@@ -508,15 +519,6 @@ fi
 
 # Ensure that /usr/local/bin and /etc/crouton exist
 mkdir -p "$CHROOT/usr/local/bin" "$CHROOT/etc/crouton"
-
-# If this script was called with '-x' or '-v', pass that to prepare.sh
-SETOPTIONS=""
-if set -o | grep -q '^xtrace *on$'; then
-    SETOPTIONS="-x"
-fi
-if set -o | grep -q '^verbose *on$'; then
-    SETOPTIONS="$SETOPTIONS -v"
-fi
 
 # Create the setup script inside the chroot
 echo 'Preparing chroot environment...' 1>&2
