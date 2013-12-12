@@ -14,22 +14,36 @@ for release in $SUPPORTED_RELEASES; do
         cras_test_client --dump_server_info
         dd if=/dev/zero bs=48000 count=8 | aplay -fdat -v
         arecord -fdat -v | dd of=/dev/null bs=48000 count=8 iflag=fullblock
-        '
+    '
 
     # On x86_64 systems, test x86 client
     if [ "`uname -m`" = "x86_64" ]; then
+        echo '
+            mkdir -p /home/tmp
+            if [ "${DISTROAKA:-"$DISTRO"}" = "debian" ]; then
+                (
+                    cd /home/tmp
+                    apt-get download alsa-utils:i386
+                    dpkg -x alsa-utils_*_i386.deb .
+                    mv usr/bin/* .
+                )
+            else
+                # Other distributions must be implemented or explicitly ignored
+                error 1 "Cannot fetch alsa-utils:i386 for $DISTRO"
+            fi
+        ' | crouton -T -U -n "$release"
+
         host enter-chroot -n "$release" sh -exc '
             /usr/local/i386-linux-gnu/bin/cras_test_client --dump_server_info
-            apt-get download alsa-utils:i386
-            dpkg -x alsa-utils_*_i386.deb .
-            dd if=/dev/zero bs=48000 count=8 | ./usr/bin/aplay -fdat -v
-            ./usr/bin/arecord -fdat -v | \
-                        dd of=/dev/null bs=48000 count=8 iflag=fullblock
-            '
+            dd if=/dev/zero bs=48000 count=8 | \
+                    /home/tmp/aplay -fdat -v
+            /home/tmp/arecord -fdat -v | \
+                    dd of=/dev/null bs=48000 count=8 iflag=fullblock
+        '
     fi
 
-    host enter-chroot -n "$release" -u 0 \
-        apt-get -y --no-install-recommends install pulseaudio pulseaudio-utils
+    echo 'install --minimal pulseaudio pulseaudio-utils' | \
+            crouton -T -U -n "$release"
     host enter-chroot -n "$release" sh -exc '
         pulseaudio --start
         echo | pacat -v
@@ -38,6 +52,6 @@ for release in $SUPPORTED_RELEASES; do
             dd if=/dev/null bs=48000 count=8 iflag=fullblock
         cras_test_client --dump_server_info
         pulseaudio --kill
-        '
+    '
     host delete-chroot -y "$release"
 done
