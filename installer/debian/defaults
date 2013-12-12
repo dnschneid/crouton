@@ -11,6 +11,6 @@ if [ -z "$ARCH" ]; then
 fi
 
 if [ -z "$MIRROR" ]; then
-    MIRROR='http://ftp.debian.org/debian/'
+    MIRROR="${CROUTON_MIRROR_debian:-http://ftp.debian.org/debian/}"
 fi
 
