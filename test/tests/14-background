@@ -30,6 +30,14 @@ waitfinish
 s='PIPES ARE GO'
 echo "$s" | host enter-chroot -b -n "$RELEASE" cat | passes grep "$s" | log
 
+# Groups can still be created/modified
+host enter-chroot -n "$RELEASE" -u 0 groupdel hwaudio
+fails grep hwaudio "$PREFIX/chroots/$RELEASE/etc/group"
+host enter-chroot -b -n "$RELEASE" sleep 3
+# group must be recreated before the command goes to background
+passes grep hwaudio "$PREFIX/chroots/$RELEASE/etc/group"
+waitfinish
+
 # Even with a failing rc.local it should work
 log 'Making rc.local fail'
 rclocal="$PREFIX/chroots/$RELEASE/etc/rc.local"

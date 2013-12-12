@@ -47,7 +47,8 @@ chrootcmd() {
     TRAP=''
     env -i chroot "$CHROOT" su -s '/bin/sh' -c "$*" - root || ret=$?
     local pid="$!"
-    if [ -n "$BACKGROUND" ]; then
+    # $pid might not be set if env has not been redefined yet
+    if [ -n "$BACKGROUND" ] && [ -n "$pid" ]; then
         wait "$pid" || ret=$?
     fi
     TRAP="$oldtrap"
