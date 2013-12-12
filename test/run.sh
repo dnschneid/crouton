@@ -144,13 +144,21 @@ tmpfile() {
 
 # Launches the installer with the specified parameters; auto-includes -p
 # If -T is the first parameter, passes stdin into /prepare.sh
+# -T auto-depends on core if -U or -u is not specified.
 crouton() {
     local ret='0' tfile=''
     if [ "$1" = '-T' ]; then
         shift
+        local param='' requires='core'
+        for param in "$@"; do
+            if [ "$param" = '-U' -o "$param" = '-u' ]; then
+                requires=''
+                break
+            fi
+        done
         tfile="`mktemp --tmpdir="$PREFIX" target.XXXXXX`"
         {
-            echo 'REQUIRES=""
+            echo "REQUIRES='$requires'"'
 . "${TARGETSDIR:="$PWD"}/common"
 ### Append to prepare.sh:
 set -x'
