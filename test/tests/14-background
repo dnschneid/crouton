@@ -41,13 +41,15 @@ waitfinish
 # Even with a failing rc.local it should work
 log 'Making rc.local fail'
 rclocal="$PREFIX/chroots/$RELEASE/etc/rc.local"
-mv -f "$rclocal" "$rclocal.bak"
 echo '#!/bin/sh -e
 exit 1' > "$rclocal"
 chmod a+rx "$rclocal"
 host enter-chroot -b -n "$RELEASE" true
 waitfinish
-mv -f "$rclocal.bak" "$rclocal"
+# Remove the failing rc.local: it should also work without rc.local
+rm -f "$rclocal"
+host enter-chroot -b -n "$RELEASE" true
+waitfinish
 
 # Even with a failing dbus-daemon it should work
 log 'Making dbus-daemon fail'
