@@ -17,32 +17,36 @@ CRASBUILDTMP="`mktemp -d crouton-cras.XXXXXX --tmpdir=/tmp`"
 
 addtrap "rm -rf --one-file-system '$CRASBUILDTMP'"
 
-# Fetch list of branches from repository
-wget --no-check-certificate -O "$CRASBUILDTMP/adhd.refs" \
+# ADHD_HEAD is normally autodetected, but it can be set manually using a custom
+# target sourced before this one (used for automated testing)
+if [ -z "$ADHD_HEAD" ]; then
+    # Fetch list of branches from repository
+    wget --no-check-certificate -O "$CRASBUILDTMP/adhd.refs" \
 'https://chromium.googlesource.com/chromiumos/third_party/adhd/+refs/heads?format=TEXT'
 
-# Chrome OS version (e.g. 4100.86.0)
-CROS_VER="`sed -n 's/^CHROMEOS_RELEASE_VERSION=//p' /var/host/lsb-release`"
+    # Chrome OS version (e.g. 4100.86.0)
+    CROS_VER="`sed -n 's/^CHROMEOS_RELEASE_VERSION=//p' /var/host/lsb-release`"
 
-ADHD_HEAD="`awk '
-    BEGIN {
-        # Default to master if nothing else is found
-        print 0, "master"
-        len = split("'"$CROS_VER"'", crosvers, ".")
-        # Prepare a regex with each additional version component optional
-        for (i = len; i >= 2; i--)
-            verregex = "(\\\\." crosvers[i] verregex ")?"
-        verregex = crosvers[1] verregex "($|\\\\.)"
-    }
-    # Release branches get the highest score
-    $2 ~ "release-(R[^-]*-)?" crosvers[1] "($|\\\\.)" {
-        print 99, $2
-    }
-    # Stabilize branches are scored based on how much of the version they match
-    match($2, "stabilize-" verregex) {
-        print RLENGTH, $2
-    }
-' "$CRASBUILDTMP/adhd.refs" | sort -V | tail -n 1 | cut -d' ' -f2`"
+    ADHD_HEAD="`awk '
+        BEGIN {
+            # Default to master if nothing else is found
+            print 0, "master"
+            len = split("'"$CROS_VER"'", crosvers, ".")
+            # Prepare a regex with each additional version component optional
+            for (i = len; i >= 2; i--)
+                verregex = "(\\\\." crosvers[i] verregex ")?"
+            verregex = crosvers[1] verregex "($|\\\\.)"
+        }
+        # Release branches get the highest score
+        $2 ~ "release-(R[^-]*-)?" crosvers[1] "($|\\\\.)" {
+            print 99, $2
+        }
+        # Stabilize branches are scored based on how much of the version they match
+        match($2, "stabilize-" verregex) {
+            print RLENGTH, $2
+        }
+    ' "$CRASBUILDTMP/adhd.refs" | sort -V | tail -n 1 | cut -d' ' -f2`"
+fi
 
 echo "Fetching CRAS (branch $ADHD_HEAD)..." 1>&2
 
@@ -54,12 +58,18 @@ wget --no-check-certificate -O "$CRASBUILDTMP/adhd.tar.gz" \
 patch_cras_x86_x86_64() {
     common="common/cras_shm.h common/cras_messages.h common/cras_iodev_info.h \
             common/cras_types.h common/cras_audio_format.c"
+    cras_audio_format_h=""
+
+    # Newer versions (>=5062) contain an additional header file
+    if [ -e "common/cras_audio_format.h" ]; then
+        cras_audio_format_h="common/cras_audio_format.h"
+    fi
 
     # Replace size_t/long by fixed-size integers corresponding to their
     # respective sizes on x86_64, aligned on 8-byte boundaries
     sed -i -e 's/uint64_t[ \t]/aligned_uint64_t /g
                s/size_t[ \t]/aligned_uint64_t /g
-               s/long[ \t]/aligned_int64_t /g' $common
+               s/long[ \t]/aligned_int64_t /g' $common $cras_audio_format_h
 
     # Hack to make sure sizeof(struct cras_server/client_message) is a
     # multiple of 8
@@ -76,21 +86,27 @@ patch_cras_x86_x86_64() {
     # Replace timespec/timeval
     sed -i -e 's/struct timespec[ \t]/struct cras_timespec /g
                s/clock_gettime(/cras_clock_gettime(/' \
-        $common common/cras_util.h \
+        $common $cras_audio_format_h common/cras_util.h \
         libcras/cras_client.h libcras/cras_client.c \
         alsa_plugin/pcm_cras.c tests/cras_test_client.c
     sed -i -e \
         's/struct timeval/struct { aligned_int64_t tv_sec; aligned_int64_t tv_usec; }/' \
         common/cras_iodev_info.h
 
-    # Add aligned integer definition, and wrapper allowing to replace timespec
-    # by generic cras_timespec
-    awk '/^#include <sys\/time.h>$/ {
-        print;
-        while ((getline line < "/dev/fd/3") > 0)
-                   print line
-        next
-    };1' common/cras_iodev_info.h > common/cras_iodev_info.h.new 3<<END
+    # Include compat file (it will get included multiple times, but this is
+    # harmless compared to the complexity of a sed script that replaces the
+    # first match only)
+    sed -i -e '/#include.*/i \
+#include "cras_x86_64_compat.h"' common/cras_iodev_info.h $cras_audio_format_h
+
+    # Create a new header file with x86_64 compatibility types: aligned integers
+    # and timespec wrapper.
+    cat > common/cras_x86_64_compat.h <<END
+#ifndef CRAS_X86_64_COMPAT_H_
+#define CRAS_X86_64_COMPAT_H_
+
+#include <stdint.h>
+#include <time.h>
 
 typedef uint64_t __attribute__((aligned(8))) aligned_uint64_t;
 typedef int64_t  __attribute__((aligned(8))) aligned_int64_t;
@@ -107,8 +123,8 @@ static inline int cras_clock_gettime(clockid_t clk_id, struct cras_timespec *ctp
     ctp->tv_nsec = tp.tv_nsec;
     return ret;
 }
+#endif
 END
-    mv common/cras_iodev_info.h.new common/cras_iodev_info.h
 
     # Restore uncorrectly replaced timespec, add 2 necessary casts
     sed -i -e 's/struct cras_timespec sleep_ts;/struct timespec sleep_ts;/
@@ -241,8 +257,8 @@ build_cras() {
                     for dep in $sources; do
                         if [ "${dep%.c}" != "$dep" ]; then
                             ofile="${dep%.c}.o"
-                            gcc -c "$dep" -o "$ofile" \
-                                '"$archgccflags"' $cppflags $extragccflags 1>&2
+                            gcc -c "$dep" -o "$ofile" '"$archgccflags"' \
+                                $cppflags $extragccflags 1>&2 || return $?
                             echo -n "$ofile "
                         fi
                     done
@@ -266,7 +282,9 @@ build_cras() {
                 buildlib() {
                     local lib="$1"
                     local extraflags="$2"
-                    local ofiles="`buildsources "${lib}_la" "-fPIC -DPIC"`"
+                    local ofiles
+                    # local eats the return status: separate the 2 statements
+                    ofiles="`buildsources "${lib}_la" "-fPIC -DPIC"`"
 
                     eval local libadd=\"\$${lib}_la_LIBADD\"
                     eval local ldflags=\"\$${lib}_la_LDFLAGS\"
