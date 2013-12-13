@@ -186,7 +186,7 @@ if [ -z "$NOLOGIN" -a -f "$CHROOT$SETUPSCRIPT" ]; then
         echo 'However, it appears the setup script is invalid.' 1>&2
         response='d'
     fi
-    if tty -s && [ -z "$response" ]; then
+    if [ -t 0 -a -z "$response" ]; then
         echo -n 'Would you like to finish the setup? [Y/n/d] ' 1>&2
         read response
     fi

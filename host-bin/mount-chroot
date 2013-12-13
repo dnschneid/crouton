@@ -61,7 +61,7 @@ addtrap "stty echo 2>/dev/null"
 # Function to prompt the user for a passphrase. Sets $passphrase.
 promptNewPassphrase() {
     echo -n "Choose an encryption passphrase for $NAME: " 1>&2
-    stty -echo
+    [ -t 0 ] && stty -echo
     while [ -z "$passphrase" ]; do
         read passphrase
         if [ -z "$passphrase" ]; then
@@ -79,7 +79,7 @@ promptNewPassphrase() {
         fi
         confirmation=''
     done
-    stty echo
+    [ -t 0 ] && stty echo
     echo 1>&2
 }
 
@@ -131,8 +131,8 @@ for NAME in "$@"; do
             continue
         fi
 
-        # We must be on a terminal.
-        if ! tty -s; then
+        # We must be on a terminal, unless we already have a password in env.
+        if [ ! -t 0 -a -z "$CROUTON_PASSPHRASE$CROUTON_NEW_PASSPHRASE" ]; then
             error 2 'STDIN is not a terminal; cannot request passwords.'
         fi
 
@@ -195,11 +195,11 @@ $passphrase" | ecryptfs-wrap-passphrase "$wrappedfnek" -
             error 1 "Unable to find encryption key file $KEYFILE"
         else
             echo -n "Enter encryption passphrase for $NAME: " 1>&2
-            stty -echo
+            [ -t 0 ] && stty -echo
             if [ -z "$passphrase" ]; then
                 read passphrase
             fi
-            stty echo
+            [ -t 0 ] && stty echo
             echo 1>&2
 
             wrappedkey="`mktemp`"
