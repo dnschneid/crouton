@@ -123,10 +123,6 @@ disablehungtask() {
 # http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=593504).
 # Furthermore, fflush is not POSIX so we cannot use any other awk flavor.
 unbuffered_awk() {
-    if [ "$#" -lt 1 ]; then
-        error 3 "invalid parameters to unbuffered_awk(): $*"
-    fi
-
     local cmd
     if hash mawk 2>/dev/null; then
         cmd="mawk -W interactive"
@@ -145,5 +141,5 @@ unbuffered_awk() {
         print s
         fflush()
     }
-    '"$program" "$*"
+    '"$program" "$@"
 }
