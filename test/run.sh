@@ -432,6 +432,9 @@ done
 # Wait for all jobs to finish
 waitjobs 0
 
+# Clean up /var/run/crouton
+rm -rf --one-file-system /var/run/crouton || true
+
 if [ -n "$tname" ]; then
     echo "All tests passed!" 1>&2
 else
