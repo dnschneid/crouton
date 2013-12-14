@@ -288,6 +288,7 @@ for NAME in "$@"; do
 
     # Update the keyfile
     if [ -n "$KEYFILE" ]; then
+        newkeyfile="$KEYFILE"
         # Find the current keyfile
         oldkeyfile="$CHROOT/.ecryptfs"
         if [ -f "$oldkeyfile" ]; then
@@ -296,36 +297,41 @@ for NAME in "$@"; do
                 oldkeyfile="$header"
             fi
         fi
-        if [ "$KEYFILE" = '-' ]; then
-            KEYFILE="$CHROOT/.ecryptfs"
+        if [ "$newkeyfile" = '-' ]; then
+            newkeyfile="$CHROOT/.ecryptfs"
         fi
-        if [ "${KEYFILE#/}" = "$KEYFILE" ]; then
-            KEYFILE="$PWD/$KEYFILE"
+        if [ "${newkeyfile#/}" = "$newkeyfile" ]; then
+            newkeyfile="$PWD/$newkeyfile"
         fi
-        if [ -d "$KEYFILE" -o ! "${KEYFILE%/}" = "$KEYFILE" ]; then
-            KEYFILE="${KEYFILE%/}/$NAME"
+        if [ -d "$newkeyfile" -o ! "${newkeyfile%/}" = "$newkeyfile" ]; then
+            newkeyfile="${newkeyfile%/}/$NAME"
         fi
         oldkeyfile="`readlink -m "$oldkeyfile"`"
-        keyfilecanon="`readlink -m "$KEYFILE"`"
+        keyfilecanon="`readlink -m "$newkeyfile"`"
         if [ ! -f "$oldkeyfile" ]; then
             # If there is no old keyfile, make sure we've requested encryption.
             if [ -z "$ENCRYPT" ]; then
                 error 1 "Old key file not found"
             fi
         elif [ ! "$oldkeyfile" = "$keyfilecanon" ]; then
-            # Write the new keyfile before removing the old.
-            if ! mkdir -p "`dirname "$KEYFILE"`"; then
-                error 1 "Unable to create directory for $KEYFILE"
+            chrootecryptfsfile="`readlink -m "$CHROOT/.ecryptfs"`"
+            # Don't clobber a file already there
+            if [ -e "$newkeyfile" -a "$newkeyfile" != "$chrootecryptfsfile" ]; then
+                error 1 "Encryption key file $newkeyfile already exists. Refusing to overwrite!"
             fi
-            echo "Moving key file from $oldkeyfile to $KEYFILE" 1>&2
-            (echo; tail -n+2 "$oldkeyfile") > "$KEYFILE"
+            # Write the new keyfile before removing the old.
+            if ! mkdir -p "`dirname "$newkeyfile"`"; then
+                error 1 "Unable to create directory for $newkeyfile"
+            fi
+            echo "Moving key file from $oldkeyfile to $newkeyfile" 1>&2
+            (echo; tail -n+2 "$oldkeyfile") > "$newkeyfile"
             # Remove old keyfile before writing .ecryptfs, as it may be the same
             rm -f "$oldkeyfile"
-            if [ ! "`readlink -m "$CHROOT/.ecryptfs"`" = "$KEYFILE" ]; then
-                echo "$KEYFILE" > "$CHROOT/.ecryptfs"
+            if [ "$chrootecryptfsfile" != "$newkeyfile" ]; then
+                echo "$newkeyfile" > "$CHROOT/.ecryptfs"
             fi
         elif [ -z "$ENCRYPT$MOVE" ]; then
-            echo "Keyfile is already located at $KEYFILE" 1>&2
+            echo "Keyfile is already located at $newkeyfile" 1>&2
         fi
     fi
 
