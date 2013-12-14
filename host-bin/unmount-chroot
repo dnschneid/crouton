@@ -331,7 +331,4 @@ if checkusage "$ROOT/media"; then
     done
 fi
 
-# Attempt to clean up the $ROOT directory; failure is normal
-rm -rf --one-file-system "$ROOT" 2>/dev/null || true
-
 exit $ret
