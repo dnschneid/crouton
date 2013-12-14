@@ -3,12 +3,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 REQUIRES='core'
-DESCRIPTION='Basic CLI tools such as wget and ssh.'
+DESCRIPTION='Basic CLI tools such as ssh.'
 HOSTBIN='startcli'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
-install wget openssh-client kbd
+install openssh-client kbd
 
 TIPS="$TIPS
 You can start a shell in a new VT via the startcli host command: sudo startcli

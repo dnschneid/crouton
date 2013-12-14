@@ -30,15 +30,14 @@ REQUIRES='x11'
 # Only download if it's not already installed, since it auto-updates
 pkg="google-chrome-$CHANNEL"
 if [ -n "`list_uninstalled '' "$pkg"`" ]; then
-    # We need wget to download, and Chrome needs xdg-utils to configure
-    install wget xdg-utils
+    # Chrome needs xdg-utils to configure
+    install xdg-utils
 
     url="https://dl.google.com/linux/direct/${pkg}_current_$ARCH.$PKGEXT"
     tmp="`mktemp crouton.XXXXXX --tmpdir=/tmp`"
     addtrap "rm -f '$tmp'"
 
-    # We don't have the right root certificates in the bare install.
-    wget --no-check-certificate "$url" -O "$tmp"
+    wget "$url" -O "$tmp"
 
     # Remove other providers of google-chrome, then install the package
     for c in stable beta dev; do

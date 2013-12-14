@@ -90,7 +90,7 @@ fi
 fixkeyboardmode
 
 # Install critical packages
-install --minimal sudo
+install --minimal sudo wget ca-certificates
 
 # Generate and set default locale
 if [ ! -f '/etc/default/locale' ] && hash locale-gen 2>/dev/null; then

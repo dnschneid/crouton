@@ -102,7 +102,6 @@ list_uninstalled_dist() {
 #           features, to prevent breakage during release upgrade.
 # arch:     Architecture (e.g. i386). Defaults to $ARCH
 install_mirror_package() {
-    install wget
     local asdeps=''
     if [ "$1" = "--asdeps" ]; then
         asdeps='y'
@@ -138,7 +137,7 @@ install_mirror_package() {
     # Download the package to a temporary file
     local deb="`mktemp crouton.XXXXXX --tmpdir=/tmp`"
     addtrap "rm -f '$deb'"
-    wget --no-check-certificate "$url" -O"$deb"
+    wget "$url" -O"$deb"
     # Install the package
     install_pkg "$deb"
     if [ -n "$asdeps" ]; then
