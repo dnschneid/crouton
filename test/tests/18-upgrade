@@ -40,17 +40,38 @@ versioninfo() {
         ' | log
 }
 
-crouton -T -r "$FIRST" -t "$TARGETS" <<EOF
+run='y'
+# Check that all releases in the upgrade path are in SUPPORTED_RELEASES
+for release in $FIRST $NEXT $DEV; do
+    ok=''
+    for supported in $SUPPORTED_RELEASES; do
+        if [ "$release" = "$supported" ]; then
+            ok='y'
+            break
+        fi
+    done
+    if [ -z "$ok" ]; then
+        run=''
+        break
+    fi
+done
+
+if [ -z "$run" ]; then
+    log "Release $release is not in supported releases list ($SUPPORTED_RELEASES)."
+    log "Not running upgrade test..."
+else
+    crouton -T -r "$FIRST" -t "$TARGETS" <<EOF
 install update-manager-core python-apt
 sed -i -e 's/Prompt=lts/Prompt=normal/' /etc/update-manager/release-upgrades
 EOF
-versioninfo
+    versioninfo
 
-for next in $NEXT; do
-    upgrade "$next"
-done
+    for next in $NEXT; do
+        upgrade "$next"
+    done
 
-# Then upgrade to latest development version as well
-if [ -n "$DEV" ]; then
-    upgrade -d "$DEV"
+    # Then upgrade to latest development version as well
+    if [ -n "$DEV" ]; then
+        upgrade -d "$DEV"
+    fi
 fi
