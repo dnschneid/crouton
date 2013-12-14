@@ -323,7 +323,7 @@ no   -- You don't want to decide one way or another quite yet.
              -not -wholename '.' \
              -not -wholename './.ecryptfs' \
              -not -wholename './.crouton-targets' \
-             -print -prune 1>&2
+             -print -prune | cut -b2- 1>&2
         echo 'Done.' 1>&2
         exit 2
     );;
