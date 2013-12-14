@@ -236,8 +236,12 @@ unmount() {
         mount --make-rslave "$media"
     fi
 
-    while ! sed "s=\\\\040=//=g" /proc/mounts | cut -d' ' -f2 \
-              | filter | sed 's=//= =g' | xargs --no-run-if-empty -d '
+    # Some /proc/mounts entries may end with \040(deleted), in that case, try to
+    # umount them with and without the suffix (in the unlikely case the mount
+    # point actually ends with ' (deleted)')
+    while ! sed "s=\\\\040=//=g" /proc/mounts | cut -d' ' -f2 | filter \
+              | sed -e 's=//= =g;s/^\(\(.*\) (deleted)\)$/\1\n\2/' \
+              | xargs --no-run-if-empty -d '
 ' -n 50 umount 2>/dev/null; do
         if [ "$ntries" -eq "$TRIES" ]; then
             # Send signal to all processes running under the chroot
