@@ -195,18 +195,18 @@ set +x'
 bootstrap() {
     local file="$PREFIXROOT/$1-bootstrap.tar.gz"
     echo "$file"
+
+    # Use flock so that bootstrap can be called in parallel
+    if ! flock -n 3; then
+        log "Waiting for bootstrap for $1 to complete..."
+        flock 3
+    elif [ ! -s "$file" ]; then
+        crouton -r "$1" -f "$file" -d 1>&2
+    fi 3>>"$file"
+
     if [ ! -s "$file" ]; then
-        # Use flock so that bootstrap can ba called in parallel
-        if flock -n 3 && [ ! -s "$file" ]; then
-            crouton -r "$1" -f "$file" -d 1>&2
-        else
-            log "Waiting for bootstrap for $1 to complete..."
-            flock 3
-        fi 3>"$file"
-        if [ ! -s "$file" ]; then
-            log "FAIL due to incomplete bootstrap for $1"
-            return 1
-        fi
+        log "FAIL due to incomplete bootstrap for $1"
+        return 1
     fi
 }
 
@@ -220,17 +220,17 @@ snapshot() {
     local targets="${2:-core}"
     local file="$PREFIXROOT/$1-$targets-snapshot.tar.gz"
     local name="${3:-"$1"}"
-    if [ ! -s "$file" ]; then
-        # Use flock so that snapshot can ba called in parallel
-        if flock -n 3 && [ ! -s "$file" ]; then
-            crouton -f "`bootstrap "$1"`" -t "$targets" -n "$name" 1>&2
-            host edit-chroot -y -b -f "$file" "$name"
-            return 0
-        else
-            log "Waiting for snapshot for $1-$targets to complete..."
-            flock 3
-        fi 3>"$file"
-    fi
+
+    # Use flock so that snapshot can be called in parallel
+    if ! flock -n 3; then
+        log "Waiting for snapshot for $1-$targets to complete..."
+        flock 3
+    elif [ ! -s "$file" ]; then
+        crouton -f "`bootstrap "$1"`" -t "$targets" -n "$name" 1>&2
+        host edit-chroot -y -b -f "$file" "$name"
+        return 0
+    fi 3>>"$file"
+
     # Restore the snapshot into place
     crouton -f "$file" -n "$name"
 }
