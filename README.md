@@ -1,3 +1,73 @@
+chroagh
+=======
+
+chroagh is a fork of [crouton](https://github.com/dnschneid/crouton), that
+allows you to run another Linux distribution side by side with Chromium OS.
+
+The main idea of this branch is to get people to test features before they
+are pushed to crouton, especially for Arch Linux users. Expect things to break,
+and please file bug reports when they do!
+
+This is essentially crouton, with the following branch merged:
+ - croagh+arch: Add support for Arch Linux.
+
+Usage
+-----
+
+These instructions assume that you want to install Arch Linux.
+
+### Switch your device to developer mode
+
+First, switch your Chromebook into developer mode (careful, this will erase
+all your data), see the instructions
+[here](http://www.chromium.org/chromium-os/developer-information-for-chrome-os-devices).
+It will take about 15 minutes. From then on, on each boot-up, you will need
+to press Ctrl+D.
+
+### Create the chroot
+
+  1. Launch a crosh shell (Ctrl+Alt+T, you can paste in the console using
+     Ctrl+Shift+V), then enter `shell`.
+  2. Download and extract chroagh:
+
+        cd ~/Downloads
+        wget https://api.github.com/repos/drinkcat/chroagh/tarball -O chroagh.tar.gz
+        tar xvf chroagh.tar.gz
+        cd drinkcat-chroagh-*
+
+  3. Create the rootfs:
+
+        sudo sh -e installer/main.sh -r arch -t xfce
+
+    You can specify a mirror using
+    `-m 'http://mymirror/archlinux/$repo/os/$arch'`.
+    (Be careful to keep the single quotes around the mirror URL.)
+    On ARM, the URL is in the form
+    `-m 'http://tw.mirror.archlinuxarm.org/armv7h/$repo'`: just change the
+    country code from `tw` to [somewhere near you](http://archlinuxarm.org/about/mirrors);
+    On x86, you can pick one from [this list](https://www.archlinux.org/mirrorlist/).
+
+### Start the chroot
+
+Run either of these commands:
+  * `sudo startxfce4` to start XFCE in a separate screen (you can switch
+    between screens with Ctrl+Alt+Shift+Back or Ctrl+Alt+Shift+Forward)
+  * `sudo enter-chroot` to launch a bash shell
+
+Notes on git tree
+-----------------
+This repository is a bit strange, because we constantly rebase on
+[`dnschneid/crouton`](https://github.com/dnschneid/crouton)
+
+That means you need to do the following to fetch modifications from the tree:
+
+        git fetch --all
+        git reset --hard origin/master
+
+Be careful, as this will erase any other commit you did in your own `master` branch.
+
+Original documentation follows:
+
 crouton: Chromium OS Universal Chroot Environment
 =================================================
 
