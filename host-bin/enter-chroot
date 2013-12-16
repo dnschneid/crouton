@@ -363,6 +363,11 @@ if [ -z "$NOLOGIN" -a -n "$CHROOTHOME" -a -d "$localdownloads" ]; then
     bindmount "$localdownloads" "$CHROOTHOME/Downloads" exec
 fi
 
+# For test machines with low entropy, bind mount /dev/urandom to /dev/random
+if [ -n "$CROUTON_WEAK_RANDOM" ]; then
+    mount --bind "$CHROOT/dev/urandom" "$CHROOT/dev/random"
+fi
+
 # Fix group numbers for critical groups to match Chromium OS. This is necessary
 # so that users have access to shared hardware, such as video and audio.
 gfile="$CHROOT/etc/group"
