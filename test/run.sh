@@ -338,14 +338,12 @@ export CROUTON_NEW_PASSPHRASE="$CROUTON_PASSPHRASE"
 export CROUTON_EDIT_RESPONSE='y'
 export CROUTON_MOUNT_RESPONSE='y'
 export CROUTON_UNMOUNT_RESPONSE='y'
+# Test machines lack entropy: Use /dev/urandom instead of /dev/random
+export CROUTON_WEAK_RANDOM='y'
 
 # Prevent powerd from sleeping the system
 sh -e "$SCRIPTDIR/chroot-bin/croutonpowerd" -i &
 croutonpowerd="$!"
-
-# Bind mount urandom over random to avoid blocking on entropy
-mount --bind /dev/urandom /dev/random
-addtrap 'umount -l /dev/random 2>/dev/null'
 
 # Run all the tests
 mkdir -p "$TESTDIR" "$PREFIXROOT"

@@ -63,7 +63,7 @@ done
 # release branches appear before stabilize ones.
 # We match recent release-* branches, then stabilize-* branches ahead of the
 # latest release branch, and finally master.
-ADHD_HEADS="`wget --quiet --no-check-certificate -O- \
+ADHD_HEADS="`wget --quiet -O- \
 'https://chromium.googlesource.com/chromiumos/third_party/adhd/+refs/heads?format=TEXT' \
     | awk '
     BEGIN {

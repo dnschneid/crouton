@@ -9,8 +9,6 @@ CHROOTETC='pulseaudio-default.pa'
 
 ### Append to prepare.sh:
 
-install --minimal wget
-
 # Fetch CRAS source
 
 CRASBUILDTMP="`mktemp -d crouton-cras.XXXXXX --tmpdir=/tmp`"
@@ -21,7 +19,7 @@ addtrap "rm -rf --one-file-system '$CRASBUILDTMP'"
 # target sourced before this one (used for automated testing)
 if [ -z "$ADHD_HEAD" ]; then
     # Fetch list of branches from repository
-    wget --no-check-certificate -O "$CRASBUILDTMP/adhd.refs" \
+    wget -O "$CRASBUILDTMP/adhd.refs" \
 'https://chromium.googlesource.com/chromiumos/third_party/adhd/+refs/heads?format=TEXT'
 
     # Chrome OS version (e.g. 4100.86.0)
@@ -50,7 +48,7 @@ fi
 
 echo "Fetching CRAS (branch $ADHD_HEAD)..." 1>&2
 
-wget --no-check-certificate -O "$CRASBUILDTMP/adhd.tar.gz" \
+wget -O "$CRASBUILDTMP/adhd.tar.gz" \
 "https://chromium.googlesource.com/chromiumos/third_party/adhd/+archive/$ADHD_HEAD.tar.gz"
 
 # Patch CRAS so that x86 client can connect to x86_64 server (multilib)

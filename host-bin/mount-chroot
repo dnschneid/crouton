@@ -173,9 +173,15 @@ for NAME in "$@"; do
 
             promptNewPassphrase
 
-            echo -n 'Generating keys (move the mouse to generate entropy)...' 1>&2
-            key="`hexdump -v -n32 -e'"%02x"' /dev/random`"
-            fnek="`hexdump -v -n32 -e'"%02x"' /dev/random`"
+            if [ -z "$CROUTON_WEAK_RANDOM" ]; then
+                random="/dev/random"
+                echo 'Generating keys (move the mouse to generate entropy)...' 1>&2
+            else
+                random="/dev/urandom"
+                echo 'Generating keys from /dev/urandom...' 1>&2
+            fi
+            key="`hexdump -v -n32 -e'"%02x"' "$random"`"
+            fnek="`hexdump -v -n32 -e'"%02x"' "$random"`"
             echo 'done' 1>&2
 
             # Create key file
