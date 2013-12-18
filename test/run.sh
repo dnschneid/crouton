@@ -369,6 +369,18 @@ SyntaxError: invalid syntax" 1>&2
     return 0
 }
 
+# Ensures only one test can play with graphics at one time
+vtlock() {
+    local vtlockfile='/var/lock/croutonvt'
+    {
+        if ! flock -n 3; then
+            log 'Waiting for VT lock...'
+            flock 3
+        fi
+        "$@" || return $?
+    } 3>>"$vtlockfile"
+}
+
 # Default responses to questions
 export CROUTON_USERNAME='test'
 export CROUTON_PASSPHRASE='hunter2'
