@@ -14,6 +14,7 @@ Options:
     -i --inhibit           Inhibits powerd for the duration of the command, or
                            forever if no command is specified.
     -p --poke -deactivate  Pings powerd to prevent activation.
+    --suspend              Switches to Chromium OS and triggers a suspend.
     --daemon               Enters daemon mode where idleness and screensaver
                            inhibition are passed on to Chromium OS's powerd."
 
@@ -34,10 +35,8 @@ esac
 case "$1" in
 -i|--inhibit) CMD='i';;
 -p|--poke|-deactivate) CMD='p';;
---daemon) CMD='d'
-    if [ -n "$EXEC" ]; then
-        exec "$EXEC" "$@"
-    fi;;
+--suspend) CMD='s';;
+--daemon) CMD='d';;
 *)  if [ -z "$EXEC" ]; then
         echo "$USAGE" 1>&2
         exit 2
@@ -75,7 +74,16 @@ elif [ "$CMD" = 'i' ]; then
     else
         wait $pid
     fi
-else
+elif [ -n "$EXEC" ]; then
+    exec "$EXEC" "$@"
+elif [ "$CMD" = 's' ]; then
+    if hash croutoncycle 2>/dev/null; then
+        croutoncycle cros
+    fi
+    $hostdbus dbus-send --system --dest=org.chromium.PowerManager \
+                        --type=method_call /org/chromium/PowerManager \
+                        org.chromium.PowerManager.RequestSuspend || true
+elif [ "$CMD" = 'd' ]; then
     # Daemon
     xdgs='/usr/bin/xdg-screensaver'
     xi2pid=''
