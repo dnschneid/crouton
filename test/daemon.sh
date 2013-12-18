@@ -57,12 +57,12 @@ fi
 
 statusmonitor() { (
     local machinestatus="$LOCALROOT/status-$id"
-    echo -n '' > "$machinestatus"
     if [ -n "$CURTESTROOT" ]; then
         local sig='USR1'
         local teststatus="${CURTESTROOT%/}/status-$id"
         local uploadcmd="scp $SCPBASEOPTIONS $SCPOPTIONS \
                              '$machinestatus' '$CURTESTROOT' '$UPLOADROOT'"
+        echo -n '' > "$machinestatus"
         echo -n '' > "$teststatus"
         trap '' "$sig"
         (
@@ -89,7 +89,11 @@ statusmonitor() { (
         wait "$uploader" || true
         eval "$uploadcmd"
     else
-        cat >> "$machinestatus"
+        sed "s/^READY/READY ` \
+            dbus-send --system --type=method_call --print-reply \
+                  --dest=org.chromium.UpdateEngine /org/chromium/UpdateEngine \
+                  org.chromium.UpdateEngineInterface.GetStatus 2>/dev/null \
+            | awk -F'"' '/UPDATE_STATUS/ {print $2; exit}'`/" > "$machinestatus"
         scp $SCPBASEOPTIONS $SCPOPTIONS "$machinestatus" "$UPLOADROOT"
     fi
 ) }
