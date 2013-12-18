@@ -67,6 +67,10 @@ if [ -z "$CHANGES$DOWNLOAD$UPDATES" ]; then
     echo "crouton: version $VERSION"
     echo "release: $RELEASE"
     echo "architecture: $ARCH"
+    targetfile='/etc/crouton/targets'
+    if [ -r "$targetfile" ]; then
+        echo "targets: `sed 's/^,//' "$targetfile"`"
+    fi
     hostrel='/var/host/lsb-release'
     if [ -r "$hostrel" ]; then
         host="`awk -F= '/_RELEASE_DESCRIPTION=/{print $2}' "$hostrel"`"
