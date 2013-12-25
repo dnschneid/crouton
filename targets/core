@@ -66,6 +66,12 @@ deb-src $MIRROR $RELEASE-updates main restricted universe multiverse
 deb $MIRROR $RELEASE-security main restricted universe multiverse
 deb-src $MIRROR $RELEASE-security main restricted universe multiverse
 EOF
+        elif [ "$DISTRO" = 'kali' ]; then
+	    cat > /etc/apt/sources.list <<EOF
+deb $MIRROR $RELEASE main non-free contrib
+deb-src $MIRROR $RELEASE main contrib
+EOF
+
         else
             cat > /etc/apt/sources.list <<EOF
 deb $MIRROR $RELEASE main contrib
