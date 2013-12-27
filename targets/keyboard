@@ -25,7 +25,7 @@ DESCRIPTION='Adds support for Chromebook keyboard special keys.'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
-if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ] || [ "$[DISTROAKA:-"$DISTRO"}" = 'kali' ]; then
+if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
     # Make sure we start from a fresh package
     apt-mark unhold xkb-data || true 2>/dev/null
     apt-get -y install --reinstall xkb-data

@@ -29,7 +29,7 @@ $core_pattern" > '/etc/crouton/core_pattern'
 fi
 
 echo 'Cleaning up...' 1>&2
-if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ] || [ "${DISTROAKA:-"$DISTRO"}" = 'kali' ]; then
+if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
     apt-get -y --purge autoremove
     apt-get clean
 fi
