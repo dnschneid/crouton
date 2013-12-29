@@ -5,7 +5,7 @@
 if [ "$TARGETS" != 'help' -a "${ARCH#arm}" != "$ARCH" ]; then
     error 1 'xorg target does not work on ARM.'
 fi
-REQUIRES='core audio'
+REQUIRES='audio'
 PROVIDES='x11'
 DESCRIPTION='X.Org X11 backend. Enables GPU acceleration on supported platforms.'
 CHROOTBIN='brightness croutoncycle croutonpowerd croutonxinitrc-wrapper setres xinit'
