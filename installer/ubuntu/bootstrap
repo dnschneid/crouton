@@ -5,7 +5,8 @@
 
 # This is a distro-specific bootstrap script, sourced from main.sh, and as such
 # has access to all of the variables set by main.sh, namely $tmp (the temporary
-# directory), $INSTALLERDIR/$DISTRO, $RELEASE, $BOOTSTRAP_RELEASE (if different from $RELEASE), $ARCH, and $MIRROR.
+# directory), $INSTALLERDIR/$DISTRO, $RELEASE, $BOOTSTRAP_RELEASE (if different
+# from $RELEASE), $ARCH, and $MIRROR.
 
 # Grab the latest release of debootstrap
 echo 'Downloading latest debootstrap...' 1>&2
@@ -42,5 +43,6 @@ tar -czf "$tmp/devices.tar.gz" -T /dev/null
 # Grab the release and drop it into the subdirectory
 echo 'Downloading bootstrap files...' 1>&2
 PATH="$newpath" DEBOOTSTRAP_DIR="$tmp" $FAKEROOT \
-    "$tmp/debootstrap" --foreign --arch="$ARCH" "${BOOTSTRAP_RELEASE:-"$RELEASE"}" \
+    "$tmp/debootstrap" --foreign --arch="$ARCH" \
+    "${BOOTSTRAP_RELEASE:-"$RELEASE"}" \
                        "$tmp/$subdir" "$MIRROR" 1>&2
