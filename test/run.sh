@@ -8,7 +8,7 @@
 # Tests numbering is categorical in 10's by the following guide:
 #   0*: meta-tests, e.g. tester
 #   1*: core tests, e.g. basic, background, upgrade
-#   2*: small-target/tech tests, e.g. cli-extra, audio
+#   3*: small-target/tech tests, e.g. cli-extra, audio
 #   5*: DE tests, e.g. xfce, xbmc
 #   9*: misc application tests, e.g. chrome
 # Numbering within a category is arbitrary and can have overlaps.
@@ -201,12 +201,12 @@ bootstrap() {
     echo "$file"
 
     # Use flock so that bootstrap can be called in parallel
-    if ! flock -n 3; then
+    if ! flock -n 4; then
         log "Waiting for bootstrap for $1 to complete..."
-        flock 3
+        flock 4
     elif [ ! -s "$file" ]; then
         crouton -r "$1" -f "$file" -d 1>&2
-    fi 3>>"$file"
+    fi 4>>"$file"
 
     if [ ! -s "$file" ]; then
         log "FAIL due to incomplete bootstrap for $1"
@@ -226,14 +226,14 @@ snapshot() {
     local name="${3:-"$1"}"
 
     # Use flock so that snapshot can be called in parallel
-    if ! flock -n 3; then
+    if ! flock -n 4; then
         log "Waiting for snapshot for $1-$targets to complete..."
-        flock 3
+        flock 4
     elif [ ! -s "$file" ]; then
         crouton -f "`bootstrap "$1"`" -t "$targets" -n "$name" 1>&2
         host edit-chroot -y -b -f "$file" "$name"
         return 0
-    fi 3>>"$file"
+    fi 4>>"$file"
 
     # Restore the snapshot into place
     crouton -f "$file" -n "$name"
@@ -373,12 +373,12 @@ SyntaxError: invalid syntax" 1>&2
 vtlock() {
     local vtlockfile='/var/lock/croutonvt'
     {
-        if ! flock -n 3; then
+        if ! flock -n 4; then
             log 'Waiting for VT lock...'
-            flock 3
+            flock 4
         fi
         "$@" || return $?
-    } 3>>"$vtlockfile"
+    } 4>>"$vtlockfile"
 }
 
 # Default responses to questions
