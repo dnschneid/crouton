@@ -1,0 +1,13 @@
+#!/bin/sh -e
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# All supported releases should be able to launch an xephyr server
+for release in $SUPPORTED_RELEASES; do
+    snapshot "$release" audio
+    crouton -U -n "$release" -t xephyr
+    exitswithin 0 20 vtlock host \
+        enter-chroot -n "$release" exec xinit /usr/bin/xterm -e exit 0
+    host delete-chroot -y "$release"
+done
