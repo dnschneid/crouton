@@ -5,6 +5,7 @@
 REQUIRES='core'
 DESCRIPTION='Basic CLI tools such as ssh.'
 HOSTBIN='startcli'
+CHROOTBIN='croutonpowerd'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:

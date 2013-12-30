@@ -84,6 +84,10 @@ elif [ "$CMD" = 's' ]; then
                         --type=method_call /org/chromium/PowerManager \
                         org.chromium.PowerManager.RequestSuspend || true
 elif [ "$CMD" = 'd' ]; then
+    if [ -z "$DISPLAY" ]; then
+        error 1 'Cannot launch daemon: $DISPLAY not specified.'
+    fi
+
     # Daemon
     xdgs='/usr/bin/xdg-screensaver'
     xi2pid=''
