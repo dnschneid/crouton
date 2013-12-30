@@ -102,7 +102,7 @@ logto() {
     local AWK='mawk -W interactive'
     # srand() uses system time as seed but returns previous seed. Call it twice.
     ((((ret=0; TRAP=''
-        . "$1" </dev/null 3>&- || ret=$?
+        (. "$1") </dev/null 3>&- 4>&- || ret=$?
         sleep 1
         if [ "$ret" = 0 ]; then
             log "TEST PASSED: $retpreamble $ret"
