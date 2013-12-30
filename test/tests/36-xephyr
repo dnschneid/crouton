@@ -7,7 +7,7 @@
 for release in $SUPPORTED_RELEASES; do
     snapshot "$release" audio
     crouton -U -n "$release" -t xephyr
-    exitswithin 0 20 vtlock host \
+    vtlock exitswithin 0 60 host \
         enter-chroot -n "$release" exec xinit /usr/bin/xterm -e exit 0
     host delete-chroot -y "$release"
 done
