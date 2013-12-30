@@ -5,7 +5,7 @@
 REQUIRES='core audio'
 PROVIDES='x11'
 DESCRIPTION='Nested X11 backend. Improves compatibility but lacks GPU accel.'
-CHROOTBIN='croutoncycle croutonpowerd croutonwheel croutonwm croutonxinitrc-wrapper xinit'
+CHROOTBIN='brightness croutoncycle croutonpowerd croutonwheel croutonwm croutonxinitrc-wrapper xinit'
 CHROOTETC='xbindkeysrc.scm xserverrc-xephyr xserverrc-local.example'
 . "${TARGETSDIR:="$PWD"}/common"
 
