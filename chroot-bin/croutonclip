@@ -140,11 +140,6 @@ xmethod="${xmethod##*-}"
 current=':0'
 
 if [ "$xmethod" = 'xephyr' ]; then
-    # Wait for ratpoison to come up
-    while ! host-x11 xprop -root _NET_WM_NAME | grep -q 'ratpoison'; do
-        sleep .1
-    done 2>&-
-
     # Get the aura root window number (hex)
     aura="`host-x11 croutonwmtools list n | awk '/^aura_root/ {print $NF}'`"
 

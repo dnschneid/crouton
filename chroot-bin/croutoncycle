@@ -122,6 +122,13 @@ else
     fi
 fi
 
+# Make sure tap-to-click is disabled
+if hash xinput 2>/dev/null; then
+    for id in `host-x11 xinput --list --id-only`; do
+        host-x11 xinput set-prop "$id" 'Tap Paused' 0 2>/dev/null || true
+    done
+fi
+
 # Raise the right window before chvting
 if [ "${dest#[0-9]}" = "$dest" ]; then
     id="`host-x11 croutonwmtools list i | awk "/^$dest/"' {print $NF; exit}'`"
@@ -132,6 +139,8 @@ if [ "${dest#[0-9]}" = "$dest" ]; then
 fi
 
 chvt "$dest"
+
+# Refresh the display for good measure
 if [ "$destdisp" != 0 ] && hash xrefresh 2>/dev/null; then
     DISPLAY=":$destdisp" xrefresh
 fi

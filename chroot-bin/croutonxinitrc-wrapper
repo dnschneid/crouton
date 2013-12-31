@@ -77,9 +77,13 @@ if [ "$xmethod" = 'x11' ]; then
     fi
 fi
 
-# Pass through the host cursor on xephyr
+# Pass through the host cursor and correct mousewheels on xephyr
 if [ "$xmethod" = 'xephyr' ]; then
     host-x11 croutoncursor "$DISPLAY" &
+    if [ -z "$CROUTON_WHEEL_PARAMS" -a -r "$HOME/.croutonwheel" ]; then
+        CROUTON_WHEEL_PARAMS="`head -n1 "$HOME/.croutonwheel"`"
+    fi
+    croutonwheel $CROUTON_WHEEL_PARAMS &
 fi
 
 # Launch touchegg if it is requested.
