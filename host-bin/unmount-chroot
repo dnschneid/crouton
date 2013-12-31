@@ -84,8 +84,7 @@ fi
 # to the pid's root. This avoids not unmounting due to a lazy-quitting
 # background application within the chroot. We also don't consider processes
 # that have a parent PID of 1 (which would mean an orphaned process in this
-# case), as enter-chroot never orphans its children, and we don't consider
-# processes that have CROUTON=CORE in the environment.
+# case), as enter-chroot never orphans its children.
 # $1: $base; the canonicalized base path of the chroot
 # Returns: non-zero if the chroot is in use.
 checkusage() {
@@ -114,9 +113,6 @@ checkusage() {
             if [ "${prootdir%/}/" = "$rootdir" ]; then
                 continue
             fi
-        fi
-        if grep -q 'CROUTON=CORE' "/proc/$pid/environ" 2>/dev/null; then
-            continue
         fi
         if [ -n "$PRINT" ]; then
             ps -p "$pid" -o pid= -o cmd= || true
@@ -275,11 +271,6 @@ unmount() {
                 fi
                 pid="${root#/proc/}"
                 pid="${pid%/root}"
-                if [ -z "$FORCE" ] \
-                        && grep -q 'CROUTON=CORE' \
-                                   "/proc/$pid/environ" 2>/dev/null; then
-                    continue
-                fi
                 if [ -n "${printonly:-"$PRINT"}" ]; then
                     ps -p "$pid" -o pid= -o cmd= || true
                 fi

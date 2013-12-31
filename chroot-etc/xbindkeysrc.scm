@@ -4,13 +4,13 @@
 
 ;; Run xbindkeys -dg for some example configuration file with explanation
 
-; Extra bindings that must only be activated in chroot X11/Xephyr
-(if (not (equal? (getenv "CROUTON") "XINIT"))
-    (begin
-        ; Cycle chroots
-        (xbindkey '(control shift alt F1) "croutoncycle prev")
-        (xbindkey '(control shift alt F2) "croutoncycle next")
+; Cycle chroots
+(xbindkey '(control shift alt F1) "croutoncycle prev")
+(xbindkey '(control shift alt F2) "croutoncycle next")
 
+; Extra bindings that must only be activated in chroot X11/Xephyr
+(if (not (string-null? (getenv "XMETHOD")))
+    (begin
         ; Brightness control
         (xbindkey '(XF86MonBrightnessDown) "brightness down")
         (xbindkey '(XF86MonBrightnessUp) "brightness up")
