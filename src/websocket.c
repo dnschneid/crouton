@@ -662,7 +662,7 @@ static int socket_client_read_frame_header(int* fin, uint32_t* maskkey,
         int i;
         length = 0;
         for (i = 0; i < extlensize; i++) {
-            length = length << 8 | extlen[i];
+            length = length << 8 | (uint8_t)extlen[i];
         }
 
         log(3, "extended length=%llu", (long long unsigned int)length);
