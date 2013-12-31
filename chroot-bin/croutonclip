@@ -122,6 +122,11 @@ waitwebsocket() {
     echo "Timeout waiting for extension to connect." >&2
 }
 
+# Only let one instance *really* run at a time
+mkdir -m 777 -p /tmp/crouton-lock
+exec 3>/tmp/crouton-lock/clip
+flock 3
+
 croutonwebsocket &
 addtrap "kill $! 2>/dev/null"
 

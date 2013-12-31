@@ -20,7 +20,7 @@ yc='0.05'
 
 #
 USAGE="${0##*/} [-x] [-r] [-a #.#] [-b #.#] [-c #.#] [-d #.#]
-Runs the mousewheel daemon for the current display.
+Runs the mousewheel daemon.
 Options:
     -r Reverse the direction of scrolling.
     -x Disable horizontal scrolling.
@@ -41,14 +41,21 @@ while getopts 'a:b:c:d:rx' opt; do
         \?) echo "$USAGE" 1>&2; exit 1;;
     esac
 done
-if [ -z "$DISPLAY" -o $# -ge "$OPTIND" ]; then
+if [ $# -ge "$OPTIND" ]; then
     echo "$USAGE" 1>&2
     exit 1;
 fi
 
-# Get this display's window ID (hex)
-dest="Xephyr on ${DISPLAY:%.*}.0"
-dest="`host-x11 croutonwmtools list n | mawk "/^$dest/"' {print $NF}'`"
+# Operate on the Chromium OS X11 server
+eval "`host-x11`"
+
+# Only let one instance *really* run at a time
+mkdir -m 777 -p /tmp/crouton-lock
+exec 3>/tmp/crouton-lock/wheel
+flock 3
+
+# Get the aura root window number (hex)
+aura="`croutonwmtools list n | mawk '/aura_root/ {print $NF}'`"
 
 # Monitor xinput2 events, reacting only to scroll events (axes 2 and 3).
 # Accumulate the x and y scrolls, but reduce the acceleration so it doesn't go
@@ -59,9 +66,9 @@ dest="`host-x11 croutonwmtools list n | mawk "/^$dest/"' {print $NF}'`"
 # per-event basis, both to improve latency and performance as well as handle the
 # case where this script outlives the chroot.
 {
-    host-x11 croutonxi2event <&- &
+    croutonxi2event <&- &
     xi="$!"
-    host-x11 xev -root <&- &
+    xev -root <&- &
     trap "kill $! $xi 2>&- || true" INT TERM HUP 0
     wait
 } <&- | unbuffered_awk '
@@ -71,13 +78,13 @@ dest="`host-x11 croutonwmtools list n | mawk "/^$dest/"' {print $NF}'`"
     }
 
     m {
-        if ($4 == "'"0x${dest#0x}"',") {
+        if ($4 == "'"0x${aura#0x}"',") {
             if (m == "MapNotify") {
-                w = 0
+                w = 1
                 x = 0
                 y = 0
             } else {
-                w = 1
+                w = 0
             }
         }
         m = ""

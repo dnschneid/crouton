@@ -8,13 +8,6 @@
 # xserverrc if it isn't already there.  By putting this in /usr/local/bin, PATH
 # will prefer it and scripts that call xinit will automagically work.
 
-# Launch the clipboard synchronization daemon
-croutonclip='/usr/local/bin/croutonclip'
-
-if [ -x "$croutonclip" ] && ! pgrep -x croutonclip >/dev/null; then
-    env -i CROUTON="CORE" "$croutonclip" <&- &
-fi
-
 xserverrc='/etc/X11/xinit/xserverrc'
 dash='--'
 for arg in "$@"; do
