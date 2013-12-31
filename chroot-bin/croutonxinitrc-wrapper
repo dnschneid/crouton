@@ -68,7 +68,7 @@ xmethod="${xmethod##*-}"
 XMETHOD="$xmethod" xbindkeys -fg /etc/crouton/xbindkeysrc.scm
 
 # Launch xbindkeys for the Chromium OS X server if it isn't running
-mkdir -m 777 -p /tmp/crouton-lock
+mkdir -m 775 -p /tmp/crouton-lock
 {
     # Only let one instance *really* run at a time
     flock 3
