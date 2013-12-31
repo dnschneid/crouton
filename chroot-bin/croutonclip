@@ -146,7 +146,7 @@ if [ "$xmethod" = 'xephyr' ]; then
     done 2>&-
 
     # Get the aura root window number (hex)
-    aura="`host-x11 xwininfo -root -children | awk '/aura_root/ {print $1}'`"
+    aura="`host-x11 croutonwmtools list n | awk '/^aura_root/ {print $NF}'`"
 
     # Detect window change using MapNotify events that do not have the
     # override-redirect flag ("override NO" in xev events)

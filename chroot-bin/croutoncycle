@@ -33,9 +33,7 @@ done
 tty="`cat '/sys/class/tty/tty0/active'`"
 if [ "$tty" = 'tty1' ]; then
     # Either in Chromium OS or an Aura chroot. Check the active window.
-    # Active window is the first entry in xwininfo
-    curdisp="`host-x11 xwininfo -root -children \
-                | awk 'ok { print $4; exit } /children:/ { ok=1 }'`"
+    curdisp="`host-x11 croutonwmtools list 1n | awk '{ print $3; exit }'`"
     if [ "${curdisp#:}" != "$curdisp" ]; then
         curdisp="${curdisp%%.*}"
         curdisp="${curdisp#:}"
@@ -124,12 +122,11 @@ else
     fi
 fi
 
-# Map the right window before chvting
+# Raise the right window before chvting
 if [ "${dest#[0-9]}" = "$dest" ]; then
-    id="`host-x11 xwininfo -int -root -children \
-            | awk "/$dest/"' {print $1; exit}'`"
+    id="`host-x11 croutonwmtools list i | awk "/^$dest/"' {print $NF; exit}'`"
     if [ -n "$id" ]; then
-        host-x11 croutonmapraised "$id"
+        host-x11 croutonwmtools raise "$id"
     fi
     dest=1
 fi

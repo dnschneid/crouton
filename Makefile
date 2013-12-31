@@ -20,7 +20,7 @@ VERSION = 1
 TARPARAMS ?= -j
 
 croutoncursor_LIBS = -lX11 -lXfixes -lXrender
-croutonmapraised_LIBS = -lX11
+croutonwmtools_LIBS = -lX11
 croutonxi2event_LIBS = -lX11 -lXi
 
 ifeq ($(wildcard .git/HEAD),)
