@@ -11,7 +11,7 @@
 ln -sfT "/etc/crouton/xserverrc-$XMETHOD" '/etc/X11/xinit/xserverrc'
 
 # Install utility for croutoncycle
-compile mapraised '-lX11' libx11-dev
+compile wmtools '-lX11' libx11-dev
 
 # Install utilities and links for powerd-poking daemon
 compile xi2event '-lX11 -lXi' libx11-dev libxi-dev

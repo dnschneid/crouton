@@ -50,7 +50,7 @@ fi
 eval "`/usr/local/bin/host-x11`"
 
 # Get the aura root window number (hex)
-aura="`xwininfo -root -children | awk '/aura_root/ {print $1}'`"
+aura="`croutonwmtools list n | awk '/aura_root/ {print $NF}'`"
 
 # Monitor xinput2 events, reacting only to scroll events (axes 2 and 3).
 # Accumulate the x and y scrolls, but reduce the acceleration so it doesn't go
