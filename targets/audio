@@ -207,6 +207,56 @@ build_cras() {
 
         cd cras/src
 
+        install --minimal --asdeps patch
+
+        # Fix delay function in CRAS ALSA plugin, see http://crbug.com/331637
+        # FIXME: Once this is applied upstream, we need to apply this only
+        # when necessary
+        patch -p3 <<END
+diff --git a/cras/src/alsa_plugin/pcm_cras.c b/cras/src/alsa_plugin/pcm_cras.c
+index 09ca39d..33c496b 100644
+--- a/cras/src/alsa_plugin/pcm_cras.c
++++ b/cras/src/alsa_plugin/pcm_cras.c
+@@ -321,17 +321,31 @@ static int snd_pcm_cras_delay(snd_pcm_ioplug_t *io, snd_pcm_sframes_t *delayp)
+ 	 * the difference between appl_ptr and the old hw_ptr.
+ 	 */
+ 	if (io->stream == SND_PCM_STREAM_PLAYBACK) {
+-		cras_client_calc_playback_latency(&pcm_cras->playback_sample_time,
+-						  &latency);
++		/* Do not compute latency if playback_sample_time is not set */
++		if (pcm_cras->playback_sample_time.tv_sec == 0 &&
++			    pcm_cras->playback_sample_time.tv_nsec == 0) {
++			latency.tv_sec = latency.tv_nsec = 0;
++		} else {
++			cras_client_calc_playback_latency(&pcm_cras->playback_sample_time,
++					&latency);
++		}
++
+ 		*delayp = limit + io->appl_ptr - pcm_cras->playback_sample_index +
+ 				latency.tv_sec * io->rate +
+-				latency.tv_nsec / (1000000000L / io->rate);
++				latency.tv_nsec / (1000000000L / (long)io->rate);
+ 	} else {
+-		cras_client_calc_capture_latency(&pcm_cras->capture_sample_time,
+-						 &latency);
++		/* Do not compute latency if capture_sample_time is not set */
++		if (pcm_cras->capture_sample_time.tv_sec == 0 &&
++			    pcm_cras->capture_sample_time.tv_nsec == 0) {
++			latency.tv_sec = latency.tv_nsec = 0;
++		} else {
++			cras_client_calc_capture_latency(&pcm_cras->capture_sample_time,
++					&latency);
++		}
++
+ 		*delayp = limit + pcm_cras->capture_sample_index - io->appl_ptr +
+ 				latency.tv_sec * io->rate +
+-				latency.tv_nsec / (1000000000L / io->rate);
++				latency.tv_nsec / (1000000000L / (long)io->rate);
+ 	}
+ 
+ 	/* Both appl and hw pointers wrap at the pcm boundary. */
+END
+
         # CRAS needs to be patched so that x86 client can access x86_64 server
         if [ "`uname -m`" = "x86_64" ] &&
            [ "$ARCH" = "i386" -o "$cras_arch" = "i386" ]; then
