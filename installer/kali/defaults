@@ -15,7 +15,7 @@ if [ -z "$MIRROR" ]; then
 fi
 
 if [ -z "$MIRROR2" ]; then
-    MIRROR2="http://security.kali.org/kali-security"
+    MIRROR2="${CROUTON_MIRROR2_kali:-http://security.kali.org/kali-security}"
 fi
 
 BOOTSTRAP_RELEASE="stable"

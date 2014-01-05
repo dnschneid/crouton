@@ -14,3 +14,7 @@ if [ -z "$MIRROR" ]; then
     MIRROR="${CROUTON_MIRROR_debian:-http://ftp.debian.org/debian/}"
 fi
 
+if [ -z "$MIRROR2" ]; then
+    MIRROR2="${CROUTON_MIRROR2_debian:-http://security.debian.org/}"
+fi
+

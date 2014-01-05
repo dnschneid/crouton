@@ -58,6 +58,7 @@ EOF
     # Only update sources.list if MIRROR is specified
     if [ -n "$MIRROR" -a "$MIRROR" != 'unspecified' ]; then
         if [ "$DISTRO" = 'ubuntu' ]; then
+            # Ubuntu has its own categories of packages
             cat > /etc/apt/sources.list <<EOF
 deb $MIRROR $RELEASE main restricted universe multiverse
 deb-src $MIRROR $RELEASE main restricted universe multiverse
@@ -66,22 +67,24 @@ deb-src $MIRROR $RELEASE-updates main restricted universe multiverse
 deb $MIRROR $RELEASE-security main restricted universe multiverse
 deb-src $MIRROR $RELEASE-security main restricted universe multiverse
 EOF
-        elif [ "$DISTRO" = 'kali' ]; then
+        else
+            # Not all Debian distros have all sets of repos
             cat > /etc/apt/sources.list <<EOF
 deb $MIRROR $RELEASE main non-free contrib
-deb $MIRROR2 $RELEASE main non-free contrib
-deb-src $MIRROR $RELEASE main contrib
+deb-src $MIRROR $RELEASE main non-free contrib
 EOF
-
-        else
-            cat > /etc/apt/sources.list <<EOF
-deb $MIRROR $RELEASE main contrib
-deb-src $MIRROR $RELEASE main contrib
-EOF
+            # Only stable and testing have an updates channel
             if release -lt jessie; then
                 cat >> /etc/apt/sources.list <<EOF
-deb $MIRROR $RELEASE-updates main contrib
-deb-src $MIRROR $RELEASE-updates main contrib
+deb $MIRROR $RELEASE-updates main non-free contrib
+deb-src $MIRROR $RELEASE-updates main non-free contrib
+EOF
+            fi
+            # Some derivatives also have security updates
+            if release -lt jessie -eq kali; then
+                cat >> /etc/apt/sources.list <<EOF
+deb $MIRROR2 $RELEASE/updates main non-free contrib
+deb-src $MIRROR2 $RELEASE/updates main non-free contrib
 EOF
             fi
         fi
