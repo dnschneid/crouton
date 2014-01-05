@@ -16,11 +16,13 @@ TARGETSDIR="$SCRIPTDIR/targets"
 SRCDIR="$SCRIPTDIR/src"
 
 ARCH=''
+BOOTSTRAP_RELEASE=''
 DISTRO=''
 DOWNLOADONLY=''
 ENCRYPT=''
 KEYFILE=''
 MIRROR=''
+MIRROR2=''
 NAME=''
 PREFIX='/usr/local'
 PROXY='unspecified'
@@ -67,6 +69,7 @@ Options:
                 Can only be specified during chroot creation and forced updates
                 (-u -u). After installation, the mirror can be modified using
                 the distribution's recommended way.
+    -M MIRROR2  A secondary mirror, often used for security updates.
     -n NAME     Name of the chroot. Default is the release name.
     -p PREFIX   The root directory in which to install the bin and chroot
                 subdirectories and data. Default: $PREFIX
@@ -98,7 +101,7 @@ secure as the passphrases you assign to them."
 . "$SCRIPTDIR/installer/functions"
 
 # Process arguments
-while getopts 'a:def:k:m:n:p:P:r:s:t:T:uUV' f; do
+while getopts 'a:def:k:m:M:n:p:P:r:s:t:T:uUV' f; do
     case "$f" in
     a) ARCH="$OPTARG";;
     d) DOWNLOADONLY='y';;
@@ -106,6 +109,7 @@ while getopts 'a:def:k:m:n:p:P:r:s:t:T:uUV' f; do
     f) TARBALL="$OPTARG";;
     k) KEYFILE="$OPTARG";;
     m) MIRROR="$OPTARG";;
+    M) MIRROR2="$OPTARG";;
     n) NAME="$OPTARG";;
     p) PREFIX="`readlink -f "$OPTARG"`";;
     P) PROXY="$OPTARG";;
@@ -530,11 +534,12 @@ echo 'Preparing chroot environment...' 1>&2
 VAREXPAND="s/releases=.*\$/releases=\"\
 `sed 's/$/\\\\/' "$DISTRODIR/releases"`
 \"/;"
-VAREXPAND="${VAREXPAND}s #ARCH $ARCH ;s #MIRROR $MIRROR ;"
-VAREXPAND="${VAREXPAND}s #DISTRO $DISTRO ;s #RELEASE $RELEASE ;"
-VAREXPAND="${VAREXPAND}s #PROXY $PROXY ;s #VERSION ${VERSION:-"git"} ;"
-VAREXPAND="${VAREXPAND}s #USERNAME $CROUTON_USERNAME ;"
-VAREXPAND="${VAREXPAND}s/#SETOPTIONS/$SETOPTIONS/;"
+VAREXPAND="${VAREXPAND}s #ARCH# $ARCH ;s #DISTRO# $DISTRO ;"
+VAREXPAND="${VAREXPAND}s #MIRROR# $MIRROR ;s #MIRROR2# $MIRROR2 ;"
+VAREXPAND="${VAREXPAND}s #RELEASE# $RELEASE ;s #PROXY# $PROXY ;"
+VAREXPAND="${VAREXPAND}s #VERSION# ${VERSION:-"git"} ;"
+VAREXPAND="${VAREXPAND}s #USERNAME# $CROUTON_USERNAME ;"
+VAREXPAND="${VAREXPAND}s/#SETOPTIONS#/$SETOPTIONS/;"
 installscript "$INSTALLERDIR/prepare.sh" "$CHROOT/prepare.sh" "$VAREXPAND"
 # Append the distro-specific prepare.sh
 cat "$DISTRODIR/prepare" >> "$CHROOT/prepare.sh"
