@@ -146,7 +146,7 @@ if [ "$xmethod" = 'xephyr' ]; then
     done 2>&-
 
     # Get the aura root window number (hex)
-    aura="`host-x11 xwininfo -root -children | mawk '/aura_root/ {print $1}'`"
+    aura="`host-x11 xwininfo -root -children | awk '/aura_root/ {print $1}'`"
 
     # Detect window change using MapNotify events that do not have the
     # override-redirect flag ("override NO" in xev events)
@@ -157,18 +157,18 @@ if [ "$xmethod" = 'xephyr' ]; then
         if ! wait $cpid; then
             echo "croutonclip: xev error ($?)"
         fi
-    } | mawk -W interactive '
+    } | unbuffered_awk '
         BEGIN {
             # Detect current window in case we missed the first MapNotify.
             while (("host-x11 xdpyinfo" | getline) > 0) {
                 if (match($0, /^focus:.*window 0x[0-9a-f]*/)) {
-                    print $3
+                    output($3)
                 }
             }
         }
         m {
             if ($6 == "NO") {
-                print $4 # Window id
+                output($4) # Window id
             }
             m = 0
         }

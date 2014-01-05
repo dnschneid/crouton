@@ -3,6 +3,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+. "`dirname "$0"`/../installer/functions"
+
 # Default button numbers
 u=4
 d=5
@@ -48,7 +50,7 @@ fi
 eval "`/usr/local/bin/host-x11`"
 
 # Get the aura root window number (hex)
-aura="`xwininfo -root -children | mawk '/aura_root/ {print $1}'`"
+aura="`xwininfo -root -children | awk '/aura_root/ {print $1}'`"
 
 # Monitor xinput2 events, reacting only to scroll events (axes 2 and 3).
 # Accumulate the x and y scrolls, but reduce the acceleration so it doesn't go
@@ -64,11 +66,10 @@ aura="`xwininfo -root -children | mawk '/aura_root/ {print $1}'`"
     xev -root <&- &
     trap "kill $! $xi 2>&- || true" INT TERM HUP 0
     wait
-} <&- | mawk -W interactive '
+} <&- | unbuffered_awk '
     # Test if x is a non-zero real number (i.e. not nan, inf, "", or 0)
-    # (x+0 != x+1) tests if the number is not nan or inf.
     function isnonzero(x) {
-        return (x != "") && (x != 0) && (x+0 != x+1)
+        return (x != "") && (x != 0) && (x != "nan") && (x != "inf")
     }
 
     m {
@@ -107,11 +108,11 @@ aura="`xwininfo -root -children | mawk '/aura_root/ {print $1}'`"
                 x -= tp ? log(-dx) * '"$xs"' + '"$xc"' : 1
             }
             while (x >= 1) {
-                print "mouseclick '"$r"'"
+                output("mouseclick '"$r"'")
                 x -= 1
             }
             while (x <= -1) {
-                print "mouseclick '"$l"'"
+                output("mouseclick '"$l"'")
                 x += 1
             }
         }
@@ -124,11 +125,11 @@ aura="`xwininfo -root -children | mawk '/aura_root/ {print $1}'`"
                 y -= tp ? log(-dy) * '"$ys"' + '"$yc"' : 1
             }
             while (y >= 1) {
-                print "mouseclick '"$d"'"
+                output("mouseclick '"$d"'")
                 y -= 1
             }
             while (y <= -1) {
-                print "mouseclick '"$u"'"
+                output("mouseclick '"$u"'")
                 y += 1
             }
         }

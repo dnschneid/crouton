@@ -110,3 +110,36 @@ release() {
 disablehungtask() {
     echo 0 > /proc/sys/kernel/hung_task_panic
 }
+
+# Run an awk program, without buffering its output.
+# unbuffered_awk 'program' [argument ...]
+# In the awk code, all "print" calls must be replaced by "output"
+#
+# - Detects whether to run mawk or gawk (mawk is preferred as it is faster),
+# - Prepends the definition of the "output" function to the awk program
+# - Run the modified awk program.
+# mawk needs '-W interactive' to flush the output properly (fflush does not
+# work as documented, but apparently this behaviour is intentional, see
+# http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=593504).
+# Furthermore, fflush is not POSIX so we cannot use any other awk flavor.
+unbuffered_awk() {
+    local cmd
+    if hash mawk 2>/dev/null; then
+        cmd="mawk -W interactive"
+    elif hash gawk 2>/dev/null; then
+        cmd="gawk"
+    else
+        echo "Cannot find mawk or gawk." 1>&2
+        return 1
+    fi
+
+    local program="$1"
+    shift
+
+    $cmd '
+    function output(s) {
+        print s
+        fflush()
+    }
+    '"$program" "$@"
+}
