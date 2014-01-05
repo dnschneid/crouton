@@ -70,6 +70,7 @@ Options:
                 (-u -u). After installation, the mirror can be modified using
                 the distribution's recommended way.
     -M MIRROR2  A secondary mirror, often used for security updates.
+                Can only be specified alongside -m.
     -n NAME     Name of the chroot. Default is the release name.
     -p PREFIX   The root directory in which to install the bin and chroot
                 subdirectories and data. Default: $PREFIX
@@ -86,9 +87,6 @@ Options:
                 You can use this to install new targets or update old ones.
                 Passing this parameter twice will force an update even if the
                 specified release does not match the one already installed.
-    -U          Same as -u, but does not reinstall existing targets.
-                Targets specified with -t will be installed, but not recorded
-                for future updates.
     -V          Prints the version of the installer to stdout.
 
 Be aware that dev mode is inherently insecure, even if you have a strong
@@ -96,6 +94,10 @@ password in your chroot! Anyone can simply switch VTs and gain root access
 unless you've permanently assigned a Chromium OS root password. Encrypted
 chroots require you to set a Chromium OS root password, but are still only as
 secure as the passphrases you assign to them."
+# "Undocumented" flags:
+#   -U          Same as -u, but does not reinstall existing targets.
+#               Targets specified with -t will be installed, but not recorded
+#               for future updates.
 
 # Common functions
 . "$SCRIPTDIR/installer/functions"
@@ -172,9 +174,9 @@ if [ -n "$UPDATE" -a -n "$ARCH" ]; then
     error 2 'Architecture cannot be specified when updating.'
 fi
 
-# MIRROR must not be specified on update
+# MIRROR and MIRROR2 must not be specified on update
 if [ "$UPDATE" = 1 ]; then
-    if [ -z "$MIRROR" ]; then
+    if [ -z "$MIRROR$MIRROR2" ]; then
         # Makes sure MIRROR does not get overriden by distribution default
         MIRROR='unspecified'
     else
