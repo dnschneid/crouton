@@ -3,14 +3,15 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-ARCH='#ARCH'
-MIRROR='#MIRROR'
-DISTRO='#DISTRO'
-RELEASE='#RELEASE'
-PROXY='#PROXY'
-VERSION='#VERSION'
-USERNAME='#USERNAME'
-SETOPTIONS='#SETOPTIONS'
+ARCH='#ARCH#'
+MIRROR='#MIRROR#'
+MIRROR2='#MIRROR2#'
+DISTRO='#DISTRO#'
+RELEASE='#RELEASE#'
+PROXY='#PROXY#'
+VERSION='#VERSION#'
+USERNAME='#USERNAME#'
+SETOPTIONS='#SETOPTIONS#'
 
 # Additional set options: -x or -v can be added for debugging (-e is always on)
 if [ -n "$SETOPTIONS" ]; then

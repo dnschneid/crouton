@@ -184,7 +184,7 @@ build_cras() {
                             'pool/main/s/sbc' '1\.0-.*' $cras_arch
         install_mirror_package --asdeps 'libsbc-dev' \
                             'pool/main/s/sbc' '1\.0-.*' $cras_arch
-    elif release -le wheezy; then
+    elif release -le wheezy -eq kali; then
         # wheezy provides a backport for libsbc1
         install_mirror_package 'libsbc1' \
                             'pool/main/s/sbc' '.*~bpo7\+.*' $cras_arch

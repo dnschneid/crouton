@@ -1,0 +1,1 @@
+../ubuntu/getrelease.sh
