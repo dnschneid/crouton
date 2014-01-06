@@ -4,7 +4,7 @@
 # found in the LICENSE file.
 REQUIRES=''
 DESCRIPTION='Performs core system configuration. Most users would want this.'
-CHROOTBIN='brightness croutonversion host-dbus host-x11'
+CHROOTBIN='croutonversion host-dbus host-x11'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
@@ -12,6 +12,7 @@ echo 'Preparing environment...' 1>&2
 if [ ! "$VERSION" = '#VERSION' ]; then
     sed -e "s ^VERSION=.*\$ VERSION='$VERSION' ;" \
         -e "s ^RELEASE=.*\$ RELEASE='$RELEASE' ;" \
+        -e "s ^ARCH=.*\$ ARCH='$ARCH' ;" \
         -i '/usr/local/bin/croutonversion'
 fi
 
@@ -54,8 +55,10 @@ EOF
         fi
     fi
 
-    if [ "$DISTRO" = 'ubuntu' ]; then
-        cat > /etc/apt/sources.list <<EOF
+    # Only update sources.list if MIRROR is specified
+    if [ -n "$MIRROR" -a "$MIRROR" != 'unspecified' ]; then
+        if [ "$DISTRO" = 'ubuntu' ]; then
+            cat > /etc/apt/sources.list <<EOF
 deb $MIRROR $RELEASE main restricted universe multiverse
 deb-src $MIRROR $RELEASE main restricted universe multiverse
 deb $MIRROR $RELEASE-updates main restricted universe multiverse
@@ -63,16 +66,17 @@ deb-src $MIRROR $RELEASE-updates main restricted universe multiverse
 deb $MIRROR $RELEASE-security main restricted universe multiverse
 deb-src $MIRROR $RELEASE-security main restricted universe multiverse
 EOF
-    else
-        cat > /etc/apt/sources.list <<EOF
+        else
+            cat > /etc/apt/sources.list <<EOF
 deb $MIRROR $RELEASE main contrib
 deb-src $MIRROR $RELEASE main contrib
 EOF
-        if [ "$RELEASE" != 'jessie' -a "$RELEASE" != 'sid' ]; then
-            cat >> /etc/apt/sources.list <<EOF
+            if release -lt jessie; then
+                cat >> /etc/apt/sources.list <<EOF
 deb $MIRROR $RELEASE-updates main contrib
 deb-src $MIRROR $RELEASE-updates main contrib
 EOF
+            fi
         fi
     fi
 
@@ -86,7 +90,7 @@ fi
 fixkeyboardmode
 
 # Install critical packages
-install --minimal sudo
+install --minimal sudo wget ca-certificates
 
 # Generate and set default locale
 if [ ! -f '/etc/default/locale' ] && hash locale-gen 2>/dev/null; then

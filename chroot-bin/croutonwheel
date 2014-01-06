@@ -3,6 +3,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+. "`dirname "$0"`/../installer/functions"
+
 # Default button numbers
 u=4
 d=5
@@ -49,10 +51,8 @@ fi
 # Operate on the Chromium OS X11 server
 #eval "`/usr/local/bin/host-x11`"
 
-# PATCH: disabled for cmt on pixel
-#
 # Get the aura root window number (hex)
-#aura="`xwininfo -root -children | mawk '/aura_root/ {print $1}'`"
+#aura="`xwininfo -root -children | awk '/aura_root/ {print $1}'`"
 
 # Monitor xinput2 events, reacting only to scroll events (axes 2 and 3).
 # Accumulate the x and y scrolls, but reduce the acceleration so it doesn't go
@@ -68,11 +68,10 @@ fi
     xev -root <&- &
     trap "kill $! $xi 2>&- || true" INT TERM HUP 0
     wait
-} <&- | mawk -W interactive '
-    # Test if x is a non-zero real number (i.e. not nan, inf, or 0)
-    # (x+0 != x+1) tests if the number is not nan or inf.
+} <&- | unbuffered_awk '
+    # Test if x is a non-zero real number (i.e. not nan, inf, "", or 0)
     function isnonzero(x) {
-        return (x+0 != x+1) && (x != 0)
+        return (x != "") && (x != 0) && (x != "nan") && (x != "inf")
     }
 
     m {
@@ -92,8 +91,8 @@ fi
     }
 
     !w && /^EVENT type 17/ {
-        # Valuators start at $10
-        if (isnonzero($19) || isnonzero($22)) {
+        # Valuators start at $10; >=10 valuators implies a trackpad
+        if ($19 != "") {
             dx = $14
             dy = $15
             tp = 1
@@ -111,11 +110,11 @@ fi
                 x -= tp ? log(-dx) * '"$xs"' + '"$xc"' : 1
             }
             while (x >= 1) {
-                print "mouseclick '"$r"'"
+                output("mouseclick '"$r"'")
                 x -= 1
             }
             while (x <= -1) {
-                print "mouseclick '"$l"'"
+                output("mouseclick '"$l"'")
                 x += 1
             }
         }
@@ -128,11 +127,11 @@ fi
                 y -= tp ? log(-dy) * '"$ys"' + '"$yc"' : 1
             }
             while (y >= 1) {
-                print "mouseclick '"$d"'"
+                output("mouseclick '"$d"'")
                 y -= 1
             }
             while (y <= -1) {
-                print "mouseclick '"$u"'"
+                output("mouseclick '"$u"'")
                 y += 1
             }
         }

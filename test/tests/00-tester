@@ -1,0 +1,29 @@
+#!/bin/sh -e
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Tests some of the more complex testing functions, and records the system info
+
+# Save the basic system info to the log
+log "$SYSTEM"
+
+# Make sure test(), exitswithin() and runslongerthan(), passes(), fails()
+# work as expected
+test 1 -eq 1
+passes true
+fails false
+exitswithin 0 1 true
+exitswithin 1 1 false
+runslongerthan 1 sleep 2
+
+log 'BEGIN INTENTIONALLY FAILING TESTS'
+! test 1 -eq 0
+! passes false
+! fails true
+! exitswithin 0 1 false
+! exitswithin 1 1 true
+! exitswithin 0 1 sleep 2
+! runslongerthan 1 false
+! runslongerthan 1 true
+log 'END INTENTIONALLY FAILING TESTS'

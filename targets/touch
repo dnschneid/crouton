@@ -7,17 +7,9 @@ DESCRIPTION='Touchscreen and limited generic gesture support.'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
-if [ "$RELEASE" = 'precise' -o "$RELEASE" = 'quantal' ]; then
+if release -lt raring; then
     # As of 2013-01-30, pre-Raring touchegg is useless. Download it manually.
-    apt-get -y install wget
-    tvers='1.1.1-0ubuntu1'
-    url="$MIRROR/pool/universe/t/touchegg/touchegg_${tvers}_$ARCH.deb"
-    deb='/tmp/touchegg.deb'
-    rm -f "$deb"
-    wget --no-check-certificate "$url" -O "$deb"
-	# Install the package and delete it.
-    install_pkg --minimal "$deb"
-    rm -f "$deb"
+    install_mirror_package 'touchegg' 'pool/universe/t/touchegg'
 else
     install --minimal touchegg
 fi

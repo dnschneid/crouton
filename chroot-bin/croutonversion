@@ -5,6 +5,7 @@
 
 VERSION='unknown'
 RELEASE='unknown'
+ARCH='unknown'
 
 APPLICATION="${0##*/}"
 CHANGES=''
@@ -65,6 +66,11 @@ fi
 if [ -z "$CHANGES$DOWNLOAD$UPDATES" ]; then
     echo "crouton: version $VERSION"
     echo "release: $RELEASE"
+    echo "architecture: $ARCH"
+    targetfile='/etc/crouton/targets'
+    if [ -r "$targetfile" ]; then
+        echo "targets: `sed 's/^,//' "$targetfile"`"
+    fi
     hostrel='/var/host/lsb-release'
     if [ -r "$hostrel" ]; then
         host="`awk -F= '/_RELEASE_DESCRIPTION=/{print $2}' "$hostrel"`"
@@ -80,7 +86,7 @@ latest=''
 tmpdir=''
 if [ -n "$UPDATES$DOWNLOAD" ]; then
     tmpdir="`mktemp -d --tmpdir=/tmp crouton.XXX`"
-    trap "rm -rf '$tmpdir'" INT HUP 0
+    trap "rm -rf --one-file-system '$tmpdir'" INT HUP 0
     echo "Retreiving latest version of crouton" 1>&2
     wget -q "$CROUTONURL" -O "$tmpdir/crouton"
     latest="`awk -F"'" '/^VERSION=/{print $2;exit}' "$tmpdir/crouton"`"

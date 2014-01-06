@@ -6,8 +6,6 @@
  * motion/clicks, etc.
  */
 
-/* gcc xi2event.c -o croutonxi2event -lXi -lX11 */
-
 #include <X11/Xlib.h>
 #include <X11/extensions/XInput.h>
 #include <X11/extensions/XInput2.h>

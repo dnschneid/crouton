@@ -3,10 +3,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+set -e
+
 APPLICATION="${0##*/}"
 BACKUP=''
-BINDIR="`dirname "$0"`"
-CHROOTS="`readlink -f "\`dirname "$0"\`/../chroots"`"
+BINDIR="`dirname "\`readlink -f "$0"\`"`"
+CHROOTS="`readlink -f "$BINDIR/../chroots"`"
 DELETE=''
 ENCRYPT=''
 KEYFILE=''
@@ -114,7 +116,16 @@ fi
 # If we're restoring and specified a tarball and no name, detect the name.
 if [ -n "$RESTORE" -a -n "$TARBALL" -a $# = 0 ]; then
     echo 'Detecting chroot name...' 1>&2
-    NAME="`tar -tf "$TARBALL" 2>/dev/null | head -n 1`"
+    label="`tar --test-label -f "$TARBALL" 2>/dev/null`"
+    if [ -n "$label" ]; then
+        if [ "${label#crouton:backup}" = "$label" ]; then
+            error 2 "$TARBALL doesn't appear to be a valid crouton backup."
+        fi
+        NAME="${label#*-}"
+    else
+        # Old backups just use the first folder name
+        NAME="`tar -tf "$TARBALL" 2>/dev/null | head -n 1`"
+    fi
     if [ -z "$NAME" ]; then
         error 2 "$TARBALL doesn't appear to be a valid tarball."
     fi
@@ -134,8 +145,11 @@ if [ -n "$BACKUP$RESTORE" -a -z "$TARBALL" -a "$PWD" = '/' \
     TARBALL="/home/chronos/user/Downloads/"
 fi
 
+# Avoid kernel panics due to slow I/O
+disablehungtask
+
 # Make sure we always exit with echo on the tty.
-addtrap "stty echo 2>/dev/null || true"
+addtrap "stty echo 2>/dev/null"
 
 # Returns the mountpoint a path is on. The path doesn't need to exist.
 # $1: the path to check
@@ -147,22 +161,35 @@ getmountpoint() {
     done
 }
 
-# Prints out a fancy spinner that updates every time a line is fed in.
-# $1: number of lines between each update of the spinner (default: 1)
+# Prints out a fancy spinner that updates every time a line is fed in, unless
+# the output is not to a tty, in which case it just prints a new line.
+# $1: number of lines between each update of the spinner
+# $2...: Command to be run
 # Erases the line each time, so it will always be at position 0.
 # Either expect this and put text later in the line, or give this its own line.
 spinner() {
-    mawk -Winteractive '
-        BEGIN {
-            printf "\r"
-        }
-        {
-            y = (y+1) % '"${1:-1}"'
-            if (y == 0) {
-                x = (x+1) % 4
-                printf substr("\|/-", x+1, 1) "\r"
+    local spin="$1"
+    shift
+    if [ -t 2 ]; then
+        # Keep track of the exit status of the piped command
+        ret="`(("$@" || echo "$?" 1>&3) | mawk -Winteractive '
+            BEGIN {
+                printf "\r"
             }
-        }' 1>&2
+            {
+                y = (y+1) % '"$spin"'
+                if (y == 0) {
+                    x = (x+1) % 4
+                    printf substr("\|/-", x+1, 1) "\r"
+                }
+            }' 1>&2) 3>&1`"
+        if [ -n "$ret" ]; then
+            return "$ret"
+        fi
+    else
+        echo 1>&2
+        "$@" 1>/dev/null
+    fi
 }
 
 # Process each chroot
@@ -192,14 +219,19 @@ for NAME in "$@"; do
         # Confirm deletion
         if [ "${YES#[Aa]}" = "$YES" ]; then
             echo -n "Delete $CHROOT? [a/y/N] " 1>&2
-            read YES
+            if [ -n "$CROUTON_EDIT_RESPONSE" ]; then
+                YES="$CROUTON_EDIT_RESPONSE"
+                echo "$YES" 1>&2
+            else
+                read YES
+            fi
             if [ "${YES#[AaYy]}" = "$YES" ]; then
                  error 2 "Aborting deletion of $CHROOT"
             fi
         fi
         # Delete the chroot
         echo -n "  Deleting $CHROOT..." 1>&2
-        rm -rvf --one-file-system "$CHROOT" | spinner 1000
+        spinner 1000 rm -rvf --one-file-system "$CHROOT"
         echo "Finished deleting $CHROOT" 1>&2
         continue
     fi
@@ -207,16 +239,18 @@ for NAME in "$@"; do
     # Backup the chroot
     if [ -n "$BACKUP" ]; then
         dest="$TARBALL"
+        date="`date '+%Y%m%d-%H%M'`"
         if [ -z "$dest" -o -d "$TARBALL" ]; then
-            dest="$TARBALL$NAME-`date '+%Y%m%d-%H%M'`.tar"
+            dest="$TARBALL$NAME-$date.tar"
             # Only compress if it's not encrypted (it'd be a waste of time)
             if [ ! -f "$CHROOT/.ecryptfs" ]; then
                 dest="$dest.gz"
             fi
         fi
         echo -n "  Backing up $CHROOT to $dest..." 1>&2
-        tar --checkpoint=100 --checkpoint-action=exec=echo --one-file-system \
-            -caf "$dest" -C "$CHROOTS" "$NAME" | spinner
+        spinner 1 tar --checkpoint=100 --checkpoint-action=exec=echo \
+            --one-file-system -V "crouton:backup.${date%-*}${date#*-}-$NAME" \
+            -caf "$dest" -C "$CHROOTS" "$NAME"
         echo "Finished backing up $CHROOT to $dest" 1>&2
     fi
 
@@ -233,7 +267,7 @@ for NAME in "$@"; do
                     continue
                 fi
                 # Confirm it's a tarball
-                if ! tar --test-label -f "$file" 2>/dev/null; then
+                if ! tar --test-label -f "$file" >/dev/null 2>&1; then
                     continue
                 fi
                 # Since * alphabetizes, always keep the last one
@@ -243,7 +277,7 @@ for NAME in "$@"; do
                 error 2 "Unable to find a tarball for $NAME. You can specify one with -f."
             fi
             echo "Found $src for restoring $NAME." 1>&2
-        elif ! tar --test-label -f "$src" 2>/dev/null; then
+        elif ! tar --test-label -f "$src" >/dev/null 2>&1; then
             error 2 "$src doesn't appear to be a valid tarball."
         fi
         if [ -n "$EXISTS" ]; then
@@ -254,13 +288,14 @@ for NAME in "$@"; do
         fi
         echo -n "  Restoring $src to $CHROOT..." 1>&2
         mkdir -p "$CHROOT"
-        tar --checkpoint=200 --checkpoint-action=exec=echo --one-file-system \
-            -xaf "$src" -C "$CHROOT" --strip-components=1 | spinner
+        spinner 1 tar --checkpoint=200 --checkpoint-action=exec=echo \
+            --one-file-system -xaf "$src" -C "$CHROOT" --strip-components=1
         echo "Finished restoring $src to $CHROOT" 1>&2
     fi
 
     # Update the keyfile
     if [ -n "$KEYFILE" ]; then
+        newkeyfile="$KEYFILE"
         # Find the current keyfile
         oldkeyfile="$CHROOT/.ecryptfs"
         if [ -f "$oldkeyfile" ]; then
@@ -269,36 +304,41 @@ for NAME in "$@"; do
                 oldkeyfile="$header"
             fi
         fi
-        if [ "$KEYFILE" = '-' ]; then
-            KEYFILE="$CHROOT/.ecryptfs"
+        if [ "$newkeyfile" = '-' ]; then
+            newkeyfile="$CHROOT/.ecryptfs"
         fi
-        if [ "${KEYFILE#/}" = "$KEYFILE" ]; then
-            KEYFILE="$PWD/$KEYFILE"
+        if [ "${newkeyfile#/}" = "$newkeyfile" ]; then
+            newkeyfile="$PWD/$newkeyfile"
         fi
-        if [ -d "$KEYFILE" -o ! "${KEYFILE%/}" = "$KEYFILE" ]; then
-            KEYFILE="${KEYFILE%/}/$NAME"
+        if [ -d "$newkeyfile" -o ! "${newkeyfile%/}" = "$newkeyfile" ]; then
+            newkeyfile="${newkeyfile%/}/$NAME"
         fi
         oldkeyfile="`readlink -m "$oldkeyfile"`"
-        keyfilecanon="`readlink -m "$KEYFILE"`"
+        keyfilecanon="`readlink -m "$newkeyfile"`"
         if [ ! -f "$oldkeyfile" ]; then
             # If there is no old keyfile, make sure we've requested encryption.
             if [ -z "$ENCRYPT" ]; then
                 error 1 "Old key file not found"
             fi
         elif [ ! "$oldkeyfile" = "$keyfilecanon" ]; then
-            # Write the new keyfile before removing the old.
-            if ! mkdir -p "`dirname "$KEYFILE"`"; then
-                error 1 "Unable to create directory for $KEYFILE"
+            chrootecryptfsfile="`readlink -m "$CHROOT/.ecryptfs"`"
+            # Don't clobber a file already there
+            if [ -e "$newkeyfile" -a "$newkeyfile" != "$chrootecryptfsfile" ]; then
+                error 1 "Encryption key file $newkeyfile already exists. Refusing to overwrite!"
             fi
-            echo "Moving key file from $oldkeyfile to $KEYFILE" 1>&2
-            (echo; tail -n+2 "$oldkeyfile") > "$KEYFILE"
+            # Write the new keyfile before removing the old.
+            if ! mkdir -p "`dirname "$newkeyfile"`"; then
+                error 1 "Unable to create directory for $newkeyfile"
+            fi
+            echo "Moving key file from $oldkeyfile to $newkeyfile" 1>&2
+            (echo; tail -n+2 "$oldkeyfile") > "$newkeyfile"
             # Remove old keyfile before writing .ecryptfs, as it may be the same
             rm -f "$oldkeyfile"
-            if [ ! "`readlink -m "$CHROOT/.ecryptfs"`" = "$KEYFILE" ]; then
-                echo "$KEYFILE" > "$CHROOT/.ecryptfs"
+            if [ "$chrootecryptfsfile" != "$newkeyfile" ]; then
+                echo "$newkeyfile" > "$CHROOT/.ecryptfs"
             fi
         elif [ -z "$ENCRYPT$MOVE" ]; then
-            echo "Keyfile is already located at $KEYFILE" 1>&2
+            echo "Keyfile is already located at $newkeyfile" 1>&2
         fi
     fi
 
@@ -342,7 +382,12 @@ for NAME in "$@"; do
             # Confirm long operation
             if [ "${YES#[Aa]}" = "$YES" ]; then
                 echo -n "Are you sure you want to continue? [a/y/N] " 1>&2
-                read YES
+                if [ -n "$CROUTON_EDIT_RESPONSE" ]; then
+                    YES="$CROUTON_EDIT_RESPONSE"
+                    echo "$YES" 1>&2
+                else
+                    read YES
+                fi
                 if [ "${YES#[AaYy]}" = "$YES" ]; then
                      error 2 "Aborting move of $CHROOT"
                 fi
@@ -351,10 +396,10 @@ for NAME in "$@"; do
                 error 1 "Unable to create directory for $target"
             fi
             echo -n "  Copying to $target..." 1>&2
-            cp -av --one-file-system "$CHROOT" "$target" | spinner 200
+            spinner 200 cp -av --one-file-system "$CHROOT" "$target"
             echo "Finished copying to $target" 1>&2
             echo -n "  Deleting old $CHROOT..." 1>&2
-            rm -rfv --one-file-system "$CHROOT" | spinner 1000
+            spinner 1000 rm -rfv --one-file-system "$CHROOT"
             echo "Finished deleting old $CHROOT" 1>&2
         else
             if ! mkdir -p "`dirname "$target"`"; then

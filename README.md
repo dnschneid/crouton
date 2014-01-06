@@ -75,8 +75,9 @@ crouton uses the concept of "targets" to decide what to install. While you will
 have apt-get in your chroot, some targets may need minor hacks to avoid issues
 when running in the chrooted environment. As such, if you expect to want
 something that is fulfilled by a target, install that target when you make the
-chroot and you'll have an easier time. You can see the list of available targets
-by running `sh -e ~/Downloads/crouton -t help`.
+chroot and you'll have an easier time.  Don't worry if you forget to include a
+target; you can always update the chroot later and add it. You can see the list
+of available targets by running `sh -e ~/Downloads/crouton -t help`.
 
 Once you've set up your chroot, you can easily enter it using the
 newly-installed `enter-chroot` command, or one of the target-specific
@@ -106,7 +107,7 @@ Examples
      your chroot will not be decryptable. That's kind of the point, of course.
 
 ### Hey now, Ubuntu 12.04 is pretty old; I'm young and hip
-  1. The `-r` parameter specifies which distro you want to use.
+  1. The `-r` parameter specifies which distro release you want to use.
   2. Run `sh -e ~/Downloads/crouton -r list` to list the recognized releases and
      which distros they belong to.
 
@@ -122,8 +123,8 @@ Examples
   1. Check for updates, download the latest version, and see what's new by
      running `croutonversion -u -d -c` from the chroot (run `croutonversion -h`
      to see what those parameters actually do).
-  2. Exit the chroot and run `sudo sh -e ~/Downloads/crouton -t xfce -u`
-     (substitute xfce for whichever targets you want to update).
+  2. Exit the chroot and run `sudo sh -e ~/Downloads/crouton -u -n chrootname`.
+     It will update all installed targets.
   3. You can use this with `-e` to encrypt a non-encrypted chroot, but make sure
      you don't interrupt the operation.
 
@@ -133,6 +134,9 @@ Examples
      parameter when created or by the release name if -n was not specified.
   2. `sudo edit-chroot -r chrootname` restores the chroot from the most recent
      timestamped tarball. You can explicitly specify the tarball with `-f`
+  3. If your machine is new, powerwashed, or held upside-down and shaken, you
+     can use the crouton installer to restore a chroot and relevant scripts:
+     `sudo sh -e ~/Downloads/crouton -f mybackup.tar.gz`
 
 *Unlike with Chromium OS, the data in your chroot isn't synced to the cloud.*
 
@@ -153,7 +157,9 @@ Examples
   1. Download `crouton`
   2. Open a shell (Ctrl+Alt+T, type `shell` and hit enter) and run
      `sudo sh -e ~/Downloads/crouton -d -f ~/Downloads/mybootstrap.tar.bz2`
-  3. You can then create chroots using the tarball by running
+  3. Include the `-r` parameter if you want to specify for which release to
+     prepare a bootstrap.
+  4. You can then create chroots using the tarball by running
      `sudo sh -e ~/Downloads/crouton -f ~/Downloads/mybootstrap.tar.bz2`
 
 *This is the quickest way to create multiple chroots at once, since you won't
@@ -168,6 +174,8 @@ have to determine and download the bootstrap files every time.*
 ### Help! I've created a monster that must be slain!
   1. The delete-chroot command is your sword, shield, and only true friend.
      `sudo delete-chroot evilchroot`
+  2. It's actually just a shortcut to `sudo edit-chroot -d evilchroot`, which I
+     suppose makes it a bit of a deceptive swis-army-knife friend...still good?
 
 
 Tips
@@ -211,7 +219,8 @@ But how?
 --------
 There's a way For Everyone to help!
 
-  * Something broken? File a bug! Bonus points if you try to fix it.
+  * Something broken? File a bug! Bonus points if you try to fix it. It helps if
+    you provide the output of `croutonversion` when you submit the bug.
   * Want to try and break something? Look through [requests for testing](https://github.com/dnschneid/crouton/issues?labels=needstesting&state=open)
     and then do your best to brutally rip the author's work to shreds.
   * Look through [open issues](https://github.com/dnschneid/crouton/issues?state=open)
@@ -229,6 +238,7 @@ There's a way For Everyone to help!
   * Is your distro underrepresented? Want to contribute to the elusive and
     mythical beast known as "croagh"? Fork crouton, add the distro, and create a
     pull request.
+  * Hang out in the \#crouton IRC channel on freenode.net!
 
 
 License

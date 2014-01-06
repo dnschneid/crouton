@@ -3,15 +3,14 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# Usage: prepare.sh arch mirror distro release proxy version setoptions
-ARCH="${1:-"#ARCH"}"
-# MIRROR may contain variables (e.g., $repo): make sure we do not expand it
-MIRROR=${2:-'#MIRROR'}
-DISTRO="${3:-"#DISTRO"}"
-RELEASE="${4:-"#RELEASE"}"
-PROXY="${5:-"#PROXY"}"
-VERSION="${6:-"#VERSION"}"
-SETOPTIONS="${7:-"#SETOPTIONS"}"
+ARCH='#ARCH'
+MIRROR='#MIRROR'
+DISTRO='#DISTRO'
+RELEASE='#RELEASE'
+PROXY='#PROXY'
+VERSION='#VERSION'
+USERNAME='#USERNAME'
+SETOPTIONS='#SETOPTIONS'
 
 # Additional set options: -x or -v can be added for debugging (-e is always on)
 if [ -n "$SETOPTIONS" ]; then
@@ -108,13 +107,17 @@ distropkgs() {
 }
 
 
-# install: For the specified crouton-style package names (see distropkgs()),
-# installs the first set, while avoiding installing the second set if they are
-# not already installed. The two groups are separated by a -- entry.
-# If the first parameter is --minimal, avoids installing unnecessary packages.
-# Unlike --minimal, the second set of packages is useful for allowing
-# "recommended" dependencies to be brought in while avoiding installing specific
-# ones. Distros without "recommended" dependencies can ignore the second set.
+# install [--minimal] [--asdeps] <packages> -- <avoid packages>
+# For the specified crouton-style package names (see distropkgs()), installs
+# <packages>, while avoiding installing <avoid packages> if they are not
+# already installed.
+# If --minimal is specified, avoids installing unnecessary packages.
+# Unlike --minimal, <avoid packages> is useful for allowing "recommended"
+# dependencies to be brought in while avoiding installing specific ones.
+# Distros without "recommended" dependencies can ignore <avoid packages>.
+# --asdeps installs the packages, but marks them as dependencies if they are not
+# already installed. Running the distro-equivalent of 'autoremove' at the end
+# of his script will uninstall such packages, as they are considered as orphans.
 install() {
     install_dist `distropkgs "$@"`
 }
@@ -154,13 +157,20 @@ relaunch_setup() {
 
 
 # Fixes the tty keyboard mode. keyboard-configuration puts tty1~6 in UTF8 mode,
-# assuming they are consoles. Since everything other than tty2 can be an X11
-# session, we need to revert those back to RAW. keyboard-configuration could be
-# reconfigured after bootstrap, dpkg --configure -a, or dist-upgrade.
+# assuming they are consoles. This isn't true for Chromium OS and crouton, and
+# X11 sessions need to be in RAW mode. We do the smart thing and revert ttys
+# with X sessions back to RAW.  keyboard-configuration could be reconfigured
+# after bootstrap, dpkg --configure -a, or dist-upgrade.
 fixkeyboardmode() {
     if hash kbd_mode 2>/dev/null; then
-        for tty in 1 3 4 5 6; do
-            kbd_mode -s -C "/dev/tty$tty"
+        for tty in `ps -CX -CXorg -otname=`; do
+            # On some systems, the tty of Chromium OS returns ?
+            if [ "$tty" = "?" ]; then
+                tty='tty1'
+            fi
+            if [ -e "/dev/$tty" ]; then
+                kbd_mode -s -C "/dev/$tty"
+            fi
         done
     fi
 }
@@ -177,16 +187,13 @@ compile() {
     local out="/usr/local/bin/crouton$1" linker="$2"
     echo "Installing dependencies for $out..." 1>&2
     shift 2
-    local pkgs="gcc libc-dev $*"
-    local remove="`list_uninstalled '' $pkgs`"
-    install --minimal $pkgs
+    local pkgs="gcc libc6-dev $*"
+    install --minimal --asdeps $pkgs </dev/null
     echo "Compiling $out..." 1>&2
-    ret=0
-    if ! gcc -xc -Os - $linker -o "$out" || ! strip "$out"; then
-        ret=1
-    fi
-    remove $remove
-    return $ret
+    local tmp="`mktemp crouton.XXXXXX --tmpdir=/tmp`"
+    addtrap "rm -f '$tmp'"
+    gcc -xc -Os - $linker -o "$tmp"
+    /usr/bin/install -sDT "$tmp" "$out"
 }
 
 

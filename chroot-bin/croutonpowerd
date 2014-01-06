@@ -14,11 +14,15 @@ Options:
     -i --inhibit           Inhibits powerd for the duration of the command, or
                            forever if no command is specified.
     -p --poke -deactivate  Pings powerd to prevent activation.
+    --suspend              Switches to Chromium OS and triggers a suspend.
     --daemon               Enters daemon mode where idleness and screensaver
                            inhibition are passed on to Chromium OS's powerd."
 
 INHIBITSLEEP='30'
 DAEMONSLEEP='15'
+
+# Common functions
+. "`dirname "$0"`/../installer/functions"
 
 # Check if we need to pass through to another command
 EXEC="${0##*/}"
@@ -31,10 +35,8 @@ esac
 case "$1" in
 -i|--inhibit) CMD='i';;
 -p|--poke|-deactivate) CMD='p';;
---daemon) CMD='d'
-    if [ -n "$EXEC" ]; then
-        exec "$EXEC" "$@"
-    fi;;
+--suspend) CMD='s';;
+--daemon) CMD='d';;
 *)  if [ -z "$EXEC" ]; then
         echo "$USAGE" 1>&2
         exit 2
@@ -42,8 +44,13 @@ case "$1" in
     exec "$EXEC" "$@";;
 esac
 
+hostdbus=''
+if hash host-dbus 2>/dev/null; then
+    hostdbus='host-dbus'
+fi
+
 pingpowerd() {
-    host-dbus dbus-send --system --dest=org.chromium.PowerManager \
+    $hostdbus dbus-send --system --dest=org.chromium.PowerManager \
                         --type=method_call /org/chromium/PowerManager \
                         org.chromium.PowerManager.HandleUserActivity || true
 }
@@ -58,7 +65,7 @@ elif [ "$CMD" = 'i' ]; then
         sleep "$INHIBITSLEEP"
     done &
     pid=$!
-    trap "kill $pid 2>/dev/null || true" INT HUP 0
+    addtrap "kill '$pid' 2>/dev/null"
     if [ -n "$EXEC" ]; then
         "$EXEC" "$@"
     elif [ -n "$2" ]; then
@@ -67,7 +74,20 @@ elif [ "$CMD" = 'i' ]; then
     else
         wait $pid
     fi
-else
+elif [ -n "$EXEC" ]; then
+    exec "$EXEC" "$@"
+elif [ "$CMD" = 's' ]; then
+    if hash croutoncycle 2>/dev/null; then
+        croutoncycle cros
+    fi
+    $hostdbus dbus-send --system --dest=org.chromium.PowerManager \
+                        --type=method_call /org/chromium/PowerManager \
+                        org.chromium.PowerManager.RequestSuspend || true
+elif [ "$CMD" = 'd' ]; then
+    if [ -z "$DISPLAY" ]; then
+        error 1 'Cannot launch daemon: $DISPLAY not specified.'
+    fi
+
     # Daemon
     xdgs='/usr/bin/xdg-screensaver'
     xi2pid=''

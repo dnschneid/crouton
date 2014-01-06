@@ -28,11 +28,11 @@ installscript() {
         # This should never happen.
         error 1 "Unable to find common functions file."
     fi
-    sed -e "${3:-;}" "$src" | awk '/^\. .*\/installer\/functions/ {
+    awk '/^\. .*\/installer\/functions/ {
         system("'"awk 'ok; !ok && /^###/ {ok=1}' '$thisfile'"'");
         next
     }
-    1' > "$dst"
+    1' "$src" | sed -e "${3:-;}" > "$dst"
 }
 
 ### Everything after this line will be statically inserted into scripts.
@@ -46,12 +46,13 @@ error() {
 }
 
 # Setup trap ($1) in case of interrupt or error.
+# Traps explicitly do not exit on command error.
 # Traps are first disabled to avoid executing clean-up commands twice.
 # In the case of interrupts, exit is called to avoid the script continuing.
 # $1 must either be empty or end in a semicolon.
 settrap() {
-    trap "trap - INT HUP 0; $1 exit 2" INT HUP
-    trap "trap - INT HUP 0; $1" 0
+    trap "set +e; trap - INT HUP TERM 0; $1 exit 2" INT HUP TERM
+    trap "set +e; trap - INT HUP TERM 0; $1" 0
 }
 
 # Prepend a command to the existing $TRAP
@@ -65,4 +66,80 @@ addtrap() {
 undotrap() {
     TRAP="$OLDTRAP"
     settrap "$TRAP"
+}
+
+# Compares $RELEASE to the specified releases, assuming $DISTRODIR/releases is
+# sorted oldest to newest. Every two parameters are considered criteria that are
+# ORed together. The first parameter is the comparator, as provided to "test".
+# The second parameter is the release to compare to. A comparison against a
+# release from a different distro always fails. Since either $DISTRODIR/releases
+# has to be readable or the release list has to be embedded, and RELEASE has to
+# be set properly, this function should only be used in the context of targets.
+# Returns non-zero if the release doesn't match
+# Example:  release -ge quantal -ge wheezy
+release() {
+    if [ "$(($# % 2))" -ne 0 ]; then
+        error 3 "invalid parameters to release(): $*"
+    fi
+    # Load up the list of releases; this will be replaced with a literal list
+    local releases="`cat "$DISTRODIR/releases" 2>/dev/null`"
+    if [ -z "$releases" ]; then
+        error 3 "list of releases for $DISTRO not found"
+    fi
+    # End-of-word regex for awk
+    local eow='([^a-z]|$)'
+    local relnum="`echo "$releases" | awk "/^$RELEASE$eow/ {print NR; exit}"`"
+    if [ -z "$relnum" ]; then
+        error 3 "$RELEASE not found in $DISTRO"
+    fi
+    while [ "$#" -ge 2 ]; do
+        local cmp="`echo "$releases" | awk "/^$2$eow/ {print NR; exit}"`"
+        if [ -n "$cmp" ] && test "$relnum" "$1" "$cmp"; then
+            return 0
+        fi
+        shift 2
+    done
+    return 1
+}
+
+# Large writes to slow devices (e.g. SD card or USB stick) can cause a task to
+# be stuck for longer than 120 seconds, which triggers a kernel panic (and an
+# immediate reboot). Instead of disabling the timeout altogether, we just make
+# sure the kernel does not panic (this is the default configuration of a vanilla
+# kernel). See crbug.com/260955 for details.
+disablehungtask() {
+    echo 0 > /proc/sys/kernel/hung_task_panic
+}
+
+# Run an awk program, without buffering its output.
+# unbuffered_awk 'program' [argument ...]
+# In the awk code, all "print" calls must be replaced by "output"
+#
+# - Detects whether to run mawk or gawk (mawk is preferred as it is faster),
+# - Prepends the definition of the "output" function to the awk program
+# - Run the modified awk program.
+# mawk needs '-W interactive' to flush the output properly (fflush does not
+# work as documented, but apparently this behaviour is intentional, see
+# http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=593504).
+# Furthermore, fflush is not POSIX so we cannot use any other awk flavor.
+unbuffered_awk() {
+    local cmd
+    if hash mawk 2>/dev/null; then
+        cmd="mawk -W interactive"
+    elif hash gawk 2>/dev/null; then
+        cmd="gawk"
+    else
+        echo "Cannot find mawk or gawk." 1>&2
+        return 1
+    fi
+
+    local program="$1"
+    shift
+
+    $cmd '
+    function output(s) {
+        print s
+        fflush()
+    }
+    '"$program" "$@"
 }

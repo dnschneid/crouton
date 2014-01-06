@@ -1,0 +1,77 @@
+#!/bin/sh -e
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Test upgrade path from Ubuntu 12.04 (precise) to 14.04 (trusty),
+# via non-LTS releases (quantal, raring, saucy)
+# The critical targets that are likely to break are audio, touch and xephyr,
+# as they manually pull in packages from the mirror.
+
+FIRST="precise"
+NEXT="quantal raring saucy"
+DEV="trusty"
+
+TARGETS="core,audio,touch,xephyr"
+PACKAGES="libsbc1 touchegg xserver-xephyr"
+
+# upgrade [-d] release
+# -d: upgrade to a development release
+# release: expected release after the upgrade
+upgrade() {
+    extra=
+    if [ "$1" = "-d" ]; then
+        extra="$1"
+        shift
+    fi
+    host enter-chroot -n "$FIRST" -u 0 do-release-upgrade $extra \
+                        -f DistUpgradeViewNonInteractive
+    passes sh -e "$SCRIPTDIR/installer/ubuntu/getrelease.sh" \
+                        -r "$PREFIX/chroots/$FIRST" | passes grep -q "^$1$"
+    crouton -n "$FIRST" -u
+    versioninfo
+}
+
+# Dump version of critical packages
+versioninfo() {
+    host enter-chroot -n "$FIRST" -u 0 sh -ec '
+            sed -n -e "s/DISTRIB_CODENAME=/=== /p" /etc/lsb-release
+            dpkg-query -W '"$PACKAGES"'
+        ' | log
+}
+
+run='y'
+# Check that all releases in the upgrade path are in SUPPORTED_RELEASES
+for release in $FIRST $NEXT $DEV; do
+    ok=''
+    for supported in $SUPPORTED_RELEASES; do
+        if [ "$release" = "$supported" ]; then
+            ok='y'
+            break
+        fi
+    done
+    if [ -z "$ok" ]; then
+        run=''
+        break
+    fi
+done
+
+if [ -z "$run" ]; then
+    log "Release $release is not in supported releases list ($SUPPORTED_RELEASES)."
+    log "Not running upgrade test..."
+else
+    crouton -T -r "$FIRST" -t "$TARGETS" <<EOF
+install update-manager-core python-apt
+sed -i -e 's/Prompt=lts/Prompt=normal/' /etc/update-manager/release-upgrades
+EOF
+    versioninfo
+
+    for next in $NEXT; do
+        upgrade "$next"
+    done
+
+    # Then upgrade to latest development version as well
+    if [ -n "$DEV" ]; then
+        upgrade -d "$DEV"
+    fi
+fi

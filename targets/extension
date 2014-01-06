@@ -1,0 +1,48 @@
+#!/bin/sh -e
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+REQUIRES='x11'
+DESCRIPTION='Clipboard synchronization and URL handling with Chromium OS.'
+CHROOTBIN='croutonclip croutonurlhandler'
+EXTENSION='gcpneefbbnfalgjniomfjknbcgkbijom'
+
+# Check if the extension is installed and add a mark to the preparation script
+if [ "$TARGETS" != 'help' -a "$TARGETS" != 'check' ]; then
+    if [ -d "/home/chronos/user/Extensions/$EXTENSION" ]; then
+        echo 'EXTENSION_INSTALLED=y'
+    else
+        echo 'EXTENSION_INSTALLED=n'
+    fi
+fi
+
+. "${TARGETSDIR:="$PWD"}/common"
+
+### Append to prepare.sh:
+install x11-utils xclip
+
+compile websocket ''
+
+# XMETHOD is defined in x11 (or xephyr), which this package depends on
+if [ "$XMETHOD" = 'x11' ]; then
+    compile vtmonitor ''
+fi
+
+# Use croutonurlhandler as a fallback URL handler
+handler='/usr/local/bin/croutonurlhandler'
+for link in x-www-browser gnome-www-browser; do
+    if ! update-alternatives --query "$link" | grep -q "$handler"; then
+        update-alternatives --install "/usr/bin/$link" "$link" "$handler" 15
+    fi
+done
+
+if [ "$EXTENSION_INSTALLED" = 'y' ]; then
+    TIPS="$TIPS
+You already have the Chromium OS extension installed, so you're good to go!
+"
+else
+    TIPS="$TIPS
+You must install the Chromium OS extension for integration with crouton to work.
+The extension is available here: http://goo.gl/OVQOEt
+"
+fi

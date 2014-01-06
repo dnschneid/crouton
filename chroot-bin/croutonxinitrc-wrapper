@@ -88,29 +88,55 @@ toucheggconf='/etc/touchegg.conf'
 if [ -f "$toucheggconf" ]; then
     mkdir -p "$HOME/.config/touchegg"
     ln -sf "$toucheggconf" "$HOME/.config/touchegg/"
-    touchegg &
+    touchegg 2>/dev/null &
 fi
 
 # Configure trackpad settings if needed
 if synclient >/dev/null 2>&1; then
     case "`awk -F= '/_RELEASE_BOARD=/{print $2}' '/var/host/lsb-release'`" in
-        butterfly*) SYNCLIENT="FingerLow=1 FingerHigh=5 $SYNCLIENT";;
+        butterfly*|falco*) SYNCLIENT="FingerLow=1 FingerHigh=5 $SYNCLIENT";;
+        parrot*|peppy*) SYNCLIENT="FingerLow=5 FingerHigh=10 $SYNCLIENT";;
     esac
     if [ -n "$SYNCLIENT" ]; then
         synclient $SYNCLIENT
     fi
 fi
 
+# Shell is the leader of a process group, so signals sent to this process are
+# propagated to its children. We ignore signals in this process, but the child
+# handles them and exits. This process then runs exit commands, and terminates.
+trap "" HUP INT TERM
+
 # Run the client itself if it is executable, otherwise run it in a shell.
 ret=0
 if [ -n "$binary" -o -x "$cmd" ]; then
-    "$cmd" $extraargs "$@" || ret="$?"
+    "$cmd" $extraargs "$@" || ret=$?
 else
-    /bin/sh "$cmd" $extraargs "$@" || ret="$?"
+    /bin/sh "$cmd" $extraargs "$@" || ret=$?
 fi
+
+trap - HUP INT TERM
 
 # Run crouton-specific commands before the server exits:
 
-# Nothing currently
+echo "Running exit commands..." 1>&2
+
+# Restore framebuffer compression if there are no other non-Chromium X servers
+fbc='/sys/module/i915/parameters/i915_enable_fbc'
+if [ -w "$fbc" ]; then
+    # There is at least 2 servers running (the current one and Chromium OS)
+    if [ "`ps -CX -CXorg -CXephyr -opid= | wc -l`" -le 2 ]; then
+        echo 1 > "$fbc"
+    fi
+fi
+
+# Kill croutonclip if there is no other X server running
+if pgrep -x croutonclip >/dev/null; then
+    # There is at least 2 servers running (the current one and Chromium OS)
+    if [ "`ps -CX -CXorg -CXephyr -opid= | wc -l`" -le 2 ]; then
+        echo "Killing croutonclip..." 1>&2
+        pkill -x croutonclip
+    fi
+fi
 
 exit "$ret"

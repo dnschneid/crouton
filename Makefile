@@ -3,7 +3,8 @@
 # found in the LICENSE file.
 
 TARGET = crouton
-TARGETTMP = .$(TARGET).tmp
+EXTTARGET = crouton.zip
+SRCTARGETS = $(patsubst src/%.c,crouton%,$(wildcard src/*.c))
 WRAPPER = build/wrapper.sh
 SCRIPTS := \
 	$(wildcard chroot-bin/*) \
@@ -13,25 +14,46 @@ SCRIPTS := \
 	$(wildcard installer/*/*) \
 	$(wildcard src/*) \
 	$(wildcard targets/*)
+EXTSOURCES = $(wildcard host-ext/crouton/*)
 GENVERSION = build/genversion.sh
-VERSION = 0
+VERSION = 1
 TARPARAMS ?= -j
 
-$(TARGET): $(WRAPPER) $(SCRIPTS) $(GENVERSION) Makefile
-	sed -e "s/\$$TARPARAMS/$(TARPARAMS)/" \
-		-e "s/VERSION=.*/VERSION='$(shell $(GENVERSION) $(VERSION))'/" \
-		$(WRAPPER) > $(TARGETTMP)
-	tar --owner=root --group=root -c $(TARPARAMS) $(SCRIPTS) >> $(TARGETTMP)
-	chmod +x $(TARGETTMP)
-	mv -f $(TARGETTMP) $(TARGET)
+croutoncursor_LIBS = -lX11 -lXfixes -lXrender
+croutonxi2event_LIBS = -lX11 -lXi
 
-croutoncursor: src/cursor.c Makefile
-	gcc -g -Wall -Werror src/cursor.c -lX11 -lXfixes -lXrender -o croutoncursor
+ifeq ($(wildcard .git/HEAD),)
+    GITHEAD :=
+else
+    GITHEADFILE := .git/refs/heads/$(shell cut -d/ -f3 '.git/HEAD')
+    ifeq ($(wildcard $(GITHEADFILE)),)
+        GITHEAD := .git/HEAD
+    else
+        GITHEAD := .git/HEAD .git/refs/heads/$(shell cut -d/ -f3 '.git/HEAD')
+    endif
+endif
 
-croutonticks: src/ticks.c Makefile
-	gcc -g -Wall -Werror src/ticks.c -lrt -o croutonticks
+
+$(TARGET): $(WRAPPER) $(SCRIPTS) $(GENVERSION) $(GITHEAD) Makefile
+	{ \
+		sed -e "s/\$$TARPARAMS/$(TARPARAMS)/" \
+			-e "s/VERSION=.*/VERSION='$(shell $(GENVERSION) $(VERSION))'/" \
+			$(WRAPPER) \
+		&& tar --owner=root --group=root -c $(TARPARAMS) $(SCRIPTS) \
+		&& chmod +x /dev/stdout \
+	;} > $(TARGET) || ! rm -f $(TARGET)
+
+$(EXTTARGET): $(EXTSOURCES) Makefile
+	rm -f $(EXTTARGET) && zip -q --junk-paths $(EXTTARGET) $(EXTSOURCES)
+
+$(SRCTARGETS): src/$(patsubst crouton%,src/%.c,$@) Makefile
+	gcc -g -Wall -Werror $(patsubst crouton%,src/%.c,$@) $($@_LIBS) -o $@
+
+extension: $(EXTTARGET)
+
+all: $(TARGET) $(SRCTARGETS) $(EXTTARGET)
 
 clean:
-	rm -f $(TARGETTMP) $(TARGET) croutoncursor croutonticks
+	rm -f $(TARGET) $(EXTTARGET) $(SRCTARGETS)
 
-.PHONY: clean
+.PHONY: all clean extension

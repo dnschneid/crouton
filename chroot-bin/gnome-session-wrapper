@@ -19,13 +19,22 @@ DESKTOP_SESSION=gnome xinit /etc/X11/xinit/xinitrc ${0##*/}
 ${0##*/} ubuntu"
 
 export DESKTOP_SESSION="${DESKTOP_SESSION:-"$1"}"
+SESSION='gnome-session'
+CINNAMON_SESSION='cinnamon-session'
+
 if [ -z "$DESKTOP_SESSION" ]; then
     echo "$USAGE" 1>&2
     exit 2
 fi
 
+# Cinnamon 2.0 and later uses its own fork of gnome-session
+if [ "${DESKTOP_SESSION#cinnamon}" != "$DESKTOP_SESSION" ] && \
+        hash "$CINNAMON_SESSION" 2>/dev/null; then
+    SESSION="$CINNAMON_SESSION"
+fi
+
 if [ -z "$DISPLAY" ]; then
     exec xinit /etc/X11/xinit/xinitrc "$0"
 else
-    exec gnome-session --session="$DESKTOP_SESSION"
+    exec "$SESSION" --session="$DESKTOP_SESSION"
 fi

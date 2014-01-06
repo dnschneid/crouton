@@ -2,11 +2,11 @@
 # Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-if [ ! "$TARGETS" = 'help' -a ! "${ARCH#arm}" = "$ARCH" \
-     -a ! "$RELEASE" = 'precise' ]; then
+if [ ! "$TARGETS" = 'help' -a ! "${ARCH#arm}" = "$ARCH" ] \
+        && ! release -eq precise; then
     error 1 "unity target does not work in xephyr in $RELEASE due to missing egl support."
 fi
-REQUIRES='chromium gtk-extra'
+REQUIRES='gtk-extra'
 DESCRIPTION='Installs the Unity desktop environment. (Approx. 700MB)'
 HOSTBIN='startunity'
 CHROOTBIN='startunity gnome-session-wrapper'
@@ -15,6 +15,17 @@ CHROOTBIN='startunity gnome-session-wrapper'
 ### Append to prepare.sh:
 install unity unity-2d ubuntu-artwork gnome-session nautilus \
         ubuntu-settings,ubuntu~precise= -- network-manager brasero firefox
+
+# unity-panel-service launches via upstart in saucy and later, so add dbus
+# service file
+if release -ge saucy; then
+    mkdir -p '/usr/local/share/dbus-1/services'
+    cat > '/usr/local/share/dbus-1/services/com.canonical.Unity.Panel.Service.service' <<EOF
+[D-BUS Service]
+Name=com.canonical.Unity.Panel.Service
+Exec=/usr/lib/unity/unity-panel-service
+EOF
+fi
 
 TIPS="$TIPS
 You can start Unity via the startunity host command: sudo startunity

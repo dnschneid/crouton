@@ -1,0 +1,30 @@
+#!/bin/sh -e
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+if [ "$TARGETS" != 'help' -a "${ARCH#arm}" != "$ARCH" ]; then
+    error 1 'xorg target does not work on ARM.'
+fi
+REQUIRES='core audio'
+PROVIDES='x11'
+DESCRIPTION='X.Org X11 backend. Enables GPU acceleration on supported platforms.'
+CHROOTBIN='brightness croutoncycle croutonpowerd croutonxinitrc-wrapper setres xinit'
+CHROOTETC='xbindkeysrc.scm xserverrc-x11 xserverrc-local.example'
+. "${TARGETSDIR:="$PWD"}/common"
+
+### Append to prepare.sh:
+XMETHOD="${XMETHOD:-x11}"
+
+install xorg dmz-cursor-theme kbd
+# Fix launching X11 from inside crosh (user doesn't own a TTY)
+sed -i 's/allowed_users=.*/allowed_users=anybody/' '/etc/X11/Xwrapper.config'
+
+# Make chvt and fgconsole SUID root so we don't need to run keylaunch as root
+chmod u+s /bin/chvt
+
+TIPS="$TIPS
+You can flip through your running chroot desktops and Chromium OS by hitting
+Ctrl+Alt+Shift+Back and Ctrl+Alt+Shift+Forward.
+"
+
+### append x11-common

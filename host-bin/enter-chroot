@@ -3,9 +3,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+set -e
+
 APPLICATION="${0##*/}"
 BACKGROUND=''
-BINDIR="`dirname "$0"`"
+BINDIR="`dirname "\`readlink -f "$0"\`"`"
 CHROOTS="`readlink -f "$BINDIR/../chroots"`"
 KEYFILE=''
 LOGIN=''
@@ -37,6 +39,21 @@ Options:
 
 # Common functions
 . "$BINDIR/../installer/functions"
+
+# Safely launch a command ($*) via /bin/sh within the chroot as the root user.
+chrootcmd() {
+    # env may be overridden when running in the background; don't let it fork.
+    local ret=0 oldtrap="$TRAP"
+    TRAP=''
+    env -i chroot "$CHROOT" su -s '/bin/sh' -c "$*" - root || ret=$?
+    local pid="$!"
+    # $pid might not be set if env has not been redefined yet
+    if [ -n "$BACKGROUND" ] && [ -n "$pid" ]; then
+        wait "$pid" || ret=$?
+    fi
+    TRAP="$oldtrap"
+    return "$ret"
+}
 
 # Process arguments
 while getopts 'bc:k:ln:t:u:x' f; do
@@ -104,10 +121,22 @@ elif [ -n "$TARGET" ]; then
     fi
 fi
 
+# Avoid kernel panics due to slow I/O
+disablehungtask
+
+# Enable control of framebuffer compression (if used) by video users
+for fbc in '/sys/kernel/debug/dri/0/'*fbc*; do :; done
+if [ -f "$fbc" ] && ! grep -q 'disabled per module param' "$fbc"; then
+    fbc='/sys/module/i915/parameters/i915_enable_fbc'
+    chgrp video "$fbc"
+    chmod g+w "$fbc"
+fi
+
 # Make sure we always exit with echo on the tty.
-addtrap "stty echo 2>/dev/null || true"
+addtrap "stty echo 2>/dev/null"
 
 # Mount the chroot and update our CHROOT path
+CHROOTSRC="$CHROOTS/$NAME"
 if [ -n "$KEYFILE" ]; then
     CHROOT="`sh -e "$BINDIR/mount-chroot" \
                                      -k "$KEYFILE" -p -c "$CHROOTS" "$NAME"`"
@@ -116,7 +145,7 @@ else
 fi
 
 if [ ! "$NOLOGIN" = 2 ]; then
-    echo "Entering $CHROOT..." 1>&2
+    echo "Entering $CHROOTSRC..." 1>&2
 fi
 
 # In disk full situations, mount-chroot can be empty. Good time to check sanity.
@@ -134,14 +163,16 @@ fi
 
 if [ -z "$CROUTON_NO_UNMOUNT" ]; then
     # Auto-unmount everything below and including the chroot upon exit
-    addtrap "sh -e '$BINDIR/unmount-chroot' -yc '$CHROOTS' '$NAME' || true"
+    addtrap "sh -e '$BINDIR/unmount-chroot' -yc '$CHROOTS' '$NAME'"
 fi
 
 # If our root is on an external disk we need to ensure USB device persistence is
 # enabled otherwise we will lose the file-system after a suspend event.
-if [ ! "${CHROOT#/media}" = "$CHROOT" ]; then
+if [ ! "${CHROOTSRC#/media}" = "$CHROOTSRC" ]; then
     for usbp in /sys/bus/usb/devices/*/power/persist; do
-        echo 1 > "$usbp"
+        if [ -e "$usbp" ]; then
+            echo 1 > "$usbp"
+        fi
     done
 fi
 
@@ -150,16 +181,30 @@ if [ -z "$NOLOGIN" -a -f "$CHROOT$SETUPSCRIPT" ]; then
     echo 'A chroot setup script still exists inside the chroot.' 1>&2
     echo 'The chroot may not be fully set up.' 1>&2
     response=''
-    if tty -s; then
-        echo -n 'Would you like to finish the setup? [Y/n] ' 1>&2
+    # A finished setup script will have permissions 500
+    if [ "`stat -c '%a' "$CHROOT$SETUPSCRIPT"`" != '500' ]; then
+        echo 'However, it appears the setup script is invalid.' 1>&2
+        response='d'
+    fi
+    if [ -t 0 -a -z "$response" ]; then
+        echo -n 'Would you like to finish the setup? [Y/n/d] ' 1>&2
         read response
     fi
-    if [ -z "$response" -o ! "${response#[Yy]}" = "$response" ]; then
+    if [ -z "$response" -o "${response#[Yy]}" != "$response" ]; then
         echo 'Preparing chroot environment...' 1>&2
-        CROUTON_NO_UNMOUNT=1 sh -e "$BINDIR/enter-chroot" \
-            -c "$CHROOTS" -n "$NAME" -xx
-        echo 'Setup completed. Entering chroot...' 1>&2
-    else
+        if CROUTON_NO_UNMOUNT=1 sh -e "$BINDIR/enter-chroot" \
+                -c "$CHROOTS" -n "$NAME" -xx; then
+            echo 'Setup completed. Entering chroot...' 1>&2
+            response=''
+        else
+            echo 'The chroot setup script may be broken. Your chroot is not fully configured.' 1>&2
+            response='d'
+        fi
+    fi
+    if [ "${response#[Dd]}" != "$response" ]; then
+        echo 'Removing the chroot setup script. You may want to update your chroot again.' 1>&2
+        rm -f "$CHROOT$SETUPSCRIPT"
+    elif [ -n "$response" ]; then
         echo 'Skipping setup. You will be prompted again next time.' 1>&2
     fi
 fi
@@ -168,7 +213,7 @@ fi
 passwd="$CHROOT/etc/passwd"
 if [ -z "$NOLOGIN" ]; then
     if [ ! -r "$passwd" ]; then
-        error 1 "$CHROOT doesn't appear to be a valid chroot."
+        error 1 "$CHROOTSRC doesn't appear to be a valid chroot."
     fi
     case "$USERNAME" in
     ''|*[!0-9]*)
@@ -189,39 +234,6 @@ if [ -z "$NOLOGIN" ]; then
     CHROOTSHELL="`awk -F: '$1=="'"$USERNAME"'"{print $NF; exit}' "$passwd"`"
 else
     CHROOTSHELL='/bin/sh'
-fi
-
-# Fix group numbers for critical groups to match Chromium OS. This is necessary
-# so that users have access to shared hardware, such as video and audio.
-gfile="$CHROOT/etc/group"
-if [ -f "$gfile" ]; then
-    for group in audio video usb:plugdev; do
-        hostgroup="${group%:*}"
-        chrootgroup="${group#*:}"
-        gid="`awk -F: '$1=="'"$hostgroup"'"{print $3; exit}' '/etc/group'`"
-        if [ -z "$gid" ]; then
-            echo "Couldn't find $hostgroup group in Chromium OS!" 1>&2
-            continue
-        fi
-        curgid="`awk -F: '$1=="'"$chrootgroup"'"{print $3; exit}' "$gfile"`"
-        if [ "$gid" = "$curgid" ]; then
-            continue
-        elif [ -z "$curgid" ]; then
-            echo "Couldn't find $chrootgroup group in chroot!" 1>&2
-            continue
-        fi
-        echo "Changing $chrootgroup GID from $curgid to $gid..." 1>&2
-        move="`awk -F: '$3=='"$gid"'{print $1; exit}' "$gfile"`"
-        if [ -n "$move" ]; then
-            ngid="$gid"
-            while grep -q ":$ngid:" "$gfile"; do
-                ngid="$((ngid+1))"
-            done
-            echo "Moving $move GID from $gid to $ngid..." 1>&2
-            sed -i "s/:$gid:/:$ngid:/" "$gfile"
-        fi
-        sed -i "s/:$curgid:/:$gid:/" "$gfile"
-    done
 fi
 
 # Save the chroot name to the chroot
@@ -288,9 +300,6 @@ bindmount() {
     mount --bind $bindopts "$1" "$target"
     if [ -n "$3" ]; then
         mount -i -o "remount,$3" "$target"
-        if [ -n "$4" ]; then
-            mount $4 "$target"
-        fi
     fi
 }
 
@@ -311,8 +320,6 @@ else
     firstrun='y'
 fi
 
-# Ensure the chroot is executable and writable by bind-mounting it to itself.
-bindmount "$CHROOT" / rw,dev,exec,suid --make-unbindable
 bindmount /dev
 bindmount /dev/pts
 bindmount /dev/shm
@@ -324,6 +331,7 @@ tmpfsmount /var/run 'noexec,nosuid,mode=0755,size=10%'
 tmpfsmount /var/run/lock 'noexec,nosuid,nodev,size=5120k'
 bindmount /var/run/dbus /var/host/dbus
 bindmount /var/run/shill /var/host/shill
+bindmount /var/run/cras /var/host/cras
 bindmount /var/lib/timezone /var/host/timezone
 for m in /lib/modules/*; do
     if [ -d "$m" ]; then
@@ -337,11 +345,14 @@ ln -sfT /dev/shm "`fixabslinks '/var/run'`/shm"
 # Add a /run/udev symlink for later versions of udev
 ln -sfT /dev/.udev "`fixabslinks '/var/run'`/udev"
 
+# Add a /var/host/cras symlink for CRAS clients
+ln -sfT /var/host/cras "`fixabslinks '/var/run'`/cras"
+
 # Bind-mount /media, specifically the removable directory
 destmedia="`fixabslinks '/var/host/media'`"
-if [ -d "$CHROOT/media" ] && ! mountpoint -q "$destmedia"; then
+if ! mountpoint -q "$destmedia"; then
     mount --make-shared /media
-    mkdir -p "$destmedia"
+    mkdir -p "$destmedia" "$CHROOT/media"
     ln -sf "/var/host/media/removable" "$CHROOT/media/"
     mount --rbind /media "$destmedia"
 fi
@@ -352,22 +363,65 @@ if [ -z "$NOLOGIN" -a -n "$CHROOTHOME" -a -d "$localdownloads" ]; then
     bindmount "$localdownloads" "$CHROOTHOME/Downloads" exec
 fi
 
+# For test machines with low entropy, bind mount /dev/urandom to /dev/random
+if [ -n "$CROUTON_WEAK_RANDOM" ]; then
+    mount --bind "$CHROOT/dev/urandom" "$CHROOT/dev/random"
+fi
+
+# Fix group numbers for critical groups to match Chromium OS. This is necessary
+# so that users have access to shared hardware, such as video and audio.
+gfile="$CHROOT/etc/group"
+if [ -f "$gfile" ]; then
+    for group in audio:hwaudio cras:audio cdrom disk floppy i2c input lp \
+                 serial tape tty usb:plugdev uucp video; do
+        hostgroup="${group%:*}"
+        chrootgroup="${group#*:}"
+        gid="`awk -F: '$1=="'"$hostgroup"'"{print $3; exit}' '/etc/group'`"
+        if [ -z "$gid" ]; then
+            echo "Couldn't find $hostgroup group in Chromium OS!" 1>&2
+            continue
+        fi
+        curgid="`awk -F: '$1=="'"$chrootgroup"'"{print $3; exit}' "$gfile"`"
+        if [ "$gid" = "$curgid" ]; then
+            continue
+        elif [ -z "$curgid" ]; then
+            echo "Creating $chrootgroup group with GID $gid..." 1>&2
+            groupcmd=groupadd
+        else
+            echo "Changing $chrootgroup GID from $curgid to $gid..." 1>&2
+            groupcmd=groupmod
+        fi
+        move="`awk -F: '$3=='"$gid"'{print $1; exit}' "$gfile"`"
+        if [ -n "$move" ]; then
+            ngid="$gid"
+            while grep -q ":$ngid:" "$gfile"; do
+                ngid="$((ngid+1))"
+            done
+            echo "Moving $move GID from $gid to $ngid..." 1>&2
+            chrootcmd groupmod -g "$ngid" "$move"
+        fi
+        chrootcmd "$groupcmd" -g "$gid" "$chrootgroup"
+    done
+fi
+
 # To run silently, we override the env command to launch a background process,
 # and move the trap code to happen there.
 if [ -n "$BACKGROUND" ]; then
     env() {
-        local stdin=''
-        [ ! -t 0 ] && stdin="`readlink -m /dev/stdin`"
-        (
+        # Shuffle FDs around to preserve stdin
+        { (
             trap '' INT HUP
             trap "$TRAP" 0
-            [ -n "$stdin" ] && exec < "$stdin"
-            [ -t 1 ] && exec  > /dev/null
-            [ -t 2 ] && exec 2> /dev/null
+            exec 0<&9 9<&-
+            [ -t 0 ] && exec < /dev/null
+            [ -t 1 ] && exec > /dev/null
+            [ -t 2 ] && exec 2>&1
             /usr/bin/env "$@"
-        ) &
+        ) & } 9<&0
     }
 fi
+
+ret=0
 
 # Launch the system dbus unless we are entering a basic shell.
 if [ ! "$NOLOGIN" = 1 ] && grep -q '^root:' "$passwd" 2>/dev/null; then
@@ -377,7 +431,7 @@ if [ ! "$NOLOGIN" = 1 ] && grep -q '^root:' "$passwd" 2>/dev/null; then
     dbususer="`echo "cat /busconfig/user/text()" \
         | xmllint --shell "$CHROOT/etc/dbus-1/system.conf" 2>/dev/null \
         | grep '^[a-z][-a-z0-9_]*$' || true`"
-    env -i chroot "$CHROOT" su -s '/bin/sh' -c "
+    chrootcmd "
         if ! hash dbus-daemon 2>/dev/null; then
             exit 0
         fi
@@ -394,11 +448,14 @@ if [ ! "$NOLOGIN" = 1 ] && grep -q '^root:' "$passwd" 2>/dev/null; then
         dbususer="`id -un "$dbususer" 2>/dev/null || echo "messagebus"`"
         dbusgrp="`id -gn "$dbususer" 2>/dev/null || echo "messagebus"`"
         chown "$dbususer:$dbusgrp" /var/run/dbus
-        dbus-daemon --system --fork' - root
+        exec dbus-daemon --system --fork' || ret=$?
+    if [ ! "$ret" = 0 ]; then
+        echo "WARNING: starting chroot system dbus daemon failed with code $ret" 1>&2
+        ret=0
+    fi
 fi
 
 # Start the chroot and any specified command
-ret=0
 if [ -n "$NOLOGIN" ]; then
     env -i TERM="$TERM" chroot "$CHROOT" "$@" || ret=$?
     # Handle the return value when running the setup script.
@@ -415,8 +472,7 @@ if [ -n "$NOLOGIN" ]; then
 else
     # Run rc.local
     if [ -n "$firstrun" -a -x "$CHROOT/etc/rc.local" ]; then
-        env -i chroot "$CHROOT" su -s '/bin/sh' -c \
-            'exec /etc/rc.local >/dev/null 2>/dev/null </dev/null' - root \
+        chrootcmd 'exec /etc/rc.local >/dev/null 2>/dev/null </dev/null' \
             || ret=$?
         if [ ! "$ret" = 0 ]; then
             echo "WARNING: /etc/rc.local failed with code $ret" 1>&2
@@ -440,7 +496,7 @@ fi
 
 # We don't want to trap for this proccess if we're running in the background
 if [ -n "$BACKGROUND" ]; then
-    trap - INT HUP 0
+    settrap ''
 fi
 
 # Cleanup all happens in the exit trap

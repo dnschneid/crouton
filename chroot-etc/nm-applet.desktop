@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=Network Manager
+Comment=Dummy nm-applet for crouton
+Exec=/bin/true
+Terminal=false
+Type=Application
+NoDisplay=true

@@ -3,15 +3,19 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+set -e
+
 APPLICATION="${0##*/}"
 ALLCHROOTS=''
-CHROOTS="`readlink -f "\`dirname "$0"\`/../chroots"`"
+BINDIR="`dirname "\`readlink -f "$0"\`"`"
+CHROOTS="`readlink -f "$BINDIR/../chroots"`"
 EXCLUDEROOT=''
 FORCE=''
 PRINT=''
 SIGNAL='TERM'
 TRIES=5
 YES=''
+ROOT='/var/run/crouton'
 
 USAGE="$APPLICATION [options] name [...]
 
@@ -124,6 +128,9 @@ checkusage() {
 
 # If we specified all chroots, bring in all chroots.
 if [ -n "$ALLCHROOTS" ]; then
+    if [ ! -d "$CHROOTS" ]; then
+        error 1 "$CHROOTS not found."
+    fi
     set -- "$CHROOTS/"*
 fi
 
@@ -137,34 +144,53 @@ fixabslinks() {
     echo "$p"
 }
 
-# Unmount each chroot
-ret=0
-for NAME in "$@"; do
-    if [ -z "$NAME" ]; then
-        continue
-    fi
-
-    NAME="${NAME#"$CHROOTS/"}"
+# Unmount the specified chroot $1
+# sets oldstyle if the chroot was unmounted in an old location.
+# if oldstyle is set upon entry, skips the check for old-style mounts.
+unmount() {
+    NAME="${1#"$CHROOTS/"}"
 
     # Check for existence
     CHROOT="$CHROOTS/$NAME"
     if [ ! -d "$CHROOT" ]; then
-        echo "$CHROOT not found." 1>&2
-        ret=1
-        continue
+        if [ -z "$ALLCHROOTS" ]; then
+            echo "$CHROOT not found." 1>&2
+            ret=1
+        fi
+        return 0
     fi
 
-    # Switch to the unencrypted mount for encrypted chroots.
-    if [ -f "$CHROOT/.ecryptfs" ]; then
-        CHROOT="$CHROOTS/.secure/$NAME"
+    # Switch to the true mount point, but sort of support old-style mounted
+    # chroots with minimal false-positives to ease transition. Don't unmount
+    # old-style twice in a row, though.
+    CHROOTSRC="$CHROOT"
+    oldencr="$CHROOTS/.secure/$NAME"
+    if mountpoint -q "$oldencr" \
+            && [ -d "$oldencr/etc/crouton" -a -z "$oldstyle" ]; then
+        # Old encrypted chroots
+        oldstyle='y'
+        CHROOT="$oldencr"
+        echo "$CHROOTSRC appears to be mounted in $CHROOT" 1>&2
+    elif mountpoint -q "$CHROOT" \
+            && [ -d "$CHROOT/etc/crouton" -a -z "$oldstyle" ]; then
+        # Keep the chroot the same
+        oldstyle='y'
+        echo "$CHROOTSRC appears to be mounted in place" 1>&2
+    else
+        oldstyle=''
+        CHROOT="$ROOT/${CHROOT#/}"
+        if [ ! -d "$CHROOT" ]; then
+            # Not mounted
+            return 0
+        fi
     fi
 
     base="`readlink -f "$CHROOT"`"
 
     if ! checkusage "$base"; then
-        echo "Not unmounting $CHROOT as another instance is using it." 1>&2
+        echo "Not unmounting $CHROOTSRC as another instance is using it." 1>&2
         ret=1
-        continue
+        return 0
     fi
 
     # Kill the chroot's system dbus if one is running; failure is fine
@@ -182,9 +208,9 @@ for NAME in "$@"; do
     # Unmount all mounts
     ntries=0
     if [ -z "$EXCLUDEROOT" ]; then
-        echo "Unmounting $CHROOT..." 1>&2
+        echo "Unmounting $CHROOTSRC..." 1>&2
     else
-        echo "Pruning $CHROOT mounts..." 1>&2
+        echo "Pruning $CHROOTSRC mounts..." 1>&2
     fi
     baseesc="`echo "$base" | sed 's= =//=g'`"
 
@@ -210,28 +236,37 @@ for NAME in "$@"; do
         mount --make-rslave "$media"
     fi
 
-    while ! sed "s=\\\\040=//=g" /proc/mounts | cut -d' ' -f2 \
-              | filter | sed 's=//= =g' | xargs --no-run-if-empty -d '
+    # Some /proc/mounts entries may end with \040(deleted), in that case, try to
+    # umount them with and without the suffix (in the unlikely case the mount
+    # point actually ends with ' (deleted)')
+    while ! sed "s=\\\\040=//=g" /proc/mounts | cut -d' ' -f2 | filter \
+              | sed -e 's=//= =g;s/^\(\(.*\) (deleted)\)$/\1\n\2/' \
+              | xargs --no-run-if-empty -d '
 ' -n 50 umount 2>/dev/null; do
         if [ "$ntries" -eq "$TRIES" ]; then
             # Send signal to all processes running under the chroot
             # ...but confirm first.
             printonly=''
             if [ "${YES#[Aa]}" = "$YES" ]; then
-                echo -n "Failed to unmount $CHROOT. Kill processes? [a/k/y/p/N] " 1>&2
-                read YES
+                echo -n "Failed to unmount $CHROOTSRC. Kill processes? [a/k/y/p/N] " 1>&2
+                if [ -n "$CROUTON_UNMOUNT_RESPONSE" ]; then
+                    YES="$CROUTON_UNMOUNT_RESPONSE"
+                    echo "$YES" 1>&2
+                else
+                    read YES
+                fi
                 if [ ! "${YES#[Kk]}" = "$YES" ]; then
                     SIGNAL='KILL'
                 elif [ ! "${YES#[Pp]}" = "$YES" ]; then
                     printonly=y
                 elif [ "${YES#[AaYy]}" = "$YES" ]; then
-                    echo "Skipping unmounting of $CHROOT" 1>&2
+                    echo "Skipping unmounting of $CHROOTSRC" 1>&2
                     ret=1
                     break
                 fi
             fi
             if [ -z "$printonly" ]; then
-                echo "Sending SIG$SIGNAL to processes under $CHROOT..." 1>&2
+                echo "Sending SIG$SIGNAL to processes under $CHROOTSRC..." 1>&2
             fi
             for root in /proc/*/root; do
                 if [ ! -r "$root" ] \
@@ -266,7 +301,7 @@ for NAME in "$@"; do
         fi
         sleep 1
         if ! checkusage "$base"; then
-            echo "Aborting unmounting $CHROOT as another instance has begun using it." 1>&2
+            echo "Aborting unmounting $CHROOTSRC as another instance has begun using it." 1>&2
             ret=1
             break
         fi
@@ -274,13 +309,29 @@ for NAME in "$@"; do
 
     # More sync for more safety
     sync
+}
+
+# Unmount each chroot
+ret=0
+for NAME in "$@"; do
+    if [ -z "$NAME" ]; then
+        continue
+    fi
+    oldstyle=''
+    unmount "$NAME"
+    # If we unmounted old-style, do it again in case the new-style was also mounted.
+    if [ -n "$oldstyle" ]; then
+        unmount "$NAME"
+    fi
 done
 
 # Re-disable USB persistence (the Chromium OS default) if we no longer
 # have chroots running with a root in removable media
-if checkusage /media; then
+if checkusage "$ROOT/media"; then
     for usbp in /sys/bus/usb/devices/*/power/persist; do
-        echo 0 > "$usbp"
+        if [ -e "$usbp" ]; then
+            echo 0 > "$usbp"
+        fi
     done
 fi
 
