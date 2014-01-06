@@ -137,6 +137,27 @@ if [ -n "$RESTORE" -a -n "$TARBALL" -a $# = 0 ]; then
     set -- "${NAME%%/*}"
 fi
 
+# For anything but restore, make sure all chroots exist before doing anything.
+# FIXME: Restore from automatically named tarballs could be protected as well.
+if [ -z "$RESTORE" ]; then
+    for NAME in "$@"; do
+        if [ -z "$NAME" ]; then
+            continue
+        fi
+        CHROOT="$CHROOTS/$NAME"
+
+        # Check for existence
+        if [ ! -d "$CHROOT" ]; then
+            extra=''
+            if [ "${NAME#-}" != "$NAME" ]; then
+                extra="
+Please specify all options before chroot names."
+            fi
+            error 2 "$CHROOT not found.$extra"
+        fi
+    done
+fi
+
 # If TARBALL ends in a slash or we're restoring multiple chroots, make directory
 if [ -n "$TARBALL" ] && \
         [ $# -ge 2 -o -d "$TARBALL" -o ! "${TARBALL%/}" = "$TARBALL" ]; then
