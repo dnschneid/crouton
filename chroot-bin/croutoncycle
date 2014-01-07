@@ -22,6 +22,19 @@ case "$1" in
 *) echo "$USAGE" 1>&2; exit 2;;
 esac
 
+# Returns the chroot name of an X11 display specified in $1 on stdout
+getname() {
+    local name=''
+    name="`DISPLAY=":${1#:}" xprop -root CROUTON_NAME 2>/dev/null`"
+    if [ "${name%\"}" != "$name" ]; then
+        name="${name%\"}"
+        echo "${name#*\"}"
+    else
+        echo "Unknown"
+    fi
+}
+
+# Ensure environment sanity
 export XAUTHORITY=''
 
 # Prepare display list for easier looping
@@ -81,9 +94,11 @@ if [ "$cmd" = 'l' ]; then
         number='0'
         if [ "${line#Xephyr}" != "$line" ]; then
             number="${line#*:}"
-            number="${line%%.*}"
+            number="${number%%.*}"
             if [ "${number#[0-9]}" = "$number" ]; then
                 number='0'
+            else
+                line="`getname "$number"`"
             fi
         fi
         if [ "$disp" = "$curdisp" ]; then
@@ -99,18 +114,11 @@ if [ "$cmd" = 'l' ]; then
     done
     for disp in $displist; do
         if [ "$disp" = "$curdisp" ]; then
-            echo -n "${disp#:}*"
+            echo -n "${disp#:}* "
         else
-            echo -n "${disp#:} "
+            echo -n "${disp#:}  "
         fi
-        name="`DISPLAY="$disp" xprop -root CROUTON_NAME 2>/dev/null`"
-        if [ "${name%\"}" != "$name" ]; then
-            name="${name%\"}"
-            name="${name#*\"}"
-        else
-            name="Unknown"
-        fi
-        echo " $name"
+        getname "$disp"
     done
     exit 0
 fi
@@ -169,7 +177,7 @@ else
     fi
 fi
 
-# Make sure tap-to-click is disabled
+# Make sure tap-to-click is enabled
 if hash xinput 2>/dev/null; then
     for id in `host-x11 xinput --list --id-only`; do
         host-x11 xinput set-prop "$id" 'Tap Paused' 0 2>/dev/null || true
