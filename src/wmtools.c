@@ -95,7 +95,11 @@ int raiseWindow(Display *display, Window window) {
     if (!XGetWindowAttributes(display, DefaultRootWindow(display), &attr)) {
         return 1;
     }
-    XMoveResizeWindow(display, window, attr.x, attr.y, attr.width, attr.height);
+    /* Twiddle the width of the window to force a full refresh */
+    XMoveResizeWindow(display, window,
+                      attr.x, attr.y, attr.width-1, attr.height);
+    XMoveResizeWindow(display, window,
+                      attr.x, attr.y, attr.width,   attr.height);
 
     return 0;
 }
