@@ -6,15 +6,13 @@
 
 ; Cycle chroots
 (xbindkey '(control shift alt F1) "
-    for key in Control Shift Alt Meta; do
-        echo 'keyup '$key'_L'
-        echo 'keyup '$key'_R'
+    for key in Control_L Control_R Shift_L Shift_R Alt_L Meta_L; do
+        echo 'keyup '$key
     done | xte
     croutoncycle prev")
 (xbindkey '(control shift alt F2) "
-    for key in Control Shift Alt Meta; do
-        echo 'keyup '$key'_L'
-        echo 'keyup '$key'_R'
+    for key in Control_L Control_R Shift_L Shift_R Alt_L Meta_L; do
+        echo 'keyup '$key
     done | xte
     croutoncycle next")
 
