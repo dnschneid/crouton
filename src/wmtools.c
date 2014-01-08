@@ -51,7 +51,7 @@ int listMapped(Display *display, const char *arg) {
                     printf("Unknown ");
                 }
             }
-            printf(asints ? "%u" : "%x", (unsigned int)children[nchildren]);
+            printf(asints ? "%u" : "0x%x", (unsigned int)children[nchildren]);
             printf(mark ? "*\n" : "\n");
             mark = 0;
             if (one) {
@@ -79,18 +79,20 @@ int raiseWindow(Display *display, Window window) {
         if (children[nchildren-1 - rotate] == window)
             break;
     }
-    if (rotate == nchildren)
+    if (rotate == nchildren) {
+        XFree(children);
         return 2;
+    }
 
     if (rotate) {
         neworder = (Window*)malloc(nchildren * sizeof(*neworder));
         for (i = 0; i < nchildren; ++i) {
             neworder[nchildren-1 - ((i+rotate) % nchildren)] = children[i];
         }
-        XFree(children);
         XRestackWindows(display, neworder, nchildren);
         free(neworder);
     }
+    XFree(children);
 
     if (!XGetWindowAttributes(display, DefaultRootWindow(display), &attr)) {
         return 1;
