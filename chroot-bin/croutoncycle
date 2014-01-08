@@ -55,6 +55,7 @@ winlist="`host-x11 croutonwmtools list nim | sort | awk '{ printf $NF " " }'`"
 
 # Combine the two
 fulllist="$winlist$displist"
+fulllist="${fulllist% }"
 
 # Figure out the current display number
 tty="`cat '/sys/class/tty/tty0/active'`"
