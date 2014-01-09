@@ -172,7 +172,7 @@ spinner() {
     shift
     if [ -t 2 ]; then
         # Keep track of the exit status of the piped command
-        ret="`(("$@" || echo "$?" 1>&3) | mawk -Winteractive '
+        local ret="`(("$@" || echo "$?" 1>&3) | mawk -Winteractive '
             BEGIN {
                 printf "\r"
             }
