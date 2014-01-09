@@ -274,9 +274,16 @@ for NAME in "$@"; do
             fi
         fi
         echo -n "  Backing up $CHROOT to $dest..." 1>&2
+        addtrap "echo 'Deleting partial archive.' 1>&2; rm -f '$dest'"
+        ret=0
         spinner 1 tar --checkpoint=100 --checkpoint-action=exec=echo \
             --one-file-system -V "crouton:backup.${date%-*}${date#*-}-$NAME" \
-            -caf "$dest" -C "$CHROOTS" "$NAME"
+            -caf "$dest" -C "$CHROOTS" "$NAME" || ret=$?
+        if [ "$ret" != 0 ]; then
+            echo "Unable to backup $CHROOT." 1>&2
+            exit $ret
+        fi
+        undotrap
         echo "Finished backing up $CHROOT to $dest" 1>&2
     fi
 
