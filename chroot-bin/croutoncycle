@@ -84,7 +84,7 @@ fi
 
 # List the displays if requested
 if [ "$cmd" = 'l' ]; then
-    chromiumos='Chromium OS'
+    chromiumos='Unknown'
     if [ -r '/var/host/lsb-release' ]; then
         chromiumos="`awk -F= '/_RELEASE_NAME=/{print $2}' \
                              '/var/host/lsb-release'`"
@@ -130,16 +130,19 @@ if [ -n "${cmd#[pn]}" ]; then
         destdisp="$cmd"
     else
         i=0
+        destdisp=''
         for disp in $fulllist; do
             if [ "$i" -eq "$cmd" ]; then
+                destdisp="$disp"
                 break
             fi
             i="$((i+1))"
         done
-        destdisp="$disp"
+        if [ -z "$destdisp" ]; then
+            echo "Display number out of range." 1>&2
+            exit 2
+        fi
     fi
-elif [ "${curdisp#tty}" != "$curdisp" ]; then
-    destdisp='0'
 elif [ "$cmd" = 'p' ]; then
     destdisp="${fulllist##* }"
     for disp in $fulllist; do
@@ -158,24 +161,17 @@ elif [ "$cmd" = 'n' ]; then
             destdisp="${fulllist%% *}"
         fi
     done
+    if [ -z "$destdisp" ]; then
+        destdisp="${fulllist##*}"
+    fi
 else
-    destdisp='0'
+    echo "Bad command $cmd." 1>&2
+    exit 3
 fi
 
 # No-op on no-op
 if [ "$destdisp" = "$curdisp" ]; then
     exit 0
-fi
-
-# Determine if the target display is on a VT
-if [ "${destdisp#:}" = "$destdisp" ]; then
-    dest="${destdisp%"*"}"
-else
-    dest="`DISPLAY="$destdisp" xprop -root 'XFree86_VT' 2>/dev/null`"
-    dest="vt${dest##* }"
-    if [ "${dest#vt[0-9]}" = "$dest" ]; then
-        dest="vt1"
-    fi
 fi
 
 # Make sure tap-to-click is enabled
@@ -185,24 +181,28 @@ if hash xinput 2>/dev/null; then
     done
 fi
 
-# Raise the right window after chvting, so that it can update
-if [ "${dest#vt}" = "$dest" ]; then
+# Determine if the target display is on a VT
+if [ "${destdisp#:}" = "$destdisp" ]; then
+    eval "`host-x11`"
+    # Raise the right window after chvting, so that it can update
     if [ "$tty" != 'tty1' ]; then
         chvt 1
         sleep .1
     fi
-    host-x11 croutonwmtools raise "$dest"
+    croutonwmtools raise "${destdisp%"*"}"
 else
-    chvt "${dest#vt}"
+    export DISPLAY="$destdisp"
+    dest="`xprop -root 'XFree86_VT' 2>/dev/null`"
+    dest="${dest##* }"
+    if [ "${dest#[1-9]}" = "$dest" ]; then
+        dest='1'
+    fi
+    chvt "$dest"
 fi
 
 # Wait a flip and then refresh the display for good measure
 if hash xrefresh 2>/dev/null; then
     sleep .1
-    if [ "${destdisp#:}" = "$destdisp" ]; then
-        host-x11 xrefresh
-    else
-        DISPLAY="$destdisp" xrefresh
-    fi
+    xrefresh
 fi
 exit 0

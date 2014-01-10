@@ -37,7 +37,7 @@ int listMapped(Display *display, const char *arg) {
     if (!XQueryTree(display, DefaultRootWindow(display), &root, &parent,
                    &children, &nchildren))
         return 1;
-    if (!children || !nchildren)
+    if (!children)
         return 0;
 
     while (nchildren--) {
@@ -72,7 +72,7 @@ int raiseWindow(Display *display, Window window) {
     if (!XQueryTree(display, DefaultRootWindow(display), &root, &parent,
                    &children, &nchildren))
         return 1;
-    if (!children || !nchildren)
+    if (!children)
         return 2;
 
     for (rotate = 0; rotate < nchildren; ++rotate) {
@@ -84,8 +84,13 @@ int raiseWindow(Display *display, Window window) {
         return 2;
     }
 
-    if (rotate) {
+    if (rotate > 0) {
         neworder = (Window*)malloc(nchildren * sizeof(*neworder));
+        /* XQueryTree returns children in back-to-front order, while
+         * XRestackWindows takes a front-to-back list. Reverse the order and
+         * rotate the position of the children -n positions to put the requested
+         * window into the first position in the list.
+         */
         for (i = 0; i < nchildren; ++i) {
             neworder[nchildren-1 - ((i+rotate) % nchildren)] = children[i];
         }
@@ -106,27 +111,38 @@ int raiseWindow(Display *display, Window window) {
     return 0;
 }
 
+void usage(char** argv) {
+    fprintf(stderr, USAGE, argv[0], argv[0]);
+}
+
 int main(int argc, char** argv) {
     int ret = 2;
     if (argc < 2 || argc > 3) {
-        printf(USAGE, argv[0], argv[0]);
+        usage(argv);
         return 2;
     }
     Display *display = XOpenDisplay(NULL);
-    if (!display)
+    if (!display) {
+        fputs("Unable to open display\n", stderr);
         return 1;
+    }
     switch (argv[1][0]) {
         case 'l':
-            if (argc > 3)
+            if (argc > 3) {
+                usage(argv);
                 break;
+            }
             ret = listMapped(display, argc >= 3 ? argv[2] : "");
             break;
         case 'r':
-            if (argc != 3)
+            if (argc != 3) {
+                usage(argv);
                 break;
+            }
             ret = raiseWindow(display, (Window)strtol(argv[2], NULL, 0));
             break;
         default:
+            usage(argv);
             break;
     }
     XCloseDisplay(display);
