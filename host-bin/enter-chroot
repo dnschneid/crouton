@@ -257,6 +257,18 @@ fi
 # Soft-link resolv.conf so that updates are automatically propagated
 ln -sf '/var/host/shill/resolv.conf' "$CHROOT/etc/resolv.conf"
 
+# Extract cmt drivers and configuration files
+CROUTON_CMT=/var/lib/cmt
+mkdir -p $CROUTON_CMT/lib
+mkdir -p $CROUTON_CMT/input
+mkdir -p $CROUTON_CMT/xorg.conf.d
+cp -d /usr/lib64/libgestures.so* $CROUTON_CMT/lib
+cp -d /usr/lib64/libevdev.so* $CROUTON_CMT/lib
+cp -d /usr/lib64/libbase-core-180609.so* $CROUTON_CMT/lib
+cp -d /usr/lib64/libtouchnoisefilter.so* $CROUTON_CMT/lib
+cp -d /usr/lib64/xorg/modules/input/cmt_drv.so $CROUTON_CMT/input
+cp -d /etc/X11/xorg.conf.d/40-touchpad-cmt.conf $CROUTON_CMT/xorg.conf.d
+
 # Sanity check of the timezone setting
 localtime="$CHROOT/etc/localtime"
 hostlocaltime='/var/host/timezone/localtime'
@@ -332,6 +344,7 @@ tmpfsmount /var/run/lock 'noexec,nosuid,nodev,size=5120k'
 bindmount /var/run/dbus /var/host/dbus
 bindmount /var/run/shill /var/host/shill
 bindmount /var/run/cras /var/host/cras
+bindmount /var/lib/cmt /var/host/cmt
 bindmount /var/lib/timezone /var/host/timezone
 for m in /lib/modules/*; do
     if [ -d "$m" ]; then
