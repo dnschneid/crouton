@@ -46,12 +46,6 @@ fi
 # Launch the powerd poker daemon
 croutonpowerd --daemon &
 
-# PATCH: launch the touchpad scroller daemon
-if [ -f "$HOME/.croutonwheel" ]; then
-    CROUTON_WHEEL_PARAMS="`head -n1 "$HOME/.croutonwheel"`"
-fi
-croutonwheel $CROUTON_WHEEL_PARAMS <&- &
-
 # Apply the Chromebook keyboard map if installed.
 if [ -f '/usr/share/X11/xkb/compat/chromebook' ]; then
     setxkbmap -model chromebook
@@ -92,14 +86,24 @@ if [ -f "$toucheggconf" ]; then
 fi
 
 # Configure trackpad settings if needed
-if synclient >/dev/null 2>&1; then
-    case "`awk -F= '/_RELEASE_BOARD=/{print $2}' '/var/host/lsb-release'`" in
-        butterfly*|falco*) SYNCLIENT="FingerLow=1 FingerHigh=5 $SYNCLIENT";;
-        parrot*|peppy*) SYNCLIENT="FingerLow=5 FingerHigh=10 $SYNCLIENT";;
-    esac
-    if [ -n "$SYNCLIENT" ]; then
-        synclient $SYNCLIENT
-    fi
+# PATCH: disabled for cmt
+#if synclient >/dev/null 2>&1; then
+#    case "`awk -F= '/_RELEASE_BOARD=/{print $2}' '/var/host/lsb-release'`" in
+#        butterfly*|falco*) SYNCLIENT="FingerLow=1 FingerHigh=5 $SYNCLIENT";;
+#        parrot*|peppy*) SYNCLIENT="FingerLow=5 FingerHigh=10 $SYNCLIENT";;
+#    esac
+#    if [ -n "$SYNCLIENT" ]; then
+#        synclient $SYNCLIENT
+#    fi
+#fi
+
+# PATCH: Launch the touchpad scroller daemon
+croutonwheel='/usr/local/bin/croutonwheel'
+if [ -f "$HOME/.croutonwheel" ]; then
+    CROUTON_WHEEL_PARAMS="`head -n1 "$HOME/.croutonwheel"`"
+fi
+if [ -x "$croutonwheel" ]; then
+  sleep 10 && "$croutonwheel" $CROUTON_WHEEL_PARAMS <&- &
 fi
 
 # Shell is the leader of a process group, so signals sent to this process are
