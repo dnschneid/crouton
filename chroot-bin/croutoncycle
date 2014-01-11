@@ -69,7 +69,7 @@ if [ "$tty" = 'tty1' ]; then
     done
 else
     # Poll the displays to figure out which one owns this VT
-    curdisp=''
+    curdisp="$tty"
     for disp in $displist; do
         if DISPLAY="$disp" xprop -root 'XFree86_VT' 2>/dev/null \
                 | grep -q " ${tty#tty}\$"; then
@@ -77,9 +77,6 @@ else
             break
         fi
     done
-    if [ -z "$curdisp" ]; then
-        curdisp="$tty"
-    fi
 fi
 
 # List the displays if requested
@@ -162,7 +159,7 @@ elif [ "$cmd" = 'n' ]; then
         fi
     done
     if [ -z "$destdisp" ]; then
-        destdisp="${fulllist##*}"
+        destdisp="${fulllist%% *}"
     fi
 else
     echo "Bad command $cmd." 1>&2
