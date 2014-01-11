@@ -4,10 +4,11 @@
 
 /* Constants */
 var URL = "ws://localhost:30001/";
-var VERSION = 1; /* Note: the extension must always be backward compatible */
+var VERSION = 2; /* Note: the extension must always be backward compatible */
 var MAXLOGGERLEN = 20;
 var RETRY_TIMEOUT = 5;
 var UPDATE_CHECK_INTERVAL = 15*60; /* Check for updates every 15' at most */
+var WINDOW_UPDATE_INTERVAL = 15*60; /* Update window list every 15' at most */
 /* String to copy to the clipboard if it should be empty */
 var DUMMY_EMPTYSTRING = "%";
 
@@ -31,9 +32,12 @@ var dummystr_ = false; /* true if the last string we copied was the dummy string
 var update_ = false; /* true if an update to the extension is available */
 
 var lastupdatecheck_ = null;
+var lastwindowlistupdate_ = null;
 
 var status_ = "";
+var sversion_ = 0; /* Version of the websocket server */
 var logger_ = []; /* Array of status messages: [LogLevel, time, message] */
+var windows_ = []; /* Array of windows (xorg, xephyr, host-x11, etc) */
 
 /* Set the current status string.
  * active is a boolean, true if the WebSocket connection is established. */
@@ -44,6 +48,10 @@ function setStatus(status, active) {
     /* Apply update if the extension is not active */
     if (update_ && !active_)
         chrome.runtime.reload();
+
+    /* Force a window list update on active */
+    if (active_)
+        updateWindowList(true);
 
     refreshUI();
 }
@@ -78,8 +86,24 @@ function checkUpdate(force) {
     }
 }
 
+function updateWindowList(force) {
+    if (!active_ || sversion_ < 2)
+        return;
+
+    var currenttime = new Date().getTime();
+
+    if (force || lastwindowlistupdate_ == null ||
+            (currenttime-lastwindowlistupdate_) > 1000*WINDOW_UPDATE_INTERVAL) {
+        printLog("Sending window list request", LogLevel.DEBUG);
+        websocket_.send("Cl");
+        lastwindowlistupdate_ = currenttime;
+    }
+}
+
 /* Update the icon, and refresh the popup page */
 function refreshUI() {
+    updateWindowList(false);
+
     if (error_)
         icon = "error"
     else if (!enabled_)
@@ -96,14 +120,15 @@ function refreshUI() {
 
     var views = chrome.extension.getViews({type: "popup"});
     for (var i = 0; i < views.length; views++) {
+        var view = views[i];
         /* Make sure page is ready */
         if (document.readyState === "complete") {
             /* Update "help" link */
-            helplink = views[i].document.getElementById("help");
+            helplink = view.document.getElementById("help");
             helplink.onclick = showHelp;
             /* Update enable/disable link. */
             /* FIXME: Sometimes, there is a little box coming around the link */
-            enablelink = views[i].document.getElementById("enable");
+            enablelink = view.document.getElementById("enable");
             if (enabled_) {
                 enablelink.textContent = "Disable";
                 enablelink.onclick = function() {
@@ -127,7 +152,7 @@ function refreshUI() {
             }
 
             /* Update debug mode according to checkbox state. */
-            debugcheck = views[i].document.getElementById("debugcheck");
+            debugcheck = view.document.getElementById("debugcheck");
             debugcheck.onclick = function() {
                 debug_ = debugcheck.checked;
                 refreshUI();
@@ -135,17 +160,39 @@ function refreshUI() {
             debugcheck.checked = debug_;
 
             /* Update status box */
-            views[i].document.getElementById("info").textContent = status_;
+            view.document.getElementById("info").textContent = status_;
+
+            /* Update window table */
+            windowlist = view.document.getElementById("windowlist");
+
+            while (windowlist.rows.length > 0) {
+                windowlist.deleteRow(0);
+            }
+
+            for (var i = 0; i < windows_.length; i++) {
+                if (!windows_[i].length)
+                    continue;
+                var row = windowlist.insertRow(-1);
+                var cell1 = row.insertCell(0);
+                var cell2 = row.insertCell(1);
+                cell1.className = "display";
+                cell1.innerHTML = windows_[i][0];
+                cell2.className = "name";
+                cell2.innerHTML = windows_[i].substring(3)
+                cell2.onclick = (function(i) { return function() {
+                    websocket_.send("C" + i);
+                } })(i);
+            }
 
             /* Update logger table */
-            loggertable = views[i].document.getElementById("logger");
+            loggertable = view.document.getElementById("logger");
 
             /* FIXME: only update needed rows */
             while (loggertable.rows.length > 0) {
                 loggertable.deleteRow(0);
             }
 
-            for (i = 0; i < logger_.length; i++) {
+            for (var i = 0; i < logger_.length; i++) {
                 value = logger_[i];
 
                 if (value[0] == LogLevel.DEBUG && !debug_)
@@ -235,14 +282,15 @@ function websocketMessage(evt) {
     /* Only accept version packets until we have received one. */
     if (!active_) {
         if (cmd == 'V') { /* Version */
-            if (payload < 1 || payload > VERSION) {
+            sversion_ = payload;
+            if (sversion_ < 1 || sversion_ > VERSION) {
                 websocket_.send("EInvalid version (> " + VERSION + ")");
-                error("Invalid server version " + payload + " > " + VERSION,
+                error("Invalid server version " + sversion_ + " > " + VERSION,
                       false);
             }
+            websocket_.send("VOK");
             /* Set active_ to true */
             setStatus("Connected", true);
-            websocket_.send("VOK");
             return;
         } else {
             error("Received frame while waiting for version", false);
@@ -295,6 +343,13 @@ function websocketMessage(evt) {
             websocket_.send("EError: URL must be absolute");
         }
 
+        break;
+    case 'C': /* Returned data from a croutoncycle command */
+        /* Non-zero length has a window list; otherwise it's a cycle signal */
+        if (payload.length > 0) {
+            windows_ = payload.split('\n');
+        }
+        refreshUI();
         break;
     case 'P': /* Ping */
         websocket_.send(received_msg);

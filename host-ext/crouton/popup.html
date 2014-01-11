@@ -15,6 +15,15 @@
         outline: 0;
       }
 
+      #switcher {
+        width: 400px;
+      }
+
+      #windowlist {
+        border: 0px;
+        border-spacing: 0;
+      }
+
       #scrolllogger {
         width: 400px;
         height: 200px;
@@ -30,7 +39,17 @@
         font-family: "monospace";
         font-size: 12px;
         vertical-align: top;
-        padding: 2px 15px;
+      }
+
+      td.display {
+        padding: 2px 5px;
+        color:#666666;
+      }
+
+      td.name {
+        padding: 2px 5px;
+        color:#000080;
+        cursor:pointer;
       }
 
       td.time {
@@ -43,6 +62,9 @@
         color: #000000;
       }
 
+      td.value {
+        padding: 2px 15px;
+      }
       td.value.debug { color: #808080; }
       td.value.info { color: #008000; }
       td.value.error { color: #800000; }
@@ -54,6 +76,7 @@
     <h1 style="display:inline">crouton integration</h1>
     <hr/>
     <div id="info">Loading...</div>
+    <div id="switcher"><table id="windowlist"><tr><td /></tr></table></div>
     <div id="scrolllogger"><table id="logger"><tr><td /></tr></table></div>
     <div style="float: left;"><a href="#" id="enable">.</a></div>
     <div style="float: right;"><input type="checkbox" id="debugcheck" />
