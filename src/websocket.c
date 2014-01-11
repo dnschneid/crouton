@@ -31,7 +31,7 @@
 const int BUFFERSIZE = 4096;
 
 /* WebSocket constants */
-#define VERSION "1"
+#define VERSION "2"
 const int PORT = 30001;
 const int FRAMEMAXHEADERSIZE = 2+8;
 const int MAXFRAMESIZE = 16*1048576; // 16MiB
@@ -55,6 +55,7 @@ const int WS_OPCODE_PONG = 0xA;
 const char* PIPE_DIR = "/tmp/crouton-ext";
 const char* PIPEIN_FILENAME = "/tmp/crouton-ext/in";
 const char* PIPEOUT_FILENAME = "/tmp/crouton-ext/out";
+const char* PIPE_VERSION_FILE = "/tmp/crouton-ext/version";
 const int PIPEOUT_WRITE_TIMEOUT = 3000;
 
 /* 0 - Quiet
@@ -530,6 +531,15 @@ void pipe_init() {
         exit(1);
     }
 
+    /* Create a file with the version number of the protocol */
+    FILE *vers = fopen(PIPE_VERSION_FILE, "w");
+    if (!vers
+            || fputs(VERSION "\n", vers) == EOF
+            || fclose(vers) == EOF) {
+        error("Unable to write to %s.", PIPE_VERSION_FILE);
+        exit(1);
+    }
+
     pipein_reopen();
 }
 
@@ -822,16 +832,16 @@ static void socket_client_read() {
     switch (buffer[0]) {
         case 'C':  /* Send a command to croutoncycle and get the response */
             log(2, "Received croutoncycle command (%s)", &buffer[1]);
-            length = popen2("croutoncycle", &buffer[1],
-                            "", 0, &buffer[1], BUFFERSIZE-1);
+            length = popen2("croutoncycle", &buffer[1], "", 0,
+                            &buffer[FRAMEMAXHEADERSIZE+1],
+                            BUFFERSIZE-FRAMEMAXHEADERSIZE-1);
             if (length == -1) {
                 error("Call to croutoncycle failed.");
                 socket_client_close(0);
                 return;
             }
+            buffer[FRAMEMAXHEADERSIZE] = 'C';
             length++;
-            buffer[length == BUFFERSIZE ? BUFFERSIZE-1 : length] = 0;
-            log(2, "Sending croutoncycle response (%s)", buffer);
             if (socket_client_write_frame(buffer, length,
                                           WS_OPCODE_TEXT, 1) < 0) {
                 error("Write error.");
