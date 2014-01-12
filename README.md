@@ -182,7 +182,8 @@ Tips
 ----
 
   * Chroots are cheap! Create multiple ones using `-n`, break them, then make
-    new, better ones!
+    new, better ones! To start one of your other chroots, use 
+    `sudo startxfce4 -n chroot-name-here`.
   * You can change the distro mirror from the default by using `-m`
   * Behind a proxy? `-P` lets you specify one.
   * A script is installed in your chroot called `brightness`. You can assign
