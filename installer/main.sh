@@ -386,20 +386,20 @@ Either delete it, specify a different name (-n), or specify -u to update it."
 
     # Restore the chroot now
     if [ -n "$RESTORE" ]; then
-        sh "$HOSTBINDIR/edit-chroot" -r -f "$TARBALL" -c "$CHROOTS" "$NAME"
+        sh "$HOSTBINDIR/edit-chroot" -r -f "$TARBALL" -c "$CHROOTS" -- "$NAME"
     fi
 
     # Mount the chroot and update CHROOT path
     if [ -n "$KEYFILE" ]; then
         CHROOT="`sh "$HOSTBINDIR/mount-chroot" -k "$KEYFILE" \
-                            $create $ENCRYPT -p -c "$CHROOTS" "$NAME"`"
+                            $create $ENCRYPT -p -c "$CHROOTS" -- "$NAME"`"
     else
         CHROOT="`sh "$HOSTBINDIR/mount-chroot" \
-                            $create $ENCRYPT -p -c "$CHROOTS" "$NAME"`"
+                            $create $ENCRYPT -p -c "$CHROOTS" -- "$NAME"`"
     fi
 
     # Auto-unmount the chroot when the script exits
-    addtrap "sh '$HOSTBINDIR/unmount-chroot' -y -c '$CHROOTS' '$NAME' 2>/dev/null"
+    addtrap "sh '$HOSTBINDIR/unmount-chroot' -y -c '$CHROOTS' -- '$NAME' 2>/dev/null"
 
     # Sanity-check the release if we're updating
     if [ -n "$UPDATE" -a -n "$RELEASE" ] &&

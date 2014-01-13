@@ -235,7 +235,7 @@ for NAME in "$@"; do
         elif [ -n "$RESTORE" ]; then
             EXISTS='y'
         else
-            sh -e "$BINDIR/unmount-chroot" $YESPARAM -c "$CHROOTS" "$NAME"
+            sh -e "$BINDIR/unmount-chroot" $YESPARAM -c "$CHROOTS" -- "$NAME"
         fi
     elif [ -n "$RESTORE" ]; then
         EXISTS=''
@@ -382,12 +382,12 @@ for NAME in "$@"; do
     # Encrypt/rewrap the chroot
     if [ -n "$ENCRYPT" ]; then
         # Use mount-chroot to do the heavy lifting
-        unmount="sh -e '$BINDIR/unmount-chroot' -y -c '$CHROOTS' '$NAME'"
+        unmount="sh -e '$BINDIR/unmount-chroot' -y -c '$CHROOTS' -- '$NAME'"
         addtrap "$unmount"
         if [ -n "$KEYFILE" ]; then
-            sh -e "$BINDIR/mount-chroot" -ee -k "$KEYFILE" -c "$CHROOTS" "$NAME"
+            sh -e "$BINDIR/mount-chroot" -ee -k "$KEYFILE" -c "$CHROOTS" -- "$NAME"
         else
-            sh -e "$BINDIR/mount-chroot" -ee -c "$CHROOTS" "$NAME"
+            sh -e "$BINDIR/mount-chroot" -ee -c "$CHROOTS" -- "$NAME"
         fi
         undotrap
         eval "$unmount"
