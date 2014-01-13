@@ -130,20 +130,22 @@ if [ -n "$RESTORE" -a -n "$TARBALL" -a $# = 0 ]; then
     else
         # Old backups just use the first folder name
         NAME="`tar -tf "$TARBALL" 2>/dev/null | head -n 1`"
+        NAME="${NAME%%/*}"
     fi
     if [ -z "$NAME" ]; then
         error 2 "$TARBALL doesn't appear to be a valid tarball."
     fi
-    set -- "${NAME%%/*}"
+    set -- "$NAME"
 fi
 
+# Make sure that all names are valid chroot names.
 # For anything but restore, make sure all chroots exist before doing anything.
-# FIXME: Restore from automatically named tarballs could be protected as well.
-if [ -z "$RESTORE" ]; then
-    for NAME in "$@"; do
-        if [ -z "$NAME" ]; then
-            continue
-        fi
+for NAME in "$@"; do
+    if ! validate_name "$NAME"; then
+        error 2 "Invalid chroot name '$NAME'."
+    fi
+
+    if [ -z "$RESTORE" ]; then
         CHROOT="$CHROOTS/$NAME"
 
         # Check for existence
@@ -155,8 +157,8 @@ Please specify all options before chroot names."
             fi
             error 2 "$CHROOT not found.$extra"
         fi
-    done
-fi
+    fi
+done
 
 # If TARBALL ends in a slash or we're restoring multiple chroots, make directory
 if [ -n "$TARBALL" ] && \
@@ -220,8 +222,9 @@ spinner() {
 
 # Process each chroot
 for NAME in "$@"; do
-    if [ -z "$NAME" ]; then
-        continue
+    # Double check $NAME (better paranoid than sorry)
+    if ! validate_name "$NAME"; then
+        error 2 "Invalid chroot name '$NAME'."
     fi
     CHROOT="$CHROOTS/$NAME"
 
@@ -237,6 +240,7 @@ for NAME in "$@"; do
     elif [ -n "$RESTORE" ]; then
         EXISTS=''
     else
+        # This should have been caught earlier
         error 2 "$CHROOT not found."
     fi
 
@@ -394,6 +398,9 @@ for NAME in "$@"; do
         target="$MOVE"
         if [ "${target##*/}" = "$target" ]; then
             # No slashes in the path. Assume renaming.
+            if ! validate_name "$target"; then
+                error 2 "Invalid target chroot name '$target'."
+            fi
             target="$CHROOTS/$target"
         elif [ ! "${target%/}" = "$target" ]; then
             # Ends in a slash; append name.

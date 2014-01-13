@@ -72,6 +72,7 @@ Options:
     -M MIRROR2  A secondary mirror, often used for security updates.
                 Can only be specified alongside -m.
     -n NAME     Name of the chroot. Default is the release name.
+                Cannot contain any slash (/).
     -p PREFIX   The root directory in which to install the bin and chroot
                 subdirectories and data. Default: $PREFIX
     -P PROXY    Set an HTTP proxy for the chroot; effectively sets http_proxy.
@@ -360,6 +361,11 @@ CHROOTS="$PREFIX/chroots"
 CHROOT="$CHROOTS/${NAME:="${RELEASE:-"$DEFAULTRELEASE"}"}"
 CHROOTSRC="$CHROOT"
 TARGETDEDUPFILE="$CHROOT/.crouton-targets"
+
+# Validate chroot name
+if ! validate_name "$NAME"; then
+    error 2 "Invalid chroot name '$NAME'."
+fi
 
 # Confirm we have write access to the directory before starting.
 if [ -z "$DOWNLOADONLY" ]; then
