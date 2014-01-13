@@ -85,6 +85,10 @@ int raiseWindow(Display *display, Window window) {
     }
 
     if (rotate > 0) {
+        /* Unmap and remap the old top-level window to kill off any mouse and
+         * keyboard hooks */
+        XUnmapWindow(display, children[nchildren-1]);
+
         neworder = (Window*)malloc(nchildren * sizeof(*neworder));
         /* XQueryTree returns children in back-to-front order, while
          * XRestackWindows takes a front-to-back list. Reverse the order and
@@ -96,6 +100,9 @@ int raiseWindow(Display *display, Window window) {
         }
         XRestackWindows(display, neworder, nchildren);
         free(neworder);
+
+        /* Split the map from the unmap to reduce the number of events */
+        XMapWindow(display, children[nchildren-1]);
     }
     XFree(children);
 
