@@ -18,19 +18,9 @@
         outline: 0;
       }
 
-      #switcher {
-        width: 400px;
-      }
-
       #windowlist {
         border: 0px;
         border-spacing: 0;
-      }
-
-      #scrolllogger {
-        width: 400px;
-        height: 200px;
-        overflow-y: auto;
       }
 
       #logger {
@@ -51,6 +41,7 @@
 
       td.name {
         padding: 2px 5px;
+        font-size: 14px;
         color:#000080;
         cursor:pointer;
       }
@@ -75,15 +66,18 @@
     <script src="popup.js" type="text/javascript"></script>
   </head>
   <body>
-    <div style="float: right;"><a href="#" id="help">Help?</a></div>
+    <div style="float: right;"><a href="#" id="help">Help?</a>
+      <br/><a href="#" id="enable">.</a></div>
     <h1 style="display:inline">crouton integration</h1>
     <hr/>
     <div id="info">Loading...</div>
     <div id="switcher"><table id="windowlist"><tr><td /></tr></table></div>
     <div id="scrolllogger"><table id="logger"><tr><td /></tr></table></div>
-    <div style="float: left;"><a href="#" id="enable">.</a></div>
-    <div style="float: right;"><input type="checkbox" id="debugcheck" />
-      <label for="debugcheck">Enable debugging</label></div>
-    <div style="clear: both;"></div>
+    <div style="float:right">
+      <input type="checkbox" id="logcheck" />
+        <label for="logcheck">Show log</label>
+      <input type="checkbox" id="debugcheck" />
+        <label for="debugcheck">Enable debugging</label>
+    </div>
   </body>
 </html>

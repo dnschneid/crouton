@@ -193,20 +193,27 @@ function refreshUI() {
                 loggertable.deleteRow(0);
             }
 
-            for (var i = 0; i < logger_.length; i++) {
-                value = logger_[i];
+            /* Only update if "show log" is enabled */
+            logcheck = view.document.getElementById("logcheck");
+            logcheck.onclick = function() {
+                refreshUI();
+            }
+            if (logcheck.checked) {
+                for (var i = 0; i < logger_.length; i++) {
+                    value = logger_[i];
 
-                if (value[0] == LogLevel.DEBUG && !debug_)
-                    continue;
+                    if (value[0] == LogLevel.DEBUG && !debug_)
+                        continue;
 
-                var row = loggertable.insertRow(-1);
-                var cell1 = row.insertCell(0);
-                var cell2 = row.insertCell(1);
-                var levelclass = value[0];
-                cell1.className = "time " + levelclass;
-                cell2.className = "value " + levelclass;
-                cell1.innerHTML = value[1];
-                cell2.innerHTML = value[2];
+                    var row = loggertable.insertRow(-1);
+                    var cell1 = row.insertCell(0);
+                    var cell2 = row.insertCell(1);
+                    var levelclass = value[0];
+                    cell1.className = "time " + levelclass;
+                    cell2.className = "value " + levelclass;
+                    cell1.innerHTML = value[1];
+                    cell2.innerHTML = value[2];
+                }
             }
         }
     }
