@@ -10,6 +10,8 @@
 #   "Timestamp","Repository","Branch","Additional parameters"
 #   "2013/10/16 8:24:52 PM GMT","dnschneid/crouton","master",""
 
+set -e
+
 APPLICATION="${0##*/}"
 SCRIPTDIR="`readlink -f "\`dirname "$0"\`/.."`"
 LOGUPLOADINTERVAL=60
