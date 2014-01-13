@@ -49,9 +49,8 @@ function setStatus(status, active) {
     if (update_ && !active_)
         chrome.runtime.reload();
 
-    /* Force a window list update on active */
-    if (active_)
-        updateWindowList(true);
+    /* Force a window list update */
+    updateWindowList(true);
 
     refreshUI();
 }
@@ -87,8 +86,10 @@ function checkUpdate(force) {
 }
 
 function updateWindowList(force) {
-    if (!active_ || sversion_ < 2)
+    if (!active_ || sversion_ < 2) {
+        windows_ = [];
         return;
+    }
 
     var currenttime = new Date().getTime();
 
@@ -290,7 +291,7 @@ function websocketMessage(evt) {
             }
             websocket_.send("VOK");
             /* Set active_ to true */
-            setStatus("Connected", true);
+            setStatus("", true);
             return;
         } else {
             error("Received frame while waiting for version", false);
