@@ -64,6 +64,8 @@ wget -O "$CRASBUILDTMP/adhd.tar.gz" \
 # Patch CRAS so that x86 client can connect to x86_64 server (multilib)
 # Assume current directory is "$CRASBUILDTMP"/cras/src
 patch_cras_x86_x86_64() {
+    echo "Patching CRAS (x86 client with x86_64 server)..." 1>&2
+
     common="common/cras_shm.h common/cras_messages.h common/cras_iodev_info.h \
             common/cras_types.h common/cras_audio_format.c"
     cras_audio_format_h=""
@@ -223,6 +225,7 @@ build_cras() {
         # Applied upstream in version 5215
         # FIXME: Remove this when 5215 has trickled down to stable
         if [ "$CROS_VER_1" -lt 5215 ]; then
+            echo "Patching CRAS (delay function bug)..." 1>&2
             patch -p3 <<END
 diff --git a/cras/src/alsa_plugin/pcm_cras.c b/cras/src/alsa_plugin/pcm_cras.c
 index 09ca39d..33c496b 100644
