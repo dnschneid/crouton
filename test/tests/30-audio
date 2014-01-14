@@ -100,7 +100,9 @@ for ADHD_HEAD in $ADHD_HEADS; do
         fails true
     fi
     snapshot "$RELEASE" core
-    echo "ADHD_HEAD='$ADHD_HEAD' CROS_VER_1='$CROS_VER_1'" | \
-        crouton -T -u -n "$RELEASE" -t audio
+    echo "
+ADHD_HEAD='$ADHD_HEAD'
+CROS_VER_1='$CROS_VER_1'
+    " | crouton -T -u -n "$RELEASE" -t audio
     host delete-chroot -y "$RELEASE"
 done
