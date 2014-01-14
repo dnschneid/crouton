@@ -88,7 +88,7 @@ ADHD_HEADS="`wget --no-check-certificate --quiet -O- \
     }
 '`"
 
-log "Testing ADHD heads: $ADHD_HEADS."
+echo "Testing ADHD heads: $ADHD_HEADS." | tr '\n' ' ' | log
 
 for ADHD_HEAD in $ADHD_HEADS; do
     # Generate CROS_VER_1 based on branch name
