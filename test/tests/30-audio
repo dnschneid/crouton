@@ -63,7 +63,7 @@ done
 # release branches appear before stabilize ones.
 # We match recent release-* branches, then stabilize-* branches ahead of the
 # latest release branch, and finally master.
-ADHD_HEADS="`wget --quiet -O- \
+ADHD_HEADS="`wget --no-check-certificate --quiet -O- \
 'https://chromium.googlesource.com/chromiumos/third_party/adhd/+refs/heads?format=TEXT' \
     | awk '
     BEGIN {
@@ -88,6 +88,8 @@ ADHD_HEADS="`wget --quiet -O- \
     }
 '`"
 
+log "Testing ADHD heads: $ADHD_HEADS."
+
 for ADHD_HEAD in $ADHD_HEADS; do
     # Generate CROS_VER_1 based on branch name
     CROS_VER_1="${ADHD_HEAD#*stabilize-}"
@@ -96,7 +98,7 @@ for ADHD_HEAD in $ADHD_HEADS; do
     if [ "$ADHD_HEAD" = "master" ]; then
         CROS_VER_1=999999
     elif [ "$((CROS_VER_1+0))" != "$CROS_VER_1" ]; then
-        echo "Cannot detect Chromium OS version from branch name '$ADHD_HEAD'" 2>&1
+        log "Cannot detect Chromium OS version from branch name '$ADHD_HEAD'"
         fails true
     fi
     snapshot "$RELEASE" core
