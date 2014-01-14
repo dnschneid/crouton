@@ -19,8 +19,8 @@ install --minimal dbus
 ln -sf croutonpowerd /usr/local/bin/gnome-screensaver-command
 ln -sf croutonpowerd /usr/local/bin/xscreensaver-command
 
-# Install xbindkeys for key shortcuts and kbd for chvt
-install --minimal xbindkeys kbd
+# Install xbindkeys and xautomation for key shortcuts and kbd for chvt
+install --minimal xbindkeys xautomation kbd
 # Make chvt SUID root so we don't need to run croutoncycle as root
 chmod u+s /bin/chvt
 
