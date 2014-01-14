@@ -298,7 +298,7 @@ function websocketMessage(evt) {
             }
             websocket_.send("VOK");
             /* Set active_ to true */
-            setStatus("", true);
+            setStatus(sversion_ >= 2 ? "" : "Connected", true);
             return;
         } else {
             error("Received frame while waiting for version", false);
