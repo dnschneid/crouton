@@ -17,6 +17,7 @@ addtrap "rm -rf --one-file-system '$CRASBUILDTMP'"
 
 # ADHD_HEAD is normally autodetected, but it can be set manually using a custom
 # target sourced before this one (used for automated testing)
+# The custom target also needs to set CROS_VER_1
 if [ -z "$ADHD_HEAD" ]; then
     # Fetch list of branches from repository
     wget -O "$CRASBUILDTMP/adhd.refs" \
@@ -24,9 +25,6 @@ if [ -z "$ADHD_HEAD" ]; then
 
     # Chrome OS version (e.g. 4100.86.0)
     CROS_VER="`sed -n 's/^CHROMEOS_RELEASE_VERSION=//p' /var/host/lsb-release`"
-    # Set CROS_VER_1 to the major version number (e.g. 4100), used later on to
-    # selectively apply patches.
-    CROS_VER_1="${CROS_VER%%.*}"
 
     ADHD_HEAD="`awk '
         BEGIN {
@@ -47,15 +45,14 @@ if [ -z "$ADHD_HEAD" ]; then
             print RLENGTH, $2
         }
     ' "$CRASBUILDTMP/adhd.refs" | sort -V | tail -n 1 | cut -d' ' -f2`"
-else
-    # Generate CROS_VER_1 based on branch name
-    CROS_VER_1="${ADHD_HEAD#*stabilize-}"
-    CROS_VER_1="${CROS_VER_1#*release-R??-}"
-    CROS_VER_1="${CROS_VER_1%%.*}"
-    if [ "$CROS_VER_1" = "master" ]; then
+
+    # Set CROS_VER_1 to the major version number (e.g. 4100), used later on to
+    # selectively apply patches.
+    CROS_VER_1="${CROS_VER%%.*}"
+
+    # No patch needs to be applied on master (typical with Chromium OS images)
+    if [ "$ADHD_HEAD" = "master" ]; then
         CROS_VER_1=999999
-    elif [ "$((CROS_VER_1+0))" = "$CROS_VER_1" ]; then
-        error 2 "Cannot detect Chromium OS version from branch name '$ADHD_HEAD'"
     fi
 fi
 
