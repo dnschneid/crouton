@@ -34,6 +34,11 @@ getname() {
     fi
 }
 
+# Only let one instance run at a time to avoid nasty race conditions
+mkdir -m 775 -p /tmp/crouton-lock
+exec 3>/tmp/crouton-lock/cycle
+flock 3
+
 # Ensure environment sanity
 export XAUTHORITY=''
 
