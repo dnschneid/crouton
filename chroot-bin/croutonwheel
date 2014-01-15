@@ -5,23 +5,34 @@
 
 . "`dirname "$0"`/../installer/functions"
 
-# Default button numbers
-#u=4
-#d=5
-#l=6
-#r=7
-#PATCH: -r by default, for touchpad use
-u=5
-d=4
-l=7
-r=6
-# Do horizontal scrolling by default
-x=1
-# Set the default scaling and constant values
-xs='0.3'
-xc='0.01'
-ys='0.3'
-yc='0.05'
+if [ -L /etc/crouton/cmt ]; then
+  # tune croutonwheel params for cmt
+  # Default button numbers
+  u=5
+  d=4
+  l=7
+  r=6
+  # Do horizontal scrolling by default
+  x=1
+  # Set the default scaling and constant values
+  xs='0.3'
+  xc='0.01'
+  ys='0.3'
+  yc='0.05'
+else
+  # Default button numbers
+  u=4
+  d=5
+  l=6
+  r=7
+  # Do horizontal scrolling by default
+  x=1
+  # Set the default scaling and constant values
+  xs='0.2'
+  xc='0.01'
+  ys='0.2'
+  yc='0.05'
+fi
 
 #
 USAGE="${0##*/} [-x] [-r] [-a #.#] [-b #.#] [-c #.#] [-d #.#]
@@ -51,13 +62,13 @@ if [ $# -ge "$OPTIND" ]; then
     exit 1;
 fi
 
-# PATCH: disabled for cmt on pixel
-#
-# Operate on the Chromium OS X11 server
-#eval "`/usr/local/bin/host-x11`"
+if [ ! -L /etc/crouton/cmt ]; then
+  # Operate on the Chromium OS X11 server
+  eval "`/usr/local/bin/host-x11`"
 
-# Get the aura root window number (hex)
-aura="`xwininfo -root -children | awk '/aura_root/ {print $1}'`"
+  # Get the aura root window number (hex)
+  aura="`xwininfo -root -children | awk '/aura_root/ {print $1}'`"
+fi
 
 # Monitor xinput2 events, reacting only to scroll events (axes 2 and 3).
 # Accumulate the x and y scrolls, but reduce the acceleration so it doesn't go
@@ -70,7 +81,6 @@ aura="`xwininfo -root -children | awk '/aura_root/ {print $1}'`"
 {
     croutonxi2event <&- &
     xi="$!"
-    # PATCH: disabled for cmt on pixel
     if [ "$aura" = "" ]; then
       xev -root <&- &
     fi

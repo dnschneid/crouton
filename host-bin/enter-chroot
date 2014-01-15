@@ -257,17 +257,29 @@ fi
 # Soft-link resolv.conf so that updates are automatically propagated
 ln -sf '/var/host/shill/resolv.conf' "$CHROOT/etc/resolv.conf"
 
-# Extract cmt drivers and configuration files
-CROUTON_CMT=/var/lib/cmt
-mkdir -p $CROUTON_CMT/lib
-mkdir -p $CROUTON_CMT/input
-mkdir -p $CROUTON_CMT/xorg.conf.d
-cp -d /usr/lib64/libgestures.so* $CROUTON_CMT/lib
-cp -d /usr/lib64/libevdev.so* $CROUTON_CMT/lib
-cp -d /usr/lib64/libbase-core-180609.so* $CROUTON_CMT/lib
-cp -d /usr/lib64/libtouchnoisefilter.so* $CROUTON_CMT/lib
-cp -d /usr/lib64/xorg/modules/input/cmt_drv.so $CROUTON_CMT/input
-cp -d /etc/X11/xorg.conf.d/40-touchpad-cmt.conf $CROUTON_CMT/xorg.conf.d
+CHROMIUM_CMT=/var/lib/cmt
+if [ -L "$CHROOT/etc/crouton/cmt" ]; then
+  CHROOT_CMT=/etc/crouton/cmt
+
+  # xorg.conf.d cmt config
+  mkdir -p $CHROMIUM_CMT/etc/X11/xorg.conf.d
+  cp /etc/X11/xorg.conf.d/40-touchpad-cmt.conf $CHROMIUM_CMT/etc/X11/xorg.conf.d
+  mkdir -p $CHROOT/etc/X11/xorg.conf.d
+  ln -sfT $CHROOT_CMT/etc/X11/xorg.conf.d/40-touchpad-cmt.conf $CHROOT/etc/X11/xorg.conf.d/40-touchpad-cmt.conf
+
+  # cmt driver
+  mkdir -p $CHROMIUM_CMT/usr/lib/xorg/modules/input
+  cp /usr/lib64/xorg/modules/input/cmt_drv.so $CHROMIUM_CMT/usr/lib/xorg/modules/input
+  ln -sfT $CHROOT_CMT/usr/lib/xorg/modules/input/cmt_drv.so $CHROOT/usr/lib/xorg/modules/input/cmt_drv.so
+
+  # libs loaded by cmt driver
+  for lib in libbase-core-180609 libevdev libgestures
+  do
+    cp /usr/lib64/$lib.so $CHROMIUM_CMT/usr/lib
+    ln -sfT $CHROOT_CMT/usr/lib/$lib.so $CHROOT/usr/lib/$lib.so
+    ln -sfT $CHROOT_CMT/usr/lib/$lib.so $CHROOT/usr/lib/$lib.so.0
+  done
+fi
 
 # Sanity check of the timezone setting
 localtime="$CHROOT/etc/localtime"
@@ -344,8 +356,13 @@ tmpfsmount /var/run/lock 'noexec,nosuid,nodev,size=5120k'
 bindmount /var/run/dbus /var/host/dbus
 bindmount /var/run/shill /var/host/shill
 bindmount /var/run/cras /var/host/cras
-bindmount /var/lib/cmt /var/host/cmt
 bindmount /var/lib/timezone /var/host/timezone
+
+if [ -L "$CHROOT/etc/crouton/cmt" ]; then
+  # must bind with 'exec' to allow loading of shared objects
+  bindmount $CHROMIUM_CMT /var/host/cmt exec
+fi
+
 for m in /lib/modules/*; do
     if [ -d "$m" ]; then
         bindmount '-o ro' "$m"

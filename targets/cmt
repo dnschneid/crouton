@@ -8,11 +8,11 @@ CHROOTBIN='croutonwheel'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
+
+# provides xte for croutonwheel
 install xautomation
 
-CROUTON_CMT=/var/host/cmt
-mkdir -p /etc/X11/xorg.conf.d
-cd $CROUTON_CMT
-cp -d lib/* /usr/lib
-cp -d input/* /usr/lib/xorg/modules/input
-cp -d xorg.conf.d/* /etc/X11/xorg.conf.d
+# chroot /etc/crouton/cmt symlink activates cmt functionality
+CHROMIUM_CMT=/var/host/cmt
+CROUTON_ETC=/etc/crouton
+ln -s $CHROMIUM_CMT $CROUTON_ETC
