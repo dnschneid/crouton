@@ -4,7 +4,8 @@
 # found in the LICENSE file.
 REQUIRES='x11'
 DESCRIPTION='Installs cmt binaries from Chromium OS host as touchpad driver.'
-CHROOTBIN='croutonwheel'
+CHROOTBIN='croutonwheel croutonwheel-autostart'
+CHROOTETC='croutonwheel.desktop'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
@@ -16,3 +17,7 @@ install xautomation
 CHROMIUM_CMT=/var/host/cmt
 CROUTON_ETC=/etc/crouton
 ln -s $CHROMIUM_CMT $CROUTON_ETC
+
+# deploy croutonwheel.desktop symlink to start croutonwheel when X starts
+mkdir -p /etc/xdg/autostart
+ln -s $CROUTON_ETC/croutonwheel.desktop /etc/xdg/autostart/croutonwheel.desktop

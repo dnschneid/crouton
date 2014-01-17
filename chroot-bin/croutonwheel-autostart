@@ -1,0 +1,14 @@
+#!/bin/sh -e
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+if [ -L /etc/crouton/cmt ]; then
+     croutonwheel='/usr/local/bin/croutonwheel'
+     if [ -f "$HOME/.croutonwheel" ]; then
+         CROUTON_WHEEL_PARAMS="`head -n1 "$HOME/.croutonwheel"`"
+     fi
+     if [ -x "$croutonwheel" ]; then
+       "$croutonwheel" $CROUTON_WHEEL_PARAMS <&- &
+     fi
+fi
