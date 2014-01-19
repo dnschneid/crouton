@@ -269,7 +269,7 @@ if [ -L "$CHROOT/etc/crouton/cmt" ]; then
   do
     xorgconffile=$(basename $xorgconf)
     cp $xorgconf $CHROMIUM_CMT/etc/X11/xorg.conf.d
-    ln -sfT $CHROOT_CMT/etc/X11/xorg.conf.d/$xorgconffile $CHROOT/etc/X11/xorg.conf.d/$xorgconfile
+    ln -sfT $CHROOT_CMT/etc/X11/xorg.conf.d/$xorgconffile $CHROOT/etc/X11/xorg.conf.d/$xorgconffile
   done
 
   # cmt driver
