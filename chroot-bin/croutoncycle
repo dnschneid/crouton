@@ -129,7 +129,7 @@ if [ "$cmd" = 'l' -o "$cmd" = 'd' ]; then
             line="$chromiumos"
         fi
         if [ "$cmd" = 'l' ]; then
-            echo -n "$number$active $line"
+            echo "$number$active $line"
         fi
     done
     for disp in $displist; do
@@ -225,6 +225,11 @@ else
         dest='1'
     fi
     chvt "$dest"
+fi
+
+CROUTONPIDFILE="/tmp/crouton-lock/clip.pid"
+if [ -s "$CROUTONPIDFILE" ]; then
+    kill -USR1 "`cat "$CROUTONPIDFILE"`" || true
 fi
 
 # Wait a flip and then refresh the display for good measure
