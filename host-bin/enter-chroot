@@ -257,15 +257,20 @@ fi
 # Soft-link resolv.conf so that updates are automatically propagated
 ln -sf '/var/host/shill/resolv.conf' "$CHROOT/etc/resolv.conf"
 
+# Copy the current cmt driver and required files
 CHROMIUM_CMT=/var/lib/cmt
 if [ -L "$CHROOT/etc/crouton/cmt" ]; then
   CHROOT_CMT=/etc/crouton/cmt
 
   # xorg.conf.d cmt config
   mkdir -p $CHROMIUM_CMT/etc/X11/xorg.conf.d
-  cp /etc/X11/xorg.conf.d/40-touchpad-cmt.conf $CHROMIUM_CMT/etc/X11/xorg.conf.d
   mkdir -p $CHROOT/etc/X11/xorg.conf.d
-  ln -sfT $CHROOT_CMT/etc/X11/xorg.conf.d/40-touchpad-cmt.conf $CHROOT/etc/X11/xorg.conf.d/40-touchpad-cmt.conf
+  for xorgconf in /etc/X11/xorg.conf.d/*-touchpad-cmt.conf
+  do
+    xorgconffile=$(basename $xorgconf)
+    cp $xorgconf $CHROMIUM_CMT/etc/X11/xorg.conf.d
+    ln -sfT $CHROOT_CMT/etc/X11/xorg.conf.d/$xorgconffile $CHROOT/etc/X11/xorg.conf.d/$xorgconfile
+  done
 
   # cmt driver
   mkdir -p $CHROMIUM_CMT/usr/lib/xorg/modules/input
