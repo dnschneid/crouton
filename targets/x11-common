@@ -32,6 +32,13 @@ mkdir -p /usr/share/desktop-directories
 # Prevent Upstart from taking over X sessions
 echo > /etc/upstart-xsessions
 
+# This makes sure Xephyr, running as user, can write server-*.xkm files to
+# /var/lib/xkb, so it does not conflict with files created by Chromium OS
+# X server in /tmp.
+mkdir -p /var/lib/xkb
+chgrp video /var/lib/xkb
+chmod g+rw /var/lib/xkb
+
 # Update policies for mounting and unmounting devices with udisks2
 mkdir -p '/etc/polkit-1/localauthority/10-vendor.d'
 cat > '/etc/polkit-1/localauthority/10-vendor.d/10-crouton-udisks2.pkla' <<EOF
