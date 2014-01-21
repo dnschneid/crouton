@@ -79,6 +79,11 @@ if [ ! "${APPLICATION#delete}" = "$APPLICATION" ]; then
     DELETE='y'
 fi
 
+# At least one command must be specified
+if [ -z "$BACKUP$DELETE$ENCRYPT$KEYFILE$MOVE$RESTORE" ]; then
+    error 2 "$USAGE"
+fi
+
 # Need at least one chroot listed if not using -r with -f.
 if [ $# = 0 ] && ! [ -n "$RESTORE" -a -n "$TARBALL" ]; then
     error 2 "$USAGE"
