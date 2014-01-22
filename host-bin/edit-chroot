@@ -79,6 +79,11 @@ if [ ! "${APPLICATION#delete}" = "$APPLICATION" ]; then
     DELETE='y'
 fi
 
+# At least one command must be specified
+if [ -z "$BACKUP$DELETE$ENCRYPT$KEYFILE$MOVE$RESTORE" ]; then
+    error 2 "$USAGE"
+fi
+
 # Need at least one chroot listed if not using -r with -f.
 if [ $# = 0 ] && ! [ -n "$RESTORE" -a -n "$TARBALL" ]; then
     error 2 "$USAGE"
@@ -125,12 +130,35 @@ if [ -n "$RESTORE" -a -n "$TARBALL" -a $# = 0 ]; then
     else
         # Old backups just use the first folder name
         NAME="`tar -tf "$TARBALL" 2>/dev/null | head -n 1`"
+        NAME="${NAME%%/*}"
     fi
     if [ -z "$NAME" ]; then
         error 2 "$TARBALL doesn't appear to be a valid tarball."
     fi
-    set -- "${NAME%%/*}"
+    set -- "$NAME"
 fi
+
+# Make sure that all names are valid chroot names.
+# For anything but restore, make sure all chroots exist before doing anything.
+for NAME in "$@"; do
+    if ! validate_name "$NAME"; then
+        error 2 "Invalid chroot name '$NAME'."
+    fi
+
+    if [ -z "$RESTORE" ]; then
+        CHROOT="$CHROOTS/$NAME"
+
+        # Check for existence
+        if [ ! -d "$CHROOT" ]; then
+            extra=''
+            if [ "${NAME#-}" != "$NAME" ]; then
+                extra="
+Please specify all options before chroot names."
+            fi
+            error 2 "$CHROOT not found.$extra"
+        fi
+    fi
+done
 
 # If TARBALL ends in a slash or we're restoring multiple chroots, make directory
 if [ -n "$TARBALL" ] && \
@@ -172,7 +200,7 @@ spinner() {
     shift
     if [ -t 2 ]; then
         # Keep track of the exit status of the piped command
-        ret="`(("$@" || echo "$?" 1>&3) | mawk -Winteractive '
+        local ret="`(("$@" || echo "$?" 1>&3) | mawk -Winteractive '
             BEGIN {
                 printf "\r"
             }
@@ -194,8 +222,9 @@ spinner() {
 
 # Process each chroot
 for NAME in "$@"; do
-    if [ -z "$NAME" ]; then
-        continue
+    # Double check $NAME (better paranoid than sorry)
+    if ! validate_name "$NAME"; then
+        error 2 "Invalid chroot name '$NAME'."
     fi
     CHROOT="$CHROOTS/$NAME"
 
@@ -206,11 +235,12 @@ for NAME in "$@"; do
         elif [ -n "$RESTORE" ]; then
             EXISTS='y'
         else
-            sh -e "$BINDIR/unmount-chroot" $YESPARAM -c "$CHROOTS" "$NAME"
+            sh -e "$BINDIR/unmount-chroot" $YESPARAM -c "$CHROOTS" -- "$NAME"
         fi
     elif [ -n "$RESTORE" ]; then
         EXISTS=''
     else
+        # This should have been caught earlier
         error 2 "$CHROOT not found."
     fi
 
@@ -248,9 +278,16 @@ for NAME in "$@"; do
             fi
         fi
         echo -n "  Backing up $CHROOT to $dest..." 1>&2
+        addtrap "echo 'Deleting partial archive.' 1>&2; rm -f '$dest'"
+        ret=0
         spinner 1 tar --checkpoint=100 --checkpoint-action=exec=echo \
             --one-file-system -V "crouton:backup.${date%-*}${date#*-}-$NAME" \
-            -caf "$dest" -C "$CHROOTS" "$NAME"
+            -caf "$dest" -C "$CHROOTS" "$NAME" || ret=$?
+        if [ "$ret" != 0 ]; then
+            echo "Unable to backup $CHROOT." 1>&2
+            exit $ret
+        fi
+        undotrap
         echo "Finished backing up $CHROOT to $dest" 1>&2
     fi
 
@@ -345,12 +382,12 @@ for NAME in "$@"; do
     # Encrypt/rewrap the chroot
     if [ -n "$ENCRYPT" ]; then
         # Use mount-chroot to do the heavy lifting
-        unmount="sh -e '$BINDIR/unmount-chroot' -y -c '$CHROOTS' '$NAME'"
+        unmount="sh -e '$BINDIR/unmount-chroot' -y -c '$CHROOTS' -- '$NAME'"
         addtrap "$unmount"
         if [ -n "$KEYFILE" ]; then
-            sh -e "$BINDIR/mount-chroot" -ee -k "$KEYFILE" -c "$CHROOTS" "$NAME"
+            sh -e "$BINDIR/mount-chroot" -ee -k "$KEYFILE" -c "$CHROOTS" -- "$NAME"
         else
-            sh -e "$BINDIR/mount-chroot" -ee -c "$CHROOTS" "$NAME"
+            sh -e "$BINDIR/mount-chroot" -ee -c "$CHROOTS" -- "$NAME"
         fi
         undotrap
         eval "$unmount"
@@ -361,6 +398,9 @@ for NAME in "$@"; do
         target="$MOVE"
         if [ "${target##*/}" = "$target" ]; then
             # No slashes in the path. Assume renaming.
+            if ! validate_name "$target"; then
+                error 2 "Invalid target chroot name '$target'."
+            fi
             target="$CHROOTS/$target"
         elif [ ! "${target%/}" = "$target" ]; then
             # Ends in a slash; append name.

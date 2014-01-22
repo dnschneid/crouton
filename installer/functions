@@ -143,3 +143,12 @@ unbuffered_awk() {
     }
     '"$program" "$@"
 }
+
+# Validate a chroot name: It cannot contain any /, and cannot be ".", ".." nor
+# an empty string.
+validate_name() {
+    if [ "${1%/*}" != "$1" -o "$1" = "." -o "$1" = ".." -o -z "$1" ]; then
+        return 1
+    fi
+    return 0
+}

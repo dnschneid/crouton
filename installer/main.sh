@@ -72,6 +72,7 @@ Options:
     -M MIRROR2  A secondary mirror, often used for security updates.
                 Can only be specified alongside -m.
     -n NAME     Name of the chroot. Default is the release name.
+                Cannot contain any slash (/).
     -p PREFIX   The root directory in which to install the bin and chroot
                 subdirectories and data. Default: $PREFIX
     -P PROXY    Set an HTTP proxy for the chroot; effectively sets http_proxy.
@@ -361,6 +362,11 @@ CHROOT="$CHROOTS/${NAME:="${RELEASE:-"$DEFAULTRELEASE"}"}"
 CHROOTSRC="$CHROOT"
 TARGETDEDUPFILE="$CHROOT/.crouton-targets"
 
+# Validate chroot name
+if ! validate_name "$NAME"; then
+    error 2 "Invalid chroot name '$NAME'."
+fi
+
 # Confirm we have write access to the directory before starting.
 if [ -z "$DOWNLOADONLY" ]; then
     create='-n'
@@ -380,20 +386,20 @@ Either delete it, specify a different name (-n), or specify -u to update it."
 
     # Restore the chroot now
     if [ -n "$RESTORE" ]; then
-        sh "$HOSTBINDIR/edit-chroot" -r -f "$TARBALL" -c "$CHROOTS" "$NAME"
+        sh "$HOSTBINDIR/edit-chroot" -r -f "$TARBALL" -c "$CHROOTS" -- "$NAME"
     fi
 
     # Mount the chroot and update CHROOT path
     if [ -n "$KEYFILE" ]; then
         CHROOT="`sh "$HOSTBINDIR/mount-chroot" -k "$KEYFILE" \
-                            $create $ENCRYPT -p -c "$CHROOTS" "$NAME"`"
+                            $create $ENCRYPT -p -c "$CHROOTS" -- "$NAME"`"
     else
         CHROOT="`sh "$HOSTBINDIR/mount-chroot" \
-                            $create $ENCRYPT -p -c "$CHROOTS" "$NAME"`"
+                            $create $ENCRYPT -p -c "$CHROOTS" -- "$NAME"`"
     fi
 
     # Auto-unmount the chroot when the script exits
-    addtrap "sh '$HOSTBINDIR/unmount-chroot' -y -c '$CHROOTS' '$NAME' 2>/dev/null"
+    addtrap "sh '$HOSTBINDIR/unmount-chroot' -y -c '$CHROOTS' -- '$NAME' 2>/dev/null"
 
     # Sanity-check the release if we're updating
     if [ -n "$UPDATE" -a -n "$RELEASE" ] &&
