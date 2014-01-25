@@ -43,7 +43,7 @@ if [ ! $1 = '' ]; then
 
 			name="$2"
 			target="$default_target/$name"
-			filename=""$name"-$date.tar.gz"
+			filename=""$3"-$date.tar.gz"
 
 		fi
 	fi
