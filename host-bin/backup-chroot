@@ -25,9 +25,9 @@ Options:
                   the program not to use compression. You can also force
                   other compression algorithms.
                   
-Examples: sudo backup-chroot
-          sudo backup-chroot sid
-          sudo backup-chroot -t ~/Downloads -f sid.tar.gz sid"
+Examples:         sudo backup-chroot
+                  sudo backup-chroot sid
+                  sudo backup-chroot -t ~/Downloads -f sid.tar.gz sid"
           
 # the start of this nested if setting defaults and 
 default_target="/home/chronos/user/Downloads/crouton-backups"
