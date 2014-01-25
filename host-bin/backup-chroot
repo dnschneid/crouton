@@ -60,7 +60,7 @@ if [ ! $1 = '' ]; then
 				target="$2"
 				filename="$4-$date.tar.gz"
 
-			elif [ "$3" = '-t' ] && [ "$1" = '-f' ]
+			elif [ "$3" = '-t' ] && [ "$1" = '-f' ]; then
 
 				target="$4"
 				filename="$2-$date.tar.gz"
