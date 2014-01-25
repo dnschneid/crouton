@@ -38,8 +38,10 @@ elif [ $1 = '-f' ]; then
 			edit-chroot -f "$target"/"$3"-"`date '+%Y%m%d-%H%M'`".tar.gz -b "$3"
 		else
 			echo "$usage"
+		fi
 	else
 		echo "$usage"
+	fi
 else
 
 echo "$usage"
