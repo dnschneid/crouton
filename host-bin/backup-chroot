@@ -6,12 +6,14 @@
 set -e
 
 # defines the usage of the program.
-usage="Name: backup-chroot.
+usage="
+Name:        backup-chroot.
 
-Description: Needs root access for everything but displaying this message.
-    backup-chroot will by default create ~/Downloads/crouton-backups/name/name-yyyymmdd-hhmm.tar.gz.  
+Description:      Needs root access for everything but displaying this message.
+                  backup-chroot will by default create:
+                  ~/Downloads/crouton-backups/name/name-yyyymmdd-hhmm.tar.gz.  
     
-Usage: backup-chroot <options> name
+Usage:            backup-chroot <options> name
 
 Options:
     -t target   - This will set the target to something other than the default.
@@ -21,9 +23,10 @@ Options:
                   the program not to use compression. You can also force
                   other compression algorithms.
                   
-Examples: sudo backup-chroot sid
-          sudo backup-chroot -t ~/Downloads/sid -f "
-
+Examples: sudo backup-chroot
+          sudo backup-chroot sid
+          sudo backup-chroot -t ~/Downloads -f sid.tar.gz sid"
+          
 # the start of this nested if 
 default_target="/home/chronos/user/Downloads/crouton-backups"
 date="`date '+%Y%m%d-%H%M'`"
