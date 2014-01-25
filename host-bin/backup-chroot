@@ -5,8 +5,11 @@
 
 set -e
 
+# defines the usage of the program.
 usage="Name: backup-chroot.
-Description: backup-chroot will 
+
+Description: Needs root access for everything but displaying this message.
+    backup-chroot will create the directory if it needs to and will 
 
 Usage: backup-chroot <options> name
 
@@ -16,6 +19,7 @@ Options:
 
     -f filename - This will change the filename, setting a pure"
 
+# the start of this nested if 
 default_target="/home/chronos/user/Downloads/crouton-backups"
 date="`date '+%Y%m%d-%H%M'`"
 if [ ! $1 = '' ] && [ "$2" = '' ]; then
@@ -32,7 +36,7 @@ elif [ "$1" = '-t' ] || [ "$1" = '-f' ] && [ "$3" = '-t' ] || [ "$3" = '-f' ] ||
         target="$default_target/$name"
         filename="$2-$date.tar.gz"
     else
-      echo "$usage"
+      echo "$usage 0"
     fi
   elif [ ! "$5" = "" ]; then # If entry 5 exist 
     name="$5" #Since the name is the same I can create 
@@ -44,18 +48,18 @@ elif [ "$1" = '-t' ] || [ "$1" = '-f' ] && [ "$3" = '-t' ] || [ "$3" = '-f' ] ||
         target="$4"
         filename="$2-$date.tar.gz"
       else
-        echo "$usage"
+        echo "$usage 1"
       fi
     else
-      echo "$usage"
+      echo "$usage 2"
     fi
   else
-    echo "$usage"
+    echo "$usage 3"
   fi
 mkdir -p "$target"
 # .gz compression is always on in this mode, for frequent backups
 # this will save a lot of space.
 edit-chroot -f "$target"/"$filename" -b "$name"
 else
-  echo "$usage"
+  echo "$usage 5"
 fi
