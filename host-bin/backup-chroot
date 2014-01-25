@@ -29,10 +29,10 @@ Examples:         sudo backup-chroot
                   sudo backup-chroot sid
                   sudo backup-chroot -t ~/Downloads -f sid.tar.gz sid"
           
-# the start of this nested if setting defaults and 
+# setting defaults
 default_target="/home/chronos/user/Downloads/crouton-backups"
 date="`date '+%Y%m%d-%H%M'`"
-if [ ! "$1" = '' ] && [ "$2" = '' ]; then
+if [ ! "$1" = '' ] && [ "$2" = '' ]; then #checks for name only.
   name="$1"
   target="$default_target/$name"
   filename=""$name"-"`date '+%Y%m%d-%H%M'`".tar.gz"
