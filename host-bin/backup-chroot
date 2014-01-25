@@ -5,13 +5,8 @@
 
 set -e
 
-# create the backup directory if not already created and
-# create the gz compressed backup file in 
-# /home/chronos/user/Downloads/crouton-backups/NAME/
-
-usage="Description: This will create a gz compressed backup of the chroot.
-The Default target is ~/Downloads/crouton-backups/name/
-The Default file name will be name-yyyymmdd-hhmm.tar.gz
+usage="Name: backup-chroot.
+Description: backup-chroot will 
 
 Usage: backup-chroot <options> name
 
@@ -29,18 +24,17 @@ if [ ! $1 = '' ] && [ "$2" = '' ]; then
   filename=""$name"-"`date '+%Y%m%d-%H%M'`".tar.gz"
 elif [ "$1" = '-t' ] || [ "$1" = '-f' ] && [ "$3" = '-t' ] || [ "$3" = '-f' ] || [ "$3" = '' ] && [ "$6" = '' ]; then
   if [ "$4" = "" ]; then
+    name="$3"
     if [ "$1" = '-t' ]; then # Set the target with the default name.
-      name="$3"
       target="$2"
       filename=""$name"-"`date '+%Y%m%d-%H%M'`".tar.gz"
     elif [ "$1" = '-f' ]; then # Set the filename with the default target.
-        name="$3"
         target="$default_target/$name"
         filename="$2-$date.tar.gz"
     else
       echo "$usage"
     fi
-  elif [ ! "$5" = "" ]; then #
+  elif [ ! "$5" = "" ]; then # If entry 5 exist 
     name="$5" #Since the name is the same I can create 
     # these functions allow a mixture of -t and -f in any order.
     if [ "$1" = '-t' ] && [ "$3" = '-f' ]; then # target first and filename third
