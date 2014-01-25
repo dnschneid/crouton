@@ -19,7 +19,7 @@ if [ ! $1 = '' ]; then
 
 else
 
-echo "Usage: backup-chroot <name>
-This will create a backup of the chroot in ~/Downloads/crouton-backups/<name>/
-With a filename of <name>-yyyymmdd-hhmm.tar.gz"
+echo "Description: This will create a backup of the chroot in ~/Downloads/crouton-backups/<name>/
+With a filename of <name>-yyyymmdd-hhmm.tar.gz
+Usage: backup-chroot <name>"
 fi
