@@ -33,22 +33,41 @@ if [ ! $1 = '' ]; then
 
 	elif [ "$1" = '-t' ] || [ "$1" = '-f' ] && [ ! "$2" = '' ] && [ ! "$3" = '' ]; then
 
-		if [ "$1" = '-t' ] && [ "$4" = "" ]; then
+		if [ "$4" = "" ]; then
 
-			name="$3"
-			target="$2"
-			filename=""$name"-"`date '+%Y%m%d-%H%M'`".tar.gz"
+			# Set the target with the default name.
+			if [ "$1" = '-t' ]; then
 
-		elif [ "$1" = '-f' ] && [ "$4" = "" ]; then
+				name="$3"
+				target="$2"
+				filename=""$name"-"`date '+%Y%m%d-%H%M'`".tar.gz"
 
-			name="$3"
-			filename="$2"
-			target="$default_target/$filename"
-			filename="$filename-$date.tar.gz"
+			# Set the filename with the default target.
+			elif [ "$1" = '-f' ]; then
 
+				name="$3"
+				target="$default_target/$name"
+				filename="$2-$date.tar.gz"
+			fi
+
+		elif [ ! "$5" = "" ]; then
+
+			name="$5"
+
+			# -t then -f parameters
+			if [ "$1" = '-t' ] && [ "$3" = '-f' ]; then
+
+				target="$2"
+				filename="$4-$date.tar.gz"
+
+			elif [ "$3" = '-t' ] && [ "$1" = '-f' ]
+
+				target="$4"
+				filename="$2-$date.tar.gz"
+
+			fi
 		fi
 	fi
-#	elif [ "$1" = '-t' ] || [ "$1" = '-f' ] && []
 	
 	mkdir -p "$target"
 	# .gz compression is always on in this mode, for frequent backups
