@@ -17,7 +17,7 @@ if [ ! $1 = '' && $2 = '' ]; then
 	# this will save a lot of space.
 	edit-chroot -f "$target"/"$1"-"`date '+%Y%m%d-%H%M'`".tar.gz -b "$1"
 
-elif [ $1 = '-f' && ! $2 = '' && ! $3 = '' ]; then
+elif [ $1 = '-f' & ! $2 = '' & ! $3 = '' ]; then
 
 	target="$2"
 	mkdir -p "$target"
