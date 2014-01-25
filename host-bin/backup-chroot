@@ -18,7 +18,7 @@ if [ ! $1 = '' && $2 = '' ]; then
 	edit-chroot -f "$target"/"$1"-"`date '+%Y%m%d-%H%M'`".tar.gz -b "$1"
 
 elif [ $1 = '-f' & ! $2 = '' & ! $3 = '' ]; then
-	echo "hit"
+	echo "$1 $2 $3"
 	target = "$2"
 	mkdir -p "$target"
 	# .gz compression is always on in this mode, for frequent backups
