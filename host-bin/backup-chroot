@@ -17,9 +17,10 @@ Usage: backup-chroot <options> name
 Options:
 	-f target - This will set the target to something other than the default.
 		    Do not add a trailing slash at the end of this parameter"
+echo "Stop 1: 
+$usage"
 
-if [ ! $1 = '' ]; then
-	if [ $2 = '' ]; then
+if [ ! $1 = '' ] && [ "$2" = '' ]; then
 
 		target="/home/chronos/user/Downloads/crouton-backups/$1"
 		mkdir -p "$target"
@@ -29,9 +30,7 @@ if [ ! $1 = '' ]; then
 	
 	fi
 
-elif [ $1 = '-f' ]; then
-	if [ ! $2 = '' ]; then
-		if [ ! $3 = '' ]; then
+elif [ "$1" = '-f' ] && [ ! "$2" = '' ] && [ ! "$3" = '' ]; then
 
 			echo "$1 $2 $3"
 			target = "$2"
@@ -39,12 +38,7 @@ elif [ $1 = '-f' ]; then
 			# .gz compression is always on in this mode, for frequent backups
 			# this will save a lot of space.
 			edit-chroot -f "$target"/"$3"-"`date '+%Y%m%d-%H%M'`".tar.gz -b "$3"
-		else
-			echo "$usage"
-		fi
-	else
-		echo "$usage"
-	fi
+
 else
 
 echo "$usage"
