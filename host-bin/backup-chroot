@@ -28,9 +28,13 @@ if [ ! $1 = '' ] && [ "$2" = '' ]; then
 
 elif [ "$1" = '-f' ] && [ ! "$2" = '' ] && [ ! "$3" = '' ]; then
 
+<<<<<<< HEAD
 	echo "$1 $2 $3"
 
 	target="$2"
+=======
+	target = "$2"
+>>>>>>> ba911d04981a188358ad302d57b1d7e9430ad02d
 	mkdir -p "$target"
 	# .gz compression is always on in this mode, for frequent backups
 	# this will save a lot of space.
@@ -41,3 +45,8 @@ else
 	echo "$usage"
 
 fi
+<<<<<<< HEAD
+=======
+
+exit 0
+>>>>>>> ba911d04981a188358ad302d57b1d7e9430ad02d
