@@ -56,13 +56,11 @@ elif [ "$1" = '-t' ] || [ "$1" = '-f' ] && [ "$3" = '-t' ] || [ "$3" = '-f' ] ||
     else
       echo "$usage 2"
     fi
-  mkdir -p "$target"
-  # .gz compression is always on in this mode, for frequent backups
-  # this will save a lot of space.
-  edit-chroot -f "$target"/"$filename" -b "$name"
   else
     echo "$usage 3"
   fi
+mkdir -p "$target" # create the target
+edit-chroot -f "$target"/"$filename" -b "$name"
 else
   echo "$usage 5"
 fi
