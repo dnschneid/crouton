@@ -42,8 +42,8 @@ if [ ! $1 = '' ]; then
 		elif [ "$1" = '-f' ] && [ "$4" = "" ]; then
 
 			name="$2"
-			target="$default_target/$name"
-			filename=""$3"-$date.tar.gz"
+			target="$default_target/$3"
+			filename=""$name"-$date.tar.gz"
 
 		fi
 	fi
