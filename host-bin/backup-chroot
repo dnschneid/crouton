@@ -36,7 +36,10 @@ elif [ "$1" = '-f' ] && [ ! "$2" = '' ] && [ ! "$3" = '' ]; then
 
 else
 
-echo "$usage"
+	echo "$usage"
 
 fi
+
 done
+
+exit 0
