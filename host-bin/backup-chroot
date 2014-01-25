@@ -31,7 +31,7 @@ if [ ! $1 = '' ]; then
 		target="$default_target/$name"
 		filename=""$name"-"`date '+%Y%m%d-%H%M'`".tar.gz"
 
-	elif [ [ "$1" = '-t' ] || [ "$1" = '-f' ] ] && [ ! "$2" = '' ] && [ ! "$3" = '' ]; then
+	elif [ "$1" = '-t' ] || [ "$1" = '-f' ] && [ ! "$2" = '' ] && [ ! "$3" = '' ]; then
 
 		if [ "$1" = '-t' ] && [ "$4" = "" ]; then
 
