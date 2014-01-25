@@ -18,7 +18,7 @@ Options:
 	-f target - This will set the target to something other than the default.
 		    Do not add a trailing slash at the end of this parameter"
 
-if [ ! $1 = '' ] && [ "$2" = '' ]; then
+if [ ! $1 == '' ] && [ "$2" == '' ]; then
 
 	target="/home/chronos/user/Downloads/crouton-backups/$1"
 	mkdir -p "$target"
@@ -26,7 +26,7 @@ if [ ! $1 = '' ] && [ "$2" = '' ]; then
 	# this will save a lot of space.
 	edit-chroot -f "$target"/"$1"-"`date '+%Y%m%d-%H%M'`".tar.gz -b "$1"
 
-elif [ "$1" = '-f' ] && [ ! "$2" = '' ] && [ ! "$3" = '' ]; then
+elif [ "$1" == '-f' ] && [ ! "$2" == '' ] && [ ! "$3" == '' ]; then
 
 	echo "$1 $2 $3"
 
