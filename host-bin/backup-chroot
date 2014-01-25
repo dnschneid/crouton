@@ -27,7 +27,7 @@ if [ ! $1 = '' ] && [ "$2" = '' ]; then
   name="$1"
   target="$default_target/$name"
   filename=""$name"-"`date '+%Y%m%d-%H%M'`".tar.gz"
-elif [ "$1" = '-t' ] || [ "$1" = '-f' ] && [ ! "$2" = '' ] && [ ! "$3" = '' ]; then
+elif [ "$1" = '-t' ] || [ "$1" = '-f' ] && [ "$3" = '-t' ] || [ "$3" = '-f' ] || [ "$3" = '' ] && [ "$6" = '' ]; then
   if [ "$4" = "" ]; then
     if [ "$1" = '-t' ]; then # Set the target with the default name.
       name="$3"
