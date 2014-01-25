@@ -27,8 +27,6 @@ if [ ! $1 = '' ] && [ "$2" = '' ]; then
 		# .gz compression is always on in this mode, for frequent backups
 		# this will save a lot of space.
 		edit-chroot -f "$target"/"$1"-"`date '+%Y%m%d-%H%M'`".tar.gz -b "$1"
-	
-	fi
 
 elif [ "$1" = '-f' ] && [ ! "$2" = '' ] && [ ! "$3" = '' ]; then
 
