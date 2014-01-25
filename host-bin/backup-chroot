@@ -23,35 +23,36 @@ Options:
 default_target="/home/chronos/user/Downloads/crouton-backups"
 date="`date '+%Y%m%d-%H%M'`"
 
-if [ ! $1 = '' ] && [ "$2" = '' ]; then
+if [ ! $1 = '' ]; then
 
-	name="$1"
-	target="$default_target/$name"
-	filename=""$name"-"`date '+%Y%m%d-%H%M'`".tar.gz"
-	mkdir -p "$target"
-	# .gz compression is always on in this mode, for frequent backups
-	# this will save a lot of space.
-	edit-chroot -f "$target"/"$filename" -b "$1"
+	if [ "$2" = '' ]; then
 
-elif [ [ "$1" = '-t' ] || [ "$1" = '-f' ] ] && [ ! "$2" = '' ] && [ ! "$3" = '' ]; then
-
-	if [ "$1" = '-t' ] && [ "$4" = "" ]; then
-		name="$3"
-		target="$2"
-		filename=""$name"-"`date '+%Y%m%d-%H%M'`".tar.gz"
-	elif [ "$1" = '-f' ] && [ "$4" = "" ]; then
-		name="$2"
+		name="$1"
 		target="$default_target/$name"
-		filename=""$name"-$date.tar.gz"
+		filename=""$name"-"`date '+%Y%m%d-%H%M'`".tar.gz"
+
+	elif [ [ "$1" = '-t' ] || [ "$1" = '-f' ] ] && [ ! "$2" = '' ] && [ ! "$3" = '' ]; then
+
+		if [ "$1" = '-t' ] && [ "$4" = "" ]; then
+
+			name="$3"
+			target="$2"
+			filename=""$name"-"`date '+%Y%m%d-%H%M'`".tar.gz"
+
+		elif [ "$1" = '-f' ] && [ "$4" = "" ]; then
+
+			name="$2"
+			target="$default_target/$name"
+			filename=""$name"-$date.tar.gz"
+
+		fi
 	fi
 #	elif [ "$1" = '-t' ] || [ "$1" = '-f' ] && []
-		
-		
-
+	
 	mkdir -p "$target"
 	# .gz compression is always on in this mode, for frequent backups
 	# this will save a lot of space.
-	edit-chroot -f "$target"/$filename" -b "$name"
+	edit-chroot -f "$target"/"$filename" -b "$name"
 
 else
 
