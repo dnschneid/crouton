@@ -9,32 +9,49 @@ set -e
 # create the gz compressed backup file in 
 # /home/chronos/user/Downloads/crouton-backups/NAME/
 
-usage="Description: This will create a compressed backup of the chroot.
+usage="Description: This will create a gz compressed backup of the chroot.
 The Default target is ~/Downloads/crouton-backups/name/
-The File name will be name-yyyymmdd-hhmm.tar.gz
+The Default file name will be name-yyyymmdd-hhmm.tar.gz
 
 Usage: backup-chroot <options> name
 
 Options:
-	-t target - This will set the target to something other than the default.
-		    Do not add a trailing slash at the end of this parameter"
+	-t target   - This will set the target to something other than the default.
+		      Do not add a trailing slash at the end of this parameter
+	-f filename - This will change the filename, setting a pure"
+
+default_target="/home/chronos/user/Downloads/crouton-backups"
+date="`date '+%Y%m%d-%H%M'`"
 
 if [ ! $1 = '' ] && [ "$2" = '' ]; then
 
-	target="/home/chronos/user/Downloads/crouton-backups/$1"
+	name="$1"
+	target="$default_target/$name"
+	filename=""$name"-"`date '+%Y%m%d-%H%M'`".tar.gz"
 	mkdir -p "$target"
 	# .gz compression is always on in this mode, for frequent backups
 	# this will save a lot of space.
-	edit-chroot -f "$target"/"$1"-"`date '+%Y%m%d-%H%M'`".tar.gz -b "$1"
+	edit-chroot -f "$target"/"$filename" -b "$1"
 
-elif [ "$1" = '-t' ] && [ ! "$2" = '' ] && [ ! "$3" = '' ]; then
+elif [ [ "$1" = '-t' ] || [ "$1" = '-f' ] ] && [ ! "$2" = '' ] && [ ! "$3" = '' ]; then
 
-	target="$2"
+	if [ "$1" = '-t' ] && [ "$4" = "" ]; then
+		name="$3"
+		target="$2"
+		filename=""$name"-"`date '+%Y%m%d-%H%M'`".tar.gz"
+	elif [ "$1" = '-f' ] && [ "$4" = "" ]; then
+		name="$2"
+		target="$default_target/$name"
+		filename=""$name"-$date.tar.gz"
+	fi
+#	elif [ "$1" = '-t' ] || [ "$1" = '-f' ] && []
+		
+		
 
 	mkdir -p "$target"
 	# .gz compression is always on in this mode, for frequent backups
 	# this will save a lot of space.
-	edit-chroot -f "$target"/"$3"-"`date '+%Y%m%d-%H%M'`".tar.gz -b "$3"
+	edit-chroot -f "$target"/$filename" -b "$name"
 
 else
 
