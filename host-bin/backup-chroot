@@ -13,7 +13,13 @@ if [ ! $1 = '' ]; then
 
 	target="/home/chronos/user/Downloads/crouton-backups/$1"
 	mkdir -p "$target"
+	# .gz compression is always on in this mode, for frequent backups
+	# this will save a lot of space.
 	edit-chroot -f "$target"/"$1"-"`date '+%Y%m%d-%H%M'`".tar.gz -b "$1"
+
 else
-echo "Usage: backup-chroot <name>"
+
+echo "Usage: backup-chroot <name>
+This will create a backup of the chroot in ~/Downloads/crouton-backups/<name>/
+With a filename of <name>-yyyymmdd-hhmm.tar.gz"
 fi
