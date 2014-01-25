@@ -18,6 +18,7 @@ Usage: backup-chroot <options> name
 Options:
     -t target   - This will set the target to something other than the default.
                   Do not add a trailing slash at the end of this parameter
+
     -f filename - This will change the filename, setting a pure""
 
 default_target="/home/chronos/user/Downloads/crouton-backups"
@@ -25,47 +26,43 @@ date="`date '+%Y%m%d-%H%M'`"
 if [ ! $1 = '' ]; then
   if [ "$2" = '' ]; then
     name="$1"
-      target="$default_target/$name"
-      filename=""$name"-"`date '+%Y%m%d-%H%M'`".tar.gz"
-      elif [ "$1" = '-t' ] || [ "$1" = '-f' ] && [ ! "$2" = '' ] && [ ! "$3" = '' ]; then
-        if [ "$4" = "" ]; then
-          if [ "$1" = '-t' ]; then # Set the target with the default name.
-            name="$3"
+    target="$default_target/$name"
+    filename=""$name"-"`date '+%Y%m%d-%H%M'`".tar.gz"
+    elif [ "$1" = '-t' ] || [ "$1" = '-f' ] && [ ! "$2" = '' ] && [ ! "$3" = '' ]; then
+      if [ "$4" = "" ]; then
+        if [ "$1" = '-t' ]; then # Set the target with the default name.
+          name="$3"
+          target="$2"
+          filename=""$name"-"`date '+%Y%m%d-%H%M'`".tar.gz"
+        elif [ "$1" = '-f' ]; then # Set the filename with the default target.
+          name="$3"
+          target="$default_target/$name"
+          filename="$2-$date.tar.gz"
+        else
+          echo "$usage"
+        fi
+      elif [ ! "$5" = "" ]; then
+        name="$5" #Since the name is the same I can create 
+          # these functions allow a mixture of -t and -f in any order.
+          if [ "$1" = '-t' ] && [ "$3" = '-f' ]; then
             target="$2"
-            filename=""$name"-"`date '+%Y%m%d-%H%M'`".tar.gz"
-          elif [ "$1" = '-f' ]; then # Set the filename with the default target.
-            name="$3"
-            target="$default_target/$name"
+            filename="$4-$date.tar.gz"
+          elif [ "$3" = '-t' ] && [ "$1" = '-f' ]; then
+            target="$4"
             filename="$2-$date.tar.gz"
           else
             echo "$usage"
           fi
-        elif [ ! "$5" = "" ]; then
-          name="$5" #Since the name is the same I can create 
-            # these functions allow a mixture of -t and -f in any order.
-            if [ "$1" = '-t' ] && [ "$3" = '-f' ]; then
-              target="$2"
-              filename="$4-$date.tar.gz"
-            elif [ "$3" = '-t' ] && [ "$1" = '-f' ]; then
-              target="$4"
-              filename="$2-$date.tar.gz"
-            else
-              echo "$usage"
-            fi
-          else
-            echo "$usage"
-          fi
-	else
-	  echo "$usage"
-	fi
-	
-	mkdir -p "$target"
-	# .gz compression is always on in this mode, for frequent backups
-	# this will save a lot of space.
-	edit-chroot -f "$target"/"$filename" -b "$name"
-
-else
-
-	echo "$usage"
-
-fi
+        else
+          echo "$usage"
+        fi
+      else
+        echo "$usage"
+      fi
+    mkdir -p "$target"
+    # .gz compression is always on in this mode, for frequent backups
+    # this will save a lot of space.
+    edit-chroot -f "$target"/"$filename" -b "$name"
+    else
+      echo "$usage"
+    fi
