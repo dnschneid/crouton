@@ -10,8 +10,8 @@ set -e
 # /home/chronos/user/Downloads/crouton-backups/NAME/
 
 usage="Description: This will create a compressed backup of the chroot.
-Default target is ~/Downloads/crouton-backups/name/
-filename will be name-yyyymmdd-hhmm.tar.gz
+The Default target is ~/Downloads/crouton-backups/name/
+The File name will be name-yyyymmdd-hhmm.tar.gz
 
 Usage: backup-chroot <options> name
 
@@ -34,7 +34,7 @@ elif [ "$1" = '-t' ] && [ ! "$2" = '' ] && [ ! "$3" = '' ]; then
 	mkdir -p "$target"
 	# .gz compression is always on in this mode, for frequent backups
 	# this will save a lot of space.
-	edit-chroot -t "$target"/"$3"-"`date '+%Y%m%d-%H%M'`".tar.gz -b "$3"
+	edit-chroot -f "$target"/"$3"-"`date '+%Y%m%d-%H%M'`".tar.gz -b "$3"
 
 else
 
