@@ -35,6 +35,8 @@ default_target="/home/chronos/user/Downloads/crouton-backups"
 date="`date '+%Y%m%d-%H%M'`"
 if [ ! "$1" = '' ] && [ "$2" = '' ]; then #checks for name only.
   if [ "$1" = '--help' ] || [ "$1" = '-h' ]; then
+    echo "$usage"
+    exit 0
   fi
   name="$1"
   target="$default_target/$name"
@@ -49,7 +51,7 @@ elif [ "$1" = '-t' ] || [ "$1" = '-f' ] && [ "$3" = '-t' ] || [ "$3" = '-f' ] ||
         target="$default_target/$name"
         filename="$2-$date.tar.gz"
     else
-      echo "$usage 0"
+      echo "$usage"
       exit 0
     fi
   elif [ ! "$5" = "" ]; then # If entry 5 exist 
@@ -62,21 +64,21 @@ elif [ "$1" = '-t' ] || [ "$1" = '-f' ] && [ "$3" = '-t' ] || [ "$3" = '-f' ] ||
         target="$4"
         filename="$2-$date.tar.gz"
       else
-        echo "$usage 1"
+        echo "$usage"
         exit 0
       fi
     else
-      echo "$usage 2"
+      echo "$usage"
       exit 0
     fi
   else
-    echo "$usage 3"
+    echo "$usage"
     exit 0
   fi
 mkdir -p "$target" # create the target
 edit-chroot -f "$target"/"$filename" -b "$name"
 else
-  echo "$usage 5"
+  echo "$usage"
   exit 0
 fi
 exit 0
