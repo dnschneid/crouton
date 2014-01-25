@@ -1,0 +1,13 @@
+#!/bin/sh -e
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+set -e
+
+# create the backup directory if not already created and
+# create the gz compressed backup file in 
+# /home/chronos/user/Downloads/crouton-backups/NAME/
+target="/home/chronos/user/Downloads/crouton-backups/$1"
+mkdir -p "$target"
+edit-chroot -f "$target"/"$1"-"`date '+%Y%m%d-%H%M'`".tar.gz -b "$1"
