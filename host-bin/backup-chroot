@@ -8,6 +8,12 @@ set -e
 # create the backup directory if not already created and
 # create the gz compressed backup file in 
 # /home/chronos/user/Downloads/crouton-backups/NAME/
-target="/home/chronos/user/Downloads/crouton-backups/$1"
-mkdir -p "$target"
-edit-chroot -f "$target"/"$1"-"`date '+%Y%m%d-%H%M'`".tar.gz -b "$1"
+
+if [ ! $1 = '' ]; then
+
+	target="/home/chronos/user/Downloads/crouton-backups/$1"
+	mkdir -p "$target"
+	edit-chroot -f "$target"/"$1"-"`date '+%Y%m%d-%H%M'`".tar.gz -b "$1"
+else
+echo "Usage: backup-chroot <name>"
+fi
