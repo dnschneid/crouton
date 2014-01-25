@@ -9,8 +9,7 @@ set -e
 usage="Name: backup-chroot.
 
 Description: Needs root access for everything but displaying this message.
-    backup-chroot will by default create target if it needs to and
-    create name-yyyymmdd-hhmm.tar.gz utilizing the 
+    backup-chroot will by default create ~/Downloads/crouton-backups/name/name-yyyymmdd-hhmm.tar.gz.  
     
 Usage: backup-chroot <options> name
 
@@ -20,7 +19,10 @@ Options:
 
     -f filename - This will change the filename, setting a pure .tar will force
                   the program not to use compression. You can also force
-                  other compression algorithms."
+                  other compression algorithms.
+                  
+Examples: sudo backup-chroot sid
+          sudo backup-chroot -t ~/Downloads/sid -f "
 
 # the start of this nested if 
 default_target="/home/chronos/user/Downloads/crouton-backups"
@@ -40,6 +42,7 @@ elif [ "$1" = '-t' ] || [ "$1" = '-f' ] && [ "$3" = '-t' ] || [ "$3" = '-f' ] ||
         filename="$2-$date.tar.gz"
     else
       echo "$usage 0"
+      exit 0
     fi
   elif [ ! "$5" = "" ]; then # If entry 5 exist 
     name="$5" #Since the name is the same I can create 
@@ -52,15 +55,19 @@ elif [ "$1" = '-t' ] || [ "$1" = '-f' ] && [ "$3" = '-t' ] || [ "$3" = '-f' ] ||
         filename="$2-$date.tar.gz"
       else
         echo "$usage 1"
+        exit 0
       fi
     else
       echo "$usage 2"
+      exit 0
     fi
   else
     echo "$usage 3"
+    exit 0
   fi
 mkdir -p "$target" # create the target
 edit-chroot -f "$target"/"$filename" -b "$name"
 else
   echo "$usage 5"
+  exit 0
 fi
