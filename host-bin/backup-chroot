@@ -30,7 +30,7 @@ elif [ "$1" = '-f' ] && [ ! "$2" = '' ] && [ ! "$3" = '' ]; then
 
 	echo "$1 $2 $3"
 
-	target = "$2"
+	target="$2"
 	mkdir -p "$target"
 	# .gz compression is always on in this mode, for frequent backups
 	# this will save a lot of space.
@@ -41,5 +41,3 @@ else
 	echo "$usage"
 
 fi
-
-exit 0
