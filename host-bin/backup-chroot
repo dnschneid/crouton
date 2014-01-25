@@ -9,7 +9,7 @@ set -e
 # create the gz compressed backup file in 
 # /home/chronos/user/Downloads/crouton-backups/NAME/
 
-usage="echo "Description: This will create a gz compressed backup of the chroot.
+usage="Description: This will create a gz compressed backup of the chroot.
 The Default target is ~/Downloads/crouton-backups/name/
 The Default file name will be name-yyyymmdd-hhmm.tar.gz
 
@@ -19,7 +19,7 @@ Options:
     -t target   - This will set the target to something other than the default.
                   Do not add a trailing slash at the end of this parameter
 
-    -f filename - This will change the filename, setting a pure""
+    -f filename - This will change the filename, setting a pure"
 
 default_target="/home/chronos/user/Downloads/crouton-backups"
 date="`date '+%Y%m%d-%H%M'`"
