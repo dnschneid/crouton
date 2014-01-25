@@ -9,7 +9,7 @@ set -e
 
 # defines the usage of the program.
 usage="
-Name:        backup-chroot.
+Name:             backup-chroot.
 
 Description:      Needs root access for everything but displaying this message.
                   backup-chroot will by default create:
