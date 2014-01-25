@@ -37,10 +37,10 @@ elif [ "$1" = '-t' ] || [ "$1" = '-f' ] && [ "$3" = '-t' ] || [ "$3" = '-f' ] ||
   elif [ ! "$5" = "" ]; then # If entry 5 exist 
     name="$5" #Since the name is the same I can create 
     # these functions allow a mixture of -t and -f in any order.
-    if [ "$1" = '-t' ] && [ "$3" = '-f' ]; then # target first and filename third
+    if [ "$1" = '-t' ] && [ "$3" = '-f' ]; then # target first and filename third.
       target="$2"
       filename="$4-$date.tar.gz"
-      elif [ "$1" = '-f' ] && [ "$3" = '-t' ]; then #filename first.
+      elif [ "$1" = '-f' ] && [ "$3" = '-t' ]; then # filename first and target third.
         target="$4"
         filename="$2-$date.tar.gz"
       else
