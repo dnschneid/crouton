@@ -9,13 +9,14 @@ set -e
 # create the gz compressed backup file in 
 # /home/chronos/user/Downloads/crouton-backups/NAME/
 
-usage="Description: This will create a backup of the chroot in ~/Downloads/crouton-backups/name/
-With a filename of name-yyyymmdd-hhmm.tar.gz
+usage="Description: This will create a compressed backup of the chroot.
+Default target is ~/Downloads/crouton-backups/name/
+filename will be name-yyyymmdd-hhmm.tar.gz
 
 Usage: backup-chroot <options> name
 
 Options:
-	-f target - This will set the target to something other than the default.
+	-t target - This will set the target to something other than the default.
 		    Do not add a trailing slash at the end of this parameter"
 
 if [ ! $1 = '' ] && [ "$2" = '' ]; then
@@ -26,14 +27,14 @@ if [ ! $1 = '' ] && [ "$2" = '' ]; then
 	# this will save a lot of space.
 	edit-chroot -f "$target"/"$1"-"`date '+%Y%m%d-%H%M'`".tar.gz -b "$1"
 
-elif [ "$1" = '-f' ] && [ ! "$2" = '' ] && [ ! "$3" = '' ]; then
+elif [ "$1" = '-t' ] && [ ! "$2" = '' ] && [ ! "$3" = '' ]; then
 
 	target="$2"
 
 	mkdir -p "$target"
 	# .gz compression is always on in this mode, for frequent backups
 	# this will save a lot of space.
-	edit-chroot -f "$target"/"$3"-"`date '+%Y%m%d-%H%M'`".tar.gz -b "$3"
+	edit-chroot -t "$target"/"$3"-"`date '+%Y%m%d-%H%M'`".tar.gz -b "$3"
 
 else
 
