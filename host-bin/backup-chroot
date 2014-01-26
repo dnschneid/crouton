@@ -40,13 +40,13 @@ if [ ! "$1" = '' ] && [ "$2" = '' ]; then #checks for name only.
   fi
   name="$1"
   target="$default_target/$name"
-  filename=""$name"-"`date '+%Y%m%d-%H%M'`".tar.gz"
+  filename="$name-$date.tar.gz"
 elif [ "$1" = '-t' ] || [ "$1" = '-f' ] && [ "$3" = '-t' ] || [ "$3" = '-f' ] || [ "$3" = '' ] && [ "$6" = '' ]; then
   if [ "$4" = "" ]; then
     name="$3"
     if [ "$1" = '-t' ]; then # Set the target with the default name.
       target="$2"
-      filename=""$name"-"`date '+%Y%m%d-%H%M'`".tar.gz"
+      filename=""$name-$date.tar.gz"
     elif [ "$1" = '-f' ]; then # Set the filename with the default target.
         target="$default_target/$name"
         filename="$2-$date.tar.gz"
