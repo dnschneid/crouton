@@ -54,6 +54,7 @@ for i in $@
   elif [ ! "$i" = '' ]; then
     echo "name iteration"
     name="$i"
+    echo "fn $filename tg $target"
     if [ "$filename" = '' ]; then
       filename="$name-$date.tar.gz"
     elif [ "$target" = '' ]; then
