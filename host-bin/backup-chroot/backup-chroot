@@ -60,5 +60,8 @@ done
 if [ ! $filename = '' ] && [ ! $target = '' ] && [ ! $name = '' ]; then
   mkdir -p "$target" # create the target
   edit-chroot -f "$target"/"$filename" -b "$name"
+else
+ echo "$usage"
+ exit 0
 fi
 exit 0
