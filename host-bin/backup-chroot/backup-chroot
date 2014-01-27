@@ -59,7 +59,7 @@ for i in $@
       filename="$name-$date.tar.gz"
       echo "$filename"
     elif [ "$target" = '' ]; then
-      target="$default_target/$name"
+      target=""$default_target"/"$name""
       echo "$target"
     fi
   else
