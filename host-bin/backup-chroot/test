@@ -7,9 +7,9 @@
 
 set -e
 
-for i in $@
+for f in $@
   do
-  n=$((i+1))
-  echo "i = $i"
+  n=$((f+1))
+  echo "f = $f"
   echo "n = $n"
 done
