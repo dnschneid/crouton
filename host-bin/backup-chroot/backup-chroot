@@ -31,6 +31,8 @@ Examples:         sudo backup-chroot
                   sudo backup-chroot -t ~/Downloads -f sid.tar.gz sid"
           
 # setting defaults
+target=''
+filename=''
 default_target="/home/chronos/user/Downloads/crouton-backups"
 date="`date '+%Y%m%d-%H%M'`"
 for i in $@
