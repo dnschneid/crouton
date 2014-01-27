@@ -33,18 +33,17 @@ Examples:         sudo backup-chroot
 # setting defaults
 default_target="/home/chronos/user/Downloads/crouton-backups"
 date="`date '+%Y%m%d-%H%M'`"
-for i in $@
+if [ ! "$1" = '' ] && [ "$2" = '' ] || [ "$1" = '-t' ] || [ "$1" = '-f' ] && 
+    [ "$3" = '-t' ] || [ "$3" = '-f' ] || [ "$3" = '' ] && [ "$6" = '' ]; then
+  for i in $@
   do
-  if [ ! "$i" = '' ] && [ ! "$target" = 'y' ] || [ ! "$i" = '-t' ] && [ ! "$filename" = 'y' ] && [ ! "$i" = '-f' ]; then
+  if [ ! "$i" = '' ] && [ ! "$target" = 'y' ] || [ ! "$i" = '-t' ] && [ ! "$filename" = 'y' ] || [ ! "$i" = '-f' ]; then
     name="$i"
-    if [ "$filename" = '' ]; then
-      filename="$name-$date.tar.gz"
-    fi
-    if [ "$target" = '' ]; then
-      target="$default_target"/"$name"
-    fi
+    filename="$name-$date.tar.gz"
+    target="$default_target"/"$name"
   elif [ "$filename" = 'y' ]; then
-    filename="$i-$date.tar.gz"
+    filename="$i"
+    target="$default_target"/"$name"
   elif [ "$target" = 'y' ]; then
     target="$i"
   elif [ "$i" = '-f' ]; then
@@ -58,10 +57,12 @@ for i in $@
 done
 if [ ! $filename = '' ] && [ ! $target = '' ] && [ ! $name = '' ]; then
   mkdir -p "$target" # create the target
-  edit-chroot -f "$target"/"$filename" -b "$name"
+  edit-chroot -f "$target"/"$filename" -b "$name" #backup the chroot.
   exit 0
 else
- echo "$usage"
+ echo "$usage
+ 
+ You entered a blank or invalid name, Target directory or filename."
  exit 0
 fi
 echo "$usage"
