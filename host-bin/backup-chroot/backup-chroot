@@ -57,8 +57,10 @@ for i in $@
     echo "fn $filename tg $target"
     if [ "$filename" = '' ]; then
       filename="$name-$date.tar.gz"
+      echo "$filename"
     elif [ "$target" = '' ]; then
       target="$default_target/$name"
+      echo "$target"
     fi
   else
     echo "$usage"
