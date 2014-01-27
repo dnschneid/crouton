@@ -35,7 +35,6 @@ default_target="/home/chronos/user/Downloads/crouton-backups"
 date="`date '+%Y%m%d-%H%M'`"
 for i in $@
   do
-  echo "i = $i and 1 = $1"
   if [ ! "$i" = '' ] && [ ! "$target" = 'y' ] || [ ! "$i" = '-t' ] && [ ! "$filename" = 'y' ] && [ ! "$i" = '-f' ]; then
     name="$i"
     if [ "$filename" = '' ]; then
@@ -60,8 +59,10 @@ done
 if [ ! $filename = '' ] && [ ! $target = '' ] && [ ! $name = '' ]; then
   mkdir -p "$target" # create the target
   edit-chroot -f "$target"/"$filename" -b "$name"
+  exit 0
 else
  echo "$usage"
  exit 0
 fi
+echo "$usage"
 exit 0
