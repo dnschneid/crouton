@@ -65,7 +65,7 @@ done
 else
   echo "$usage"
 fi
-if [ ! $filename = '' ] && [ ! $target = '' ] && [ ! $name = '' ]; then
+if [ ! $filename = '' ] || [ ! $target = '' ] || [ ! $name = '' ]; then
   mkdir -p "$target" # create the target
   edit-chroot -f "$target"/"$filename" -b "$name" #backup the chroot.
   exit 0
