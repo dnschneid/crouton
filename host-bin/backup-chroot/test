@@ -7,11 +7,8 @@
 
 set -e
 
-array="This contains stuff"
-
-i='1'
-echo i
-echo $((i+1))
-echo "$i"
-
+for i in $@
+  do
+  n='$i+1"
+  echo "$[$n]"
 done
