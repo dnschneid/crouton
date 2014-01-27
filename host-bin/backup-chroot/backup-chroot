@@ -37,31 +37,31 @@ if [ ! "$1" = '' ] && [ "$2" = '' ] || [ "$1" = '-t' ] || [ "$1" = '-f' ] &&
     [ "$3" = '-t' ] || [ "$3" = '-f' ] || [ "$3" = '' ] && [ "$6" = '' ]; then
   for i in $@  ## This for loop sets parameters of the target directory and filename.
   do
-  if [ ! "$i" = '' ] && ## This means that $name will be the only entry and to automate the backup.
-     [ ! "$target" = 'y' ] || [ ! "$i" = '-t' ] && 
-     [ ! "$filename" = 'y' ] || [ ! "$i" = '-f' ]; then
-    name="$i"
-    filename="$name-$date.tar.gz"
-    target="$default_target"/"$name"
-  elif [ "$filename" = 'y' ]; then ## This sets the filename.
-    filename="$i"
-    if [ ! "$target" = 'y']; then ## This sets the target only if the user did not select one.
-      target="$default_target"/"$name" 
+  if [ ! "$i" = '' ]; then ## This means that $name will be the only entry and to automate the backup.
+    name="$i" # This always sets the name variable as the last iteration.
+    if [ ! "$target" = '-t' ] || [ ! "$i" = '-t' ] && ## automatic setup for if only a name is provided.
+        [ ! "$filename" = '-f' ] || [ ! "$i" = '-f' ]
+     filename="$name-$date.tar.gz" # tar.gz comprssion, I've found this works best.
+     target="$default_target"/"$name"
+    elif [ "$filename" = '-f' ]; then ## This sets the filename.
+      filename="$i"
+      if [ ! "$target" = '-t']; then ## This sets the target only if the user did not select one.
+        target="$default_target"/"$name" 
+      fi
+    elif [ "$target" = '-t' ]; then ## This sets the target.
+      target="$i"
+      if [ ! "$filename" = '-f' ]; then ## This sets the filename only if the user did not select one.
+        filename="$name-$date.tar.gz"
+      fi
+    elif [ "$i" = '-f' ]; then ## redirects to set the filename on the next pass.
+      filename="$i"
+    elif [ "$i" = '-t' ]; then ## redirects to set the target on the next pass.
+      target="$i"
+    else
+     echo "$usage"
+     exit 0
     fi
-  elif [ "$target" = 'y' ]; then ## This sets the target.
-    target="$i"
-    if [ ! "$filename" = 'y' ]; then ## This sets the filename only if the user did not select one.
-      filename="$name-$date.tar.gz"
-    fi
-  elif [ "$i" = '-f' ]; then ## redirects to set the filename on the next pass.
-    filename='y'
-  elif [ "$i" = '-t' ]; then ## redirects to set the target on the next pass.
-    target='y'
-  else
-   echo "$usage"
-   exit 0
-  fi
-done
+  done
 else
   echo "$usage"
   exit 0
