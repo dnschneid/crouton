@@ -52,14 +52,16 @@ for i in $@
     filename='y'
   elif [ "$i" = '-t' ]; then
     target='y'
-  elif [ "$1" = '' ]; then
-   echo "$usage"
-   exit 0
   else
    echo "$usage"
    exit 0
   fi
 done
-mkdir -p "$target" # create the target
-edit-chroot -f "$target"/"$filename" -b "$name"
+if [ ! $filename = '' ] && [ ! $target = '' ] && [ ! $name = '' ]; then
+  mkdir -p "$target" # create the target
+  edit-chroot -f "$target"/"$filename" -b "$name"
+else
+  echo "$usage"
+  exit 0
+fi
 exit 0
