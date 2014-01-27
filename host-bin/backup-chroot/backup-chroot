@@ -33,52 +33,20 @@ Examples:         sudo backup-chroot
 # setting defaults
 default_target="/home/chronos/user/Downloads/crouton-backups"
 date="`date '+%Y%m%d-%H%M'`"
-if [ ! "$1" = '' ] && [ "$2" = '' ]; then #checks for name only.
-  if [ "$1" = '--help' ] || [ "$1" = '-h' ]; then
-    echo "$usage"
-    exit 0
-  fi
-  name="$1"
-  target="$default_target/$name"
-  filename=""$name"-"`date '+%Y%m%d-%H%M'`".tar.gz"
-elif [ "$1" = '-t' ] || [ "$1" = '-f' ] && [ "$3" = '-t' ] || [ "$3" = '-f' ] || [ "$3" = '' ] && [ "$6" = '' ]; then
-  if [ "$4" = "" ]; then
-    name="$3"
-    if [ "$1" = '-t' ]; then # Set the target with the default name.
-      target="$2"
-      filename=""$name"-"`date '+%Y%m%d-%H%M'`".tar.gz"
-    elif [ "$1" = '-f' ]; then # Set the filename with the default target.
-        target="$default_target/$name"
-        filename="$2-$date.tar.gz"
-    else
-      echo "$usage"
-      exit 0
-    fi
-  elif [ ! "$5" = "" ]; then # If entry 5 exist 
-    name="$5" #Since the name is the same I can create 
-    # these functions allow a mixture of -t and -f in any order.
-    if [ "$1" = '-t' ] && [ "$3" = '-f' ]; then # target first and filename third.
-      target="$2"
-      filename="$4-$date.tar.gz"
-      elif [ "$1" = '-f' ] && [ "$3" = '-t' ]; then # filename first and target third.
-        target="$4"
-        filename="$2-$date.tar.gz"
-      else
-        echo "$usage"
-        exit 0
-      fi
-    else
-      echo "$usage"
-      exit 0
-    fi
+for i in $@
+  do
+  n = i + 1
+  if [ $@ = '-f' ]; then
+     filename="$n-$date.tar.gz"
+  elif [ $@ = '-t' ]; then
+    target="$n"
+  elif [ ! $@ = '' && $n = '' ]; then
+    name="$@"
   else
     echo "$usage"
     exit 0
   fi
+done
 mkdir -p "$target" # create the target
 edit-chroot -f "$target"/"$filename" -b "$name"
-else
-  echo "$usage"
-  exit 0
-fi
 exit 0
