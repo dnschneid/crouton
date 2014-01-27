@@ -35,7 +35,7 @@ default_target="/home/chronos/user/Downloads/crouton-backups"
 date="`date '+%Y%m%d-%H%M'`"
 for i in $@
   do
-  n = ($i+1)
+  n=$((i+1))
   echo "$n" #testing variable array usage.
   if [ $@ = '-f' ]; then
     echo "-f iteration"
