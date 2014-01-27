@@ -9,8 +9,7 @@ set -e
 
 for i in $@
   do
-  n=$($(i+1))
+  n=$((i+1))
   echo "i = $i"
   echo "n = $n"
-  echo $["$n"]
 done
