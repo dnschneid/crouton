@@ -7,9 +7,9 @@
 
 set -e
 
-for i in $@
+for entry in $@
   do
-  n=$((i+1))
+  n=$($(entry+1))
   echo "i = $i"
   echo "n = $n"
   echo $["$n"]
