@@ -36,11 +36,12 @@ date="`date '+%Y%m%d-%H%M'`"
 for i in $@
   do
   n = i + 1
+  echo "$n" #testing variable array usage.
   if [ $@ = '-f' ]; then
      filename="$n-$date.tar.gz"
   elif [ $@ = '-t' ]; then
     target="$n"
-  elif [ ! $@ = '' && $n = '' ]; then
+  elif [ ! $@ = '' && "$n" = '' ]; then
     name="$@"
   else
     echo "$usage"
