@@ -35,15 +35,22 @@ default_target="/home/chronos/user/Downloads/crouton-backups"
 date="`date '+%Y%m%d-%H%M'`"
 for i in $@
   do
-  if [ $@ = '-f' ]; then
+  if [ "$filename" = 'y' ]; then
+    filename="$i-$date.tar.gz"
+  elif [ "$target" = 'y' ]; then
+    target="$i"
+  elif [ "$i" = '-f' ]; then
     echo "-f iteration"
-    filename="$[$((i+1))]-$date.tar.gz"
-  elif [ $@ = '-t' ]; then
+    filename='y'
+  elif [ "$i" = '-t' ]; then
     echo "-t iteration"
-    target="$[$((i+1))]"
-  elif [ ! $@ = '' && "$[$((i+1))]" = '' && [ ! "$[$((i-1))]" = '-f'] || [ ! "$[$((i-1))]" = '-t']; then
+    target='y'
+  elif [ ! "$i" = '' ]; then
     echo "name iteration"
-    name="$@"
+    name="$i"
+  elif [ "$2" = '' ]; then
+  filename="$name-$date.tar.gz"
+  target="$default_target"
   else
     echo "$usage"
     exit 0
