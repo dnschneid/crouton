@@ -9,11 +9,11 @@ set -e
 next=''
 for i in $@
   do
-  if [ "$i" = '-f' ]; then
-  next='y'
-  elif [ "$next" = 'y' ]; then
+  if [ "$next" = 'y' ]; then
     echo "$i"
     next=''
+  elif [ "$i" = '-f' ]; then
+   next='y'
   fi
   echo "i = $i"
 done
