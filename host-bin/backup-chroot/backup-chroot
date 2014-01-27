@@ -31,8 +31,6 @@ Examples:         sudo backup-chroot
                   sudo backup-chroot -t ~/Downloads -f sid.tar.gz sid"
           
 # setting defaults
-target=''
-filename=''
 default_target="/home/chronos/user/Downloads/crouton-backups"
 date="`date '+%Y%m%d-%H%M'`"
 for i in $@
@@ -55,9 +53,12 @@ for i in $@
     filename='y'
   elif [ "$i" = '-t' ]; then
     target='y'
-    else
-    echo "$usage"
-    exit 0
+  elif [ "$i" = '' ]; then
+   echo "$usage"
+   exit 0
+  else
+   echo "$usage"
+   exit 0
   fi
 done
 mkdir -p "$target" # create the target
