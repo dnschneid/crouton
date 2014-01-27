@@ -12,5 +12,5 @@ for i in $@
   n=$((i+1))
   echo "i = $i"
   echo "n = $n"
-  echo $[$n]
+  echo $["$n"]
 done
