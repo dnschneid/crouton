@@ -37,8 +37,10 @@ for i in $@
   do
   if [ "$filename" = 'y' ]; then
     filename="$i-$date.tar.gz"
+    echo "filename = $filename"
   elif [ "$target" = 'y' ]; then
     target="$i"
+    echo "target = $target"
   elif [ "$i" = '-f' ]; then
     echo "-f iteration"
     filename='y'
@@ -48,6 +50,7 @@ for i in $@
   elif [ ! "$i" = '' ]; then
     echo "name iteration"
     name="$i"
+    echo "name = $name"
   elif [ "$2" = '' ]; then
   filename="$name-$date.tar.gz"
   target="$default_target"
