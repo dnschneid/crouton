@@ -11,8 +11,7 @@ for i in $@
   do
   if [ "$i" = '-f' ]; then
   next='y'
-  fi
-  if [ "$next" = 'y' ]; then
+  elif [ "$next" = 'y' ]; then
     echo "$i"
     next=''
   fi
