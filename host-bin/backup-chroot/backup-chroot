@@ -50,12 +50,11 @@ for i in $@
   elif [ ! "$i" = '' ]; then
     echo "name iteration"
     name="$i"
-    echo "name = $name"
-  elif [ "$2" = '' ]; then
-  filename="$name-$date.tar.gz"
-  echo "filename = $filename"
-  target="$default_target"/"$name"
-  echo "target = $target"
+    if [ "$filename" = '' ]; then
+      filename="$name-$date.tar.gz"
+    elif [ "$target" = '' ]; then
+      target="$default_target/$name"
+    fi
   else
     echo "$usage"
     exit 0
