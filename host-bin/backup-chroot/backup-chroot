@@ -35,15 +35,13 @@ default_target="/home/chronos/user/Downloads/crouton-backups"
 date="`date '+%Y%m%d-%H%M'`"
 for i in $@
   do
-  n=$((i+1))
-  echo "$n" #testing variable array usage.
   if [ $@ = '-f' ]; then
     echo "-f iteration"
-    filename="$[$n]-$date.tar.gz"
+    filename="$[$((i+1))]-$date.tar.gz"
   elif [ $@ = '-t' ]; then
     echo "-t iteration"
-    target="$[$n]"
-  elif [ ! $@ = '' && "$[$n]" = '' && [ "$[$i-1]" = '-f'] || [ "$[$i-1]" = '-t']; then
+    target="$[$((i+1))]"
+  elif [ ! $@ = '' && "$[$((i+1))]" = '' && [ ! "$[$((i-1))]" = '-f'] || [ ! "$[$((i-1))]" = '-t']; then
     echo "name iteration"
     name="$@"
   else
