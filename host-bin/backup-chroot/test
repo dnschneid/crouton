@@ -6,10 +6,15 @@
 # created by Edward Tunnah aka edge226.
 
 set -e
-
+next=''
 for i in $@
   do
-  n="${i[@ + 1]}"
+  if [ "$i" = '-f' ]; then
+  next='y'
+  fi
+  if [ "$next" = 'y' ]; then
+    echo "$i"
+    next=''
+  fi
   echo "i = $i"
-  echo "n = $n"
 done
