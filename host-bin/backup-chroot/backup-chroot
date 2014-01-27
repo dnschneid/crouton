@@ -53,7 +53,9 @@ for i in $@
     echo "name = $name"
   elif [ "$2" = '' ]; then
   filename="$name-$date.tar.gz"
+  echo "filename = $filename"
   target="$default_target"/"$name"
+  echo "target = $target"
   else
     echo "$usage"
     exit 0
