@@ -9,6 +9,7 @@ set -e
 
 for i in $@
   do
-  echo "i = $i $i[]"
-  #echo "n = $n"
+  n="${i[@ + 1]}"
+  echo "i = $i"
+  echo "n = $n"
 done
