@@ -1,0 +1,13 @@
+
+
+array="This contains stuff"
+
+i=1
+echo i
+echo $i
+echo "$i"
+
+for f in $array
+  do
+  echo "${$((array+1))}
+done
