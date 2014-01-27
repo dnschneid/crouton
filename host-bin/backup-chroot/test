@@ -10,5 +10,5 @@ set -e
 for i in $@
   do
   n='$i+1'
-  echo "$[$n]"
+  echo $["$n"]
 done
