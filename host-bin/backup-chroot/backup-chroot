@@ -3,8 +3,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# created by Edward Tunnah aka edge226.
-
 set -e
 
 # defines the usage of the program.
@@ -30,32 +28,34 @@ Examples:         sudo backup-chroot
                   sudo backup-chroot sid
                   sudo backup-chroot -t ~/Downloads -f sid.tar.gz sid"
           
-# setting defaults
+## setting defaults
 default_target="/home/chronos/user/Downloads/crouton-backups"
 date="`date '+%Y%m%d-%H%M'`"
+
+## This if loop sets the initial parameters of what is allowed in this command.
 if [ ! "$1" = '' ] && [ "$2" = '' ] || [ "$1" = '-t' ] || [ "$1" = '-f' ] && 
     [ "$3" = '-t' ] || [ "$3" = '-f' ] || [ "$3" = '' ] && [ "$6" = '' ]; then
-  for i in $@
+  for i in $@  ## This for loop sets parameters of the target directory and filename.
   do
-  if [ ! "$i" = '' ] && 
+  if [ ! "$i" = '' ] && ## This means that $name will be the only entry and to automate the backup.
      [ ! "$target" = 'y' ] || [ ! "$i" = '-t' ] && 
      [ ! "$filename" = 'y' ] || [ ! "$i" = '-f' ]; then
     name="$i"
     filename="$name-$date.tar.gz"
     target="$default_target"/"$name"
-  elif [ "$filename" = 'y' ]; then
+  elif [ "$filename" = 'y' ]; then ## This sets the filename.
     filename="$i"
-    if [ ! "$target" = 'y']
-      target="$default_target"/"$name"
+    if [ ! "$target" = 'y']; then ## This sets the target only if the user did not select one.
+      target="$default_target"/"$name" 
     fi
-  elif [ "$target" = 'y' ]; then
+  elif [ "$target" = 'y' ]; then ## This sets the target.
     target="$i"
-    if [ ! "$filename" = 'y' ]; then
+    if [ ! "$filename" = 'y' ]; then ## This sets the filename only if the user did not select one.
       filename="$name-$date.tar.gz"
     fi
-  elif [ "$i" = '-f' ]; then
+  elif [ "$i" = '-f' ]; then ## redirects to set the filename on the next pass.
     filename='y'
-  elif [ "$i" = '-t' ]; then
+  elif [ "$i" = '-t' ]; then ## redirects to set the target on the next pass.
     target='y'
   else
    echo "$usage"
@@ -64,6 +64,7 @@ if [ ! "$1" = '' ] && [ "$2" = '' ] || [ "$1" = '-t' ] || [ "$1" = '-f' ] &&
 done
 else
   echo "$usage"
+  exit 0
 fi
 if [ ! $filename = '' ] || [ ! $target = '' ] || [ ! $name = '' ]; then
   mkdir -p "$target" # create the target
