@@ -37,6 +37,8 @@ default_target="/home/chronos/user/Downloads/crouton-backups"
 date="`date '+%Y%m%d-%H%M'`"
 for i in $@
   do
+  echo "target = $target"
+  echo "filename = $filename"
   if [ "$filename" = 'y' ]; then
     filename="$i-$date.tar.gz"
     echo "filename = $filename"
