@@ -61,6 +61,7 @@ if [ ! "$1" = '' ] && [ "$2" = '' ] || [ "$1" = '-t' ] || [ "$1" = '-f' ] &&
      echo "$usage"
      exit 0
     fi
+  fi
   done
 else
   echo "$usage"
