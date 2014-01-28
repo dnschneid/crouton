@@ -3,33 +3,52 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+# created by edge226.
+
 set -e
 
-# defines the usage of the program.
+## defines the usage of the program.
 usage="
 Name:             backup-chroot.
 
 Description:      Needs root access for everything but displaying this message.
                   backup-chroot will by default create:
                   ~/Downloads/crouton-backups/name/name-yyyymmdd-hhmm.tar.gz.  
+                  Whether you just send backup-chroot a chroot name or a mix of
+                  chroot name and target and/or filename.
+                  The above date format will be refered to as date in this file.
+                  
     
 Usage:            backup-chroot <options> name
 
 Options:
     -h or --help  This will show this message as well as calling backup-chroot.
+                  
+                  
+                  
     -t target     This will set the target to something other than the default.
-                  Do not add a trailing slash at the end of this parameter.
+                  Changing the target but not the file name will cause the file
+                  name to be automatically generated in the form of name-date.tar.gz
+                  
 
     -f filename   This will change the filename, setting a pure .tar will force
                   the program not to use compression. You can also force
-                  other compression algorithms.
+                  other compression algorithms such as .bz2 or .xz however I do
+                  not recommend it. There is no compression gain vs gzip in my
+                  experiences, they just take longer. Changing the file name but
+                  not the target will cause the target to be automatically generated
+                  in the form of ~/Downloads/crouton-backups/name/
                   
-Examples:         sudo backup-chroot
-                  sudo backup-chroot sid
+Examples:         This is everything this script will do at this time:
+                  sudo backup-chroot
+                  sudo backup-chroot sid                      
+                  sudo backup-chroot -f sid-e18.tar.gz sid
+                  sudo backup-chroot -t ~/Downloads sid
+                  sudo backup-chroot -f sid.tar -t ~/Downloads sid
                   sudo backup-chroot -t ~/Downloads -f sid.tar.gz sid"
           
 ## setting defaults
-default_target="/home/chronos/user/Downloads/crouton-backups"
+default_target="/home/chronos/user/Downloads/crouton-backups/"
 date="`date '+%Y%m%d-%H%M'`"
 
 ## This if loop sets the initial parameters of what is allowed in this command.
@@ -42,11 +61,11 @@ if [ ! "$1" = '' ] && [ "$2" = '' ] || [ "$1" = '-t' ] || [ "$1" = '-f' ] &&
     if [ ! "$target" = '-t' ] || [ ! "$i" = '-t' ] && ## automatic setup for if only a name is provided.
         [ ! "$filename" = '-f' ] || [ ! "$i" = '-f' ]; then
      filename="$name-$date.tar.gz" # tar.gz comprssion, I've found this works best.
-     target="$default_target"/"$name"
+     target="$default_target""$name"
     elif [ "$filename" = '-f' ]; then ## This sets the filename.
       filename="$i"
       if [ ! "$target" = '-t']; then ## This sets the target only if the user did not select one.
-        target="$default_target"/"$name" 
+        target="$default_target$name" 
       fi
     elif [ "$target" = '-t' ]; then ## This sets the target.
       target="$i"
@@ -68,8 +87,8 @@ else
   exit 0
 fi
 if [ ! $filename = '' ] || [ ! $target = '' ] || [ ! $name = '' ]; then
-  mkdir -p "$target" # create the target
-  edit-chroot -f "$target"/"$filename" -b "$name" #backup the chroot.
+  mkdir -p "$target"                                                      ## create the target
+  edit-chroot -f "$target"/"$filename" -b "$name"                         ## backup the chroot.
   exit 0
 else
  echo "$usage
