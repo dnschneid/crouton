@@ -3,7 +3,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# created by edge226.
+# created by edge226. To be used with crouton.
 
 set -e
 
@@ -17,6 +17,8 @@ Description:      Needs root access for everything but displaying this message.
                   Whether you just send backup-chroot a chroot name or a mix of
                   chroot name and target and/or filename.
                   The above date format will be refered to as date in this file.
+                  
+Requires:         edit-chroot
                   
     
 Usage:            backup-chroot <options> name
@@ -88,7 +90,7 @@ else
 fi
 if [ ! $filename = '' ] || [ ! $target = '' ] || [ ! $name = '' ]; then
   mkdir -p "$target"                                                      ## create the target
-  edit-chroot -f "$target"/"$filename" -b "$name"                         ## backup the chroot.
+  edit-chroot -f "$target$filename" -b "$name"                         ## backup the chroot.
   exit 0
 else
  echo "$usage
