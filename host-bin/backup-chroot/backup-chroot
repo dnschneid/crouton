@@ -40,7 +40,7 @@ if [ ! "$1" = '' ] && [ "$2" = '' ] || [ "$1" = '-t' ] || [ "$1" = '-f' ] &&
   if [ ! "$i" = '' ]; then ## This means that $name will be the only entry and to automate the backup.
     name="$i" # This always sets the name variable as the last iteration.
     if [ ! "$target" = '-t' ] || [ ! "$i" = '-t' ] && ## automatic setup for if only a name is provided.
-        [ ! "$filename" = '-f' ] || [ ! "$i" = '-f' ]
+        [ ! "$filename" = '-f' ] || [ ! "$i" = '-f' ]; then
      filename="$name-$date.tar.gz" # tar.gz comprssion, I've found this works best.
      target="$default_target"/"$name"
     elif [ "$filename" = '-f' ]; then ## This sets the filename.
