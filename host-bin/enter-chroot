@@ -132,6 +132,12 @@ if [ -f "$fbc" ] && ! grep -q 'disabled per module param' "$fbc"; then
     chmod g+w "$fbc"
 fi
 
+# Allow X server running as normal user to set/drop DRM master
+drm_relax_file="/sys/kernel/debug/dri/drm_master_relax"
+if [ -f "$drm_relax_file" ]; then
+    echo 'Y' > "$drm_relax_file"
+fi
+
 # Make sure we always exit with echo on the tty.
 addtrap "stty echo 2>/dev/null"
 
