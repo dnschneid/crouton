@@ -79,13 +79,13 @@ if [ ! "$1" = '' ] && [ "$2" = '' ] || [ "$1" = '-t' ] || [ "$1" = '-f' ] &&
     elif [ "$i" = '-t' ]; then ## redirects to set the target on the next pass.
       target="$i"
     else
-     echo "$usage"
+     echo "$usage #1"
      exit 0
     fi
   fi
   done
 else
-  echo "$usage"
+  echo "$usage #2"
   exit 0
 fi
 if [ ! $filename = '' ] || [ ! $target = '' ] || [ ! $name = '' ]; then
