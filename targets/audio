@@ -166,9 +166,6 @@ build_cras() {
         fi
     fi
 
-    if [ "${DISTROAKA:-"$DISTRO"}" = 'manjaro' ]; then
-    install manjaro-alsa speex lib32-speex
-    else
         # Install CRAS dependencies
         install --minimal alsa-utils \
         libasound2$pkgsuffix libspeexdsp1$pkgsuffix
@@ -209,7 +206,6 @@ build_cras() {
             install --minimal libsbc1$pkgsuffix
             install --minimal --asdeps libsbc-dev$pkgsuffix
         fi
-    fi
 
     # Start subshell for compilation
     (
