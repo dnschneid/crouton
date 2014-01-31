@@ -166,46 +166,46 @@ build_cras() {
         fi
     fi
 
-    # Install CRAS dependencies
-    install --minimal alsa-utils \
+        # Install CRAS dependencies
+        install --minimal alsa-utils \
         libasound2$pkgsuffix libspeexdsp1$pkgsuffix
 
-    install --minimal --asdeps gcc $pkgdepextra libc6-dev$pkgsuffix \
-        pkg-config libspeexdsp-dev$pkgsuffix
+        install --minimal --asdeps gcc $pkgdepextra libc6-dev$pkgsuffix \
+            pkg-config libspeexdsp-dev$pkgsuffix
 
-    # precise does not allow libasound2-dev and libasound2-dev:i386 to be
-    # installed simultaneously
-    if release -le precise && [ -n "$cras_arch" ]; then
-        install --minimal --asdeps libasound2-dev
-        # Manually link .so file
-        libasoundso="/usr/lib$archextrapath/libasound.so"
-        if [ ! -f "$libasoundso" ]; then
-            addtrap "rm -f '$libasoundso' 2>/dev/null"
-            ln -sfT libasound.so.2 "$libasoundso"
+        # precise does not allow libasound2-dev and libasound2-dev:i386 to be
+        # installed simultaneously
+        if release -le precise && [ -n "$cras_arch" ]; then
+            install --minimal --asdeps libasound2-dev
+            # Manually link .so file
+            libasoundso="/usr/lib$archextrapath/libasound.so"
+            if [ ! -f "$libasoundso" ]; then
+                addtrap "rm -f '$libasoundso' 2>/dev/null"
+                ln -sfT libasound.so.2 "$libasoundso"
+            fi
+            ALSALIBDIR="/usr/lib$archextrapath/alsa-lib"
+        else
+            install --minimal --asdeps libasound2-dev$pkgsuffix
+            ALSALIBDIR="`PKG_CONFIG_PATH="$pkgconfigpath" \
+                                    pkg-config --variable=libdir alsa`/alsa-lib"
         fi
-        ALSALIBDIR="/usr/lib$archextrapath/alsa-lib"
-    else
-        install --minimal --asdeps libasound2-dev$pkgsuffix
-        ALSALIBDIR="`PKG_CONFIG_PATH="$pkgconfigpath" \
-                                pkg-config --variable=libdir alsa`/alsa-lib"
-    fi
 
-    # SBC is not available in older Debian/Ubuntu: fetch it manually
-    if release -le quantal; then
-        install_mirror_package 'libsbc1' \
-                            'pool/main/s/sbc' '1\.0-.*' $cras_arch
-        install_mirror_package --asdeps 'libsbc-dev' \
-                            'pool/main/s/sbc' '1\.0-.*' $cras_arch
-    elif release -le wheezy -eq kali; then
-        # wheezy provides a backport for libsbc1
-        install_mirror_package 'libsbc1' \
-                            'pool/main/s/sbc' '.*~bpo7\+.*' $cras_arch
-        install_mirror_package --asdeps 'libsbc-dev' \
-                            'pool/main/s/sbc' '.*~bpo7\+.*' $cras_arch
-    else
-        install --minimal libsbc1$pkgsuffix
-        install --minimal --asdeps libsbc-dev$pkgsuffix
-    fi
+        # SBC is not available in older Debian/Ubuntu: fetch it manually
+        if release -le quantal; then
+            install_mirror_package 'libsbc1' \
+                                'pool/main/s/sbc' '1\.0-.*' $cras_arch
+            install_mirror_package --asdeps 'libsbc-dev' \
+                                'pool/main/s/sbc' '1\.0-.*' $cras_arch
+        elif release -le wheezy -eq kali; then
+            # wheezy provides a backport for libsbc1
+            install_mirror_package 'libsbc1' \
+                                'pool/main/s/sbc' '.*~bpo7\+.*' $cras_arch
+            install_mirror_package --asdeps 'libsbc-dev' \
+                                'pool/main/s/sbc' '.*~bpo7\+.*' $cras_arch
+        else
+            install --minimal libsbc1$pkgsuffix
+            install --minimal --asdeps libsbc-dev$pkgsuffix
+        fi
 
     # Start subshell for compilation
     (
