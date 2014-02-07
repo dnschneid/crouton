@@ -34,7 +34,9 @@ if [ "${DESKTOP_SESSION#cinnamon}" != "$DESKTOP_SESSION" ] && \
 fi
 
 if [ -z "$DISPLAY" ]; then
+    echo " test 1 "
     exec xinit /etc/X11/xinit/xinitrc "$0"
 else
+    echo " test 2 " 
     exec "$SESSION" --session="$DESKTOP_SESSION"
 fi
