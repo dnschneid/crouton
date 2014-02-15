@@ -77,7 +77,8 @@ Options:
                 Cannot contain any slash (/).
     -p PREFIX   The root directory in which to install the bin and chroot
                 subdirectories and data.
-                Default: $PREFIX, with $PREFIX/chroots linked to $CHROOTSLINK.
+                Default: $PREFIX, with $PREFIX/chroots linked to
+                $CHROOTSLINK.
     -P PROXY    Set an HTTP proxy for the chroot; effectively sets http_proxy.
                 Specify an empty string to remove a proxy when updating.
     -r RELEASE  Name of the distribution release. Default: $DEFAULTRELEASE,
@@ -368,7 +369,7 @@ fi
 if [ -z "$DOWNLOADONLY" ]; then
     # If no prefix is set, check that /usr/local/chroots ($CHROOTS) is a
     # symbolic link to /mnt/stateful_partition/crouton ($CHROOTSLINK)
-    if [ -z "$PREFIXSET" -a "`readlink -f "$CHROOTS"`" = "$CHROOTS" ]; then
+    if [ -z "$PREFIXSET" -a ! -h "$CHROOTS" ]; then
         # Detect if chroots are left in the old chroots directory, and move them
         # to the new directory.
         if [ -e "$CHROOTS" ] && ! rmdir "$CHROOTS" 2>/dev/null; then
@@ -376,7 +377,7 @@ if [ -z "$DOWNLOADONLY" ]; then
 "Moving data from legacy chroots directory $CHROOTS to $CHROOTSLINK..." 1>&2
 
             # /mnt/stateful_partition/dev_image is bind-mounted to /usr/local,
-            # so rename does not understand that they are on the same filesystem
+            # so mv does not understand that they are on the same filesystem
             # Instead, use the direct path.
             truechroots="/mnt/stateful_partition/dev_image/chroots"
 
@@ -390,7 +391,7 @@ if [ -z "$DOWNLOADONLY" ]; then
             # Check that CHROOTSLINK is empty
             if [ -e "$CHROOTSLINK" ] && ! rmdir "$CHROOTSLINK" 2>/dev/null; then
                 error 1 \
-"ERROR: There is data in both $CHROOTS and $CHROOTSLINK.
+"There is data in both $CHROOTS and $CHROOTSLINK.
 Make sure all chroots are unmounted, then manually move the content of
 $truechroots to $CHROOTSLINK."
             fi
@@ -398,16 +399,13 @@ $truechroots to $CHROOTSLINK."
             # Check that current chroots are not mounted
             if grep -q "$CHROOTS" /proc/mounts; then
                 error 1 \
-"ERROR: Some chroot appears to be mounted in the legacy chroots directory
+"Some chroot appears to be mounted in the legacy chroots directory
 $CHROOTS. Log out of all running chroots, then run:
-$ sudo unmount-chroot -a
+  sudo unmount-chroot -a
 And rerun the installer."
             fi
 
-            # Use rename instead of mv: GNU mv copies files across filesystems
-            # as necessary (with no way to turn that behaviour off).
-            # rename fails on cross-device copies, as desired.
-            rename "$truechroots" "$CHROOTSLINK" "$truechroots"
+            mv "$truechroots" "$CHROOTSLINK"
         fi
         ln -s "$CHROOTSLINK" "$CHROOTS"
     fi
