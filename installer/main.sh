@@ -26,7 +26,7 @@ MIRROR2=''
 NAME=''
 PREFIX='/usr/local'
 PREFIXSET=''
-CHROOTSLINK='/mnt/stateful_partition/crouton'
+CHROOTSLINK='/mnt/stateful_partition/crouton/chroots'
 PROXY='unspecified'
 RELEASE=''
 RESTORE=''
@@ -368,7 +368,7 @@ fi
 # Confirm we have write access to the directory before starting.
 if [ -z "$DOWNLOADONLY" ]; then
     # If no prefix is set, check that /usr/local/chroots ($CHROOTS) is a
-    # symbolic link to /mnt/stateful_partition/crouton ($CHROOTSLINK)
+    # symbolic link to /mnt/stateful_partition/crouton/chroots ($CHROOTSLINK)
     if [ -z "$PREFIXSET" -a ! -h "$CHROOTS" ]; then
         # Detect if chroots are left in the old chroots directory, and move them
         # to the new directory.
@@ -405,6 +405,7 @@ $CHROOTS. Log out of all running chroots, then run:
 And rerun the installer."
             fi
 
+            mkdir -p "`dirname "$CHROOTSLINK"`"
             mv "$truechroots" "$CHROOTSLINK"
         fi
         ln -s "$CHROOTSLINK" "$CHROOTS"
