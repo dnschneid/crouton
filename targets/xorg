@@ -14,8 +14,17 @@ CHROOTETC='xbindkeysrc.scm xserverrc-x11 xserverrc-local.example'
 
 ### Append to prepare.sh:
 XMETHOD="${XMETHOD:-x11}"
-
-install xorg dmz-cursor-theme kbd
+# install lts-saucy xserver and drivers on haswell for precise
+if grep -q 0x8086 /sys/class/graphics/fb0/device/vendor \
+  && grep -q 0x0a /sys/class/graphics/fb0/device/device \
+  && release -eq precise; then
+  install --no-install-recommends xserver-xorg-lts-saucy libgl1-mesa-glx-lts-saucy \
+    xserver-xorg-input-all-lts-saucy x11-xserver-utils-lts-saucy \
+    libegl1-mesa-drivers-lts-saucy libtxc-dxtn-s2tc0 libtxc-dxtn0 \
+    xfonts-base dmz-cursor-theme kbd xinit xinput
+else
+  install xorg dmz-cursor-theme kbd
+fi
 # Fix launching X11 from inside crosh (user doesn't own a TTY)
 sed -i 's/allowed_users=.*/allowed_users=anybody/' '/etc/X11/Xwrapper.config'
 
