@@ -85,17 +85,17 @@ if [ -f "$toucheggconf" ]; then
     touchegg 2>/dev/null &
 fi
 
-# Configure synapsis trackpad settings if cmt is not enabled
+# Configure trackpad settings if cmt is not enabled
 if [ ! -L /etc/crouton/cmt ]; then
-     if synclient >/dev/null 2>&1; then
-         case "`awk -F= '/_RELEASE_BOARD=/{print $2}' '/var/host/lsb-release'`" in
-             butterfly*|falco*) SYNCLIENT="FingerLow=1 FingerHigh=5 $SYNCLIENT";;
-             parrot*|peppy*) SYNCLIENT="FingerLow=5 FingerHigh=10 $SYNCLIENT";;
-         esac
-         if [ -n "$SYNCLIENT" ]; then
-             synclient $SYNCLIENT
-         fi
-     fi
+    if synclient >/dev/null 2>&1; then
+        case "`awk -F= '/_RELEASE_BOARD=/{print $2}' '/var/host/lsb-release'`" in
+            butterfly*|falco*) SYNCLIENT="FingerLow=1 FingerHigh=5 $SYNCLIENT";;
+          parrot*|peppy*) SYNCLIENT="FingerLow=5 FingerHigh=10 $SYNCLIENT";;
+        esac
+        if [ -n "$SYNCLIENT" ]; then
+            synclient $SYNCLIENT
+        fi
+    fi
 fi
 
 # Shell is the leader of a process group, so signals sent to this process are

@@ -17,6 +17,7 @@ addtrap "rm -rf --one-file-system '$CRASBUILDTMP'"
 
 # ADHD_HEAD is normally autodetected, but it can be set manually using a custom
 # target sourced before this one (used for automated testing)
+# The custom target also needs to set CROS_VER_1
 if [ -z "$ADHD_HEAD" ]; then
     # Fetch list of branches from repository
     wget -O "$CRASBUILDTMP/adhd.refs" \
@@ -44,6 +45,15 @@ if [ -z "$ADHD_HEAD" ]; then
             print RLENGTH, $2
         }
     ' "$CRASBUILDTMP/adhd.refs" | sort -V | tail -n 1 | cut -d' ' -f2`"
+
+    # Set CROS_VER_1 to the major version number (e.g. 4100), used later on to
+    # selectively apply patches.
+    CROS_VER_1="${CROS_VER%%.*}"
+
+    # No patch needs to be applied on master (typical with Chromium OS images)
+    if [ "$ADHD_HEAD" = "master" ]; then
+        CROS_VER_1=999999
+    fi
 fi
 
 echo "Fetching CRAS (branch $ADHD_HEAD)..." 1>&2
@@ -54,6 +64,8 @@ wget -O "$CRASBUILDTMP/adhd.tar.gz" \
 # Patch CRAS so that x86 client can connect to x86_64 server (multilib)
 # Assume current directory is "$CRASBUILDTMP"/cras/src
 patch_cras_x86_x86_64() {
+    echo "Patching CRAS (x86 client with x86_64 server)..." 1>&2
+
     common="common/cras_shm.h common/cras_messages.h common/cras_iodev_info.h \
             common/cras_types.h common/cras_audio_format.c"
     cras_audio_format_h=""
@@ -184,7 +196,7 @@ build_cras() {
                             'pool/main/s/sbc' '1\.0-.*' $cras_arch
         install_mirror_package --asdeps 'libsbc-dev' \
                             'pool/main/s/sbc' '1\.0-.*' $cras_arch
-    elif release -le wheezy; then
+    elif release -le wheezy -eq kali; then
         # wheezy provides a backport for libsbc1
         install_mirror_package 'libsbc1' \
                             'pool/main/s/sbc' '.*~bpo7\+.*' $cras_arch
@@ -210,9 +222,11 @@ build_cras() {
         install --minimal --asdeps patch
 
         # Fix delay function in CRAS ALSA plugin, see http://crbug.com/331637
-        # FIXME: Once this is applied upstream, we need to apply this only
-        # when necessary
-        patch -p3 <<END
+        # Applied upstream in version 5215
+        # FIXME: Remove this when 5215 has trickled down to stable
+        if [ "$CROS_VER_1" -lt 5215 ]; then
+            echo "Patching CRAS (delay function bug)..." 1>&2
+            patch -p3 <<END
 diff --git a/cras/src/alsa_plugin/pcm_cras.c b/cras/src/alsa_plugin/pcm_cras.c
 index 09ca39d..33c496b 100644
 --- a/cras/src/alsa_plugin/pcm_cras.c
@@ -256,6 +270,7 @@ index 09ca39d..33c496b 100644
  
  	/* Both appl and hw pointers wrap at the pcm boundary. */
 END
+        fi
 
         # CRAS needs to be patched so that x86 client can access x86_64 server
         if [ "`uname -m`" = "x86_64" ] &&

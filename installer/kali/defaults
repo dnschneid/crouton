@@ -11,10 +11,13 @@ if [ -z "$ARCH" ]; then
 fi
 
 if [ -z "$MIRROR" ]; then
-    MIRROR="${CROUTON_MIRROR_debian:-http://ftp.debian.org/debian/}"
+    MIRROR="${CROUTON_MIRROR_kali:-http://http.kali.org}"
 fi
 
 if [ -z "$MIRROR2" ]; then
-    MIRROR2="${CROUTON_MIRROR2_debian:-http://security.debian.org/}"
+    MIRROR2="${CROUTON_MIRROR2_kali:-http://security.kali.org/kali-security}"
 fi
+
+BOOTSTRAP_RELEASE="stable"
+
 

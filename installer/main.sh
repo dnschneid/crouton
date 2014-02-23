@@ -16,11 +16,13 @@ TARGETSDIR="$SCRIPTDIR/targets"
 SRCDIR="$SCRIPTDIR/src"
 
 ARCH=''
+BOOTSTRAP_RELEASE=''
 DISTRO=''
 DOWNLOADONLY=''
 ENCRYPT=''
 KEYFILE=''
 MIRROR=''
+MIRROR2=''
 NAME=''
 PREFIX='/usr/local'
 PROXY='unspecified'
@@ -67,7 +69,10 @@ Options:
                 Can only be specified during chroot creation and forced updates
                 (-u -u). After installation, the mirror can be modified using
                 the distribution's recommended way.
+    -M MIRROR2  A secondary mirror, often used for security updates.
+                Can only be specified alongside -m.
     -n NAME     Name of the chroot. Default is the release name.
+                Cannot contain any slash (/).
     -p PREFIX   The root directory in which to install the bin and chroot
                 subdirectories and data. Default: $PREFIX
     -P PROXY    Set an HTTP proxy for the chroot; effectively sets http_proxy.
@@ -83,9 +88,6 @@ Options:
                 You can use this to install new targets or update old ones.
                 Passing this parameter twice will force an update even if the
                 specified release does not match the one already installed.
-    -U          Same as -u, but does not reinstall existing targets.
-                Targets specified with -t will be installed, but not recorded
-                for future updates.
     -V          Prints the version of the installer to stdout.
 
 Be aware that dev mode is inherently insecure, even if you have a strong
@@ -93,12 +95,16 @@ password in your chroot! Anyone can simply switch VTs and gain root access
 unless you've permanently assigned a Chromium OS root password. Encrypted
 chroots require you to set a Chromium OS root password, but are still only as
 secure as the passphrases you assign to them."
+# "Undocumented" flags:
+#   -U          Same as -u, but does not reinstall existing targets.
+#               Targets specified with -t will be installed, but not recorded
+#               for future updates.
 
 # Common functions
 . "$SCRIPTDIR/installer/functions"
 
 # Process arguments
-while getopts 'a:def:k:m:n:p:P:r:s:t:T:uUV' f; do
+while getopts 'a:def:k:m:M:n:p:P:r:s:t:T:uUV' f; do
     case "$f" in
     a) ARCH="$OPTARG";;
     d) DOWNLOADONLY='y';;
@@ -106,6 +112,7 @@ while getopts 'a:def:k:m:n:p:P:r:s:t:T:uUV' f; do
     f) TARBALL="$OPTARG";;
     k) KEYFILE="$OPTARG";;
     m) MIRROR="$OPTARG";;
+    M) MIRROR2="$OPTARG";;
     n) NAME="$OPTARG";;
     p) PREFIX="`readlink -f "$OPTARG"`";;
     P) PROXY="$OPTARG";;
@@ -168,9 +175,9 @@ if [ -n "$UPDATE" -a -n "$ARCH" ]; then
     error 2 'Architecture cannot be specified when updating.'
 fi
 
-# MIRROR must not be specified on update
+# MIRROR and MIRROR2 must not be specified on update
 if [ "$UPDATE" = 1 ]; then
-    if [ -z "$MIRROR" ]; then
+    if [ -z "$MIRROR$MIRROR2" ]; then
         # Makes sure MIRROR does not get overriden by distribution default
         MIRROR='unspecified'
     else
@@ -355,6 +362,11 @@ CHROOT="$CHROOTS/${NAME:="${RELEASE:-"$DEFAULTRELEASE"}"}"
 CHROOTSRC="$CHROOT"
 TARGETDEDUPFILE="$CHROOT/.crouton-targets"
 
+# Validate chroot name
+if ! validate_name "$NAME"; then
+    error 2 "Invalid chroot name '$NAME'."
+fi
+
 # Confirm we have write access to the directory before starting.
 if [ -z "$DOWNLOADONLY" ]; then
     create='-n'
@@ -374,20 +386,20 @@ Either delete it, specify a different name (-n), or specify -u to update it."
 
     # Restore the chroot now
     if [ -n "$RESTORE" ]; then
-        sh "$HOSTBINDIR/edit-chroot" -r -f "$TARBALL" -c "$CHROOTS" "$NAME"
+        sh "$HOSTBINDIR/edit-chroot" -r -f "$TARBALL" -c "$CHROOTS" -- "$NAME"
     fi
 
     # Mount the chroot and update CHROOT path
     if [ -n "$KEYFILE" ]; then
         CHROOT="`sh "$HOSTBINDIR/mount-chroot" -k "$KEYFILE" \
-                            $create $ENCRYPT -p -c "$CHROOTS" "$NAME"`"
+                            $create $ENCRYPT -p -c "$CHROOTS" -- "$NAME"`"
     else
         CHROOT="`sh "$HOSTBINDIR/mount-chroot" \
-                            $create $ENCRYPT -p -c "$CHROOTS" "$NAME"`"
+                            $create $ENCRYPT -p -c "$CHROOTS" -- "$NAME"`"
     fi
 
     # Auto-unmount the chroot when the script exits
-    addtrap "sh '$HOSTBINDIR/unmount-chroot' -y -c '$CHROOTS' '$NAME' 2>/dev/null"
+    addtrap "sh '$HOSTBINDIR/unmount-chroot' -y -c '$CHROOTS' -- '$NAME' 2>/dev/null"
 
     # Sanity-check the release if we're updating
     if [ -n "$UPDATE" -a -n "$RELEASE" ] &&
@@ -530,11 +542,12 @@ echo 'Preparing chroot environment...' 1>&2
 VAREXPAND="s/releases=.*\$/releases=\"\
 `sed 's/$/\\\\/' "$DISTRODIR/releases"`
 \"/;"
-VAREXPAND="${VAREXPAND}s #ARCH $ARCH ;s #MIRROR $MIRROR ;"
-VAREXPAND="${VAREXPAND}s #DISTRO $DISTRO ;s #RELEASE $RELEASE ;"
-VAREXPAND="${VAREXPAND}s #PROXY $PROXY ;s #VERSION ${VERSION:-"git"} ;"
-VAREXPAND="${VAREXPAND}s #USERNAME $CROUTON_USERNAME ;"
-VAREXPAND="${VAREXPAND}s/#SETOPTIONS/$SETOPTIONS/;"
+VAREXPAND="${VAREXPAND}s #ARCH# $ARCH ;s #DISTRO# $DISTRO ;"
+VAREXPAND="${VAREXPAND}s #MIRROR# $MIRROR ;s #MIRROR2# $MIRROR2 ;"
+VAREXPAND="${VAREXPAND}s #RELEASE# $RELEASE ;s #PROXY# $PROXY ;"
+VAREXPAND="${VAREXPAND}s #VERSION# ${VERSION:-"git"} ;"
+VAREXPAND="${VAREXPAND}s #USERNAME# $CROUTON_USERNAME ;"
+VAREXPAND="${VAREXPAND}s/#SETOPTIONS#/$SETOPTIONS/;"
 installscript "$INSTALLERDIR/prepare.sh" "$CHROOT/prepare.sh" "$VAREXPAND"
 # Append the distro-specific prepare.sh
 cat "$DISTRODIR/prepare" >> "$CHROOT/prepare.sh"

@@ -132,6 +132,12 @@ if [ -f "$fbc" ] && ! grep -q 'disabled per module param' "$fbc"; then
     chmod g+w "$fbc"
 fi
 
+# Allow X server running as normal user to set/drop DRM master
+drm_relax_file="/sys/kernel/debug/dri/drm_master_relax"
+if [ -f "$drm_relax_file" ]; then
+    echo 'Y' > "$drm_relax_file"
+fi
+
 # Make sure we always exit with echo on the tty.
 addtrap "stty echo 2>/dev/null"
 
@@ -139,9 +145,9 @@ addtrap "stty echo 2>/dev/null"
 CHROOTSRC="$CHROOTS/$NAME"
 if [ -n "$KEYFILE" ]; then
     CHROOT="`sh -e "$BINDIR/mount-chroot" \
-                                     -k "$KEYFILE" -p -c "$CHROOTS" "$NAME"`"
+                                     -k "$KEYFILE" -p -c "$CHROOTS" -- "$NAME"`"
 else
-    CHROOT="`sh -e "$BINDIR/mount-chroot" -p -c "$CHROOTS" "$NAME"`"
+    CHROOT="`sh -e "$BINDIR/mount-chroot" -p -c "$CHROOTS" -- "$NAME"`"
 fi
 
 if [ ! "$NOLOGIN" = 2 ]; then
@@ -163,7 +169,7 @@ fi
 
 if [ -z "$CROUTON_NO_UNMOUNT" ]; then
     # Auto-unmount everything below and including the chroot upon exit
-    addtrap "sh -e '$BINDIR/unmount-chroot' -yc '$CHROOTS' '$NAME'"
+    addtrap "sh -e '$BINDIR/unmount-chroot' -yc '$CHROOTS' -- '$NAME'"
 fi
 
 # If our root is on an external disk we need to ensure USB device persistence is
@@ -269,7 +275,7 @@ if [ -L "$CHROOT/etc/crouton/cmt" ]; then
   do
     xorgconffile=$(basename $xorgconf)
     cp $xorgconf $CHROMIUM_CMT/etc/X11/xorg.conf.d
-    ln -sfT $CHROOT_CMT/etc/X11/xorg.conf.d/$xorgconffile $CHROOT/etc/X11/xorg.conf.d/$xorgconffile
+    ln -sfT $CHROOT_CMT/etc/X11/xorg.conf.d/$xorgconffile $CHROOT/etc/X11/xorg.conf.d/$xorgconfile
   done
 
   # cmt driver
@@ -497,7 +503,7 @@ if [ -n "$NOLOGIN" ]; then
     if [ "$NOLOGIN" = 2 ]; then
         # If it succeeded yet still exists, run it again.
         if [ "$ret" = 0 -a -f "$CHROOT$SETUPSCRIPT" ]; then
-            sh -e "$BINDIR/unmount-chroot" -yxc "$CHROOTS" "$NAME"
+            sh -e "$BINDIR/unmount-chroot" -yxc "$CHROOTS" -- "$NAME"
             # We don't need to return from this.
             exec sh -e "$BINDIR/enter-chroot" -c "$CHROOTS" -n "$NAME" -xx
         elif [ ! "$ret" = 0 ]; then

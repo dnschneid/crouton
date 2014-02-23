@@ -85,8 +85,8 @@ promptNewPassphrase() {
 
 # Mount each chroot
 for NAME in "$@"; do
-    if [ -z "$NAME" ]; then
-        continue
+    if ! validate_name "$NAME"; then
+        error 2 "Invalid chroot name '$NAME'."
     fi
 
     # Check for existence
