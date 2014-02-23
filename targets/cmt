@@ -16,8 +16,8 @@ install xautomation
 # chroot /etc/crouton/cmt symlink activates cmt functionality
 CHROMIUM_CMT=/var/host/cmt
 CROUTON_ETC=/etc/crouton
-ln -s $CHROMIUM_CMT $CROUTON_ETC
+ln -sf $CHROMIUM_CMT $CROUTON_ETC
 
 # deploy croutonwheel.desktop symlink to start croutonwheel when X starts
 mkdir -p /etc/xdg/autostart
-ln -s $CROUTON_ETC/croutonwheel.desktop /etc/xdg/autostart/croutonwheel.desktop
+ln -sf $CROUTON_ETC/croutonwheel.desktop /etc/xdg/autostart/croutonwheel.desktop
