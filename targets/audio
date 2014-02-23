@@ -26,6 +26,8 @@ if [ -z "$ADHD_HEAD" ]; then
     # Chrome OS version (e.g. 4100.86.0)
     CROS_VER="`sed -n 's/^CHROMEOS_RELEASE_VERSION=//p' /var/host/lsb-release`"
 
+    echo "Detecting CRAS branch (Chromium OS build $CROS_VER)..." 1>&2
+
     ADHD_HEAD="`awk '
         BEGIN {
             # Default to master if nothing else is found
