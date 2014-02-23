@@ -136,10 +136,13 @@ static inline int cras_clock_gettime(clockid_t clk_id, struct cras_timespec *ctp
 #endif
 END
 
-    # Restore uncorrectly replaced timespec, add 2 necessary casts
+    # Restore uncorrectly replaced timespecs, add 2 necessary casts
     sed -i -e 's/struct cras_timespec sleep_ts;/struct timespec sleep_ts;/
+               s/struct cras_timespec wait_time;/struct timespec wait_time;/
+               s/\(.*\)cras_clock_gettime\(.*&wait_time);.*\)/\1clock_gettime\2/
                s/nodes\[i\].priority/(size_t)nodes[i].priority/
-               s/clients\[i\].id/(size_t)clients[i].id/' tests/cras_test_client.c
+               s/clients\[i\].id/(size_t)clients[i].id/' \
+                   tests/cras_test_client.c
 }
 
 # Build CRAS ALSA plugin for the given architecture ($1)
