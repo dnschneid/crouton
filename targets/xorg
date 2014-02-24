@@ -9,7 +9,7 @@ REQUIRES='core audio'
 PROVIDES='x11'
 DESCRIPTION='X.Org X11 backend. Enables GPU acceleration on supported platforms.'
 CHROOTBIN='brightness croutoncycle croutonpowerd croutonxinitrc-wrapper setres xinit'
-CHROOTETC='xbindkeysrc.scm xserverrc-x11 xserverrc-local.example 20-intel.conf'
+CHROOTETC='xbindkeysrc.scm xserverrc-x11 xserverrc-local.example 20-intel-crouton.conf'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
@@ -30,7 +30,7 @@ install dmz-cursor-theme kbd
 if grep -q 0x8086 /sys/class/graphics/fb0/device/vendor 2>/dev/null \
     && grep -q 0x0a /sys/class/graphics/fb0/device/device 2>/dev/null \
     && release -eq precise -ge raring -ge jessie && ! release -eq kali; then
-        ln -sfT "/etc/crouton/20-intel.conf" '/usr/share/X11/xorg.conf.d/20-intel.conf'
+        ln -sfT "/etc/crouton/20-intel.conf" '/usr/share/X11/xorg.conf.d/20-intel-crouton.conf'
 fi
 # Fix launching X11 from inside crosh (user doesn't own a TTY)
 sed -i 's/allowed_users=.*/allowed_users=anybody/' '/etc/X11/Xwrapper.config'
