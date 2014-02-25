@@ -34,9 +34,10 @@ test -f "$PREFIX/$RELEASE.key"
 host enter-chroot -n "$RELEASE" true
 
 # Move key to a relative location
+oldpwd="$PWD"
+cd "$PREFIX"
 host edit-chroot -k "$RELEASE.relative.path" "$RELEASE"
 test -f "$RELEASE.relative.path"
-oldpwd="$PWD"
 cd /
 host enter-chroot -n "$RELEASE" true
 cd "$oldpwd"
