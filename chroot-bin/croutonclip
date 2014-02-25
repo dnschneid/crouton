@@ -141,15 +141,16 @@ waitwebsocket() {
 current='aura'
 
 # Only let one instance *really* run at a time
+PIDFILE="/tmp/crouton-lock/clip.pid"
+
 mkdir -m 775 -p /tmp/crouton-lock
-exec 3>/tmp/crouton-lock/clip
+exec 3>>"$PIDFILE"
 if ! flock -n 3; then
     echo "Another instance of croutonclip running, waiting..."
     flock 3
 fi
 
-PIDFILE="/tmp/crouton-lock/clip.pid"
-addtrap "rm -f '$PIDFILE' 2>/dev/null"
+addtrap "echo -n > '$PIDFILE' 2>/dev/null"
 PID="$$"
 
 # croutoncycle sends SIGUSR1 to us when needed.
@@ -164,7 +165,7 @@ SIG='force'
 trap "SIG='USR1'" USR1
 
 # Set the PID after the trap is in place
-echo "$PID" > "$PIDFILE"
+echo -n "$PID" > "$PIDFILE"
 
 # Create a dummy FIFO. Reading the FIFO will block until interrupted by a signal
 tmpdir="`mktemp -d --tmpdir=/tmp croutonclip.XXX`"
