@@ -22,7 +22,7 @@ if grep -q 0x8086 /sys/class/graphics/fb0/device/vendor 2>/dev/null \
             install --minimal xserver-xorg-lts-saucy libgl1-mesa-glx-lts-saucy \
                 xserver-xorg-input-all-lts-saucy x11-xserver-utils-lts-saucy \
                 libegl1-mesa-drivers-lts-saucy libtxc-dxtn-s2tc0 libtxc-dxtn0 \
-                xfonts-base xinit xinput
+                xfonts-base xinit xinput x11-apps xterm
         else
             install xorg
         fi
