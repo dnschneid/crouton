@@ -17,11 +17,7 @@ ln -sf croutonpowerd /usr/local/bin/gnome-screensaver-command
 ln -sf croutonpowerd /usr/local/bin/xscreensaver-command
 
 # Install xbindkeys for key shortcuts
-if release -eq jessie; then
-    install_mirror_package 'xbindkeys' 'pool/main/x/xbindkeys' '1\.8\.5-.*'
-else
-    install --minimal xbindkeys
-fi
+install --minimal xbindkeys
 
 # Add a blank Xauthority to all users' home directories
 touch /etc/skel/.Xauthority
