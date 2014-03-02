@@ -12,8 +12,16 @@ Cycles through running graphical chroots.
     #: switch to the nth item in the list, zero-indexed
     :#: switch directly to the chroot owning the specified display number"
 
+# Undocumented:
+#   display: return display associated with current window
+#            (used from croutonclip):
+#     - aura: Chromium OS
+#     - 0: Chromium OS X11 display (non-aura window)
+#     - 1-9: chroot displays
+
 case "$1" in
 [Ll]*) cmd='l';;
+[Dd]*) cmd='d';;
 [Cc]*) cmd='0';;
 [Pp]*) cmd='p';;
 [Nn]*) cmd='n';;
@@ -85,7 +93,7 @@ else
 fi
 
 # List the displays if requested
-if [ "$cmd" = 'l' ]; then
+if [ "$cmd" = 'l' -o "$cmd" = 'd' ]; then
     chromiumos='Unknown'
     if [ -r '/var/host/lsb-release' ]; then
         chromiumos="`awk -F= '/_RELEASE_NAME=/{print $2}' \
@@ -95,6 +103,7 @@ if [ "$cmd" = 'l' ]; then
         disp="${line##* }"
         line="${line% *}"
         number='0'
+        active=' '
         if [ "${line#Xephyr}" != "$line" ]; then
             number="${line#*:}"
             number="${number%%.*}"
@@ -105,23 +114,39 @@ if [ "$cmd" = 'l' ]; then
             fi
         fi
         if [ "$disp" = "$curdisp" ]; then
-            echo -n "$number*"
-        else
-            echo -n "$number "
+            active='*'
+            if [ "$cmd" = 'd' ]; then
+                if [ "$line" = 'aura_root_0' ]; then
+                    echo 'aura'
+                else
+                    echo ":$number"
+                fi
+                # exit would only break the loop anyway...
+                break
+            fi
         fi
         if [ "$line" = 'aura_root_0' ]; then
-            echo " $chromiumos"
-        else
-            echo " $line"
+            line="$chromiumos"
+        fi
+        if [ "$cmd" = 'l' ]; then
+            echo "$number$active $line"
         fi
     done
     for disp in $displist; do
+        number="${disp#:}"
+        active=' '
         if [ "$disp" = "$curdisp" ]; then
-            echo -n "${disp#:}* "
-        else
-            echo -n "${disp#:}  "
+            active='*'
+            if [ "$cmd" = 'd' ]; then
+                echo "$disp"
+                exit 0
+            fi
         fi
-        getname "$disp"
+
+        if [ "$cmd" = 'l' ]; then
+            echo -n "$number$active "
+            getname "$disp"
+        fi
     done
     exit 0
 fi
@@ -200,6 +225,11 @@ else
         dest='1'
     fi
     chvt "$dest"
+fi
+
+CROUTONPIDFILE="/tmp/crouton-lock/clip.pid"
+if [ -s "$CROUTONPIDFILE" ]; then
+    kill -USR1 "`cat "$CROUTONPIDFILE"`" || true
 fi
 
 # Wait a flip and then refresh the display for good measure
