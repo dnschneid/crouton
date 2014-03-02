@@ -227,7 +227,7 @@ else
     chvt "$dest"
 fi
 
-CROUTONPIDFILE="/tmp/crouton-lock/clip.pid"
+CROUTONPIDFILE='/tmp/crouton-lock/clip'
 if [ -s "$CROUTONPIDFILE" ]; then
     kill -USR1 "`cat "$CROUTONPIDFILE"`" || true
 fi

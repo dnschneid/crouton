@@ -141,7 +141,7 @@ waitwebsocket() {
 current='aura'
 
 # Only let one instance *really* run at a time
-PIDFILE="/tmp/crouton-lock/clip.pid"
+PIDFILE='/tmp/crouton-lock/clip'
 
 mkdir -m 775 -p /tmp/crouton-lock
 exec 3>>"$PIDFILE"
