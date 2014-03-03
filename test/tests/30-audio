@@ -102,8 +102,8 @@ ADHD_HEADS="`wget --no-check-certificate --quiet -O- \
 'https://chromium.googlesource.com/chromiumos/third_party/adhd/+refs/heads?format=TEXT' \
     | awk '
     BEGIN {
-        # Do not test any release before R28 (stable as of 2013-07-30)
-        minrel=28
+        # Do not test any release before R31 (stable as of 2013-12-10)
+        minrel=31
     }
     $2 ~ /.*release-R[0-9]+-[0-9]+/ {
         split($2, s, /[-\.]R?/)
