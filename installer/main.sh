@@ -156,7 +156,7 @@ if [ "$RELEASE" = 'list' -o "$RELEASE" = 'help' ]; then
             echo "$accum" 1>&2
         fi
     done
-    echo 'Releases marked with * are unsupported, but may work with some effort.' 1>&2
+    echo 'Releases marked with * or + are unsupported, but may work with some effort.' 1>&2
     exit 2
 fi
 
@@ -266,12 +266,6 @@ if [ -n "$RELEASE" -o -z "$UPDATE" ]; then
         DISTRODIR="${DISTRODIR%/}"
         releaseline="`grep "^$RELEASE[^a-z]*$" "$DISTRODIR/releases" || true`"
         if [ -n "$releaseline" ]; then
-            if [ "${releaseline%"*"}" != "$releaseline" ]; then
-                echo "WARNING: $RELEASE is an unsupported release.
-You will likely run into issues, but things may work with some effort.
-Press Ctrl-C to abort; installation will continue in 5 seconds." 1>&2
-                sleep 5
-            fi
             DISTRO="${DISTRODIR##*/}"
             . "$DISTRODIR/defaults"
             break
@@ -434,6 +428,25 @@ change the release, upgrading the chroot (dangerous)."
     fi
 
     mkdir -p "$BIN"
+fi
+
+# Check if RELEASE is supported
+releaseline="`grep "^$RELEASE[^a-z]*$" "$DISTRODIR/releases" || true`"
+if [ "${releaseline%"*"}" != "$releaseline" ]; then
+    echo "WARNING: $RELEASE is an unsupported release.
+You will likely run into issues, but things may work with some effort." 1>&2
+    if [ -z "$UPDATE" ]; then
+        echo "Press Ctrl-C to abort; installation will continue in 5 seconds." 1>&2
+    fi
+    sleep 5
+elif [ "${releaseline%"+"}" != "$releaseline" ]; then
+    echo "WARNING: $RELEASE is not supported anymore.
+Things will probably work, but you are advised to upgrade to a more recent
+release (see http://goo.gl/Z5LGVD for instructions)." 1>&2
+    if [ -z "$UPDATE" ]; then
+        echo "Press Ctrl-C to abort; installation will continue in 5 seconds." 1>&2
+    fi
+    sleep 5
 fi
 
 # Checks if it's safe to enable boot signing verification.
