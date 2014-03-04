@@ -156,7 +156,7 @@ if [ "$RELEASE" = 'list' -o "$RELEASE" = 'help' ]; then
             echo "$accum" 1>&2
         fi
     done
-    echo 'Releases marked with * or + are unsupported, but may work with some effort.' 1>&2
+    echo 'Releases marked with * are unsupported, but may work with some effort.' 1>&2
     exit 2
 fi
 
@@ -435,16 +435,13 @@ releaseline="`grep "^$RELEASE[^a-z]*$" "$DISTRODIR/releases" || true`"
 if [ "${releaseline%"*"}" != "$releaseline" ]; then
     echo "WARNING: $RELEASE is an unsupported release.
 You will likely run into issues, but things may work with some effort." 1>&2
+
     if [ -z "$UPDATE" ]; then
         echo "Press Ctrl-C to abort; installation will continue in 5 seconds." 1>&2
-    fi
-    sleep 5
-elif [ "${releaseline%"+"}" != "$releaseline" ]; then
-    echo "WARNING: $RELEASE is not supported anymore.
-Things will probably work, but you are advised to upgrade to a more recent
-release (see http://goo.gl/Z5LGVD for instructions)." 1>&2
-    if [ -z "$UPDATE" ]; then
-        echo "Press Ctrl-C to abort; installation will continue in 5 seconds." 1>&2
+    else
+        echo "\
+If this is a surprise to you, $RELEASE has probably reached end of life.
+Refer to http://goo.gl/Z5LGVD for upgrade instructions." 1>&2
     fi
     sleep 5
 fi
