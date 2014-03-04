@@ -47,10 +47,12 @@ if [ $# -ge "$OPTIND" ]; then
 fi
 
 # Operate on the Chromium OS X11 server
-eval "`/usr/local/bin/host-x11`"
+eval "`host-x11`"
 
-# Get the aura root window number (hex)
-aura="`xwininfo -root -children | awk '/aura_root/ {print $1}'`"
+# Only let one instance *really* run at a time
+mkdir -m 775 -p /tmp/crouton-lock
+exec 3>/tmp/crouton-lock/wheel
+flock 3
 
 # Monitor xinput2 events, reacting only to scroll events (axes 2 and 3).
 # Accumulate the x and y scrolls, but reduce the acceleration so it doesn't go
@@ -58,34 +60,28 @@ aura="`xwininfo -root -children | awk '/aura_root/ {print $1}'`"
 # Use xev to detect window changes and disable mouse wheel events when aura is
 # focused.
 # The goal of this system is to avoid having to launch any processes on a
-# per-event basis, both to improve latency and performance as well as handle the
-# case where this script outlives the chroot.
+# per-event basis, both to improve latency and performance.
 {
-    croutonxi2event <&- &
+    croutonxi2event &
     xi="$!"
-    xev -root <&- &
-    trap "kill $! $xi 2>&- || true" INT TERM HUP 0
+    aura="`croutonwmtools list ni | awk '/aura_root/ {print $NF}'`"
+    xev -id "$aura" &
+    trap "kill $! $xi 2>/dev/null || true" INT TERM HUP 0
     wait
-} <&- | unbuffered_awk '
+} | unbuffered_awk '
     # Test if x is a non-zero real number (i.e. not nan, inf, "", or 0)
     function isnonzero(x) {
         return (x != "") && (x != 0) && (x != "nan") && (x != "inf")
     }
 
-    m {
-        if ($4 == "'"$aura"',") {
-            if (m == "MapNotify") {
-                w = 1
-                x = 0
-                y = 0
-            } else {
-                w = 0
-            }
-        }
-        m = ""
+    # Disable when aura is visible and enable when it is not
+    /VisibilityUnobscured$/ {
+        w = 1
+        x = 0
+        y = 0
     }
-    /^U?n?[Mm]apNotify/ {
-        m = $1
+    /VisibilityFullyObscured$/ {
+        w = 0
     }
 
     !w && /^EVENT type 17/ {
@@ -135,6 +131,6 @@ aura="`xwininfo -root -children | awk '/aura_root/ {print $1}'`"
         }
     }
 ' | xte &
-trap "pkill -P $$ 2>&- || true" INT TERM HUP 0
+trap "pkill -P $$ 2>/dev/null || true" INT TERM HUP 0
 wait
 exit 0

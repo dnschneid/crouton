@@ -15,12 +15,9 @@ CHROOTETC='xbindkeysrc.scm xserverrc-x11 xserverrc-local.example'
 ### Append to prepare.sh:
 XMETHOD="${XMETHOD:-x11}"
 
-install xorg dmz-cursor-theme kbd
+install xorg dmz-cursor-theme
 # Fix launching X11 from inside crosh (user doesn't own a TTY)
 sed -i 's/allowed_users=.*/allowed_users=anybody/' '/etc/X11/Xwrapper.config'
-
-# Make chvt and fgconsole SUID root so we don't need to run keylaunch as root
-chmod u+s /bin/chvt
 
 TIPS="$TIPS
 You can flip through your running chroot desktops and Chromium OS by hitting

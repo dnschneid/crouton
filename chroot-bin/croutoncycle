@@ -3,59 +3,238 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-USAGE="${0##*/} next|prev|cros
+USAGE="${0##*/} next|prev|cros|list|#
 Cycles through running graphical chroots.
-\"cros\" switches back to Chromium OS."
+    next: switch to the next display
+    prev: switch to the previous display
+    cros: switch directly to Chromium OS
+    list: list all of the active displays and the associated chroot name
+    #: switch to the nth item in the list, zero-indexed
+    :#: switch directly to the chroot owning the specified display number"
+
+# Undocumented:
+#   display: return display associated with current window
+#            (used from croutonclip):
+#     - aura: Chromium OS
+#     - 0: Chromium OS X11 display (non-aura window)
+#     - 1-9: chroot displays
 
 case "$1" in
-[Cc]*) cmd='select 0';;
-[Pp]*) cmd='prev';;
-[Nn]*) cmd='next';;
+[Ll]*) cmd='l';;
+[Dd]*) cmd='d';;
+[Cc]*) cmd='0';;
+[Pp]*) cmd='p';;
+[Nn]*) cmd='n';;
+:*) cmd=":$((${1#:}))";;
+[0-9]*) cmd="$(($1))";;
 *) echo "$USAGE" 1>&2; exit 2;;
 esac
 
-# If we're using Xephyr, run ratpoison
-xmethod="`readlink -f '/etc/X11/xinit/xserverrc'`"
-xmethod="${xmethod##*-}"
-if [ "$xmethod" = 'xephyr' ]; then
-    exec /usr/local/bin/host-x11 ratpoison -c "$cmd"
+# Returns the chroot name of an X11 display specified in $1 on stdout
+getname() {
+    local name=''
+    name="`DISPLAY=":${1#:}" xprop -root CROUTON_NAME 2>/dev/null`"
+    if [ "${name%\"}" != "$name" ]; then
+        name="${name%\"}"
+        echo "${name#*\"}"
+    else
+        echo "Unknown"
+    fi
+}
+
+# Only let one instance run at a time to avoid nasty race conditions
+mkdir -m 775 -p /tmp/crouton-lock
+exec 3>/tmp/crouton-lock/cycle
+flock 3
+
+# Ensure environment sanity
+export XAUTHORITY=''
+
+# Prepare display list for easier looping
+displist=''
+for disp in /tmp/.X*-lock; do
+    disp="${disp#*X}"
+    disp=":${disp%-lock}"
+    # Only add VT-based chroots here
+    if [ "$disp" = ':0' ]; then
+        continue
+    elif DISPLAY="$disp" xprop -root 'XFree86_VT' 2>/dev/null \
+            | grep -q 'INTEGER'; then
+        displist="$displist $disp"
+    fi
+done
+# List windows on :0. Includes aura
+winlist="`host-x11 croutonwmtools list nim | sort | awk '{ printf $NF " " }'`"
+
+# Combine the two
+fulllist="$winlist$displist"
+fulllist="${fulllist% }"
+
+# Figure out the current display number
+tty="`cat '/sys/class/tty/tty0/active'`"
+if [ "$tty" = 'tty1' ]; then
+    # Either in Chromium OS, xephyr chroot, or window. Active window is starred.
+    for disp in $winlist; do
+        if [ "${disp%"*"}" != "$disp" ]; then
+            curdisp="$disp"
+            break
+        fi
+    done
+else
+    # Poll the displays to figure out which one owns this VT
+    curdisp="$tty"
+    for disp in $displist; do
+        if DISPLAY="$disp" xprop -root 'XFree86_VT' 2>/dev/null \
+                | grep -q " ${tty#tty}\$"; then
+            curdisp="$disp"
+            break
+        fi
+    done
 fi
 
-# cros: Switch to VT1
-if [ "$cmd" = 'select 0' ]; then
-    exec chvt 1
+# List the displays if requested
+if [ "$cmd" = 'l' -o "$cmd" = 'd' ]; then
+    chromiumos='Unknown'
+    if [ -r '/var/host/lsb-release' ]; then
+        chromiumos="`awk -F= '/_RELEASE_NAME=/{print $2}' \
+                             '/var/host/lsb-release'`"
+    fi
+    host-x11 croutonwmtools list nim | sort | while read line; do
+        disp="${line##* }"
+        line="${line% *}"
+        number='0'
+        active=' '
+        if [ "${line#Xephyr}" != "$line" ]; then
+            number="${line#*:}"
+            number="${number%%.*}"
+            if [ "${number#[0-9]}" = "$number" ]; then
+                number='0'
+            else
+                line="`getname "$number"`"
+            fi
+        fi
+        if [ "$disp" = "$curdisp" ]; then
+            active='*'
+            if [ "$cmd" = 'd' ]; then
+                if [ "$line" = 'aura_root_0' ]; then
+                    echo 'aura'
+                else
+                    echo ":$number"
+                fi
+                # exit would only break the loop anyway...
+                break
+            fi
+        fi
+        if [ "$line" = 'aura_root_0' ]; then
+            line="$chromiumos"
+        fi
+        if [ "$cmd" = 'l' ]; then
+            echo "$number$active $line"
+        fi
+    done
+    for disp in $displist; do
+        number="${disp#:}"
+        active=' '
+        if [ "$disp" = "$curdisp" ]; then
+            active='*'
+            if [ "$cmd" = 'd' ]; then
+                echo "$disp"
+                exit 0
+            fi
+        fi
+
+        if [ "$cmd" = 'l' ]; then
+            echo -n "$number$active "
+            getname "$disp"
+        fi
+    done
+    exit 0
 fi
 
-# Otherwise, determine current tty and X11 ttys
-curtty="`cat '/sys/class/tty/tty0/active'`"
-seltty=''
-prevtty=''
-for tty in `ps -CX -CXorg -otname= | sort`; do
-    # On some systems, the tty of Chromium OS cannot be determined and returns ?
-    if [ "$tty" = '?' ]; then
-        tty='tty1'
-    fi
-    if [ "$cmd" = 'next' -a -z "$seltty" ]; then
-        seltty="$tty"
-    fi
-    if [ -z "$curtty" ]; then
-        seltty="$tty"
-        break
-    elif [ "$tty" = "$curtty" ]; then
-        # Make the tty selection.
-        if [ "$cmd" = 'prev' ]; then
-            seltty="$prevtty"
-        else
-            curtty=''
+# Determine the target display
+if [ -n "${cmd#[pn]}" ]; then
+    if [ "${cmd#:}" != "$cmd" ]; then
+        destdisp="$cmd"
+    else
+        i=0
+        destdisp=''
+        for disp in $fulllist; do
+            if [ "$i" -eq "$cmd" ]; then
+                destdisp="$disp"
+                break
+            fi
+            i="$((i+1))"
+        done
+        if [ -z "$destdisp" ]; then
+            echo "Display number out of range." 1>&2
+            exit 2
         fi
     fi
-    prevtty="$tty"
-done
-if [ -z "$seltty" ]; then
-    seltty="$tty"
+elif [ "$cmd" = 'p' ]; then
+    destdisp="${fulllist##* }"
+    for disp in $fulllist; do
+        if [ "$disp" = "$curdisp" ]; then
+            break
+        fi
+        destdisp="$disp"
+    done
+elif [ "$cmd" = 'n' ]; then
+    destdisp=''
+    for disp in $fulllist; do
+        if [ -n "$destdisp" ]; then
+            destdisp="$disp"
+            break
+        elif [ "$disp" = "$curdisp" ]; then
+            destdisp="${fulllist%% *}"
+        fi
+    done
+    if [ -z "$destdisp" ]; then
+        destdisp="${fulllist%% *}"
+    fi
+else
+    echo "Bad command $cmd." 1>&2
+    exit 3
 fi
 
-# If we have a tty and it's not the same as the current one, switch
-if [ -n "$seltty" -a ! "$seltty" = "$curtty" ]; then
-    exec chvt "${seltty#tty}"
+# No-op on no-op
+if [ "$destdisp" = "$curdisp" ]; then
+    exit 0
 fi
+
+# Make sure tap-to-click is enabled
+if hash xinput 2>/dev/null; then
+    for id in `host-x11 xinput --list --id-only`; do
+        host-x11 xinput set-prop "$id" 'Tap Paused' 0 2>/dev/null || true
+    done
+fi
+
+# Determine if the target display is on a VT
+if [ "${destdisp#:}" = "$destdisp" ]; then
+    eval "`host-x11`"
+    # Raise the right window after chvting, so that it can update
+    if [ "$tty" != 'tty1' ]; then
+        chvt 1
+        sleep .1
+    fi
+    croutonwmtools raise "${destdisp%"*"}"
+else
+    export DISPLAY="$destdisp"
+    dest="`xprop -root 'XFree86_VT' 2>/dev/null`"
+    dest="${dest##* }"
+    if [ "${dest#[1-9]}" = "$dest" ]; then
+        dest='1'
+    fi
+    chvt "$dest"
+fi
+
+CROUTONPIDFILE='/tmp/crouton-lock/clip'
+if [ -s "$CROUTONPIDFILE" ]; then
+    kill -USR1 "`cat "$CROUTONPIDFILE"`" || true
+fi
+
+# Wait a flip and then refresh the display for good measure
+if hash xrefresh 2>/dev/null; then
+    sleep .1
+    xrefresh
+fi
+exit 0
