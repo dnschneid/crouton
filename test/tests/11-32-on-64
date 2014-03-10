@@ -1,0 +1,13 @@
+#!/bin/sh -e
+# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# All supported releases should be able to create an i686 chroot on x86-64
+if [ "`uname -m`" = "x86_64" ]; then
+    for release in $SUPPORTED_RELEASES; do
+        crouton -a x86 -r "$release" -t core
+        host enter-chroot -n "$release" true
+        host delete-chroot -y "$release"
+    done
+fi
