@@ -277,6 +277,27 @@ index 09ca39d..33c496b 100644
 END
         fi
 
+        # Fix cras_test_client hanging on exit, see http://crbug.com/347997
+        # Introduced in upstream build 5339, fixed in 5579
+        # FIXME: Remove this when R34/5500 is not an active release anymore
+        if [ "$CROS_VER_1" -ge 5339 -a "$CROS_VER_1" -lt 5579 ]; then
+            echo "Patching CRAS (cras_test_client bug)..." 1>&2
+            patch -p3 <<END
+diff --git a/cras/src/libcras/cras_client.c b/cras/src/libcras/cras_client.c
+index 37fc2ad..8d26703 100644
+--- a/cras/src/libcras/cras_client.c
++++ b/cras/src/libcras/cras_client.c
+@@ -1510,6 +1510,7 @@ void cras_client_destroy(struct cras_client *client)
+ {
+ 	if (client == NULL)
+ 		return;
++	cras_client_stop(client);
+ 	if (client->server_state)
+ 		shmdt(client->server_state);
+ 	if (client->server_fd >= 0)
+END
+        fi
+
         # CRAS needs to be patched so that x86 client can access x86_64 server
         if [ "`uname -m`" = "x86_64" ] &&
            [ "$ARCH" = "i386" -o "$cras_arch" = "i386" ]; then
