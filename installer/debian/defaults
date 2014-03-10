@@ -11,7 +11,7 @@ if [ -z "$ARCH" ]; then
 fi
 
 case "$ARCH" in
-i?86) ARCH="i386";;
+x86 | i?86) ARCH="i386";;
 x86_64 | amd64) ARCH="amd64";;
 arm*) ARCH="armhf";;
 *) error 2 "Invalid architecture '$ARCH'.";;
