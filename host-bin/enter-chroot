@@ -384,6 +384,15 @@ mount --make-shared /sys
 mount --rbind /sys "$CHROOT/sys"
 mount --make-slave "$CHROOT/sys"
 
+# Get croutonversion variables
+croutonversion="$CHROOT/usr/local/bin/croutonversion"
+CHROOTRELEASE="unknown"
+CHROOTARCH="unknown"
+if [ -f "$croutonversion" ]; then
+    CHROOTRELEASE="`awk -F"'" '/^RELEASE=/{print $2;exit}' "$croutonversion"`"
+    CHROOTARCH="`awk -F"'" '/^ARCH=/{print $2;exit}' "$croutonversion"`"
+fi
+
 # For test machines with low entropy, bind mount /dev/urandom to /dev/random
 if [ -n "$CROUTON_WEAK_RANDOM" ]; then
     mount --bind "$CHROOT/dev/urandom" "$CHROOT/dev/random"
@@ -476,8 +485,10 @@ if [ ! "$NOLOGIN" = 1 ] && grep -q '^root:' "$passwd" 2>/dev/null; then
     fi
 
     # Launch systemd-logind if available and not already running
+    # Whitelisted for saucy and trusty
     if [ -f "$CHROOT/lib/systemd/systemd-logind" ] && \
-        ! [ -d "$CHROOT/run/systemd" ]; then
+        ! [ -d "$CHROOT/run/systemd" ] && \
+        [ "$CHROOTRELEASE" = 'saucy' -o "$CHROOTRELEASE" = 'trusty' ]; then
         # Every piece of systemd code ever assumes that this directory exists
         mkdir -p "$CHROOT/run/systemd"
 
