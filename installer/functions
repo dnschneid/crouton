@@ -176,3 +176,30 @@ findrootdevice() {
         ROOTDEVICEPREFIX="${ROOTDEVICE}p"
     fi
 }
+
+# Try to mount the CROUTON partition, if it exists, on $MOUNTPOINT.
+mountcrouton() {
+    if [ -z "$ROOTDEVICE" ]; then
+        findrootdevice
+    fi
+
+    local croutonpart="`cgpt find -n -l CROUTON "$ROOTDEVICE"`"
+    if [ -z "$croutonpart" ]; then
+        return 1
+    fi
+
+    # Check if crouton is mounted already
+    if grep -q "^${ROOTDEVICEPREFIX}$croutonpart " /proc/mounts; then
+        # If mounted, it must be mounted to $mountpoint
+
+        if ! grep -q "^${ROOTDEVICEPREFIX}$croutonpart $MOUNTPOINT " \
+                                                        /proc/mounts; then
+            error 1 "Error: CROUTON partition is not mounted on $MOUNTPOINT."
+        fi
+    else
+        mkdir -p "$MOUNTPOINT" || error 1 "Cannot create $MOUNTPOINT."
+        mount "${ROOTDEVICEPREFIX}$croutonpart" "$MOUNTPOINT" || \
+            error 1 "Cannot mount $MOUNTPOINT"
+    fi
+    return 0
+}

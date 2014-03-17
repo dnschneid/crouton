@@ -9,6 +9,8 @@ APPLICATION="${0##*/}"
 BACKGROUND=''
 BINDIR="`dirname "\`readlink -f "$0"\`"`"
 CHROOTS="`readlink -m "$BINDIR/../chroots"`"
+CHROOTSSET=''
+MOUNTPOINT='/var/crouton'
 KEYFILE=''
 LOGIN=''
 NAME=''
@@ -65,7 +67,7 @@ while getopts 'bc:k:ln:t:u:x' f; do
     prevoptind="$OPTIND"
     case "$f" in
     b) BACKGROUND='y';;
-    c) CHROOTS="`readlink -m "$OPTARG"`";;
+    c) CHROOTS="`readlink -m "$OPTARG"`"; CHROOTSSET='y';;
     k) KEYFILE="$OPTARG";;
     l) LOGIN='y';;
     n) NAME="$OPTARG";;
@@ -103,6 +105,13 @@ if [ "$NOLOGIN" = 2 ]; then
         error 2 "Cannot run the setup script in the background."
     fi
     set -- "$SETUPSCRIPT"
+fi
+
+# Try to mount the crouton partition if it exists, CHROOTS has not been set
+# manually, and this script base directory is /usr/local/bin.
+if [ -z "$CHROOTSSET" -a "$BINDIR" = "/usr/local/bin" ] && \
+        mountcrouton "$MOUNTPOINT"; then
+    CHROOTS="$MOUNTPOINT/chroots"
 fi
 
 # Select the first chroot available if one hasn't been specified

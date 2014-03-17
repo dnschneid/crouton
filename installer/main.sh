@@ -27,6 +27,7 @@ NAME=''
 PREFIX='/usr/local'
 PREFIXSET=''
 CHROOTSLINK='/mnt/stateful_partition/crouton/chroots'
+MOUNTPOINT='/var/crouton'
 PROXY='unspecified'
 RELEASE=''
 RESTORE=''
@@ -66,7 +67,9 @@ Options:
     -a ARCH     The architecture to prepare a new chroot or bootstrap for.
                 Default: autodetected for the current chroot or system.
     -b          Restore crouton scripts in PREFIX/bin, as required by the
-                chroots currently installed in PREFIX/chroots.
+                chroots currently installed in PREFIX/chroots (or
+                $MOUNTPOINT/chroots if -p is not specified, and the crouton
+                partition exists).
     -d          Downloads the bootstrap tarball but does not prepare the chroot.
     -e          Encrypt the chroot with ecryptfs using a passphrase.
                 If specified twice, prompt to change the encryption passphrase.
@@ -87,7 +90,9 @@ Options:
     -p PREFIX   The root directory in which to install the bin and chroot
                 subdirectories and data.
                 Default: $PREFIX, with $PREFIX/chroots linked to
-                $CHROOTSLINK.
+                $CHROOTSLINK, unless the crouton partition
+                is detected, in which case the partition is mounted, and chroots
+                are installed in $MOUNTPOINT.
     -P PROXY    Set an HTTP proxy for the chroot; effectively sets http_proxy.
                 Specify an empty string to remove a proxy when updating.
     -r RELEASE  Name of the distribution release. Default: $DEFAULTRELEASE,
@@ -378,7 +383,16 @@ addtrap "stty echo 2>/dev/null"
 
 # Determine directories
 BIN="$PREFIX/bin"
-CHROOTS="$PREFIX/chroots"
+
+# Try to mount the crouton partition, if it exists, and no prefix is set.
+if [ "$USER" = root -o "$UID" = 0 ] && \
+            [ -z "$PREFIXSET" ] && mountcrouton "$MOUNTPOINT"; then
+    # If the crouton partition exists, install binaries in /usr/local an
+    # chroots in the partition
+    CHROOTS="$MOUNTPOINT/chroots"
+else
+    CHROOTS="$PREFIX/chroots"
+fi
 
 if [ -z "$RESTOREBIN" ]; then
     # Fix NAME if it was not specified.
@@ -395,9 +409,11 @@ if [ -z "$RESTOREBIN$DOWNLOADONLY" ]; then
         error 2 "Invalid chroot name '$NAME'."
     fi
 
-    # If no prefix is set, check that /usr/local/chroots ($CHROOTS) is a
-    # symbolic link to /mnt/stateful_partition/crouton/chroots ($CHROOTSLINK)
-    if [ -z "$PREFIXSET" -a ! -h "$CHROOTS" ]; then
+    # If no prefix is set and the crouton partition is not being used, check
+    # that /usr/local/chroots ($CHROOTS) is a symbolic link to
+    # /mnt/stateful_partition/crouton/chroots ($CHROOTSLINK).
+    if [ -z "$PREFIXSET" -a "$CHROOTS" != "$MOUNTPOINT/chroots" \
+                         -a ! -h "$CHROOTS" ]; then
         # Detect if chroots are left in the old chroots directory, and move them
         # to the new directory.
         if [ -e "$CHROOTS" ] && ! rmdir "$CHROOTS" 2>/dev/null; then
