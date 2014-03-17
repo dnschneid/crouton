@@ -152,3 +152,27 @@ validate_name() {
     fi
     return 0
 }
+
+# Find the root device
+# Sets:
+#  - $ROOTDEVICE as the root device (e.g. /dev/sda or /dev/mmcblk0)
+#  - $ROOTDEVICEPREFIX as a prefix for partitions (/dev/sda, /dev/mmcblk0p)
+findrootdevice() {
+    ROOTDEVICE="`rootdev -d -s`"
+
+    if [ -z "$ROOTDEVICE" ]; then
+        error 1 "Cannot find root device."
+    fi
+
+    if [ ! -b "$ROOTDEVICE" ]; then
+        error 1 "$ROOTDEVICE is not a block device."
+    fi
+
+    # If $ROOTDEVICE ends with a number (e.g. mmcblk0), partitions are named
+    # ${ROOTDEVICE}pX (e.g. mmcblk0p1). If not (e.g. sda), they are named
+    # ${ROOTDEVICE}X (e.g. sda1).
+    ROOTDEVICEPREFIX="$ROOTDEVICE"
+    if [ "${ROOTDEVICE%[0-9]}" != "$ROOTDEVICE" ]; then
+        ROOTDEVICEPREFIX="${ROOTDEVICE}p"
+    fi
+}

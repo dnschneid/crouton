@@ -41,6 +41,7 @@ UPDATEIGNOREEXISTING=''
 USAGE="$APPLICATION [options] -t targets
 $APPLICATION [options] -f backup_tarball
 $APPLICATION [options] -d -f bootstrap_tarball
+$APPLICATION -S [partition_options]
 
 Constructs a chroot for running a more standard userspace alongside Chromium OS.
 
@@ -50,6 +51,11 @@ the chroot is restored and relevant scripts installed.
 If run with -d, a bootstrap tarball is created to speed up chroot creation in
 the future. You can use bootstrap tarballs generated this way by passing them
 to -f the next time you create a chroot with the same architecture and release.
+
+If run with -S, a separate partition is created for crouton, immune from
+accidental wiping when switching back and forth between developer/normal mode,
+as well as powerwashes.
+Run $APPLICATION -S -h for additional help.
 
 $APPLICATION must be run as root unless -d is specified AND fakeroot is
 installed AND /tmp is mounted exec and dev.
@@ -106,6 +112,14 @@ secure as the passphrases you assign to them."
 #   -U          Same as -u, but does not reinstall existing targets.
 #               Targets specified with -t will be installed, but not recorded
 #               for future updates.
+
+# Pass parameters to mkpart.sh
+if [ "$1" = "-S" ]; then
+    shift
+    APPLICATION="$APPLICATION -S"
+    . "$SCRIPTDIR/installer/mkpart.sh"
+    exit 0
+fi
 
 # Common functions
 . "$SCRIPTDIR/installer/functions"
