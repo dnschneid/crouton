@@ -155,7 +155,15 @@ Type 'delete' if you are sure that you want to do that: "
 elif [ -z "$NOCREATE" ]; then
     rootc="`cgpt find -n -l ROOT-C "$ROOTDEVICE"`"
     if [ "`cgpt show -i "$rootc" -s "$ROOTDEVICE"`" -gt 1 ]; then
-        error 1 "ROOT-C is not empty (did you install ChrUbuntu?)."
+        echo -n "ROOT-C is not empty (did you install ChrUbuntu?).
+Using both ChrUbuntu and crouton partition is not recommended, especially if
+your total storage space is only 16GB, as the space for each system (Chromium OS
+stateful partition, crouton and ChrUbuntu) will be very limited.
+Do you still want to continue? [y/N] " 1>&2
+        read response
+        if [ "${response#[Yy]}" = "$response" ]; then
+            exit 1
+        fi
     fi
 
     if [ "`cgpt show -i "$CROUTONPARTNUMBER" -s "$ROOTDEVICE"`" -gt 1 ]; then
@@ -315,12 +323,14 @@ fi
         org.chromium.SessionManagerInterface.StopSession \
         string:"crouton installer"
 
-    # Detect when the user has been logged out
-    tries=10
+    # Detect when the user has been logged out (1 minute timeout)
+    tries=12
     while [ "$tries" -gt 0 ] && grep -q '^/home/.shadow' /proc/mounts; do
         chvt $LOGVT
-        sleep 1
-        if [ "$tries" -le 5 ]; then
+        echo "Waiting for logout to complete..."
+        sleep 5
+        # After 30s, be more forceful
+        if [ "$tries" -le 6 ]; then
             echo "Some mounts are still active:"
             grep '^/home/.shadow' /proc/mounts || true
             echo "Trying to unmount..."
