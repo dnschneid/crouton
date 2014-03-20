@@ -326,7 +326,9 @@ END
         fi
 
         # CRAS needs to be patched so that x86 client can access x86_64 server
-        if [ "`uname -m`" = "x86_64" ] &&
+        # Applied upstream in build 5652, see http://crbug.com/309961
+        # FIXME: Remove this when 5652 has trickled down to stable
+        if [ "$CROS_VER_1" -lt 5652 ] && [ "`uname -m`" = "x86_64" ] &&
            [ "$ARCH" = "i386" -o "$cras_arch" = "i386" ]; then
             patch_cras_x86_x86_64
         fi
