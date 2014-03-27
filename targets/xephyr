@@ -5,7 +5,7 @@
 REQUIRES='core audio'
 PROVIDES='x11'
 DESCRIPTION='Nested X11 backend. Improves compatibility but lacks GPU accel.'
-CHROOTBIN='brightness croutoncycle croutonpowerd croutonwheel croutonwm croutonxinitrc-wrapper xinit'
+CHROOTBIN='brightness croutoncycle croutonpowerd croutonwheel croutonxinitrc-wrapper xinit'
 CHROOTETC='xbindkeysrc.scm xserverrc-xephyr xserverrc-local.example'
 . "${TARGETSDIR:="$PWD"}/common"
 
@@ -29,8 +29,8 @@ fi
 
 # xserver-xephyr won't auto replace the manually-downloaded version.
 install --minimal \
-    xserver-xephyr xinit ratpoison dmz-cursor-theme libgl1-mesa-dri \
-    x11-utils x11-xserver-utils xautomation xinput xterm
+    xserver-xephyr xinit dmz-cursor-theme libgl1-mesa-dri \
+    x11-utils x11-xserver-utils xinput xterm
 
 # Compile croutoncursor
 compile cursor '-lX11 -lXfixes -lXrender' \
