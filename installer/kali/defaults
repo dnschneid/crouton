@@ -7,8 +7,15 @@
 # It must set at least ARCH and MIRROR if not already specified.
 
 if [ -z "$ARCH" ]; then
-    ARCH="`uname -m | sed -e 's i.86 i386 ;s x86_64 amd64 ;s arm.* armhf ;'`"
+    ARCH="`uname -m`"
 fi
+
+case "$ARCH" in
+x86 | i?86) ARCH="i386";;
+x86_64 | amd64) ARCH="amd64";;
+arm*) ARCH="armhf";;
+*) error 2 "Invalid architecture '$ARCH'.";;
+esac
 
 if [ -z "$MIRROR" ]; then
     MIRROR="${CROUTON_MIRROR_kali:-http://http.kali.org}"

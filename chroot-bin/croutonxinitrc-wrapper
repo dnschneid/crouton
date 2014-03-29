@@ -43,8 +43,18 @@ fi
 
 # Run crouton-specific commands:
 
+# Record the name of the chroot in the root window properties
+if [ -f '/etc/crouton/name' ] && hash xprop 2>/dev/null; then
+    xprop -root -f CROUTON_NAME 8s -set CROUTON_NAME "`cat '/etc/crouton/name'`"
+fi
+
 # Launch the powerd poker daemon
 croutonpowerd --daemon &
+
+# Launch the clipboard synchronization daemon
+if hash croutonclip 2>/dev/null; then
+    croutonclip &
+fi
 
 # Apply the Chromebook keyboard map if installed.
 if [ -f '/usr/share/X11/xkb/compat/chromebook' ]; then
@@ -55,26 +65,23 @@ fi
 xmethod="`readlink -f '/etc/X11/xinit/xserverrc'`"
 xmethod="${xmethod##*-}"
 
-METHOD="$xmethod" xbindkeys -fg /etc/crouton/xbindkeysrc.scm
+XMETHOD="$xmethod" xbindkeys -fg /etc/crouton/xbindkeysrc.scm
 
 # Launch xbindkeys for the Chromium OS X server if it isn't running
-if [ "$xmethod" = 'x11' ]; then
-    running=''
-    for p in `ps -C xbindkeys -opid=`; do
-        if grep -q 'CROUTON=XINIT' "/proc/$p/environ" 2>/dev/null; then
-            running='y'
-            break
-        fi
-    done
-    if [ -z "$running" ]; then
-        CROUTON='XINIT' METHOD="$xmethod" \
-            host-x11 xbindkeys -fg /etc/crouton/xbindkeysrc.scm
-    fi
-fi
+mkdir -m 775 -p /tmp/crouton-lock
+{
+    # Only let one instance *really* run at a time
+    flock 3
+    XMETHOD='' host-x11 xbindkeys -n -fg /etc/crouton/xbindkeysrc.scm
+} 3>/tmp/crouton-lock/xbindkeys &
 
-# Pass through the host cursor on xephyr
+# Pass through the host cursor and correct mousewheels on xephyr
 if [ "$xmethod" = 'xephyr' ]; then
     host-x11 croutoncursor "$DISPLAY" &
+    if [ -z "$CROUTON_WHEEL_PARAMS" -a -r "$HOME/.croutonwheel" ]; then
+        CROUTON_WHEEL_PARAMS="`head -n1 "$HOME/.croutonwheel"`"
+    fi
+    croutonwheel $CROUTON_WHEEL_PARAMS &
 fi
 
 # Launch touchegg if it is requested.
@@ -121,15 +128,6 @@ if [ -w "$fbc" ]; then
     # There is at least 2 servers running (the current one and Chromium OS)
     if [ "`ps -CX -CXorg -CXephyr -opid= | wc -l`" -le 2 ]; then
         echo 1 > "$fbc"
-    fi
-fi
-
-# Kill croutonclip if there is no other X server running
-if pgrep -x croutonclip >/dev/null; then
-    # There is at least 2 servers running (the current one and Chromium OS)
-    if [ "`ps -CX -CXorg -CXephyr -opid= | wc -l`" -le 2 ]; then
-        echo "Killing croutonclip..." 1>&2
-        pkill -x croutonclip
     fi
 fi
 
