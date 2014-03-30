@@ -213,7 +213,7 @@ if [ "${destdisp#:}" = "$destdisp" ]; then
     eval "`host-x11`"
     # Raise the right window after chvting, so that it can update
     if [ "$tty" != 'tty1' ]; then
-        chvt 1
+        sudo -n chvt 1
         sleep .1
     fi
     croutonwmtools raise "${destdisp%"*"}"
@@ -224,7 +224,7 @@ else
     if [ "${dest#[1-9]}" = "$dest" ]; then
         dest='1'
     fi
-    chvt "$dest"
+    sudo -n chvt "$dest"
 fi
 
 CROUTONPIDFILE='/tmp/crouton-lock/clip'
