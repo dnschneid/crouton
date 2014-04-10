@@ -77,6 +77,10 @@ mkdir -m 775 -p /tmp/crouton-lock
 
 # Pass through the host cursor and correct mousewheels on xephyr
 if [ "$xmethod" = 'xephyr' ]; then
+    # Recent versions of Xephyr (>=1.15) do not start in full screen:
+    # tell croutonwmtools to maximize it
+    host-x11 croutonwmtools r "`host-x11 croutonwmtools l 1`"
+
     host-x11 croutoncursor "$DISPLAY" &
     if [ -z "$CROUTON_WHEEL_PARAMS" -a -r "$HOME/.croutonwheel" ]; then
         CROUTON_WHEEL_PARAMS="`head -n1 "$HOME/.croutonwheel"`"
