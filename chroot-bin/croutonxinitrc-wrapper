@@ -72,7 +72,9 @@ mkdir -m 775 -p /tmp/crouton-lock
 {
     # Only let one instance *really* run at a time
     flock 3
-    XMETHOD='' host-x11 xbindkeys -n -fg /etc/crouton/xbindkeysrc.scm
+    XMETHOD='' host-x11 xbindkeys -n -fg /etc/crouton/xbindkeysrc.scm &
+    trap "kill '$!' 2>/dev/null" HUP INT TERM
+    wait "$!"
 } 3>/tmp/crouton-lock/xbindkeys &
 
 # Pass through the host cursor and correct mousewheels on xephyr
