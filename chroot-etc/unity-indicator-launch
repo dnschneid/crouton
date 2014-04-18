@@ -15,11 +15,11 @@ fi
 # If on trusty, indicators also need to be started.
 if [ "$RELEASE" = 'trusty' ]; then
     for f in /usr/share/upstart/sessions/*.conf; do
-        if grep -q '^start on .*indicator-services-start.*' "$f"; then
+        if grep -q '^start on.* indicator-services-start' "$f"; then
             # Parse out exec and launch.
             # Assume no space in path, and run without args.
             exec_cmd="`awk '/^exec/{print $2; exit}' "$f"`"
-            "$exec_cmd" >/dev/null 2>&1 &
+            $exec_cmd &
         fi
     done
 fi

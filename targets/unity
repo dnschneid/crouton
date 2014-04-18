@@ -35,7 +35,7 @@ Terminal=false
 EOF
 fi
 
-chmod +x /etc/crouton/unity-indicator-launch
+chmod 755 /etc/crouton/unity-indicator-launch
 
 TIPS="$TIPS
 You can start Unity via the startunity host command: sudo startunity
