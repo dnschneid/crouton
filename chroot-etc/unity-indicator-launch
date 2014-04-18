@@ -1,16 +1,11 @@
 #!/bin/sh -e
-# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 #
 # Launch unity-panel-service and any indicators in /usr/share/upstart/sessions.
 
-# Get RELEASE from croutonversion.
-croutonversion='/usr/local/bin/croutonversion'
-RELEASE='unknown'
-if [ -f "$croutonversion" ]; then
-    RELEASE="`$croutonversion -r`"
-fi
+RELEASE="`/usr/local/bin/croutonversion -r`"
 
 # Both saucy and trusty need to launch unity-panel-service.
 if [ "$RELEASE" = 'saucy' -o "$RELEASE" = 'trusty' ]; then
