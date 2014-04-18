@@ -10,7 +10,7 @@ REQUIRES='gtk-extra'
 DESCRIPTION='Installs the Unity desktop environment. (Approx. 700MB)'
 HOSTBIN='startunity'
 CHROOTBIN='startunity gnome-session-wrapper'
-CHROOTETC='unity-xsession'
+CHROOTETC='unity-indicator-launch'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
@@ -19,11 +19,23 @@ install unity unity-2d ubuntu-artwork gnome-session nautilus \
         ubuntu-session,ubuntu~precise+ubuntu~quantal+ubuntu~raring+ubuntu~saucy= \
         -- network-manager brasero firefox
 
-# unity-panel-service launches via upstart in saucy and later, so launch it and any
-# indicators manually
+# unity-panel-service launches via upstart in saucy and later, so add desktop file
+# to autostart it and any indicators
 if release -ge saucy; then
-    ln -sfT '/etc/crouton/unity-xsession' '/etc/X11/Xsession.d/99crouton-unity'
+    mkdir -p '/etc/xdg/autostart'
+    cat > '/etc/xdg/autostart/crouton-unity-indicator.desktop' <<EOF
+[Desktop Entry]
+Type=Application
+Name=crouton indicator autostart for Unity
+Exec=/etc/crouton/unity-indicator-launch
+OnlyShowIn=Unity;
+NoDisplay=true
+StartupNotify=false
+Terminal=false
+EOF
 fi
+
+chmod +x /etc/crouton/unity-indicator-launch
 
 TIPS="$TIPS
 You can start Unity via the startunity host command: sudo startunity
