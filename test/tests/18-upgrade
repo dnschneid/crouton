@@ -3,14 +3,24 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# Test upgrade path from Ubuntu 12.04 (precise) to 14.04 (trusty),
-# via non-LTS releases (quantal, raring, saucy)
+# Test upgrade path from Ubuntu quantal to trusty.
+# Since raring reached EOL before qantal, upgrading from quantal skips raring.
+# So we test quantal->saucy->trusty, raring->saucy.
+# Also test precise->trusty (LTS, upgrade not suggested until July 2014)
+
+# Format: FIRST;NEXT;DEV;PROMPT
+# FIRST: release to start with
+# NEXT: list of releases to be upgraded to
+# DEV: one additional release, for which upgrading is not recommended yet
+# PROMPT: choose normal or lts upgrade
+
+UPGRADEPATHS='\
+quantal;saucy trusty;;normal
+raring;saucy;;normal
+precise;;trusty;lts'
+
 # The critical targets that are likely to break are audio, touch and xephyr,
 # as they manually pull in packages from the mirror.
-
-FIRST="precise"
-NEXT="quantal raring saucy"
-DEV="trusty"
 
 TARGETS="core,audio,touch,xephyr"
 PACKAGES="libsbc1 touchegg xserver-xephyr"
@@ -40,38 +50,36 @@ versioninfo() {
         ' | log
 }
 
-run='y'
-# Check that all releases in the upgrade path are in SUPPORTED_RELEASES
-for release in $FIRST $NEXT $DEV; do
-    ok=''
-    for supported in $SUPPORTED_RELEASES; do
-        if [ "$release" = "$supported" ]; then
-            ok='y'
-            break
-        fi
-    done
-    if [ -z "$ok" ]; then
-        run=''
-        break
-    fi
-done
+# Only test upgrade if no release was set explicitly
+if [ -z "$SUPPORTED_RELEASES_SET" ]; then
+    echo "$UPGRADEPATHS" | while read line; do
+        FIRST="${line%%;*}"
+        line="${line#$FIRST;}"
+        NEXT="${line%%;*}"
+        line="${line#$NEXT;}"
+        DEV="${line%%;*}"
+        line="${line#$DEV;}"
+        PROMPT="${line%%;*}"
 
-if [ -z "$run" ]; then
-    log "Release $release is not in supported releases list ($SUPPORTED_RELEASES)."
-    log "Not running upgrade test..."
-else
-    crouton -T -r "$FIRST" -t "$TARGETS" <<EOF
+        log "Trying upgrade path FIRST='$FIRST' to NEXT='$NEXT' (DEV='$DEV'). PROMPT='$PROMPT'"
+
+        crouton -T -r "$FIRST" -t "$TARGETS" <<EOF
 install update-manager-core python-apt
-sed -i -e 's/Prompt=lts/Prompt=normal/' /etc/update-manager/release-upgrades
+sed -i -e 's/Prompt=lts/Prompt=$PROMPT/' /etc/update-manager/release-upgrades
 EOF
-    versioninfo
+        versioninfo
 
-    for next in $NEXT; do
-        upgrade "$next"
+        for next in $NEXT; do
+            upgrade "$next"
+        done
+
+        # Then upgrade to latest development version as well
+        if [ -n "$DEV" ]; then
+            upgrade -d "$DEV"
+        fi
+
+        host delete-chroot "$FIRST"
     done
-
-    # Then upgrade to latest development version as well
-    if [ -n "$DEV" ]; then
-        upgrade -d "$DEV"
-    fi
+else
+    log "SUPPORTED_RELEASES was set explicitly: not running upgrade test."
 fi

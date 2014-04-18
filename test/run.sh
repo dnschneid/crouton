@@ -22,6 +22,7 @@ SCRIPTDIR="`readlink -f "\`dirname "$0"\`/.."`"
 SUPPORTED_RELEASES="`awk '/[^*]$/ { printf $1 " " }' \
                          "$SCRIPTDIR/installer/"*"/releases"`"
 SUPPORTED_RELEASES="${SUPPORTED_RELEASES%" "}"
+SUPPORTED_RELEASES_SET=''
 # System info
 SYSTEM="`awk -F= '/_RELEASE_DESCRIPTION=/ {print $2}' /etc/lsb-release`"
 TESTDIR="$SCRIPTDIR/test/run"
@@ -61,7 +62,8 @@ while getopts 'j:l:r:R:' f; do
     j) JOBS="$OPTARG";;
     l) TESTDIR="${OPTARG%/}";;
     r) RELEASE="$OPTARG";;
-    R) SUPPORTED_RELEASES="`echo "$OPTARG" | tr ',' ' '`";;
+    R) SUPPORTED_RELEASES="`echo "$OPTARG" | tr ',' ' '`";
+       SUPPORTED_RELEASES_SET='y';;
     \?) error 2 "$USAGE";;
     esac
 done
