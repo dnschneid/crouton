@@ -89,6 +89,24 @@ echo "Fetching CRAS (branch $ADHD_HEAD)..." 1>&2
 
 wget -O "$CRASBUILDTMP/adhd.tar.gz" \
 "https://chromium.googlesource.com/chromiumos/third_party/adhd/+archive/$ADHD_HEAD.tar.gz"
+# FIXME: do something more graceful than this if googlesource.com is broken
+if [ ! -s "$CRASBUILDTMP/adhd.tar.gz" ]; then
+    echo "chromium.googlesource.com appears to be broken."
+    echo "Explicitly trying some known hosts..."
+    # Explicitly try a few known IPs to try to find one that works
+    for ip in 74.125.132.82 74.125.200.82 173.194.79.82; do
+        if wget -O "$CRASBUILDTMP/adhd.tar.gz" \
+                "https://$ip/chromiumos/third_party/adhd/+archive/$ADHD_HEAD.tar.gz" \
+                --no-check-certificate --header='Host: chromium.googlesource.com' \
+                && [ -s "$CRASBUILDTMP/adhd.tar.gz" ]; then
+            break
+        fi
+    done
+    if [ ! -s "$CRASBUILDTMP/adhd.tar.gz" ]; then
+        echo "Failed to download ADHD source." 1>&2
+        exit 1
+    fi
+fi
 
 # Patch CRAS so that x86 client can connect to x86_64 server (multilib)
 # Assume current directory is "$CRASBUILDTMP"/cras/src
