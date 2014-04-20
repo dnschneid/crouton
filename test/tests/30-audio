@@ -42,7 +42,7 @@ for release in $SUPPORTED_RELEASES; do
         '
     fi
 
-    echo 'install --minimal pulseaudio pulseaudio-utils' | \
+    echo 'install pulseaudio pulseaudio-utils' | \
             crouton -T -U -n "$release"
     host enter-chroot -n "$release" sh -exc '
         pulseaudio --start
