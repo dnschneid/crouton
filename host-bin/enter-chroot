@@ -380,17 +380,15 @@ if [ -z "$NOLOGIN" -a -n "$CHROOTHOME" -a -d "$localdownloads" ]; then
 fi
 
 # Bind-mount /sys recursively, making it a slave in the chroot
-mount --make-shared /sys
+mount --make-rshared /sys
 mount --rbind /sys "$CHROOT/sys"
-mount --make-slave "$CHROOT/sys"
+mount --make-rslave "$CHROOT/sys"
 
 # Get croutonversion variables
 croutonversion="$CHROOT/usr/local/bin/croutonversion"
 CHROOTRELEASE="unknown"
-CHROOTARCH="unknown"
-if [ -f "$croutonversion" ]; then
-    CHROOTRELEASE="`awk -F"'" '/^RELEASE=/{print $2;exit}' "$croutonversion"`"
-    CHROOTARCH="`awk -F"'" '/^ARCH=/{print $2;exit}' "$croutonversion"`"
+if [ -x "$croutonversion" ]; then
+    CHROOTRELEASE="`$croutonversion -r`"
 fi
 
 # For test machines with low entropy, bind mount /dev/urandom to /dev/random
@@ -486,11 +484,12 @@ if [ ! "$NOLOGIN" = 1 ] && grep -q '^root:' "$passwd" 2>/dev/null; then
 
     # Launch systemd-logind if available and not already running
     # Whitelisted for saucy and trusty
-    if [ -f "$CHROOT/lib/systemd/systemd-logind" ] && \
-        ! [ -d "$CHROOT/run/systemd" ] && \
-        [ "$CHROOTRELEASE" = 'saucy' -o "$CHROOTRELEASE" = 'trusty' ]; then
+    systemd_dir="`fixabslinks '/run/systemd'`"
+    if [ -x "$CHROOT/lib/systemd/systemd-logind" ] && \
+            [ ! -d "$systemd_dir" ] && \
+            [ "$CHROOTRELEASE" = 'saucy' -o "$CHROOTRELEASE" = 'trusty' ]; then
         # Every piece of systemd code ever assumes that this directory exists
-        mkdir -p "$CHROOT/run/systemd"
+        mkdir -p "$systemd_dir"
 
         # Create systemd cgroup if necessary
         if ! mountpoint -q "$CHROOT/sys/fs/cgroup/systemd"; then
