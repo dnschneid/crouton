@@ -388,7 +388,7 @@ mount --make-rslave "$CHROOT/sys"
 croutonversion="$CHROOT/usr/local/bin/croutonversion"
 CHROOTRELEASE="unknown"
 if [ -x "$croutonversion" ]; then
-    CHROOTRELEASE="`$croutonversion -r`"
+    CHROOTRELEASE="`"$croutonversion" -r`"
 fi
 
 # For test machines with low entropy, bind mount /dev/urandom to /dev/random
