@@ -153,10 +153,10 @@ if [ -r /debootstrap ]; then
     # Debootstrap doesn't like anything mounted under /sys or /var when it runs
     # We request a re-mount after bootstrapping, so these mounts will be fixed.
     # We also can't detect the mounts properly due to the chroot, so we have to
-    # hardcode the mounts.
-    umount '/sys/kernel/debug'
-    umount '/sys/fs/cgroup/cpu' '/sys/fs/cgroup/freezer' '/sys/fs/cgroup'
-    umount '/sys/fs/fuse/connections' '/var/run/lock' '/var/run'
+    # recursively find mountpoints under /sys, and hardcode /var umounts.
+    find /sys/* -maxdepth 2 -depth -type d \
+        -exec mountpoint -q {} \; -exec umount {} \;
+    umount '/var/run/lock' '/var/run'
     # Start the bootstrap
     /debootstrap/debootstrap --second-stage
     # Clean contents of /var/run (since we'll always be mounting over it).
