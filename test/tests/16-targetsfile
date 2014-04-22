@@ -1,0 +1,34 @@
+#!/bin/sh -e
+# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Make sure we detect if /etc/crouton/targets is not present (e.g. update from
+# an old chroot), and that we can recover the situation by specifying targets
+# manually.
+
+checktargetlist() {
+    # Target list must include core only
+    [ "`host enter-chroot -n "$RELEASE" \
+        sed -e 's/,$//;s/^,//' /etc/crouton/targets`" = "core" ]
+}
+
+# Release-independent.
+snapshot "$RELEASE" core
+
+host enter-chroot -n "$RELEASE" true
+checktargetlist
+
+# Update works
+crouton -n "$RELEASE" -u
+checktargetlist
+
+# Update fails if /etc/crouton/targets is deleted
+host enter-chroot -n "$RELEASE" -u 0 rm /etc/crouton/targets
+fails checktargetlist
+fails crouton -n "$RELEASE" -u
+fails checktargetlist
+
+# But we can recover the chroot by specifying targets
+crouton -n "$RELEASE" -u -t core
+checktargetlist

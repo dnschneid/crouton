@@ -547,20 +547,6 @@ fi
 # Ensure that /usr/local/bin and /etc/crouton exist
 mkdir -p "$CHROOT/usr/local/bin" "$CHROOT/etc/crouton"
 
-# Create the setup script inside the chroot
-echo 'Preparing chroot environment...' 1>&2
-VAREXPAND="s/releases=.*\$/releases=\"\
-`sed 's/$/\\\\/' "$DISTRODIR/releases"`
-\"/;"
-VAREXPAND="${VAREXPAND}s #ARCH# $ARCH ;s #DISTRO# $DISTRO ;"
-VAREXPAND="${VAREXPAND}s #MIRROR# $MIRROR ;s #MIRROR2# $MIRROR2 ;"
-VAREXPAND="${VAREXPAND}s #RELEASE# $RELEASE ;s #PROXY# $PROXY ;"
-VAREXPAND="${VAREXPAND}s #VERSION# ${VERSION:-"git"} ;"
-VAREXPAND="${VAREXPAND}s #USERNAME# $CROUTON_USERNAME ;"
-VAREXPAND="${VAREXPAND}s/#SETOPTIONS#/$SETOPTIONS/;"
-installscript "$INSTALLERDIR/prepare.sh" "$CHROOT/prepare.sh" "$VAREXPAND"
-# Append the distro-specific prepare.sh
-cat "$DISTRODIR/prepare" >> "$CHROOT/prepare.sh"
 # If -U was not specified, update existing targets.
 if [ -z "$UPDATEIGNOREEXISTING" ]; then
     # Read the explicit targets file in the chroot (if it exists)
@@ -587,9 +573,32 @@ if [ -z "$UPDATEIGNOREEXISTING" ]; then
             TARGETS="${TARGETS%,},$TARGET"
         done
     fi
+
+    if [ -z "$TARGETS" ]; then
+        error 1 "\
+No target list found (your chroot may be very old).
+Please specify targets with -t."
+    fi
+
     # Reset the installed target list files
     echo "$TARGETS" > "$TARGETSFILE"
 fi
+
+# Create the setup script inside the chroot
+echo 'Preparing chroot environment...' 1>&2
+VAREXPAND="s/releases=.*\$/releases=\"\
+`sed 's/$/\\\\/' "$DISTRODIR/releases"`
+\"/;"
+VAREXPAND="${VAREXPAND}s #ARCH# $ARCH ;s #DISTRO# $DISTRO ;"
+VAREXPAND="${VAREXPAND}s #MIRROR# $MIRROR ;s #MIRROR2# $MIRROR2 ;"
+VAREXPAND="${VAREXPAND}s #RELEASE# $RELEASE ;s #PROXY# $PROXY ;"
+VAREXPAND="${VAREXPAND}s #VERSION# ${VERSION:-"git"} ;"
+VAREXPAND="${VAREXPAND}s #USERNAME# $CROUTON_USERNAME ;"
+VAREXPAND="${VAREXPAND}s/#SETOPTIONS#/$SETOPTIONS/;"
+installscript "$INSTALLERDIR/prepare.sh" "$CHROOT/prepare.sh" "$VAREXPAND"
+# Append the distro-specific prepare.sh
+cat "$DISTRODIR/prepare" >> "$CHROOT/prepare.sh"
+
 echo -n '' > "$TARGETDEDUPFILE"
 # Run each target, appending stdout to the prepare script.
 unset SIMULATE
