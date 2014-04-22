@@ -576,8 +576,7 @@ if [ -z "$UPDATEIGNOREEXISTING" ]; then
 
     if [ -z "$TARGETS" ]; then
         error 1 "\
-No target is going to be installed (most probably, your chroot is very old and
-does not maintain a list of targets to be updated).
+No target list found (your chroot may be very old).
 Please specify targets with -t."
     fi
 
