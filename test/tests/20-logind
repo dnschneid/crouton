@@ -1,5 +1,5 @@
 #!/bin/sh -e
-# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -8,6 +8,11 @@ for release in saucy trusty; do
     # Need dbus in cli-extra to bring in systemd-services.
     snapshot "$release" cli-extra
 
+    # logind should be running.
     host enter-chroot -n "$release" -u root pidof -c systemd-logind
+
+    # systemd cgroup should be set up.
+    host enter-chroot -n "$release" test -f /sys/fs/cgroup/systemd/cgroup.procs
+
     host delete-chroot -y "$release"
 done
