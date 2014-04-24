@@ -380,9 +380,11 @@ if [ -z "$NOLOGIN" -a -n "$CHROOTHOME" -a -d "$localdownloads" ]; then
 fi
 
 # Bind-mount /sys recursively, making it a slave in the chroot
-mount --make-rshared /sys
-mount --rbind /sys "$CHROOT/sys"
-mount --make-rslave "$CHROOT/sys"
+if ! mountpoint -q "$CHROOT/sys"; then
+    mount --make-rshared /sys
+    mount --rbind /sys "$CHROOT/sys"
+    mount --make-rslave "$CHROOT/sys"
+fi
 
 # Get croutonversion variables
 croutonversion="$CHROOT/usr/local/bin/croutonversion"
