@@ -160,6 +160,7 @@ while sleep "$POLLINTERVAL"; do
                 echo "BEGIN TEST SUITE $tname"
                 ret=''
                 mkdir -p "$CROUTONROOT"
+                cd "$CROUTONROOT"
                 if wget -qO- "$tarball" \
                         | tar -C "$CROUTONROOT" -xz --strip-components=1; then
                     ret=0

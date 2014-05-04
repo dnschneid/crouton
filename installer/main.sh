@@ -266,12 +266,6 @@ if [ -n "$RELEASE" -o -z "$UPDATE" ]; then
         DISTRODIR="${DISTRODIR%/}"
         releaseline="`grep "^$RELEASE[^a-z]*$" "$DISTRODIR/releases" || true`"
         if [ -n "$releaseline" ]; then
-            if [ "${releaseline%"*"}" != "$releaseline" ]; then
-                echo "WARNING: $RELEASE is an unsupported release.
-You will likely run into issues, but things may work with some effort.
-Press Ctrl-C to abort; installation will continue in 5 seconds." 1>&2
-                sleep 5
-            fi
             DISTRO="${DISTRODIR##*/}"
             . "$DISTRODIR/defaults"
             break
@@ -436,6 +430,22 @@ change the release, upgrading the chroot (dangerous)."
     mkdir -p "$BIN"
 fi
 
+# Check if RELEASE is supported
+releaseline="`grep "^$RELEASE[^a-z]*$" "$DISTRODIR/releases" || true`"
+if [ "${releaseline%"*"}" != "$releaseline" ]; then
+    echo "WARNING: $RELEASE is an unsupported release.
+You will likely run into issues, but things may work with some effort." 1>&2
+
+    if [ -z "$UPDATE" ]; then
+        echo "Press Ctrl-C to abort; installation will continue in 5 seconds." 1>&2
+    else
+        echo "\
+If this is a surprise to you, $RELEASE has probably reached end of life.
+Refer to http://goo.gl/Z5LGVD for upgrade instructions." 1>&2
+    fi
+    sleep 5
+fi
+
 # Checks if it's safe to enable boot signing verification.
 # We check by attempting to mount / read-write. We do so in a bind mount to a
 # temporary directory to avoid changing its state permanently if it is
@@ -537,20 +547,6 @@ fi
 # Ensure that /usr/local/bin and /etc/crouton exist
 mkdir -p "$CHROOT/usr/local/bin" "$CHROOT/etc/crouton"
 
-# Create the setup script inside the chroot
-echo 'Preparing chroot environment...' 1>&2
-VAREXPAND="s/releases=.*\$/releases=\"\
-`sed 's/$/\\\\/' "$DISTRODIR/releases"`
-\"/;"
-VAREXPAND="${VAREXPAND}s #ARCH# $ARCH ;s #DISTRO# $DISTRO ;"
-VAREXPAND="${VAREXPAND}s #MIRROR# $MIRROR ;s #MIRROR2# $MIRROR2 ;"
-VAREXPAND="${VAREXPAND}s #RELEASE# $RELEASE ;s #PROXY# $PROXY ;"
-VAREXPAND="${VAREXPAND}s #VERSION# ${VERSION:-"git"} ;"
-VAREXPAND="${VAREXPAND}s #USERNAME# $CROUTON_USERNAME ;"
-VAREXPAND="${VAREXPAND}s/#SETOPTIONS#/$SETOPTIONS/;"
-installscript "$INSTALLERDIR/prepare.sh" "$CHROOT/prepare.sh" "$VAREXPAND"
-# Append the distro-specific prepare.sh
-cat "$DISTRODIR/prepare" >> "$CHROOT/prepare.sh"
 # If -U was not specified, update existing targets.
 if [ -z "$UPDATEIGNOREEXISTING" ]; then
     # Read the explicit targets file in the chroot (if it exists)
@@ -577,9 +573,32 @@ if [ -z "$UPDATEIGNOREEXISTING" ]; then
             TARGETS="${TARGETS%,},$TARGET"
         done
     fi
+
+    if [ -z "$TARGETS" ]; then
+        error 1 "\
+No target list found (your chroot may be very old).
+Please specify targets with -t."
+    fi
+
     # Reset the installed target list files
     echo "$TARGETS" > "$TARGETSFILE"
 fi
+
+# Create the setup script inside the chroot
+echo 'Preparing chroot environment...' 1>&2
+VAREXPAND="s/releases=.*\$/releases=\"\
+`sed 's/$/\\\\/' "$DISTRODIR/releases"`
+\"/;"
+VAREXPAND="${VAREXPAND}s #ARCH# $ARCH ;s #DISTRO# $DISTRO ;"
+VAREXPAND="${VAREXPAND}s #MIRROR# $MIRROR ;s #MIRROR2# $MIRROR2 ;"
+VAREXPAND="${VAREXPAND}s #RELEASE# $RELEASE ;s #PROXY# $PROXY ;"
+VAREXPAND="${VAREXPAND}s #VERSION# ${VERSION:-"git"} ;"
+VAREXPAND="${VAREXPAND}s #USERNAME# $CROUTON_USERNAME ;"
+VAREXPAND="${VAREXPAND}s/#SETOPTIONS#/$SETOPTIONS/;"
+installscript "$INSTALLERDIR/prepare.sh" "$CHROOT/prepare.sh" "$VAREXPAND"
+# Append the distro-specific prepare.sh
+cat "$DISTRODIR/prepare" >> "$CHROOT/prepare.sh"
+
 echo -n '' > "$TARGETDEDUPFILE"
 # Run each target, appending stdout to the prepare script.
 unset SIMULATE

@@ -10,18 +10,19 @@
 # Store and apply the X11 method
 ln -sfT "/etc/crouton/xserverrc-$XMETHOD" '/etc/X11/xinit/xserverrc'
 
+# Install utility for croutoncycle
+compile wmtools '-lX11' libx11-dev
+
 # Install utilities and links for powerd-poking daemon
 compile xi2event '-lX11 -lXi' libx11-dev libxi-dev
 install --minimal dbus
 ln -sf croutonpowerd /usr/local/bin/gnome-screensaver-command
 ln -sf croutonpowerd /usr/local/bin/xscreensaver-command
 
-# Install xbindkeys for key shortcuts
-if release -eq jessie; then
-    install_mirror_package 'xbindkeys' 'pool/main/x/xbindkeys' '1\.8\.5-.*'
-else
-    install --minimal xbindkeys
-fi
+# Install xbindkeys and xautomation for key shortcuts and kbd for chvt
+install --minimal xbindkeys xautomation kbd
+# Make chvt SUID root so we don't need to run croutoncycle as root
+chmod u+s /bin/chvt
 
 # Add a blank Xauthority to all users' home directories
 touch /etc/skel/.Xauthority
