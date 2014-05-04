@@ -46,7 +46,7 @@ to the rest of Chromium OS.
 
 Prerequisites
 -------------
-You need a device running Chromium OS that has been switched to developer mode.
+You need a device running Chromium OS that has been switched to [development mode](http://www.chromium.org/chromium-os/developer-information-for-chrome-os-devices/chromebook-pixel#TOC-Entering).
 Note that developer mode, in its default configuration, is *completely
 insecure*, so don't expect a password in your chroot to keep anyone from your
 data. crouton does support encrypting chroots, but the encryption is only as
@@ -90,7 +90,7 @@ Examples
 ### The easy way (assuming you want an Ubuntu LTS with Xfce)
   1. Download `crouton`
   2. Open a shell (Ctrl+Alt+T, type `shell` and hit enter) and run
-     `sudo sh -e ~/Downloads/crouton -t xfce`
+     `sudo sh -e ~/Downloads/crouton -t xfce` (if `shell` command is not found, make sure you're in [development mode](http://www.chromium.org/chromium-os/developer-information-for-chrome-os-devices/chromebook-pixel#TOC-Entering)).
   3. Wait patiently and answer the prompts like a good person.
   4. Done! You can jump straight to your Xfce session by running
      `sudo enter-chroot startxfce4` or, as a special shortcut, `sudo startxfce4`
