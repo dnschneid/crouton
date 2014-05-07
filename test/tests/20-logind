@@ -5,6 +5,18 @@
 
 # systemd-logind should run under saucy and trusty
 for release in saucy trusty; do
+    # Only run test if it's supported
+    run=''
+    for supported in $SUPPORTED_RELEASES; do
+        if [ "$release" = "$supported" ]; then
+            run='y'
+            break
+        fi
+    done
+    if [ -z "$run" ]; then
+        continue
+    fi
+
     # Need dbus in cli-extra to bring in systemd-services.
     snapshot "$release" cli-extra
 
