@@ -367,6 +367,7 @@ ln -sfT /var/host/cras "`fixabslinks '/var/run'`/cras"
 # Bind-mount /media, specifically the removable directory
 destmedia="`fixabslinks '/var/host/media'`"
 if ! mountpoint -q "$destmedia"; then
+    mkdir -p "$CHROOT/sys"
     mount --make-shared /media
     mkdir -p "$destmedia" "$CHROOT/media"
     ln -sf "/var/host/media/removable" "$CHROOT/media/"
