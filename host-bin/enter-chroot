@@ -341,8 +341,6 @@ fi
 bindmount /dev
 bindmount /dev/pts
 bindmount /dev/shm
-bindmount /sys
-bindmount /sys/fs/fuse/connections
 bindmount /tmp /tmp exec
 bindmount /proc
 tmpfsmount /var/run 'noexec,nosuid,mode=0755,size=10%'
@@ -369,6 +367,7 @@ ln -sfT /var/host/cras "`fixabslinks '/var/run'`/cras"
 # Bind-mount /media, specifically the removable directory
 destmedia="`fixabslinks '/var/host/media'`"
 if ! mountpoint -q "$destmedia"; then
+    mkdir -p "$CHROOT/sys"
     mount --make-shared /media
     mkdir -p "$destmedia" "$CHROOT/media"
     ln -sf "/var/host/media/removable" "$CHROOT/media/"
@@ -379,6 +378,20 @@ fi
 localdownloads='/home/chronos/user/Downloads'
 if [ -z "$NOLOGIN" -a -n "$CHROOTHOME" -a -d "$localdownloads" ]; then
     bindmount "$localdownloads" "$CHROOTHOME/Downloads" exec
+fi
+
+# Bind-mount /sys recursively, making it a slave in the chroot
+if ! mountpoint -q "$CHROOT/sys"; then
+    mount --make-rshared /sys
+    mount --rbind /sys "$CHROOT/sys"
+    mount --make-rslave "$CHROOT/sys"
+fi
+
+# Get croutonversion variables
+croutonversion="$CHROOT/usr/local/bin/croutonversion"
+CHROOTRELEASE="unknown"
+if [ -x "$croutonversion" ]; then
+    CHROOTRELEASE="`"$croutonversion" -r`"
 fi
 
 # For test machines with low entropy, bind mount /dev/urandom to /dev/random
@@ -470,6 +483,25 @@ if [ ! "$NOLOGIN" = 1 ] && grep -q '^root:' "$passwd" 2>/dev/null; then
     if [ ! "$ret" = 0 ]; then
         echo "WARNING: starting chroot system dbus daemon failed with code $ret" 1>&2
         ret=0
+    fi
+
+    # Launch systemd-logind if available and not already running
+    # Whitelisted for saucy and trusty
+    systemd_dir="`fixabslinks '/run/systemd'`"
+    if [ -x "$CHROOT/lib/systemd/systemd-logind" ] && \
+            [ ! -d "$systemd_dir" ] && \
+            [ "$CHROOTRELEASE" = 'saucy' -o "$CHROOTRELEASE" = 'trusty' ]; then
+        # Every piece of systemd code ever assumes that this directory exists
+        mkdir -p "$systemd_dir"
+
+        # Create systemd cgroup if necessary
+        if ! mountpoint -q "$CHROOT/sys/fs/cgroup/systemd"; then
+            mkdir -p "$CHROOT/sys/fs/cgroup/systemd"
+            mount -t cgroup -o nosuid,noexec,nodev,none,name=systemd systemd \
+                  "$CHROOT/sys/fs/cgroup/systemd"
+        fi
+        # systemd-logind doesn't fork
+        chrootcmd "/lib/systemd/systemd-logind >/dev/null 2>&1 </dev/null &"
     fi
 fi
 
