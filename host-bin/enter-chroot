@@ -367,7 +367,6 @@ ln -sfT /var/host/cras "`fixabslinks '/var/run'`/cras"
 # Bind-mount /media, specifically the removable directory
 destmedia="`fixabslinks '/var/host/media'`"
 if ! mountpoint -q "$destmedia"; then
-    mkdir -p "$CHROOT/sys"
     mount --make-shared /media
     mkdir -p "$destmedia" "$CHROOT/media"
     ln -sf "/var/host/media/removable" "$CHROOT/media/"
@@ -382,6 +381,7 @@ fi
 
 # Bind-mount /sys recursively, making it a slave in the chroot
 if ! mountpoint -q "$CHROOT/sys"; then
+    mkdir -p "$CHROOT/sys"
     mount --make-rshared /sys
     mount --rbind /sys "$CHROOT/sys"
     mount --make-rslave "$CHROOT/sys"
