@@ -89,8 +89,12 @@ tmpdir=''
 if [ -n "$UPDATES$DOWNLOAD" ]; then
     tmpdir="`mktemp -d --tmpdir=/tmp crouton.XXX`"
     trap "rm -rf --one-file-system '$tmpdir'" INT HUP 0
-    echo "Retreiving latest version of crouton" 1>&2
-    wget -q "$CROUTONURL" -O "$tmpdir/crouton"
+    echo "Retrieving latest version of crouton" 1>&2
+    if ! wget "$CROUTONURL" -O "$tmpdir/crouton" 2>"$tmpdir/log"; then
+        cat "$tmpdir/log" 1>&2
+        echo "Failed to retrieve latest version of crouton" 1>&2
+        exit 1
+    fi
     latest="`awk -F"'" '/^VERSION=/{print $2;exit}' "$tmpdir/crouton"`"
 fi
 
