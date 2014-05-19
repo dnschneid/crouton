@@ -79,12 +79,6 @@ mkdir -m 775 -p /tmp/crouton-lock
 
 # Pass through the host cursor and correct mousewheels on xephyr
 if [ "$xmethod" = 'xephyr' ]; then
-    # Xephyr (versions >=1.15.0, <1.15.0.902) does not properly resize its
-    # window: tell croutonwmtools to maximize it
-    # FIXME: Remove this when these versions are not used by any supported
-    # distro anymore (see https://github.com/dnschneid/crouton/pull/750)
-    host-x11 croutonwmtools r "`host-x11 croutonwmtools l 1`"
-
     host-x11 croutoncursor "$DISPLAY" &
     if [ -z "$CROUTON_WHEEL_PARAMS" -a -r "$HOME/.croutonwheel" ]; then
         CROUTON_WHEEL_PARAMS="`head -n1 "$HOME/.croutonwheel"`"
