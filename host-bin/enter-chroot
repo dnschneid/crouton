@@ -296,11 +296,21 @@ if [ -L "$CHROOT/etc/crouton/cmt" ]; then
   ln -sfT $CHROOT_CMT/usr/lib/xorg/modules/input/cmt_drv.so $CHROOT/usr/lib/xorg/modules/input/cmt_drv.so
 
   # libs loaded by cmt driver
-  for lib in libbase-core-180609 libevdev libgestures
+  for lib in libbase-core-180609 libbase-core-242728 libevdev libgestures
   do
     cp /usr/lib64/$lib.so $CHROMIUM_CMT/usr/lib
     ln -sfT $CHROOT_CMT/usr/lib/$lib.so $CHROOT/usr/lib/$lib.so
     ln -sfT $CHROOT_CMT/usr/lib/$lib.so $CHROOT/usr/lib/$lib.so.0
+  done
+  for lib in libstdc++
+  do
+    cp /usr/lib64/$lib.so $CHROOT/usr/local/lib
+    ln -rsfT $CHROOT/usr/local/lib/$lib.so $CHROOT/usr/local/lib/$lib.so.6
+  done
+  for lib in libevent-2.0
+  do
+    cp /usr/lib64/$lib.so.5 $CHROMIUM_CMT/usr/lib
+    ln -sfT $CHROOT_CMT/usr/lib/$lib.so.5 $CHROOT/usr/lib/$lib.so.5
   done
 fi
 
