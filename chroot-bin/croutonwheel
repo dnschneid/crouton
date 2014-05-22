@@ -5,28 +5,24 @@
 
 . "`dirname "$0"`/../installer/functions"
 
+# Default button numbers
+u=4
+d=5
+l=6
+r=7
+# Do horizontal scrolling by default
+x=1
+
 if [ -L /etc/crouton/cmt ]; then
-  # tune croutonwheel params for cmt
-  # Default button numbers
-  u=5
-  d=4
-  l=7
-  r=6
-  # Do horizontal scrolling by default
-  x=1
-  # Set the default scaling and constant values
+  # enable xinput Australian Scrolling
+  xinput --set-prop --type=int --format=8 "Atmel maXTouch Touchpad" 432 1
+
+  # Set the default scaling and constant values (tuned for cmt)
   xs='0.3'
   xc='0.01'
   ys='0.3'
   yc='0.05'
 else
-  # Default button numbers
-  u=4
-  d=5
-  l=6
-  r=7
-  # Do horizontal scrolling by default
-  x=1
   # Set the default scaling and constant values
   xs='0.2'
   xc='0.01'
