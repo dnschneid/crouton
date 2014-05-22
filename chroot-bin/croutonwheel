@@ -15,7 +15,7 @@ x=1
 
 if [ -L /etc/crouton/cmt ]; then
   # enable xinput Australian Scrolling
-  xinput --set-prop --type=int --format=8 "Atmel maXTouch Touchpad" 432 1
+  xinput --set-prop --type=int --format=8 "Atmel maXTouch Touchpad" "Australian Scrolling" 1
 
   # Set the default scaling and constant values (tuned for cmt)
   xs='0.3'
