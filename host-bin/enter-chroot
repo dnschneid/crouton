@@ -391,7 +391,7 @@ fi
 croutonversion="$CHROOT/usr/local/bin/croutonversion"
 CHROOTRELEASE="unknown"
 if [ -x "$croutonversion" ]; then
-    CHROOTRELEASE="`"$croutonversion" -r`"
+    CHROOTRELEASE="`"$croutonversion" -r 2>/dev/null || echo "$CHROOTRELEASE"`"
 fi
 
 # For test machines with low entropy, bind mount /dev/urandom to /dev/random
