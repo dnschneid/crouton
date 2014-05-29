@@ -373,10 +373,10 @@ if ! mountpoint -q "$destmedia"; then
     mount --rbind /media "$destmedia"
 fi
 
-# Bind-mount ~/Downloads if we're logged in as a user
+# Bind-mount ~/Downloads as home directory if we're logged in as a user
 localdownloads='/home/chronos/user/Downloads'
 if [ -z "$NOLOGIN" -a -n "$CHROOTHOME" -a -d "$localdownloads" ]; then
-    bindmount "$localdownloads" "$CHROOTHOME/Downloads" exec
+    bindmount "$localdownloads" "$CHROOTHOME" exec
 fi
 
 # Bind-mount /sys recursively, making it a slave in the chroot
