@@ -314,6 +314,13 @@ for NAME in "$@"; do
     if [ -n "$oldstyle" ]; then
         unmount "$NAME"
     fi
+
+    # Unmount bind-mounted read-only $CHROOT from ~/Downloads/crouton-$NAME
+    localdownloads='/home/chronos/user/Downloads'
+    localchroot="$localdownloads/crouton-$NAME"
+    if mountpoint -q "$localchroot"; then
+        umount "$localchroot" && rmdir "$localchroot" || : # ignore failures
+    fi
 done
 
 # Re-disable USB persistence (the Chromium OS default) if we no longer

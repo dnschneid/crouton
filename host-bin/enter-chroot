@@ -377,6 +377,17 @@ fi
 localdownloads='/home/chronos/user/Downloads'
 if [ -z "$NOLOGIN" -a -n "$CHROOTHOME" -a -d "$localdownloads" ]; then
     bindmount "$localdownloads" "$CHROOTHOME/Downloads" exec
+
+    # Bind-mount $CHROOT read-only into ~/Downloads/crouton-$NAME so that we
+    # can access files in the chroot directly from Chromium OS' "Files" app
+    localchroot="$localdownloads/crouton-$NAME"
+    if ! mountpoint -q "$localchroot"; then
+        mkdir -p "$localchroot"
+        # Running `mount --bind -o ro` doesn't work: we need to mount first
+        # and then remount read-only.  See https://lwn.net/Articles/281157/
+        mount --bind "$CHROOT" "$localchroot"
+        mount --bind -o remount,ro "$localchroot"
+    fi
 fi
 
 # Bind-mount /sys recursively, making it a slave in the chroot
