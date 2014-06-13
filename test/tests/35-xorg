@@ -13,7 +13,35 @@ fi
 for release in $SUPPORTED_RELEASES; do
     snapshot "$release" audio
     crouton -U -n "$release" -t xorg
+
+    echo '
+        install mesa-utils
+        mkdir -p /home/tmp
+        chmod 777 /home/tmp
+        cat > /home/tmp/xinitrc <<END
+#!/bin/sh
+set -x
+glxinfo 2>&1 | tee /home/tmp/glxinfo.out
+xdriinfo 2>&1 | tee /home/tmp/xdriinfo.out
+exec /usr/bin/xterm -e true
+END
+    ' | crouton -T -U -n "$release"
+
     vtlock exitswithin 0 60 host \
-        enter-chroot -n "$release" exec xinit /usr/bin/xterm -e true
+        enter-chroot -n "$release" exec xinit "/home/tmp/xinitrc"
+    host enter-chroot -n "$release" sh -c '
+        echo -n "release: "
+        croutonversion -r
+        echo -n "uname: "
+        uname -a
+        echo -n "vendor: "
+        cat /sys/class/graphics/fb0/device/vendor
+        echo -n "device: "
+        cat /sys/class/graphics/fb0/device/device
+        echo "glxinfo:"
+        cat /home/tmp/glxinfo.out
+        echo -n "xdriinfo: "
+        cat /home/tmp/xdriinfo.out
+      ' | log
     host delete-chroot -y "$release"
 done
