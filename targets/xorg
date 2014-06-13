@@ -15,6 +15,16 @@ CHROOTETC='xbindkeysrc.scm xserverrc-x11 xserverrc-local.example'
 ### Append to prepare.sh:
 XMETHOD="${XMETHOD:-x11}"
 
+# Check for Haswell PCI id
+if grep -q 0x8086 /sys/class/graphics/fb0/device/vendor 2>/dev/null && \
+        grep -q 0x0a /sys/class/graphics/fb0/device/device 2>/dev/null && \
+        release -eq precise; then
+    # On precise, install lts-saucy xorg to provide Haswell support
+    # (we still install xorg later to pull in its dependencies)
+    install --minimal xserver-xorg-lts-saucy libgl1-mesa-glx-lts-saucy \
+        xserver-xorg-input-synaptics-lts-saucy
+fi
+
 install xorg dmz-cursor-theme
 # Fix launching X11 from inside crosh (user doesn't own a TTY)
 sed -i 's/allowed_users=.*/allowed_users=anybody/' '/etc/X11/Xwrapper.config'
