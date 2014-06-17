@@ -9,13 +9,30 @@ REQUIRES='core audio'
 PROVIDES='x11'
 DESCRIPTION='X.Org X11 backend. Enables GPU acceleration on supported platforms.'
 CHROOTBIN='brightness croutoncycle croutonpowerd croutonxinitrc-wrapper setres xinit'
-CHROOTETC='xbindkeysrc.scm xserverrc-x11 xserverrc-local.example'
+CHROOTETC='xbindkeysrc.scm xserverrc-x11 xserverrc-local.example 20-intel-crouton.conf'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
 XMETHOD="${XMETHOD:-x11}"
+# install lts-saucy xserver and drivers on haswell for precise
+if grep -q 0x8086 /sys/class/graphics/fb0/device/vendor 2>/dev/null \
+    && grep -q 0x0a /sys/class/graphics/fb0/device/device 2>/dev/null \
+    && release -eq precise -ge raring -ge jessie; then
+        if release -eq precise; then
+            install --minimal xserver-xorg-lts-saucy libgl1-mesa-glx-lts-saucy \
+                xserver-xorg-input-all-lts-saucy x11-xserver-utils-lts-saucy \
+                libegl1-mesa-drivers-lts-saucy libtxc-dxtn-s2tc0 libtxc-dxtn0 \
+                xfonts-base xinit xinput x11-apps xterm
+        else
+            install xorg
+        fi
+        # intel xorg config file for haswell
+        ln -sfT "/etc/crouton/20-intel-crouton.conf" "/usr/share/X11/xorg.conf.d/20-intel-crouton.conf"
+else
+        install xorg
+fi
+install dmz-cursor-theme
 
-install xorg dmz-cursor-theme
 # Fix launching X11 from inside crosh (user doesn't own a TTY)
 sed -i 's/allowed_users=.*/allowed_users=anybody/' '/etc/X11/Xwrapper.config'
 

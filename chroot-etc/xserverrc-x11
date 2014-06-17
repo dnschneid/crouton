@@ -4,9 +4,12 @@
 # found in the LICENSE file.
 
 # Disable framebuffer compression when displaying natively.
-# TODO: test FBC with SNA enabled on Haswell to regain power savings
+# For haswell it can stay enabled if 20-intel-crouton.conf exists.
+# This xorg config file enables sna accelaration and set TearFree to true
+# to support fbc.
+
 fbc='/sys/module/i915/parameters/i915_enable_fbc'
-if [ -w "$fbc" ]; then
+if [ -w "$fbc" ] && [ ! -L "/usr/share/X11/xorg.conf.d/20-intel-crouton.conf" ]; then
     echo 0 > "$fbc"
 fi
 
