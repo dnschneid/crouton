@@ -15,12 +15,10 @@ CHROOTETC='xbindkeysrc.scm xserverrc-x11 xserverrc-local.example'
 ### Append to prepare.sh:
 XMETHOD="${XMETHOD:-x11}"
 
-# Check for Haswell PCI id
-if grep -q 0x8086 /sys/class/graphics/fb0/device/vendor 2>/dev/null && \
-        grep -q 0x0a /sys/class/graphics/fb0/device/device 2>/dev/null && \
-        release -eq precise; then
-    # On precise, install lts-saucy xorg to provide Haswell support
-    # (we still install xorg later to pull in its dependencies)
+# On precise, install lts-saucy xorg server to support newer hardware if kernel
+# version != 3.4 (lts-saucy mesa requires version >=3.6)
+if release -eq precise && ! uname -r | grep -q "^3.4."; then
+    # We still install xorg later to pull in its dependencies
     install --minimal xserver-xorg-lts-saucy libgl1-mesa-glx-lts-saucy \
         xserver-xorg-input-synaptics-lts-saucy
 fi
