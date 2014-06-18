@@ -15,6 +15,14 @@ CHROOTETC='xbindkeysrc.scm xserverrc-x11 xserverrc-local.example'
 ### Append to prepare.sh:
 XMETHOD="${XMETHOD:-x11}"
 
+# On precise, install lts-saucy xorg server to support newer hardware if kernel
+# version != 3.4 (lts-saucy mesa requires version >=3.6)
+if release -eq precise && ! uname -r | grep -q "^3.4."; then
+    # We still install xorg later to pull in its dependencies
+    install --minimal xserver-xorg-lts-saucy libgl1-mesa-glx-lts-saucy \
+        xserver-xorg-input-synaptics-lts-saucy
+fi
+
 install xorg dmz-cursor-theme
 # Fix launching X11 from inside crosh (user doesn't own a TTY)
 sed -i 's/allowed_users=.*/allowed_users=anybody/' '/etc/X11/Xwrapper.config'
