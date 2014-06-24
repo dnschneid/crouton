@@ -9,8 +9,8 @@ fi
 REQUIRES='gtk-extra'
 DESCRIPTION='Installs the Unity desktop environment. (Approx. 700MB)'
 HOSTBIN='startunity'
-CHROOTBIN='startunity gnome-session-wrapper'
-CHROOTETC='unity-indicator-launch'
+CHROOTBIN='startunity gnome-session-wrapper crouton-unity-wsb'
+CHROOTETC='unity-indicator-launch unity-hud-gsd.desktop'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
@@ -33,6 +33,24 @@ NoDisplay=true
 StartupNotify=false
 Terminal=false
 EOF
+fi
+
+# Fix HUD in Trusty by preventing gnome-settings-daemon from autostarting
+if release -ge trusty; then
+    autostartdir='$HOME/.config/autostart'
+    profiledsh='/etc/profile.d/crouton-unity-hud.sh'
+
+    # Make sure symbolic link is setup on login
+    echo '#!/bin/sh
+
+    gnomesettingsdesktop="'"$autostartdir"'/gnome-settings-daemon.desktop"
+    # Do not install if user is root, or $HOME does not exist
+    if [ "`id -u`" -ne 0 -a -d "$HOME" -a ! -e "$gnomesettingsdesktop" ]; then
+        mkdir -p "'"$autostartdir"'"
+        ln -sfT /etc/crouton/unity-hud-gsd.desktop "$gnomesettingsdesktop"
+    fi' > "$profiledsh"
+
+    chmod 755 "$profiledsh"
 fi
 
 chmod 755 /etc/crouton/unity-indicator-launch

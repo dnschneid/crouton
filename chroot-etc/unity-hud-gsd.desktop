@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=GNOME Settings Daemon
+Exec=/usr/lib/gnome-settings-daemon/gnome-settings-daemon-localeexec
+OnlyShowIn=GNOME;
+NoDisplay=true
+X-GNOME-Autostart-Phase=Initialization
+X-GNOME-Autostart-Notify=true
+X-GNOME-AutoRestart=true
+X-Ubuntu-Gettext-Domain=gnome-settings-daemon

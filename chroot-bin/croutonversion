@@ -28,6 +28,7 @@ and/or launches a changelog.
 If no options are specified, outputs crouton version information to STDOUT.
 
 Options:
+    -a       Prints the architecture of this chroot to stdout.
     -c       Launches a browser to view the list of changes.
              If -u is specified, only launches if a newer version exists.
     -d       Downloads the latest version of crouton to the location specified.
@@ -48,8 +49,9 @@ error() {
 }
 
 # Process arguments
-while getopts 'cdf:ru' f; do
+while getopts 'acdf:ru' f; do
     case "$f" in
+    a) echo "$ARCH"; exit 0;;
     c) CHANGES='y';;
     d) DOWNLOAD='y';;
     f) DEST="$OPTARG";;

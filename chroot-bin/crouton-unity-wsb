@@ -1,0 +1,19 @@
+#!/bin/sh -e
+# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+#
+# Launch Unity HUD's window-stack-bridge
+
+ARCH="`/usr/local/bin/croutonversion -a`"
+
+case "$ARCH" in
+x86 | i?86) ARCH="i386";;
+x86_64 | amd64) ARCH="x86_64";;
+arm*) ARCH="armhf";;
+esac
+
+window_stack_bridge="/usr/lib/$ARCH-linux-gnu/hud/window-stack-bridge"
+if [ -x "$window_stack_bridge" ]; then
+    exec $window_stack_bridge
+fi
