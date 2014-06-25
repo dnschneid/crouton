@@ -1,0 +1,30 @@
+#!/bin/sh -e
+# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+#
+# Helper script for Unity called at user login.
+# Right now this just sets up .desktop files in the user's autostart
+# directory to override global autostart.
+
+RELEASE="`/usr/local/bin/croutonversion -r`"
+
+# unity-settings-daemon should run instead of gnome-settings-daemon in trusty
+if [ "$RELEASE" = 'trusty' ]; then
+    autostartdir="$HOME/.config/autostart"
+    mkdir -p "$autostartdir"
+    cat > "$autostartdir"/gnome-settings-daemon.desktop <<EOF
+[Desktop Entry]
+Type=Application
+Name=GNOME Settings Daemon
+Exec=/usr/lib/gnome-settings-daemon/gnome-settings-daemon-localeexec
+OnlyShowIn=GNOME;
+NoDisplay=true
+X-GNOME-Autostart-Phase=Initialization
+X-GNOME-Autostart-Notify=true
+X-GNOME-AutoRestart=true
+X-Ubuntu-Gettext-Domain=gnome-settings-daemon
+fi
+EOF
+
+fi

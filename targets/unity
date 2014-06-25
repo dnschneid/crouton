@@ -9,8 +9,8 @@ fi
 REQUIRES='gtk-extra'
 DESCRIPTION='Installs the Unity desktop environment. (Approx. 700MB)'
 HOSTBIN='startunity'
-CHROOTBIN='startunity gnome-session-wrapper crouton-unity-wsb'
-CHROOTETC='unity-indicator-launch unity-hud-gsd.desktop'
+CHROOTBIN='startunity gnome-session-wrapper crouton-unity-autostart'
+CHROOTETC='unity-autostart.desktop unity-profiled'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
@@ -19,41 +19,21 @@ install unity unity-2d ubuntu-artwork gnome-session nautilus \
         ubuntu-session,ubuntu~precise+ubuntu~quantal+ubuntu~raring+ubuntu~saucy= \
         -- network-manager brasero firefox
 
-# unity-panel-service launches via upstart in saucy and later, so add desktop file
-# to autostart it and any indicators
+# XDG autostart/profile.d additions only needed in saucy and later
 if release -ge saucy; then
-    mkdir -p '/etc/xdg/autostart'
-    cat > '/etc/xdg/autostart/crouton-unity-indicator.desktop' <<EOF
-[Desktop Entry]
-Type=Application
-Name=crouton indicator autostart for Unity
-Exec=/etc/crouton/unity-indicator-launch
-OnlyShowIn=Unity;
-NoDisplay=true
-StartupNotify=false
-Terminal=false
-EOF
+    autostartdir='/etc/xdg/autostart'
+    # Remove previous indicator-only desktop file
+    rm -f "$autostartdir"/crouton-unity-indicator.desktop
+
+    # Set up global autostart script
+    mkdir -p "$autostartdir"
+    ln -sfT /etc/crouton/unity-autostart.desktop \
+        "$autostartdir"/crouton-unity-autostart.desktop
+
+    # Set up profile.d
+    chmod 755 /etc/crouton/unity-profiled
+    ln -sfT /etc/crouton/unity-profiled /etc/profile.d/crouton-unity-profiled.sh
 fi
-
-# Fix HUD in Trusty by preventing gnome-settings-daemon from autostarting
-if release -ge trusty; then
-    autostartdir='$HOME/.config/autostart'
-    profiledsh='/etc/profile.d/crouton-unity-hud.sh'
-
-    # Make sure symbolic link is setup on login
-    echo '#!/bin/sh
-
-    gnomesettingsdesktop="'"$autostartdir"'/gnome-settings-daemon.desktop"
-    # Do not install if user is root, or $HOME does not exist
-    if [ "`id -u`" -ne 0 -a -d "$HOME" -a ! -e "$gnomesettingsdesktop" ]; then
-        mkdir -p "'"$autostartdir"'"
-        ln -sfT /etc/crouton/unity-hud-gsd.desktop "$gnomesettingsdesktop"
-    fi' > "$profiledsh"
-
-    chmod 755 "$profiledsh"
-fi
-
-chmod 755 /etc/crouton/unity-indicator-launch
 
 TIPS="$TIPS
 You can start Unity via the startunity host command: sudo startunity
