@@ -20,7 +20,7 @@ esac
 if [ "$RELEASE" = 'saucy' -o "$RELEASE" = 'trusty' ]; then
     window_stack_bridge="/usr/lib/$ARCH-linux-gnu/hud/window-stack-bridge"
     if [ -x "$window_stack_bridge" ]; then
-        $window_stack_bridge &
+        "$window_stack_bridge" &
     fi
 fi
 
