@@ -38,7 +38,7 @@ if [ "$RELEASE" = 'trusty' ]; then
             # Parse out exec and launch.
             # Assume no space in path, and run without args.
             exec_cmd="`awk '/^exec/{print $2; exit}' "$f"`"
-            $exec_cmd &
+            "$exec_cmd" &
         fi
     done
 fi
