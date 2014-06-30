@@ -6,39 +6,33 @@
 # Helper script for launching services normally managed by upstart.
 # Called during session's XDG autostart.
 
-ARCH="`/usr/local/bin/croutonversion -a`"
 RELEASE="`/usr/local/bin/croutonversion -r`"
 
-# Fix arch to the correct format for /usr/lib triples
-case "$ARCH" in
-x86 | i?86) ARCH="i386";;
-x86_64 | amd64) ARCH="x86_64";;
-arm*) ARCH="armhf";;
-esac
-
-# Launch window-stack-bridge for Unity HUD support
-if [ "$RELEASE" = 'saucy' -o "$RELEASE" = 'trusty' ]; then
-    window_stack_bridge="/usr/lib/$ARCH-linux-gnu/hud/window-stack-bridge"
-    if [ -x "$window_stack_bridge" ]; then
-        "$window_stack_bridge" &
+# Run the exec line from an Upstart conf file. Right now this assumes no space
+# in the path and no arguments.
+execfromconf() {
+    local conf="$1"
+    exec_cmd="`awk '/^exec/{print $2; exit}' "$conf"`"
+    if [ -x "$exec_cmd" ]; then
+        "$exec_cmd" &
     fi
-fi
+}
 
-# Launch unity-panel-service and any indicators in /usr/share/upstart/sessions.
-
-# Both saucy and trusty need to launch unity-panel-service.
+# Launch window-stack-bridge for Unity HUD support, and unity-panel-service for
+# indicators.
 if [ "$RELEASE" = 'saucy' -o "$RELEASE" = 'trusty' ]; then
-    /usr/lib/unity/unity-panel-service >/dev/null 2>&1 &
+    services="unity-panel-service window-stack-bridge"
+    for service in $services; do
+        conf_file=/usr/share/upstart/sessions/"$service".conf
+        execfromconf "$conf_file"
+   done
 fi
 
 # If on trusty, indicators also need to be started.
 if [ "$RELEASE" = 'trusty' ]; then
-    for f in /usr/share/upstart/sessions/*.conf; do
-        if grep -q '^start on.* indicator-services-start' "$f"; then
-            # Parse out exec and launch.
-            # Assume no space in path, and run without args.
-            exec_cmd="`awk '/^exec/{print $2; exit}' "$f"`"
-            "$exec_cmd" &
+    for conf_file in /usr/share/upstart/sessions/*.conf; do
+        if grep -q '^start on.* indicator-services-start' "$conf_file"; then
+            execfromconf "$conf_file"
         fi
     done
 fi
