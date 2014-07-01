@@ -16,6 +16,9 @@ SIGNAL='TERM'
 TRIES=5
 YES=''
 ROOT='/var/run/crouton'
+if [ -d '/run' ]; then
+    ROOT='/run/crouton'
+fi
 
 USAGE="$APPLICATION [options] name [...]
 
