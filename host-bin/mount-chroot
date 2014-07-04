@@ -12,7 +12,7 @@ CREATE=''
 ENCRYPT=''
 KEYFILE=''
 PRINT=''
-ROOT='/var/run/crouton'
+ROOT="`readlink -m '/var/run/crouton'`"
 MOUNTOPTS='rw,dev,exec,suid'
 
 USAGE="$APPLICATION [options] name [...]
