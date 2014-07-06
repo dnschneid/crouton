@@ -25,7 +25,10 @@ fi
 
 # On saucy onwards, if kernel version is 3.4, manually pin down old mesa
 # libraries, as new ones require version >=3.6 (see issue #704).
-if release -ge saucy && uname -r | grep -q "^3.4."; then
+# This is only required on non-Atom Intel chipsets (Atom uses i915 dri driver)
+if release -ge saucy && uname -r | grep -q "^3.4." &&
+        grep -q 0x8086 /sys/class/graphics/fb0/device/vendor 2>/dev/null &&
+        ! grep -q 0xa0 /sys/class/graphics/fb0/device/device 2>/dev/null; then
     # Make sure dependencies are correct (we use -f later: we want to make
     # sure we only use it to fix our own problems)
     apt-get -y dist-upgrade
