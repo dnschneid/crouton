@@ -9,7 +9,7 @@ CHROOTBIN='croutonversion host-dbus host-x11'
 
 ### Append to prepare.sh:
 echo 'Preparing environment...' 1>&2
-if [ ! "$VERSION" = '#VERSION' ]; then
+if [ ! "$VERSION" = '#VERSION#' ]; then
     sed -e "s ^VERSION=.*\$ VERSION='$VERSION' ;" \
         -e "s ^RELEASE=.*\$ RELEASE='$RELEASE' ;" \
         -e "s ^ARCH=.*\$ ARCH='$ARCH' ;" \
@@ -21,7 +21,7 @@ oldenv='/etc/environment'
 newenv='/etc/environment.new'
 {
     echo '### begin crouton-generated environment variables'
-    if [ "$PROXY" = 'unspecified' -o "$PROXY" = '#PROXY' ]; then
+    if [ "$PROXY" = 'unspecified' -o "$PROXY" = '#PROXY#' ]; then
         # Copy over previously generated content
         awk '/^### end/{exit};x;/^### begin/{x=1}' "$oldenv" 2>/dev/null || true
     elif [ -n "$PROXY" ]; then
