@@ -11,8 +11,7 @@ RELEASE="`/usr/local/bin/croutonversion -r`"
 # Run the exec line from an Upstart conf file. Right now this assumes no space
 # in the path and no arguments.
 execfromconf() {
-    local conf="$1"
-    exec_cmd="`awk '/^exec/{print $2; exit}' "$conf"`"
+    local exec_cmd="`awk '/^exec/{print $2; exit}' "$1"`"
     if [ -x "$exec_cmd" ]; then
         "$exec_cmd" &
     fi
