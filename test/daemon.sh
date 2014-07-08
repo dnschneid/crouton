@@ -1,4 +1,4 @@
-#!/bin/sh -e
+#!/bin/sh -eu
 # Copyright (c) 2014 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -10,7 +10,7 @@
 #   "Timestamp","Repository","Branch","Additional parameters"
 #   "2013/10/16 8:24:52 PM GMT","dnschneid/crouton","master",""
 
-set -e
+set -eu
 
 APPLICATION="${0##*/}"
 SCRIPTDIR="`readlink -f "\`dirname "$0"\`/.."`"

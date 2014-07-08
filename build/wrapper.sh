@@ -1,4 +1,4 @@
-#!/bin/sh -e
+#!/bin/sh -eu
 # Copyright (c) 2014 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file of the source repository, which has been replicated
@@ -34,7 +34,7 @@
 # and then runs installer/main.sh with the parameters passed to it.
 # You can pass -x [directory] to extract the contents somewhere.
 
-set -e
+set -eu
 
 VERSION='git'
 

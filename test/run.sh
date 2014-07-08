@@ -1,4 +1,4 @@
-#!/bin/sh -e
+#!/bin/sh -eu
 # Copyright (c) 2014 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -14,7 +14,7 @@
 # Numbering within a category is arbitrary and can have overlaps.
 # Tests are always run in alphanumeric order unless specified by parameters.
 
-set -e
+set -eu
 
 APPLICATION="${0##*/}"
 SCRIPTDIR="`readlink -f "\`dirname "$0"\`/.."`"

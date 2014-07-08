@@ -1,4 +1,4 @@
-#!/bin/sh -e
+#!/bin/sh -eu
 # Copyright (c) 2014 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -41,7 +41,7 @@ waitfinish
 # Even with a failing rc.local it should work
 log 'Making rc.local fail'
 rclocal="$PREFIX/chroots/$RELEASE/etc/rc.local"
-echo '#!/bin/sh -e
+echo '#!/bin/sh -eu
 exit 1' > "$rclocal"
 chmod a+rx "$rclocal"
 host enter-chroot -b -n "$RELEASE" true
@@ -56,7 +56,7 @@ log 'Making dbus-daemon fail'
 for dir in bin sbin usr/bin usr/sbin; do
     dbusdaemon="$PREFIX/chroots/$RELEASE/$dir/dbus-daemon"
     if [ -d "`dirname "$dbusdaemon"`" ]; then
-        echo '#!/bin/sh -e
+        echo '#!/bin/sh -eu
 exit 1' > "$dbusdaemon"
         chmod a+rx "$dbusdaemon"
     fi
