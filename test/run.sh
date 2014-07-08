@@ -416,6 +416,9 @@ for p in "$@"; do
             # Remount PREFIX noexec/etc to make the environment as harsh as possible
             mount --bind "$PREFIX" "$PREFIX"
             mount -i -o remount,nosuid,nodev,noexec "$PREFIX"
+            # Shuffle release test order
+            SUPPORTED_RELEASES="`echo "$SUPPORTED_RELEASES" | tr ' ' "\n" \
+                                    | sort -R | tr "\n" ' '`"
             # Clean up on exit
             settrap "
                 if [ -d '$PREFIX/chroots' ]; then
