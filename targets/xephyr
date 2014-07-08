@@ -6,7 +6,7 @@ REQUIRES='core audio'
 PROVIDES='x11'
 DESCRIPTION='Nested X11 backend. Improves compatibility but lacks GPU accel.'
 CHROOTBIN='brightness croutoncycle croutonpowerd croutonwheel croutonxinitrc-wrapper xinit'
-CHROOTETC='xbindkeysrc.scm xserverrc-xephyr xserverrc-local.example'
+CHROOTETC='xbindkeysrc.scm xserverrc-xephyr +xserverrc-local'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:

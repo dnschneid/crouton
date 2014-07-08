@@ -65,6 +65,13 @@ elif [ ! "$TARGETS" = 'check' ]; then
         [ ! -h "$src" ] && $SIMULATE chmod 755 "$CHROOT/usr/local/bin/$f"
     done
     for f in $CHROOTETC; do
+        if [ "${f#+}" != "$f" ]; then
+            f="${f#+}"
+            if [ -f "$CHROOT/etc/crouton/$f" ]; then
+                echo "Not overwriting $f in the chroot" 1>&2
+                continue
+            fi
+        fi
         echo "Installing $f into the chroot..." 1>&2
         src="${CHROOTETCDIR:-../chroot-etc}/$f"
         $SIMULATE cp -fP "$src" "$CHROOT/etc/crouton/"
