@@ -45,6 +45,13 @@ error() {
     exit "$ecode"
 }
 
+# Require the script to be run as root
+requireRoot() {
+    if [ ! "${USER:-}" = root -a ! "${UID:-}" = 0 ]; then
+        error 2 "$APPLICATION must be run as root."
+    fi
+}
+
 # Setup trap ($1) in case of interrupt or error.
 # Traps explicitly do not exit on command error.
 # Traps are first disabled to avoid executing clean-up commands twice.
@@ -57,7 +64,7 @@ settrap() {
 
 # Prepend a command to the existing $TRAP
 addtrap() {
-    OLDTRAP="$TRAP"
+    OLDTRAP="${TRAP:=}"
     TRAP="$1;$TRAP"
     settrap "$TRAP"
 }

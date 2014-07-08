@@ -84,10 +84,7 @@ if [ "$#" -ge 1 -a -z "$1" ]; then
     shift
 fi
 
-# We need to run as root
-if [ ! "$USER" = root -a ! "$UID" = 0 ]; then
-    error 2 "$APPLICATION must be run as root."
-fi
+requireRoot
 
 # We need a command if we specified to run in the background
 if [ -n "$BACKGROUND" -a $# = 0 ]; then

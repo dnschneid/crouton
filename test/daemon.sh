@@ -52,10 +52,7 @@ if [ -z "$QUEUEURL" -o "$#" != 0 ]; then
     error 2 "$USAGE"
 fi
 
-# We need to run as root
-if [ "$USER" != root -a "$UID" != 0 ]; then
-    error 2 "$APPLICATION must be run as root."
-fi
+requireRoot
 
 statusmonitor() { (
     local machinestatus="$LOCALROOT/status-$id"

@@ -317,7 +317,7 @@ else
     NOEXECTMP=n
 fi
 FAKEROOT=''
-if [ ! "$USER" = root -a ! "$UID" = 0 ]; then
+if [ ! "${USER:-}" = root -a ! "${UID:-}" = 0 ]; then
     FAKEROOT=fakeroot
     if [ "$NOEXECTMP" = y -o -z "$DOWNLOADONLY" ] \
             || ! hash "$FAKEROOT" 2>/dev/null; then
