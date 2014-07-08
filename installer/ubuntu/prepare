@@ -85,6 +85,16 @@ list_uninstalled_dist() {
     done
 }
 
+# detect_mirror
+# Detects the current mirror: Prints the first source that provides the
+# "main" component.
+detect_mirror() {
+    if ! awk '/^deb .* main( .*)?$/ { print $2; f=1; exit }; END { exit !f }' \
+          /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null; then
+        error 1 "Cannot detect mirror."
+    fi
+}
+
 
 # install_mirror_package [--asdeps] package path [regex arch]
 # Fetch and install a package directly from the mirror.
@@ -108,12 +118,9 @@ install_mirror_package() {
         shift
     fi
     local package="$1"
-    # Detect mirror: Find the first source that provides the "main" component
-    local mirror="`awk '/^deb .* main( .*)?$/ { print $2; exit }' \
-        /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null`"
-    if [ -z "$mirror" ]; then
-        error 1 "Cannot detect mirror."
-    fi
+    # Split local and assignment to make sure -e error handling works
+    local mirror
+    mirror="`detect_mirror`"
     local url="${mirror%/}/${2#/}/"
     local arch="${4:-$ARCH}"
     local regex="^${package}_${3:-.*}_(${arch}|all)\.deb$"

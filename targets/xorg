@@ -23,6 +23,67 @@ if release -eq precise && ! uname -r | grep -q "^3.4."; then
         xserver-xorg-input-synaptics-lts-saucy
 fi
 
+# On saucy onwards, if kernel version is 3.4, manually pin down old mesa
+# libraries, as new ones require version >=3.6 (see issue #704).
+# This is only required on non-Atom Intel chipsets (Atom uses i915 dri driver)
+if release -ge saucy && uname -r | grep -q "^3.4." &&
+        grep -q 0x8086 /sys/class/graphics/fb0/device/vendor 2>/dev/null &&
+        ! grep -q 0xa0 /sys/class/graphics/fb0/device/device 2>/dev/null; then
+    # Create a dummy libwayland-egl1 package, to satisfy dependencies
+    # (the libraries are actually provided by libegl1-mesa-drivers in precise)
+    install --minimal --asdeps equivs
+
+    DEBTMP="`mktemp -d crouton.XXXXXX --tmpdir=/tmp`"
+    addtrap "rm -rf --one-file-system '$DEBTMP'"
+
+    ( cd "$DEBTMP"; equivs-build - ) <<END
+Section: misc
+Priority: optional
+Standards-Version: 3.9.2
+
+Package: libwayland-egl1-dummy
+Version: 8.0.4
+Depends: libegl1-mesa-drivers
+Provides: libwayland-egl1
+Description: Dummy package providing libwayland-egl1
+END
+
+    # Add precise package sources
+    mirror="`detect_mirror`"
+
+    cat > "/etc/apt/sources.list.d/precise.list" <<END
+deb $mirror precise main
+deb $mirror precise-updates main
+deb $mirror precise-security main
+END
+
+    cat > "/etc/apt/preferences.d/precise-mesa-pin" <<END
+# Do not install any packages from precise by default
+Package: *
+Pin: release n=precise
+Pin-Priority: -10
+
+# Install mesa packages and their dependencies from precise
+Package: libegl1-mesa:* libegl1-mesa-drivers:* libgl1-mesa-dri:* libgl1-mesa-glx:* libglapi-mesa:* libgles2-mesa:* libdrm-nouveau1a:* libllvm3.0:* libudev0:*
+Pin: release n=precise
+Pin-Priority: 1100
+END
+
+    # Fetch new package sources
+    apt-get update
+
+    # Forcibly replace libwayland-egl1-mesa by libwayland-egl1-dummy
+    # (dpkg -r does not fail if package does not exist)
+    dpkg -r --force-depends libwayland-egl1-mesa libwayland-egl1-mesa:i386
+    dpkg -i --force-depends "$DEBTMP"/libwayland-egl1-dummy_*_all.deb
+
+    # Downgrade packages, -f is needed as dependencies are broken
+    # This happens to install python2.7-minimal as well, pulled in by a wrong
+    # dependency of ubuntu-minimal-1.267 (precise), which we did not install.
+    # Looks like an apt bug, I guess we can live with that.
+    apt-get -y --force-yes --no-install-recommends dist-upgrade -f
+fi
+
 install xorg dmz-cursor-theme
 # Fix launching X11 from inside crosh (user doesn't own a TTY)
 sed -i 's/allowed_users=.*/allowed_users=anybody/' '/etc/X11/Xwrapper.config'
