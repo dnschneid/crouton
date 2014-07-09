@@ -21,11 +21,6 @@ fi
 # We need all paths to do administrative things
 export PATH='/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin'
 
-# Apply the proxy for this script
-if [ ! "$PROXY" = 'unspecified' -a "${PROXY#"#"}" = "$PROXY" ]; then
-    export http_proxy="$PROXY" https_proxy="$PROXY" ftp_proxy="$PROXY"
-fi
-
 # Common functions
 . "`dirname "$0"`/../installer/functions"
 

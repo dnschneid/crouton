@@ -9,7 +9,7 @@ CHROOTBIN='croutonversion host-dbus host-x11'
 
 ### Append to prepare.sh:
 echo 'Preparing environment...' 1>&2
-if [ ! "$VERSION" = '#VERSION' ]; then
+if [ ! "$VERSION" = '#VERSION#' ]; then
     sed -e "s ^VERSION=.*\$ VERSION='$VERSION' ;" \
         -e "s ^RELEASE=.*\$ RELEASE='$RELEASE' ;" \
         -e "s ^ARCH=.*\$ ARCH='$ARCH' ;" \
@@ -21,8 +21,11 @@ oldenv='/etc/environment'
 newenv='/etc/environment.new'
 {
     echo '### begin crouton-generated environment variables'
-    if [ "$PROXY" = 'unspecified' -o "$PROXY" = '#PROXY' ]; then
-        grep -i '^[a-z]*_proxy' "$oldenv" 2>/dev/null || true
+    if [ "$PROXY" = 'unspecified' -o "$PROXY" = '#PROXY#' ]; then
+        # Copy over previously generated content
+        awk '/^### end/ { exit }
+             x && tolower($0) ~ /^[a-z]*_proxy=/
+             /^### begin/ { x=1 }' "$oldenv" 2>/dev/null || true
     elif [ -n "$PROXY" ]; then
         for var in http_proxy HTTP_PROXY https_proxy HTTPS_PROXY \
                    ftp_proxy FTP_PROXY; do
@@ -33,16 +36,21 @@ newenv='/etc/environment.new'
         done
     fi
     echo '### end crouton-generated environment variables'
-    # Copy in previous user-environment settings
-    if [ -r "$oldenv" ]; then
-        awk '/^### begin/{x=1}!x;/^### end/{x=0}' "$oldenv"
-    fi
 } > "$newenv"
+
+# Set proxy variables for this script
+. "$newenv"
+export http_proxy https_proxy ftp_proxy
+
+# Copy in previous user-environment settings
+if [ -r "$oldenv" ]; then
+    awk '/^### begin/{x=1}!x;/^### end/{x=0}' "$oldenv" >> "$newenv"
+fi
 mv -f "$newenv" "$oldenv"
 
 if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
     echo 'Preparing software sources...' 1>&2
-    if [ ! "$PROXY" = 'unspecified' -a ! "$PROXY" = '#PROXY' ]; then
+    if [ ! "$PROXY" = 'unspecified' -a ! "$PROXY" = '#PROXY#' ]; then
         aptproxy='/etc/apt/apt.conf.d/80croutonproxy'
         if [ -z "$PROXY" ]; then
             rm -f "$aptproxy"
