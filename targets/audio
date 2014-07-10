@@ -4,6 +4,7 @@
 # found in the LICENSE file.
 REQUIRES='core'
 DESCRIPTION='Support audio playback via Chromium OS'\''s audio system.'
+CHROOTBIN='cras-audio-update'
 CHROOTETC='pulseaudio-default.pa'
 . "${TARGETSDIR:="$PWD"}/common"
 
