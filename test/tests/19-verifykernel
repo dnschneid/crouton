@@ -5,8 +5,8 @@
 
 # Check that current kernels are verified, if we are running an official image
 if grep '^CHROMEOS_RELEASE_NAME=Chrome OS$' /etc/lsb-release; then
-    passes from 'installer/main.sh' import verifykernelsig
-    passes verifykernelsig
+    from 'installer/main.sh' import verifykernelsig
+    verifykernelsig
 else
     log "Non-official image: skipping kernel verification test."
 fi
