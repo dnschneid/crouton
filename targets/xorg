@@ -104,7 +104,8 @@ END
 
     # Debian needs special handling as old packages depend on
     # libwayland0=0.85.0-2
-    if release -ge jessie; then
+    if release -ge jessie && \
+            [ -n "`list_needs_update libegl1-mesa libegl1-mesa-drivers`" ]; then
         # Note: we only install native packages here. It's unlikely i386
         # packages would require EGL anyway (e.g. Steam does not)
         ( cd "$DEBTMP"; apt-get download libegl1-mesa libegl1-mesa-drivers )
