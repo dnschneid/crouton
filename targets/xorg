@@ -65,6 +65,8 @@ END
         cat > "/etc/apt/sources.list.d/$oldrelease.list" <<END
 deb $mirror $oldrelease main
 END
+    else
+        error 2 "Invalid release."
     fi
 
     cat > "/etc/apt/preferences.d/${oldrelease}-mesa-pin" <<END
