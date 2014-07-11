@@ -75,7 +75,7 @@ Package: *
 Pin: release n=$oldrelease
 Pin-Priority: -10
 
-# Install mesa packages and their dependencies from precise
+# Install mesa packages and their dependencies from $oldrelease
 Package: libegl1-mesa:* libegl1-mesa-dbg:* libegl1-mesa-dev:* \
          libegl1-mesa-drivers:* libegl1-mesa-drivers-dbg:* \
          libgl1-mesa-dev:* libgl1-mesa-dri:* libgl1-mesa-dri-dbg:* \
@@ -91,10 +91,10 @@ END
     if release -ge jessie; then
         cat >> "/etc/apt/preferences.d/${oldrelease}-mesa-pin" <<END
 
-# Prevent upgrading of libegl1-mesa*: we want to do this manually
-# to "unbreak" libwayland0 dependency
+# Prevent upgrading of libegl1-mesa*: we want to install these from
+# the crouton installer to fix libwayland0 dependency
 Package: libegl1-mesa:* libegl1-mesa-drivers:*
-Pin: version <10
+Pin: release o=Debian
 Pin-Priority: -1
 END
     fi
