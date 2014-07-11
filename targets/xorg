@@ -64,7 +64,14 @@ Pin: release n=precise
 Pin-Priority: -10
 
 # Install mesa packages and their dependencies from precise
-Package: libegl1-mesa:* libegl1-mesa-drivers:* libgl1-mesa-dri:* libgl1-mesa-glx:* libglapi-mesa:* libgles2-mesa:* libdrm-nouveau1a:* libllvm3.0:* libudev0:*
+Package: libegl1-mesa:* libegl1-mesa-dbg:* libegl1-mesa-dev:* \
+         libegl1-mesa-drivers:* libegl1-mesa-drivers-dbg:* \
+         libgl1-mesa-dev:* libgl1-mesa-dri:* libgl1-mesa-dri-dbg:* \
+         libgl1-mesa-glx:* libgl1-mesa-glx-dbg:* \
+         libglapi-mesa:* libglapi-mesa-dbg:* \
+         libgles1-mesa:* libgles1-mesa-dbg:* libgles1-mesa-dev:* \
+         libgles2-mesa:* libgles2-mesa-dbg:* libgles2-mesa-dev:* \
+         libdrm-nouveau1a:* libllvm3.0:* libudev0:*
 Pin: release n=precise
 Pin-Priority: 1100
 END
