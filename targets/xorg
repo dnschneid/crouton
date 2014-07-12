@@ -15,12 +15,12 @@ CHROOTETC='xbindkeysrc.scm xserverrc-x11 xserverrc-local.example'
 ### Append to prepare.sh:
 XMETHOD="${XMETHOD:-x11}"
 
-# On precise, install lts-saucy xorg server to support newer hardware if kernel
-# version != 3.4 (lts-saucy mesa requires version >=3.6)
+# On precise, install lts-trusty xorg server to support newer hardware if kernel
+# version != 3.4 (lts-trusty mesa requires version >=3.6)
 if release -eq precise && ! uname -r | grep -q "^3.4."; then
     # We still install xorg later to pull in its dependencies
-    install --minimal xserver-xorg-lts-saucy libgl1-mesa-glx-lts-saucy \
-        xserver-xorg-input-synaptics-lts-saucy
+    install --minimal xserver-xorg-lts-trusty libgl1-mesa-glx-lts-trusty \
+        xserver-xorg-input-synaptics-lts-trusty
 fi
 
 # On saucy onwards, if kernel version is 3.4, manually pin down old mesa
