@@ -254,6 +254,12 @@ crouton partition (-c)."
     fi
 fi
 
+if grep -q '^[^ ]* '"`readlink -m '/var/run/crouton'`/" /proc/mounts \
+        || grep -q '^[^ ]* '"$PREFIX"'/chroots' /proc/mounts; then
+    error 1 \
+"Some chroots are mounted. Log out from these, and run this script again."
+fi
+
 echo "====== WARNING ======"
 if [ -n "$DELETE" ]; then
     echo "This script will now log you off and wipe '$name' (${ROOTDEVICEPREFIX}$CROUTONPARTNUMBER)."
@@ -282,12 +288,6 @@ if [ -n "$DELETE" -o -n "$NOCREATE" ]; then
 "Cannot unmount partition in '$mountpoint', make sure nothing is using it."
         fi
     done
-fi
-
-if grep -q '^[^ ]* /var/run/crouton/' /proc/mounts \
-        || grep -q '^[^ ]* '"$PREFIX"'/chroots' /proc/mounts; then
-    error 1 \
-"Some chroots are mounted. Log out from these, and run this script again."
 fi
 
 ( # Fork a subshell, with input/output in VT $LOGVT
