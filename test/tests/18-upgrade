@@ -3,9 +3,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# Test upgrade path from Ubuntu quantal to trusty.
-# Since raring reached EOL before qantal, upgrading from quantal skips raring.
-# So we test quantal->saucy->trusty, raring->saucy.
+# Test upgrade path from Ubuntu saucy to trusty.
 # Also test precise->trusty (LTS, upgrade not suggested until July 2014)
 
 # Format: FIRST;NEXT;DEV;PROMPT
@@ -15,8 +13,7 @@
 # PROMPT: choose normal or lts upgrade
 
 UPGRADEPATHS='\
-quantal;saucy trusty;;normal
-raring;saucy;;normal
+saucy;trusty;;normal
 precise;;trusty;lts'
 
 # The critical targets that are likely to break are audio, touch and xephyr,
