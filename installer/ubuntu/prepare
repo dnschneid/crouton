@@ -110,7 +110,8 @@ detect_mirror() {
 #           If the package is a dependency of other packages (e.g. a library),
 #           you should select the earliest version that provides the required
 #           features, to prevent breakage during release upgrade.
-# arch:     Architecture (e.g. i386). Defaults to $ARCH
+# arch:     Additional architecture to install. e.g. i386 installs both i386
+#           and amd64 packages. Defaults to only installing "$ARCH"
 install_mirror_package() {
     local asdeps=''
     if [ "$1" = "--asdeps" ]; then
@@ -122,33 +123,46 @@ install_mirror_package() {
     local mirror
     mirror="`detect_mirror`"
     local url="${mirror%/}/${2#/}/"
-    local arch="${4:-$ARCH}"
-    local regex="^${package}_${3:-.*}_(${arch}|all)\.deb$"
-    # Find package in directory listing:
-    # Filenames are HTML <a href> values, enclosed in quotes.
-    local xvers="`wget -O- "$url" -nv \
-        | awk 'BEGIN { RS="<[aA][^>]* [hH][rR][eE][fF]=\\""; FS="\\"" }
-               NR > 1 && $1 ~ /'"$regex"'/ { print $1 }' \
-        | sort -V | tail -n 1`"
-    if [ -z "$xvers" ]; then
-        error 1 "Error retrieving $package."
-    fi
-    # Check if installed version is already up to date
-    local installed="`dpkg-query -l "$package:$arch" 2>/dev/null | \
-        awk '/^[hi]i/ { sub(/^[0-9]+:/, "", $3); print $2 "_" $3 }'`"
-    if [ "${xvers%_*}" = "$installed" ]; then
-        echo "$package is already up to date ($installed)."
-        return
-    fi
-    url="$url$xvers"
-    # Download the package to a temporary file
-    local deb="`mktemp crouton.XXXXXX --tmpdir=/tmp`"
-    addtrap "rm -f '$deb'"
-    wget "$url" -O"$deb"
-    # Install the package
-    install_pkg "$deb"
-    if [ -n "$asdeps" ]; then
-        apt-mark auto "$package:$arch"
+    local debfiles=""
+    local pkgnames=""
+
+    for carch in "$ARCH" "$4"; do
+        if [ -z "$carch" ]; then
+            continue
+        fi
+        local pkgname="$package:$carch"
+        local regex="^${package}_${3:-.*}_(${carch}|all)\.deb$"
+        # Find package in directory listing:
+        # Filenames are HTML <a href> values, enclosed in quotes.
+        local xvers="`wget -O- "$url" -nv \
+            | awk 'BEGIN { RS="<[aA][^>]* [hH][rR][eE][fF]=\\""; FS="\\"" }
+                   NR > 1 && $1 ~ /'"$regex"'/ { print $1 }' \
+            | sort -V | tail -n 1`"
+        if [ -z "$xvers" ]; then
+            error 1 "Error retrieving $pkgname."
+        fi
+        # Check if installed version is already up to date
+        local installed="`dpkg-query -l "$pkgname" 2>/dev/null | \
+            awk '/^[hi]i/ { sub(/^[0-9]+:/, "", $3); print $2 "_" $3 }'`"
+        if [ "${xvers%_*}" = "$installed" ]; then
+            echo "$pkgname is already up to date ($installed)."
+            continue
+        fi
+        pkgurl="$url$xvers"
+        # Download the package to a temporary file
+        local deb="`mktemp crouton.XXXXXX --tmpdir=/tmp`"
+        addtrap "rm -f '$deb'"
+        wget "$pkgurl" -O"$deb"
+        debfiles="$debfiles $deb"
+        pkgnames="$pkgnames $pkgname"
+    done
+
+    if [ -n "$debfiles" ]; then
+        # Install the package
+        install_pkg $debfiles
+        if [ -n "$asdeps" ]; then
+            apt-mark auto $pkgnames
+        fi
     fi
 }
 

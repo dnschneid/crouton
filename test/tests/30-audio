@@ -53,6 +53,41 @@ for release in $SUPPORTED_RELEASES; do
         cras_test_client --dump_server_info
         pulseaudio --kill
     '
+
+    # On precise, test that install_mirror_package is able to up/downgrade
+    # libsbc1 as required. We first install version 1.2, then check that
+    # update downgrades it to 1.1 again.
+    if [ "$release" = "precise" ]; then
+        # Test if libsbc1 version starts with the argument
+        testsbcver() {
+            host enter-chroot -n "$release" sh -exc '
+                ok=''
+                for ver in `dpkg-query -l libsbc1:* |
+                        awk '"'"'/^[hi]i/ { print $3 }'"'"'`; do
+                    echo $ver | grep -q "^'"$1"'"
+                    ok='y'
+                done
+                test -n "$ok"
+            '
+        }
+
+        echo '
+            cras_arch=''
+            if [ "`uname -m`" = "x86_64" ]; then
+                cras_arch="i386"
+            fi
+            install_mirror_package 'libsbc1' \
+                            'pool/main/s/sbc' '1\.2-.*' $cras_arch
+            install_mirror_package 'libsbc-dev' \
+                            'pool/main/s/sbc' '1\.2-.*' $cras_arch
+        ' | crouton -T -U -n "$release"
+
+        testsbcver '1.2-'
+
+        crouton -u -n "$release" -t audio
+        testsbcver '1.1-'
+    fi
+
     host delete-chroot -y "$release"
 done
 
