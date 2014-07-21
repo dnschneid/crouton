@@ -6,10 +6,10 @@
 . "`dirname "$0"`/../installer/functions"
 
 # Default button numbers
-u=4
-d=5
-l=6
-r=7
+u=5
+d=4
+l=7
+r=6
 # Do horizontal scrolling by default
 x=1
 
@@ -67,6 +67,9 @@ fi
 mkdir -m 775 -p /tmp/crouton-lock
 exec 3>/tmp/crouton-lock/wheel
 flock 3
+
+# disable australian scrolling for the touchpad via xinput
+xinput set-prop "Atmel maXTouch Touchpad" "Australian Scrolling" 0
 
 # Monitor xinput2 events, reacting only to scroll events (axes 2 and 3).
 # Accumulate the x and y scrolls, but reduce the acceleration so it doesn't go
