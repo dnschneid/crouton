@@ -373,6 +373,12 @@ if ! mountpoint -q "$destmedia"; then
     mount --rbind /media "$destmedia"
 fi
 
+# Bind-mount ~/localuserhome-$NAME as the home directory, it it exists
+localuserhome="/home/chronos/user/localuserhome-$NAME"
+if [ -z "$NOLOGIN" -a -n "$CHROOTHOME" -a -d "$localuserhome" ]; then
+    bindmount "$localuserhome" "$CHROOTHOME/" exec
+fi
+
 # Bind-mount ~/Downloads if we're logged in as a user
 localdownloads='/home/chronos/user/Downloads'
 if [ -z "$NOLOGIN" -a -n "$CHROOTHOME" -a -d "$localdownloads" ]; then
