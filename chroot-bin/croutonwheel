@@ -68,9 +68,6 @@ mkdir -m 775 -p /tmp/crouton-lock
 exec 3>/tmp/crouton-lock/wheel
 flock 3
 
-# disable australian scrolling for the touchpad via xinput
-xinput set-prop "Atmel maXTouch Touchpad" "Australian Scrolling" 0
-
 # Monitor xinput2 events, reacting only to scroll events (axes 2 and 3).
 # Accumulate the x and y scrolls, but reduce the acceleration so it doesn't go
 # crazy. After a threshold, simulate the wheel presses using xte.
