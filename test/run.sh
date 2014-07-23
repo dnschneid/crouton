@@ -335,6 +335,40 @@ fails() {
     return 0
 }
 
+# Sources a function from a script for unit testing.
+# Note that the function may need global variables defined when run.
+# Usage:
+#   from scriptfile import functionA[[,] functionB]*
+# scriptfile should be tarball-relative, i.e., host-bin/mount-chroot
+from() {
+    local scriptpath="$SCRIPTDIR/$1" scriptfile="$1" name script
+    if [ "$2" != 'import' -o -z "$3" ]; then
+        echo "    $*
+SyntaxError: invalid syntax" 1>&2
+        return 2
+    fi
+    if [ ! -f "$scriptpath" ]; then
+        echo "ImportError: No module named $scriptfile" 1>&2
+        return 2
+    fi
+    shift 2
+    for name in "$@"; do
+        name="${name%,}"
+        script="`awk '
+            /^'"$name"'[(][)] {$/ {x=1}
+            x;
+            x && /^}$/ {exit}
+        ' "$scriptpath"`"
+        if [ -z "$script" ]; then
+            echo "ImportError: cannot import name $name" 1>&2
+            return 2
+        fi
+        log "Importing $name from $scriptfile"
+        eval "$script"
+    done
+    return 0
+}
+
 # Default responses to questions
 export CROUTON_USERNAME='test'
 export CROUTON_PASSPHRASE='hunter2'
@@ -416,6 +450,9 @@ for p in "$@"; do
             # Remount PREFIX noexec/etc to make the environment as harsh as possible
             mount --bind "$PREFIX" "$PREFIX"
             mount -i -o remount,nosuid,nodev,noexec "$PREFIX"
+            # Shuffle release test order
+            SUPPORTED_RELEASES="`echo "$SUPPORTED_RELEASES" | tr ' ' "\n" \
+                                    | sort -R | tr "\n" ' '`"
             # Clean up on exit
             settrap "
                 if [ -d '$PREFIX/chroots' ]; then

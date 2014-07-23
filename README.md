@@ -241,9 +241,18 @@ There's a way For Everyone to help!
   * Hang out in the \#crouton IRC channel on freenode.net!
 
 
+Sweet! Have some code!
+----------------------
+Whoa, thanks!  But before your code can be merged, you'll need to have signed
+the [Individual Contributor License Agreement](https://developers.google.com/open-source/cla/individual#sign-electronically).
+Don't worry, it only takes a minute and you'll definitely get to keep your
+firstborn, probably.  If you've already signed it for contributing to Chromium
+or Chromium OS, you're already done.
+
+
 License
 -------
-crouton (including this eloquently-written README) is copyright &copy; 2013 The
+crouton (including this eloquently-written README) is copyright &copy; 2014 The
 Chromium OS Authors. All rights reserved. Use of the source code included here
 is governed by a BSD-style license that can be found in the LICENSE file in the
 source tree.

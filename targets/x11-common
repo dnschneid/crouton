@@ -15,7 +15,7 @@ compile wmtools '-lX11' libx11-dev
 
 # Install utilities and links for powerd-poking daemon
 compile xi2event '-lX11 -lXi' libx11-dev libxi-dev
-install --minimal dbus
+install --minimal dbus xdg-utils
 ln -sf croutonpowerd /usr/local/bin/gnome-screensaver-command
 ln -sf croutonpowerd /usr/local/bin/xscreensaver-command
 

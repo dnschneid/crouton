@@ -74,17 +74,11 @@ mkdir -m 775 -p /tmp/crouton-lock
     flock 3
     XMETHOD='' host-x11 xbindkeys -n -fg /etc/crouton/xbindkeysrc.scm &
     trap "kill '$!' 2>/dev/null" HUP INT TERM
-    wait "$!"
+    wait "$!" || true
 } 3>/tmp/crouton-lock/xbindkeys &
 
 # Pass through the host cursor and correct mousewheels on xephyr
 if [ "$xmethod" = 'xephyr' ]; then
-    # Xephyr (versions >=1.15.0, <1.15.0.902) does not properly resize its
-    # window: tell croutonwmtools to maximize it
-    # FIXME: Remove this when these versions are not used by any supported
-    # distro anymore (see https://github.com/dnschneid/crouton/pull/750)
-    host-x11 croutonwmtools r "`host-x11 croutonwmtools l 1`"
-
     host-x11 croutoncursor "$DISPLAY" &
     if [ -z "$CROUTON_WHEEL_PARAMS" -a -r "$HOME/.croutonwheel" ]; then
         CROUTON_WHEEL_PARAMS="`head -n1 "$HOME/.croutonwheel"`"
@@ -117,8 +111,10 @@ fi
 
 # Shell is the leader of a process group, so signals sent to this process are
 # propagated to its children. We ignore signals in this process, but the child
-# handles them and exits. This process then runs exit commands, and terminates.
-trap "" HUP INT TERM
+# handles them and exits. We use a no-op handler, as "" causes the signal to be
+# ignored in children as well (see NOTES in "man 2 sigaction" for details).
+# This process then runs exit commands, and terminates.
+trap "true" HUP INT TERM
 
 # Run the client itself if it is executable, otherwise run it in a shell.
 ret=0
