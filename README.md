@@ -210,8 +210,31 @@ there. When filing a new bug, include the output of `croutonversion` run from
 inside the chroot (if possible).
 
 
-Can I help?
------------
+I want to be a Contributor!
+---------------------------
+That's great!  But before your code can be merged, you'll need to have signed
+the [Individual Contributor License Agreement](https://developers.google.com/open-source/cla/individual#sign-electronically).
+Don't worry, it only takes a minute and you'll definitely get to keep your
+firstborn, probably.  If you've already signed it for contributing to Chromium
+or Chromium OS, you're already done.
+
+If you don't know what to with your time as an official Contributor, here's some
+suggestions:
+
+  * Really like a certain desktop environment? Fork crouton, add the target, and
+    create a pull request.
+  * Feel like hacking around with Chromium OS integration? Fork crouton, improve
+    integration, and create a pull request.
+  * Is your distro underrepresented? Want to contribute to the elusive and
+    mythical beast known as "croagh"? Fork crouton, add the distro, and create a
+    pull request.
+  * Discovered a bug lurking within the scripts, or a papercut that bothers you
+    just enough to make you want to actually do something about it? You guessed
+    it: fork crouton, fix everything, and create a pull request.
+
+
+Are there other, non-Contributory ways I can help?
+--------------------------------------------------
 Yes!
 
 
@@ -230,29 +253,14 @@ There's a way For Everyone to help!
     and add the relevant info to the [wiki](https://github.com/dnschneid/crouton/wiki).
     Or just add things to/improve things in the wiki in general, but do try to
     keep it relevant and organized.
-  * Really like a certain desktop environment? Open or comment on a bug with
-    steps to get things working well. Or better yet, create a pull request with
-    a new target.
-  * Feel like hacking around with Chromium OS integration? Fork crouton, improve
-    integration, and create a pull request.
-  * Is your distro underrepresented? Want to contribute to the elusive and
-    mythical beast known as "croagh"? Fork crouton, add the distro, and create a
-    pull request.
+  * Really like a certain desktop environment, but not up for coding? Open or
+    comment on a bug with steps to get things working well.
   * Hang out in the \#crouton IRC channel on freenode.net!
-
-
-Sweet! Have some code!
-----------------------
-Whoa, thanks!  But before your code can be merged, you'll need to have signed
-the [Individual Contributor License Agreement](https://developers.google.com/open-source/cla/individual#sign-electronically).
-Don't worry, it only takes a minute and you'll definitely get to keep your
-firstborn, probably.  If you've already signed it for contributing to Chromium
-or Chromium OS, you're already done.
 
 
 License
 -------
 crouton (including this eloquently-written README) is copyright &copy; 2014 The
-Chromium OS Authors. All rights reserved. Use of the source code included here
-is governed by a BSD-style license that can be found in the LICENSE file in the
+crouton Authors. All rights reserved. Use of the source code included here is
+governed by a BSD-style license that can be found in the LICENSE file in the
 source tree.
