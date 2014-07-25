@@ -218,8 +218,8 @@ Don't worry, it only takes a minute and you'll definitely get to keep your
 firstborn, probably.  If you've already signed it for contributing to Chromium
 or Chromium OS, you're already done.
 
-If you don't know what to with your time as an official Contributor, here's some
-suggestions:
+If you don't know what to do with your time as an official Contributor, here's
+some suggestions:
 
   * Really like a certain desktop environment? Fork crouton, add the target, and
     create a pull request.
