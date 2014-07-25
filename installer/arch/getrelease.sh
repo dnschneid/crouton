@@ -16,11 +16,20 @@ if [ "$#" != 2 ] || [ "$1" != '-a' -a "$1" != '-r' ]; then
     exit 2
 fi
 
-rel="`sed -n -e 's/^ID=//p' "${2%/}/etc/os-release"`"
+# ArchLinux ARM ships with /etc/os-release in filesystem package
+# ArchLinux only ships an empty /etc/arch-release
+osrelease="${2%/}/etc/os-release"
+if [ -f "$osrelease" ]; then
+    rel="`sed -n -e 's/^ID=//p' "$osrelease"`"
 
-if [ "$rel" = 'archarm' ]; then
-    rel="alarm"
-elif [ "$rel" != 'arch' ]; then
+    if [ "$rel" = 'archarm' ]; then
+        rel="alarm"
+    elif [ "$rel" != 'arch' ]; then
+        exit 1
+    fi
+elif [ -f "${2%/}/etc/arch-release" ]; then
+    rel="arch"
+else
     exit 1
 fi
 

@@ -554,7 +554,7 @@ else
         # This is necessary to get /usr/local/bin in the PATH, and setup the
         # correct locale, among other things. This is not necessary in Ubuntu,
         # as these are set by /etc/pam.d/su .
-        if grep -q "ID=arch" "$CHROOT/etc/os-release"; then
+        if [ "$CHROOTRELEASE" = 'arch' -o "$CHROOTRELEASE" = 'alarm' ]; then
             cmd="$cmd . /etc/profile;"
         fi
 
