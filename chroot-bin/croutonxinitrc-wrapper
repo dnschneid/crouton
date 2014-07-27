@@ -107,6 +107,13 @@ if synclient >/dev/null 2>&1; then
     fi
 fi
 
+# Make sure tap-to-click is enabled
+if hash xinput 2>/dev/null; then
+    for id in `host-x11 xinput --list --id-only`; do
+        host-x11 xinput set-prop "$id" 'Tap Paused' 0 2>/dev/null || true
+    done
+fi
+
 # Shell is the leader of a process group, so signals sent to this process are
 # propagated to its children. We ignore signals in this process, but the child
 # handles them and exits. We use a no-op handler, as "" causes the signal to be
