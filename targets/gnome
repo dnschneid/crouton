@@ -11,7 +11,8 @@ CHROOTBIN='startgnome gnome-session-wrapper'
 ### Append to prepare.sh:
 install --minimal evolution-data-server gnome-control-center \
         gnome-screensaver gnome-session gnome-session-fallback \
-        gnome-shell gnome-themes-standard gvfs-backends nautilus unzip
+        gnome-shell gnome-themes-standard gvfs-backends nautilus \
+        unzip gtk2-engines-pixbuf
 
 TIPS="$TIPS
 You can start GNOME via the startgnome host command: sudo startgnome
