@@ -360,8 +360,15 @@ done
 # Add a shm symlink to our new /var/run
 ln -sfT /dev/shm "`fixabslinks '/var/run'`/shm"
 
-# Add a /run/udev symlink for later versions of udev
-ln -sfT /dev/.udev "`fixabslinks '/var/run'`/udev"
+# Setup udev control directory in the chroot
+# Chromium OS >=6092 uses /run/udev, older versions /dev/.udev
+if [ -d /dev/.udev ]; then
+    # Add a /run/udev symlink for later versions of udev in chroot
+    ln -sfT /dev/.udev "`fixabslinks '/var/run'`/udev"
+else
+    bindmount /var/run/udev /var/host/udev
+    ln -sfT /var/host/udev "`fixabslinks '/var/run'`/udev"
+fi
 
 # Add a /var/host/cras symlink for CRAS clients
 ln -sfT /var/host/cras "`fixabslinks '/var/run'`/cras"
