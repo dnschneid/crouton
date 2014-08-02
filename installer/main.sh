@@ -375,7 +375,8 @@ Either delete it, specify a different name (-n), or specify -u to update it."
         create=''
         echo "$CHROOTSRC already exists; updating it..." 1>&2
     elif [ -n "$UPDATE" -a -z "$RESTORE" ]; then
-        error 1 "$CHROOTSRC does not exist; cannot update."
+        echo "$CHROOTSRC does not exist; cannot update." 1>&2
+        error 1 "Valid chroots are: `cd $CHROOTS; echo *`"
     fi
 
     # Restore the chroot now
