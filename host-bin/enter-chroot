@@ -362,12 +362,11 @@ ln -sfT /dev/shm "`fixabslinks '/var/run'`/shm"
 
 # Setup udev control directory in the chroot
 # Chromium OS >=6092 uses /run/udev, older versions /dev/.udev
-if [ -d /dev/.udev ]; then
+if [ -d /var/run/udev ]; then
+    bindmount /var/run/udev
+else
     # Add a /run/udev symlink for later versions of udev in chroot
     ln -sfT /dev/.udev "`fixabslinks '/var/run'`/udev"
-else
-    bindmount /var/run/udev /var/host/udev
-    ln -sfT /var/host/udev "`fixabslinks '/var/run'`/udev"
 fi
 
 # Add a /var/host/cras symlink for CRAS clients
