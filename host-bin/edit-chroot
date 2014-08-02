@@ -6,12 +6,14 @@
 set -e
 
 APPLICATION="${0##*/}"
+ALLCHROOTS=''
 BACKUP=''
 BINDIR="`dirname "\`readlink -f "$0"\`"`"
 CHROOTS="`readlink -f "$BINDIR/../chroots"`"
 DELETE=''
 ENCRYPT=''
 KEYFILE=''
+LISTDETAILS=''
 MOVE=''
 RESTORE=''
 TARBALL=''
@@ -23,6 +25,8 @@ USAGE="$APPLICATION [options] name [...]
 Edits a chroot.
 
 Options:
+    -a          Operates on all chroots in $CHROOTS.
+                If no other operation is specified, prints out the names of the chroots.
     -c CHROOTS  Directory the chroots are in. Default: $CHROOTS
     -b          Backs up the chroot to a tarball. Compression format is chosen
                 based on the tarball extension. Backups always take place before
@@ -43,6 +47,7 @@ Options:
                 KEYFILE to move the key back into the chroot.
                 If multiple chroots are specified, KEYFILE must either be -
                 or a directory.
+    -l          Prints out croutonversion details on the chroot.
     -m DEST     Moves a chroot. Specify a new name to keep it in the same
                 directory, or an absolute path to move it entirely.
                 DEST can be a directory, in which case it must end in a slash.
@@ -58,14 +63,16 @@ Options:
 . "$BINDIR/../installer/functions"
 
 # Process arguments
-while getopts 'bc:def:k:m:ry' f; do
+while getopts 'abc:def:k:lm:ry' f; do
     case "$f" in
+    a) ALLCHROOTS='y';;
     b) BACKUP='y';;
     c) CHROOTS="`readlink -f "$OPTARG"`";;
     d) DELETE='y';;
     e) ENCRYPT='y';;
     f) TARBALL="$OPTARG";;
     k) KEYFILE="$OPTARG";;
+    l) LISTDETAILS='y';;
     m) MOVE="$OPTARG";;
     r) RESTORE=$(($RESTORE+1));;
     y) YES='a'; YESPARAM='-y';;
@@ -80,7 +87,7 @@ if [ ! "${APPLICATION#delete}" = "$APPLICATION" ]; then
 fi
 
 # At least one command must be specified
-if [ -z "$BACKUP$DELETE$ENCRYPT$KEYFILE$MOVE$RESTORE" ]; then
+if [ -z "$ALLCHROOTS$BACKUP$DELETE$ENCRYPT$KEYFILE$LISTDETAILS$MOVE$RESTORE" ]; then
     error 2 "$USAGE"
 fi
 
@@ -102,6 +109,11 @@ fi
 # Cannot specify delete with anything else.
 if [ -n "$DELETE" -a -n "$BACKUP$ENCRYPT$KEYFILE$MOVE$RESTORE" ]; then
     error 2 "$USAGE"
+fi
+
+# Set $@ to all chroot names if using -a.
+if [ $# = 0 ] && [ -n "$ALLCHROOTS" ]; then
+    set -- "$(cd $CHROOTS; echo *)"
 fi
 
 # If multiple chroots are listed, KEYFILE and MOVE must be empty or directories.
@@ -159,6 +171,11 @@ Please specify all options before chroot names."
         fi
     fi
 done
+
+# Display all chroot names if using -a without any other operations.
+if [ -n "$ALLCHROOTS" -a -z "$BACKUP$DELETE$ENCRYPT$KEYFILE$LISTDETAILS$MOVE$RESTORE" ]; then
+    error 0 "All chroots in '$CHROOTS': $@"
+fi
 
 # If TARBALL ends in a slash or we're restoring multiple chroots, make directory
 if [ -n "$TARBALL" ] && \
@@ -234,6 +251,8 @@ for NAME in "$@"; do
             error 2 "$CHROOT already exists! Specify a second -r to overwrite it (dangerous)."
         elif [ -n "$RESTORE" ]; then
             EXISTS='y'
+        elif [ -n "$LISTDETAILS" ]; then
+            enter-chroot -n $NAME -x /usr/local/bin/croutonversion 2>&1 | grep -v ^Unmounting ; echo 1>&2
         else
             sh -e "$BINDIR/unmount-chroot" $YESPARAM -c "$CHROOTS" -- "$NAME"
         fi
