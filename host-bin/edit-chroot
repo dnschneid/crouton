@@ -156,7 +156,8 @@ fi
 # For anything but restore, make sure all chroots exist before doing anything.
 for NAME in "$@"; do
     if ! validate_name "$NAME"; then
-        error 2 "Invalid chroot name '$NAME'."
+        echo "Invalid chroot name '$NAME'." 2>&1
+        error 2 "Valid chroot names are: $(cd $CHROOTS; echo *)"
     fi
 
     if [ -z "$RESTORE" ]; then
