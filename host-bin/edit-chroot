@@ -94,7 +94,7 @@ if [ -z "$ALLCHROOTS$BACKUP$DELETE$ENCRYPT$KEYFILE$LISTDETAILS$MOVE$RESTORE" ]; 
 fi
 
 # Set $@ to all chroot names if using -a.
-if [ $# = 0 ] && [ -n "$ALLCHROOTS" ]; then
+if [ -n "$ALLCHROOTS" ]; then
     set -- "$(cd $CHROOTS; echo *)"
 fi
 
