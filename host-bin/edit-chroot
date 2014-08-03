@@ -72,7 +72,7 @@ while getopts 'abc:def:k:lm:ry' f; do
     e) ENCRYPT='y';;
     f) TARBALL="$OPTARG";;
     k) KEYFILE="$OPTARG";;
-    l) LISTDETAILS='y';;
+    l) LISTDETAILS=$(($LISTDETAILS+1));;
     m) MOVE="$OPTARG";;
     r) RESTORE=$(($RESTORE+1));;
     y) YES='a'; YESPARAM='-y';;
@@ -89,6 +89,11 @@ fi
 # At least one command must be specified
 if [ -z "$ALLCHROOTS$BACKUP$DELETE$ENCRYPT$KEYFILE$LISTDETAILS$MOVE$RESTORE" ]; then
     error 2 "$USAGE"
+fi
+
+# Set $@ to all chroot names if using -a.
+if [ $# = 0 ] && [ -n "$ALLCHROOTS" ]; then
+    set -- "$(cd $CHROOTS; echo *)"
 fi
 
 # Need at least one chroot listed if not using -r with -f.
@@ -109,11 +114,6 @@ fi
 # Cannot specify delete with anything else.
 if [ -n "$DELETE" -a -n "$BACKUP$ENCRYPT$KEYFILE$MOVE$RESTORE" ]; then
     error 2 "$USAGE"
-fi
-
-# Set $@ to all chroot names if using -a.
-if [ $# = 0 ] && [ -n "$ALLCHROOTS" ]; then
-    set -- "$(cd $CHROOTS; echo *)"
 fi
 
 # If multiple chroots are listed, KEYFILE and MOVE must be empty or directories.
