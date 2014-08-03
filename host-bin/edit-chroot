@@ -47,7 +47,9 @@ Options:
                 KEYFILE to move the key back into the chroot.
                 If multiple chroots are specified, KEYFILE must either be -
                 or a directory.
-    -l          Prints out croutonversion details on the chroot.
+    -l          Prints out croutonversion details on the chroot,
+                or [encrypted] if the chroot is encrypted and not mounted.
+                Specify twice to prompt and mount encrypted chroots.
     -m DEST     Moves a chroot. Specify a new name to keep it in the same
                 directory, or an absolute path to move it entirely.
                 DEST can be a directory, in which case it must end in a slash.
@@ -251,8 +253,19 @@ for NAME in "$@"; do
             error 2 "$CHROOT already exists! Specify a second -r to overwrite it (dangerous)."
         elif [ -n "$RESTORE" ]; then
             EXISTS='y'
-        elif [ -n "$LISTDETAILS" ]; then
-            enter-chroot -n $NAME -x /usr/local/bin/croutonversion 2>&1 | grep -v ^Unmounting ; echo 1>&2
+        elif [ "$LISTDETAILS" = 1 ]; then
+            if [ -f "$CHROOT/.ecryptfs" ]; then
+                echo "$NAME [encrypted]" 2>&1
+            else
+                enter-chroot -n $NAME -x /usr/local/bin/croutonversion 2>&1 | grep -v ^Unmounting ; echo 1>&2
+            fi
+        elif [ "$LISTDETAILS" = 2 ]; then
+            if [ -f "$CHROOT/.ecryptfs" ]; then
+                sh -e "$BINDIR/mount-chroot" -p -c "$CHROOTS" -- "$NAME"
+                enter-chroot -n $NAME -x /usr/local/bin/croutonversion 2>&1 | grep -v ^Unmounting ; echo 1>&2
+            else
+                error 2 "$CHROOT is not encrypted but '-l' was specified twice, exiting."
+            fi
         else
             sh -e "$BINDIR/unmount-chroot" $YESPARAM -c "$CHROOTS" -- "$NAME"
         fi
