@@ -25,6 +25,8 @@ MIRROR=''
 MIRROR2=''
 NAME=''
 PREFIX='/usr/local'
+PREFIXSET=''
+CHROOTSLINK='/mnt/stateful_partition/crouton/chroots'
 PROXY='unspecified'
 RELEASE=''
 RESTORE=''
@@ -74,7 +76,9 @@ Options:
     -n NAME     Name of the chroot. Default is the release name.
                 Cannot contain any slash (/).
     -p PREFIX   The root directory in which to install the bin and chroot
-                subdirectories and data. Default: $PREFIX
+                subdirectories and data.
+                Default: $PREFIX, with $PREFIX/chroots linked to
+                $CHROOTSLINK.
     -P PROXY    Set an HTTP proxy for the chroot; effectively sets http_proxy.
                 Specify an empty string to remove a proxy when updating.
     -r RELEASE  Name of the distribution release. Default: $DEFAULTRELEASE,
@@ -114,7 +118,7 @@ while getopts 'a:def:k:m:M:n:p:P:r:s:t:T:uUV' f; do
     m) MIRROR="$OPTARG";;
     M) MIRROR2="$OPTARG";;
     n) NAME="$OPTARG";;
-    p) PREFIX="`readlink -f "$OPTARG"`";;
+    p) PREFIX="`readlink -f "$OPTARG"`"; PREFIXSET='y';;
     P) PROXY="$OPTARG";;
     r) RELEASE="$OPTARG";;
     t) TARGETS="$TARGETS${TARGETS:+","}$OPTARG";;
@@ -363,6 +367,50 @@ fi
 
 # Confirm we have write access to the directory before starting.
 if [ -z "$DOWNLOADONLY" ]; then
+    # If no prefix is set, check that /usr/local/chroots ($CHROOTS) is a
+    # symbolic link to /mnt/stateful_partition/crouton/chroots ($CHROOTSLINK)
+    if [ -z "$PREFIXSET" -a ! -h "$CHROOTS" ]; then
+        # Detect if chroots are left in the old chroots directory, and move them
+        # to the new directory.
+        if [ -e "$CHROOTS" ] && ! rmdir "$CHROOTS" 2>/dev/null; then
+            echo \
+"Moving data from legacy chroots directory $CHROOTS to $CHROOTSLINK..." 1>&2
+
+            # /mnt/stateful_partition/dev_image is bind-mounted to /usr/local,
+            # so mv does not understand that they are on the same filesystem
+            # Instead, use the direct path.
+            truechroots="/mnt/stateful_partition/dev_image/chroots"
+
+            # Be extra careful and check both files are indeed the same
+            if [ "`stat -c '%i' "$truechroots"`" != \
+                    "`stat -c '%i' "$CHROOTS"`" ]; then
+                error 1 \
+"$truechroots and $CHROOTS are not the same file as expected."
+            fi
+
+            # Check that CHROOTSLINK is empty
+            if [ -e "$CHROOTSLINK" ] && ! rmdir "$CHROOTSLINK" 2>/dev/null; then
+                error 1 \
+"There is data in both $CHROOTS and $CHROOTSLINK.
+Make sure all chroots are unmounted, then manually move the content of
+$truechroots to $CHROOTSLINK."
+            fi
+
+            # Check that current chroots are not mounted
+            if grep -q "$CHROOTS" /proc/mounts; then
+                error 1 \
+"Some chroot appears to be mounted in the legacy chroots directory
+$CHROOTS. Log out of all running chroots, then run:
+  sudo unmount-chroot -a
+And rerun the installer."
+            fi
+
+            mkdir -p "`dirname "$CHROOTSLINK"`"
+            mv "$truechroots" "$CHROOTSLINK"
+        fi
+        ln -s "$CHROOTSLINK" "$CHROOTS"
+    fi
+
     create='-n'
     if [ -d "$CHROOT" ] && ! rmdir "$CHROOT" 2>/dev/null; then
         if [ -n "$RESTORE" ]; then
