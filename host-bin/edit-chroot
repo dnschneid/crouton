@@ -266,23 +266,27 @@ for NAME in "$@"; do
     # Check for existence and unmount/delete the chroot.
     if [ -d "$CHROOT" ]; then
         if [ -n "$LISTDETAILS" ]; then
+            echo "name: $NAME" 1>&2
             if [ -f "$CHROOT/.ecryptfs" ]; then
                 if [ -d "/var/run/crouton/$CHROOT" ]; then
-                    echo "name: $NAME" [encrypted: yes, accessible] 2>&1
-                    CROUTON_NO_UNMOUNT=1 sh -e "$BINDIR/enter-chroot" -c "$CHROOTS" -n "$NAME" -x /usr/local/bin/croutonversion
+                    echo "[encrypted: yes, accessible]" 1>&2
+                    GETVERSION='y'
                 elif [ "${LISTDETAILS:-0}" -gt 1 ]; then
                     sh -e "$BINDIR/mount-chroot" -p -c "$CHROOTS" -- "$NAME" || ret=$
                     if [ "$ret" != 0 ]; then
-                        echo "name: $NAME" [encrypted: yes, protected] 2>&1
+                        echo "[encrypted: yes, protected]" 1>&2
                     elif [ -d "/var/run/crouton/$CHROOT" ]; then
-                        echo "name: $NAME" [encrypted: yes, accessible] 2>&1
-                        CROUTON_NO_UNMOUNT=1 sh -e "$BINDIR/enter-chroot" -c "$CHROOTS" -n "$NAME" -x /usr/local/bin/croutonversion
+                        echo "[encrypted: yes, accessible]" 1>&2
+                        GETVERSION='y'
                 else
-                    echo "name: $NAME [encrypted: no]" 2>&1
+                    echo "[encrypted: no]" 1>&2
                     error 2 "$CHROOT is not encrypted but '-l' was specified twice."
                 fi
             else
-                echo "name: $NAME [encrypted: no]" 2>&1
+                echo "[encrypted: no]" 1>&2
+                GETVERSION='y'
+            fi
+            if [ "$GETVERSION" = 'y' ]; then
                 CROUTON_NO_UNMOUNT=1 sh -e "$BINDIR/enter-chroot" -c "$CHROOTS" -n "$NAME" -x /usr/local/bin/croutonversion
             fi
         fi
