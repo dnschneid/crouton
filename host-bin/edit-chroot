@@ -93,9 +93,21 @@ if [ -z "$ALLCHROOTS$BACKUP$DELETE$ENCRYPT$KEYFILE$LISTDETAILS$MOVE$RESTORE" ]; 
     error 2 "$USAGE"
 fi
 
-# Set $@ to all chroot names if using -a.
-if [ -n "$ALLCHROOTS" ]; then
-    set -- "$(cd $CHROOTS; echo *)"
+# Need at least one chroot listed, or -a; not both.
+if [ $# = 0 -a -z "$ALLCHROOTS" ] || [ ! $# = 0 -a -n "$ALLCHROOTS" ]; then
+    error 2 "$USAGE"
+fi
+
+# If we specified -a option, bring in all chroots.
+if [ -n "$ALLCHROOTS" ];
+    if [ ! -d "$CHROOTS" ]; then
+        error 1 "$CHROOTS not found."
+    fi
+    for CRNAME in "$CHROOTS"/*; do
+        if [ -d "$CRNAME" ]; then
+            set -- "$@" "${CRNAME##*/}"
+        fi
+    done
 fi
 
 # Need at least one chroot listed if not using -r with -f.
@@ -156,8 +168,7 @@ fi
 # For anything but restore, make sure all chroots exist before doing anything.
 for NAME in "$@"; do
     if ! validate_name "$NAME"; then
-        echo "Invalid chroot name '$NAME'." 2>&1
-        error 2 "Valid chroot names are: $(cd $CHROOTS; echo *)"
+        error 2 "Invalid chroot name '$NAME'."
     fi
 
     if [ -z "$RESTORE" ]; then
@@ -177,7 +188,8 @@ done
 
 # Display all chroot names if using -a without any other operations.
 if [ -n "$ALLCHROOTS" -a -z "$BACKUP$DELETE$ENCRYPT$KEYFILE$LISTDETAILS$MOVE$RESTORE" ]; then
-    error 0 "All chroots in '$CHROOTS': $@"
+    echo "chroots in '$CHROOTS:'
+    $@" 2>&1
 fi
 
 # If TARBALL ends in a slash or we're restoring multiple chroots, make directory
@@ -250,23 +262,31 @@ for NAME in "$@"; do
 
     # Check for existence and unmount/delete the chroot.
     if [ -d "$CHROOT" ]; then
+        if [ "$LISTDETAILS" -eq 1 ]; then
+            if [ -f "$CHROOT/.ecryptfs" ]; then
+                echo "name: $NAME [encrypted: yes]" 2>&1
+            else
+                echo "name: $NAME [encrypted: no]" 2>&1
+                CROUTON_NO_UNMOUNT=1 sh -e "$BINDIR/enter-chroot" -c "$CHROOTS" -n "$NAME" -x /usr/local/bin/croutonversion
+            fi
+        elif [ "$LISTDETAILS" -gt 1 ]; then
+            if [ -f "$CHROOT/.ecryptfs" ]; then
+                sh -e "$BINDIR/mount-chroot" -p -c "$CHROOTS" -- "$NAME" || ret=$
+                if [ "$ret" != 0 ]; then
+                    echo "name: $NAME" [encrypted: yes, protected] 2>&1
+                elif [ -d "/var/run/crouton/$CHROOT" ]; then
+                    echo "name: $NAME" [encrypted: yes, accessible] 2>&1
+                    CROUTON_NO_UNMOUNT=1 sh -e "$BINDIR/enter-chroot" -c "$CHROOTS" -n "$NAME" -x /usr/local/bin/croutonversion
+                fi
+            else
+                echo "name: $NAME [encrypted: no]" 2>&1
+                error 2 "$CHROOT is not encrypted but '-l' was specified twice."
+            fi  
+        fi
         if [ "$RESTORE" = 1 ]; then
             error 2 "$CHROOT already exists! Specify a second -r to overwrite it (dangerous)."
         elif [ -n "$RESTORE" ]; then
             EXISTS='y'
-        elif [ "$LISTDETAILS" = 1 ]; then
-            if [ -f "$CHROOT/.ecryptfs" ]; then
-                echo "$NAME [encrypted]" 2>&1
-            else
-                enter-chroot -n $NAME -x /usr/local/bin/croutonversion 2>&1 | grep -v ^Unmounting ; echo 1>&2
-            fi
-        elif [ "$LISTDETAILS" = 2 ]; then
-            if [ -f "$CHROOT/.ecryptfs" ]; then
-                sh -e "$BINDIR/mount-chroot" -p -c "$CHROOTS" -- "$NAME"
-                enter-chroot -n $NAME -x /usr/local/bin/croutonversion 2>&1 | grep -v ^Unmounting ; echo 1>&2
-            else
-                error 2 "$CHROOT is not encrypted but '-l' was specified twice, exiting."
-            fi
         else
             sh -e "$BINDIR/unmount-chroot" $YESPARAM -c "$CHROOTS" -- "$NAME"
         fi
