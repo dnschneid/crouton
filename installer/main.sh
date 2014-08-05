@@ -118,7 +118,7 @@ while getopts 'a:def:k:m:M:n:p:P:r:s:t:T:uUV' f; do
     m) MIRROR="$OPTARG";;
     M) MIRROR2="$OPTARG";;
     n) NAME="$OPTARG";;
-    p) PREFIX="`readlink -f "$OPTARG"`"; PREFIXSET='y';;
+    p) PREFIX="`readlink -m "$OPTARG"`"; PREFIXSET='y';;
     P) PROXY="$OPTARG";;
     r) RELEASE="$OPTARG";;
     t) TARGETS="$TARGETS${TARGETS:+","}$OPTARG";;

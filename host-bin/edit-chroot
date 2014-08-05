@@ -8,7 +8,7 @@ set -e
 APPLICATION="${0##*/}"
 BACKUP=''
 BINDIR="`dirname "\`readlink -f "$0"\`"`"
-CHROOTS="`readlink -f "$BINDIR/../chroots"`"
+CHROOTS="`readlink -m "$BINDIR/../chroots"`"
 DELETE=''
 ENCRYPT=''
 KEYFILE=''
@@ -61,7 +61,7 @@ Options:
 while getopts 'bc:def:k:m:ry' f; do
     case "$f" in
     b) BACKUP='y';;
-    c) CHROOTS="`readlink -f "$OPTARG"`";;
+    c) CHROOTS="`readlink -m "$OPTARG"`";;
     d) DELETE='y';;
     e) ENCRYPT='y';;
     f) TARBALL="$OPTARG";;

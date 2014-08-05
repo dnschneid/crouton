@@ -7,7 +7,7 @@ set -e
 
 APPLICATION="${0##*/}"
 BINDIR="`dirname "\`readlink -f "$0"\`"`"
-CHROOTS="`readlink -f "$BINDIR/../chroots"`"
+CHROOTS="`readlink -m "$BINDIR/../chroots"`"
 CREATE=''
 ENCRYPT=''
 KEYFILE=''
@@ -35,7 +35,7 @@ Options:
 # Process arguments
 while getopts 'c:ek:np' f; do
     case "$f" in
-    c) CHROOTS="`readlink -f "$OPTARG"`";;
+    c) CHROOTS="`readlink -m "$OPTARG"`";;
     e) ENCRYPT="$((ENCRYPT+1))";;
     k) KEYFILE="$OPTARG";;
     n) CREATE='y';;

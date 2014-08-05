@@ -8,7 +8,7 @@ set -e
 APPLICATION="${0##*/}"
 ALLCHROOTS=''
 BINDIR="`dirname "\`readlink -f "$0"\`"`"
-CHROOTS="`readlink -f "$BINDIR/../chroots"`"
+CHROOTS="`readlink -m "$BINDIR/../chroots"`"
 EXCLUDEROOT=''
 FORCE=''
 PRINT=''
@@ -50,7 +50,7 @@ error() {
 while getopts 'ac:fkpt:xy' f; do
     case "$f" in
     a) ALLCHROOTS='y';;
-    c) CHROOTS="`readlink -f "$OPTARG"`";;
+    c) CHROOTS="`readlink -m "$OPTARG"`";;
     f) FORCE='y';;
     k) SIGNAL="KILL";;
     p) PRINT='y';;

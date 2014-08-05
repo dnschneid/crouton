@@ -8,7 +8,7 @@ set -e
 APPLICATION="${0##*/}"
 BACKGROUND=''
 BINDIR="`dirname "\`readlink -f "$0"\`"`"
-CHROOTS="`readlink -f "$BINDIR/../chroots"`"
+CHROOTS="`readlink -m "$BINDIR/../chroots"`"
 KEYFILE=''
 LOGIN=''
 NAME=''
@@ -65,7 +65,7 @@ while getopts 'bc:k:ln:t:u:x' f; do
     prevoptind="$OPTIND"
     case "$f" in
     b) BACKGROUND='y';;
-    c) CHROOTS="`readlink -f "$OPTARG"`";;
+    c) CHROOTS="`readlink -m "$OPTARG"`";;
     k) KEYFILE="$OPTARG";;
     l) LOGIN='y';;
     n) NAME="$OPTARG";;
