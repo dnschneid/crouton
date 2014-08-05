@@ -12,7 +12,6 @@ BINDIR="`dirname "\`readlink -f "$0"\`"`"
 CHROOTS="`readlink -f "$BINDIR/../chroots"`"
 DELETE=''
 ENCRYPT=''
-GETVERSION=''
 KEYFILE=''
 LISTDETAILS=''
 MOVE=''
@@ -264,25 +263,27 @@ for NAME in "$@"; do
     CHROOT="$CHROOTS/$NAME"
     # Check for existence and unmount/delete the chroot.
     if [ -d "$CHROOT" ]; then
+        GETVERSION=''
         if [ -n "$LISTDETAILS" ]; then
             echo "name: $NAME" 2>&1
             if [ -f "$CHROOT/.ecryptfs" ]; then
                 if [ -d "/var/run/crouton/$CHROOT" ]; then
-                    echo "[encrypted: yes, accessible]" 1>&2
+                    echo "encrypted: yes, unlocked" 2>&1
                     GETVERSION='y'
-                elif [ "${LISTDETAILS:-0}" -gt 1 ]; then
-                    sh -e "$BINDIR/mount-chroot" -p -c "$CHROOTS" -- "$NAME" || ret=$
-                    if [ "$ret" != 0 ]; then
-                        echo "[encrypted: yes, protected]" 1>&2
-                    elif [ -d "/var/run/crouton/$CHROOT" ]; then
-                        echo "[encrypted: yes, accessible]" 1>&2
+                elif [ "$LISTDETAILS" -gt 1 ]; then
+                    sh -e "$BINDIR/mount-chroot" -p -c "$CHROOTS" -- "$NAME"
+                    if [ -d "/var/run/crouton/$CHROOT" ]; then
+                        echo "encrypted: yes, unlocked" 2>&1
                         GETVERSION='y'
+                    else
+                        echo "encrypted: yes, locked" 2>&1
+                    fi
                 else
-                    echo "[encrypted: no]" 1>&2
+                    echo "encrypted: no" 2>&1
                     error 2 "$CHROOT is not encrypted but '-l' was specified twice."
                 fi
             else
-                echo "[encrypted: no]" 1>&2
+                echo "encrypted: no" 2>&1
                 GETVERSION='y'
             fi
             if [ "$GETVERSION" = 'y' ]; then
