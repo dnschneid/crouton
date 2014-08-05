@@ -108,6 +108,9 @@ if [ -n "$ALLCHROOTS" ];
             set -- "$@" "${CRNAME##*/}"
         fi
     done
+    if [ $# = 0 ]; then
+    error 1 "No chroots found in $CHROOTS"
+    fi
 fi
 
 # Need at least one chroot listed if not using -r with -f.
@@ -188,8 +191,8 @@ done
 
 # Display all chroot names if using -a without any other operations.
 if [ -n "$ALLCHROOTS" -a -z "$BACKUP$DELETE$ENCRYPT$KEYFILE$LISTDETAILS$MOVE$RESTORE" ]; then
-    echo "chroots in '$CHROOTS:'
-    $@" 2>&1
+    echo "$@" 2>&1
+    exit 0
 fi
 
 # If TARBALL ends in a slash or we're restoring multiple chroots, make directory
@@ -262,26 +265,26 @@ for NAME in "$@"; do
 
     # Check for existence and unmount/delete the chroot.
     if [ -d "$CHROOT" ]; then
-        if [ "$LISTDETAILS" -eq 1 ]; then
+        if [ -n "$LISTDETAILS" ]; then
             if [ -f "$CHROOT/.ecryptfs" ]; then
-                echo "name: $NAME [encrypted: yes]" 2>&1
+                if [ -d "/var/run/crouton/$CHROOT" ]; then
+                    echo "name: $NAME" [encrypted: yes, accessible] 2>&1
+                    CROUTON_NO_UNMOUNT=1 sh -e "$BINDIR/enter-chroot" -c "$CHROOTS" -n "$NAME" -x /usr/local/bin/croutonversion
+                elif [ "${LISTDETAILS:-0}" -gt 1 ]; then
+                    sh -e "$BINDIR/mount-chroot" -p -c "$CHROOTS" -- "$NAME" || ret=$
+                    if [ "$ret" != 0 ]; then
+                        echo "name: $NAME" [encrypted: yes, protected] 2>&1
+                    elif [ -d "/var/run/crouton/$CHROOT" ]; then
+                        echo "name: $NAME" [encrypted: yes, accessible] 2>&1
+                        CROUTON_NO_UNMOUNT=1 sh -e "$BINDIR/enter-chroot" -c "$CHROOTS" -n "$NAME" -x /usr/local/bin/croutonversion
+                else
+                    echo "name: $NAME [encrypted: no]" 2>&1
+                    error 2 "$CHROOT is not encrypted but '-l' was specified twice."
+                fi
             else
                 echo "name: $NAME [encrypted: no]" 2>&1
                 CROUTON_NO_UNMOUNT=1 sh -e "$BINDIR/enter-chroot" -c "$CHROOTS" -n "$NAME" -x /usr/local/bin/croutonversion
             fi
-        elif [ "$LISTDETAILS" -gt 1 ]; then
-            if [ -f "$CHROOT/.ecryptfs" ]; then
-                sh -e "$BINDIR/mount-chroot" -p -c "$CHROOTS" -- "$NAME" || ret=$
-                if [ "$ret" != 0 ]; then
-                    echo "name: $NAME" [encrypted: yes, protected] 2>&1
-                elif [ -d "/var/run/crouton/$CHROOT" ]; then
-                    echo "name: $NAME" [encrypted: yes, accessible] 2>&1
-                    CROUTON_NO_UNMOUNT=1 sh -e "$BINDIR/enter-chroot" -c "$CHROOTS" -n "$NAME" -x /usr/local/bin/croutonversion
-                fi
-            else
-                echo "name: $NAME [encrypted: no]" 2>&1
-                error 2 "$CHROOT is not encrypted but '-l' was specified twice."
-            fi  
         fi
         if [ "$RESTORE" = 1 ]; then
             error 2 "$CHROOT already exists! Specify a second -r to overwrite it (dangerous)."
