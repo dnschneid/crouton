@@ -12,6 +12,7 @@ BINDIR="`dirname "\`readlink -f "$0"\`"`"
 CHROOTS="`readlink -f "$BINDIR/../chroots"`"
 DELETE=''
 ENCRYPT=''
+GETVERSION=''
 KEYFILE=''
 LISTDETAILS=''
 MOVE=''
