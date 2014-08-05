@@ -375,8 +375,8 @@ Either delete it, specify a different name (-n), or specify -u to update it."
         create=''
         echo "$CHROOTSRC already exists; updating it..." 1>&2
     elif [ -n "$UPDATE" -a -z "$RESTORE" ]; then
-        echo "$CHROOTSRC does not exist; cannot update." 1>&2
-        error 1 "Valid chroots:
+        error 1 "$CHROOTSRC does not exist; cannot update.
+Valid chroots:
 `sh "$BINDIR/edit-chroot" -c "$CHROOTS" -a`"
     fi
 
