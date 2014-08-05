@@ -374,7 +374,7 @@ if [ -z "$DOWNLOADONLY" ]; then
         # to the new directory.
         if [ -e "$CHROOTS" ] && ! rmdir "$CHROOTS" 2>/dev/null; then
             echo \
-"Moving data from legacy chroots directory $CHROOTS to $CHROOTSLINK..." 1>&2
+"Migrating data from legacy chroots directory $CHROOTS to $CHROOTSLINK..." 1>&2
 
             # /mnt/stateful_partition/dev_image is bind-mounted to /usr/local,
             # so mv does not understand that they are on the same filesystem
@@ -392,23 +392,25 @@ if [ -z "$DOWNLOADONLY" ]; then
             if [ -e "$CHROOTSLINK" ] && ! rmdir "$CHROOTSLINK" 2>/dev/null; then
                 error 1 \
 "There is data in both $CHROOTS and $CHROOTSLINK.
-Make sure all chroots are unmounted, then manually move the content of
+Make sure all chroots are unmounted, then manually move the contents of
 $truechroots to $CHROOTSLINK."
             fi
 
-            # Check that current chroots are not mounted
-            if grep -q "$CHROOTS" /proc/mounts; then
-                error 1 \
-"Some chroot appears to be mounted in the legacy chroots directory
-$CHROOTS. Log out of all running chroots, then run:
-  sudo unmount-chroot -a
-And rerun the installer."
+            # Wait for currently-mounted chroots to be unmounted
+            if grep -q "$CHROOTS" /proc/mounts && \
+                    ! sh "$HOSTBINDIR/unmount-chroot" -a -y -c "$CHROOTS"; then
+                echo \
+"The above chroots appear to be running from the legacy chroots directory.
+Log out of all running chroots and the install will automatically continue." 1>&2
+                while grep -q "$CHROOTS" /proc/mounts; do
+                    sleep 1
+                done
             fi
 
-            mkdir -p "`dirname "$CHROOTSLINK"`"
-            mv "$truechroots" "$CHROOTSLINK"
+            mkdir -p "$CHROOTSLINK"
+            mv -T "$truechroots" "$CHROOTSLINK"
         fi
-        ln -s "$CHROOTSLINK" "$CHROOTS"
+        ln -sT "$CHROOTSLINK" "$CHROOTS"
     fi
 
     create='-n'
