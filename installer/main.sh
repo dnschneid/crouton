@@ -401,7 +401,8 @@ $truechroots to $CHROOTSLINK."
                     ! sh "$HOSTBINDIR/unmount-chroot" -a -y -c "$CHROOTS"; then
                 echo -n \
 "The above chroots appear to be running from the legacy chroots directory.
-Log out of all running chroots and the install will automatically continue." 1>&2
+Log out of all running chroots and the install will automatically continue.
+Press Ctrl-C at any time to abort the installation." 1>&2
                 while grep -q "$CHROOTS" /proc/mounts; do
                     sleep 1
                 done
