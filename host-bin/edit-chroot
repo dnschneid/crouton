@@ -47,9 +47,8 @@ Options:
                 KEYFILE to move the key back into the chroot.
                 If multiple chroots are specified, KEYFILE must either be -
                 or a directory.
-    -l          Prints out croutonversion details on the chroot,
-                or [encrypted] if the chroot is encrypted and not mounted.
-                Specify twice to prompt and mount encrypted chroots.
+    -l          Prints out croutonversion details on the chroot, if available.
+                Specify twice to prompt and unlock encrypted chroots as necessary.
     -m DEST     Moves a chroot. Specify a new name to keep it in the same
                 directory, or an absolute path to move it entirely.
                 DEST can be a directory, in which case it must end in a slash.
@@ -109,7 +108,7 @@ if [ -n "$ALLCHROOTS" ];
         fi
     done
     if [ $# = 0 ]; then
-    error 1 "No chroots found in $CHROOTS"
+        error 1 "No chroots found in $CHROOTS"
     fi
 fi
 
@@ -191,7 +190,7 @@ done
 
 # Display all chroot names if using -a without any other operations.
 if [ -n "$ALLCHROOTS" -a -z "$BACKUP$DELETE$ENCRYPT$KEYFILE$LISTDETAILS$MOVE$RESTORE" ]; then
-    echo "$@" 2>&1
+    echo "$@"
     exit 0
 fi
 
@@ -262,11 +261,10 @@ for NAME in "$@"; do
         error 2 "Invalid chroot name '$NAME'."
     fi
     CHROOT="$CHROOTS/$NAME"
-
     # Check for existence and unmount/delete the chroot.
     if [ -d "$CHROOT" ]; then
         if [ -n "$LISTDETAILS" ]; then
-            echo "name: $NAME" 1>&2
+            echo "name: $NAME" 2>&1
             if [ -f "$CHROOT/.ecryptfs" ]; then
                 if [ -d "/var/run/crouton/$CHROOT" ]; then
                     echo "[encrypted: yes, accessible]" 1>&2
