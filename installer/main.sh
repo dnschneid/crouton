@@ -455,7 +455,7 @@ Either delete it, specify a different name (-n), or specify -u to update it."
 "Release doesn't match! Please correct the -r option, or specify a second -u to
 change the release, upgrading the chroot (dangerous)."
         else
-            echo "WARNING: Changing the chroot release to $RELEASE." 2>&1
+            echo "WARNING: Changing the chroot release to $RELEASE." 1>&2
             echo "Press Control-C to abort; upgrade will continue in 5 seconds." 1>&2
             sleep 5
         fi
