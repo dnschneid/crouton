@@ -102,9 +102,9 @@ if [ -n "$ALLCHROOTS" ];
     if [ ! -d "$CHROOTS" ]; then
         error 1 "$CHROOTS not found."
     fi
-    for CRNAME in "$CHROOTS"/*; do
-        if [ -d "$CRNAME" ]; then
-            set -- "$@" "${CRNAME##*/}"
+    for crname in "$CHROOTS"/*; do
+        if [ -d "$crname" ]; then
+            set -- "$@" "${crname##*/}"
         fi
     done
     if [ $# = 0 ]; then
