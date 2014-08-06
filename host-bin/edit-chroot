@@ -98,7 +98,7 @@ if [ $# = 0 -a -z "$ALLCHROOTS" ] || [ ! $# = 0 -a -n "$ALLCHROOTS" ]; then
 fi
 
 # If we specified -a option, bring in all chroots.
-if [ -n "$ALLCHROOTS" ];
+if [ -n "$ALLCHROOTS" ]; then
     if [ ! -d "$CHROOTS" ]; then
         error 1 "$CHROOTS not found."
     fi
