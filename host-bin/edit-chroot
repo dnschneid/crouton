@@ -265,7 +265,7 @@ for NAME in "$@"; do
     if [ -d "$CHROOT" ]; then
         if [ -n "$LISTDETAILS" ]; then
             getversion='y'
-            echo "name: $NAME" 2>&1
+            echo "name: $NAME"
             if [ -f "$CHROOT/.ecryptfs" ]; then
                 if [ ! -d "/var/run/crouton/$CHROOT" \
                         -a "$LISTDETAILS" -gt 1 ]; then
