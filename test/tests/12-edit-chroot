@@ -124,3 +124,25 @@ host enter-chroot -n "-$RELEASE" true
 host delete-chroot -y -- "-$RELEASE" "$RELEASE"
 fails host enter-chroot -c -n "$RELEASE" true
 fails host enter-chroot -c -n "-$RELEASE" true
+
+##############################
+## Additions for patch-1 START
+# List all chroots
+host edit-chroot -a
+
+# Check that list all chroots option fails with anything else entered on the command line
+fails host enter-chroot -a $RELEASE
+
+# List all chroots with details
+host edit-chroot -al
+
+# List one chroot with details
+host edit-chroot -l $RELEASE
+
+# List non-existant chroot with details
+fails host edit-chroot -l x$RELEASE
+
+# Check that list all chroots with details option fails with anything else entered on the command line
+fails host enter-chroot -al $RELEASE
+## Additions for patch-1 END
+##############################
