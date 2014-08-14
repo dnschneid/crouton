@@ -31,7 +31,7 @@
 const int BUFFERSIZE = 4096;
 
 /* WebSocket constants */
-#define VERSION "1"
+#define VERSION "2"
 const int PORT = 30001;
 const int FRAMEMAXHEADERSIZE = 2+8;
 const int MAXFRAMESIZE = 16*1048576; // 16MiB
@@ -55,6 +55,7 @@ const int WS_OPCODE_PONG = 0xA;
 const char* PIPE_DIR = "/tmp/crouton-ext";
 const char* PIPEIN_FILENAME = "/tmp/crouton-ext/in";
 const char* PIPEOUT_FILENAME = "/tmp/crouton-ext/out";
+const char* PIPE_VERSION_FILE = "/tmp/crouton-ext/version";
 const int PIPEOUT_WRITE_TIMEOUT = 3000;
 
 /* 0 - Quiet
@@ -135,7 +136,8 @@ static int block_write(int fd, char* buffer, size_t size) {
 /* Run external command, piping some data on its stdin, and reading back
  * the output. Returns the number of bytes read from the process (at most
  * outlen), or -1 on error. */
-static int popen2(char* cmd, char* input, int inlen, char* output, int outlen) {
+static int popen2(char* cmd, char* param,
+                  char* input, int inlen, char* output, int outlen) {
     pid_t pid = 0;
     int stdin_fd[2];
     int stdout_fd[2];
@@ -158,7 +160,7 @@ static int popen2(char* cmd, char* input, int inlen, char* output, int outlen) {
         close(stdout_fd[0]);
         dup2(stdout_fd[1], STDOUT_FILENO);
 
-        execlp(cmd, cmd, NULL);
+        execlp(cmd, cmd, param, NULL);
 
         error("Error running '%s'.", cmd);
         exit(1);
@@ -529,6 +531,15 @@ void pipe_init() {
         exit(1);
     }
 
+    /* Create a file with the version number of the protocol */
+    FILE *vers = fopen(PIPE_VERSION_FILE, "w");
+    if (!vers
+            || fputs(VERSION "\n", vers) == EOF
+            || fclose(vers) == EOF) {
+        error("Unable to write to %s.", PIPE_VERSION_FILE);
+        exit(1);
+    }
+
     pipein_reopen();
 }
 
@@ -816,12 +827,33 @@ static void socket_client_read() {
         data = 1;
     }
 
-    /* In future versions, we can process such packets here. */
-
-    /* In the current version, this is actually never supposed to happen:
-     * close the connection */
-    error("Received an unexpected packet from client.");
-    socket_client_close(0);
+    /* Process the client request. */
+    buffer[length == BUFFERSIZE ? BUFFERSIZE-1 : length] = 0;
+    switch (buffer[0]) {
+        case 'C':  /* Send a command to croutoncycle and get the response */
+            log(2, "Received croutoncycle command (%s)", &buffer[1]);
+            length = popen2("croutoncycle", &buffer[1], "", 0,
+                            &buffer[FRAMEMAXHEADERSIZE+1],
+                            BUFFERSIZE-FRAMEMAXHEADERSIZE-1);
+            if (length == -1) {
+                error("Call to croutoncycle failed.");
+                socket_client_close(0);
+                return;
+            }
+            buffer[FRAMEMAXHEADERSIZE] = 'C';
+            length++;
+            if (socket_client_write_frame(buffer, length,
+                                          WS_OPCODE_TEXT, 1) < 0) {
+                error("Write error.");
+                socket_client_close(0);
+                return;
+            }
+            break;
+        default:
+            error("Received an unexpected packet from client.");
+            socket_client_close(0);
+            break;
+    }
 }
 
 /* Send a version packet to the extension, and read VOK reply. */
@@ -1116,7 +1148,7 @@ static void socket_server_accept() {
     memcpy(websocket_key+SECKEY_LEN, GUID, strlen(GUID));
 
     /* SHA-1 is 20 bytes long (40 characters in hex form) */
-    if (popen2("sha1sum", websocket_key, websocket_keylen,
+    if (popen2("sha1sum", NULL, websocket_key, websocket_keylen,
                buffer, BUFFERSIZE) < 2*SHA1_LEN) {
         error("sha1sum response too short.");
         exit(1);
@@ -1135,7 +1167,7 @@ static void socket_server_accept() {
     /* base64 encoding of SHA1_LEN bytes must be SHA1_BASE64_LEN bytes long.
      * Either the output is exactly SHA1_BASE64_LEN long, or the last character
      * is a line feed (RFC 3548 forbids other characters in output) */
-    int n = popen2("base64", sha1, SHA1_LEN, b64, b64_len);
+    int n = popen2("base64", NULL, sha1, SHA1_LEN, b64, b64_len);
     if (n < SHA1_BASE64_LEN ||
             (n != SHA1_BASE64_LEN && b64[SHA1_BASE64_LEN] != '\r' &&
              b64[SHA1_BASE64_LEN] != '\n')) {
