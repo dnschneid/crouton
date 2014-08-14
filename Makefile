@@ -1,10 +1,11 @@
-# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2014 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 TARGET = crouton
 EXTTARGET = crouton.zip
 SRCTARGETS = $(patsubst src/%.c,crouton%,$(wildcard src/*.c))
+CONTRIBUTORS = CONTRIBUTORS
 WRAPPER = build/wrapper.sh
 SCRIPTS := \
 	$(wildcard chroot-bin/*) \
@@ -52,9 +53,14 @@ $(SRCTARGETS): src/$(patsubst crouton%,src/%.c,$@) Makefile
 
 extension: $(EXTTARGET)
 
+$(CONTRIBUTORS):
+	git shortlog -s | cut -c8- | grep -v -e '^root$$' -e '^ttk153$$' > $(CONTRIBUTORS)
+
+contributors: $(CONTRIBUTORS)
+
 all: $(TARGET) $(SRCTARGETS) $(EXTTARGET)
 
 clean:
 	rm -f $(TARGET) $(EXTTARGET) $(SRCTARGETS)
 
-.PHONY: all clean extension
+.PHONY: all clean contributors $(CONTRIBUTORS) extension

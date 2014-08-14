@@ -1,5 +1,5 @@
 #!/bin/sh -e
-# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2014 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -264,11 +264,13 @@ mkdir -p "$CHROOT/var/host"
 cp -f '/etc/lsb-release' "$CHROOT/var/host/"
 
 # Copy the latest Xauthority into the chroot
-cp -f "$XAUTHORITY" "$CHROOT/var/host/Xauthority"
-chmod 444 "$CHROOT/var/host/Xauthority"
-# Be backwards-compatible, just in case
-if [ -f "$CHROOT/etc/X11/host-Xauthority" ]; then
-    ln -sfT '/var/host/Xauthority' "$CHROOT/etc/X11/host-Xauthority"
+if [ -f "${XAUTHORITY:=/home/chronos/.Xauthority}" ]; then
+    cp -f "$XAUTHORITY" "$CHROOT/var/host/Xauthority"
+    chmod 444 "$CHROOT/var/host/Xauthority"
+    # Be backwards-compatible, just in case
+    if [ -f "$CHROOT/etc/X11/host-Xauthority" ]; then
+        ln -sfT '/var/host/Xauthority' "$CHROOT/etc/X11/host-Xauthority"
+    fi
 fi
 
 # Prepare chroot filesystem
