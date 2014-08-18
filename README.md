@@ -62,13 +62,13 @@ is as simple as possible by design.
 
 If you're just here to use crouton, you can grab the latest release from
 [goo.gl/fd3zc](http://goo.gl/fd3zc). Download it, pop open a shell
-(Ctrl+Alt+T, type `shell` and hit enter), and run `sh -e ~/Downloads/crouton` to
+(Ctrl+Alt+T, type `shell` and hit enter), and run `sh ~/Downloads/crouton` to
 see the help text. See the "examples" section for some usage examples.
 
 If you're modifying crouton, you'll probably want to clone or download the repo
 and then either run `installer/main.sh` directly, or use `make` to build your
 very own `crouton`. You can also download the latest release, cd into the
-Downloads folder, and run `sh -e crouton -x` to extract out the juicy scripts
+Downloads folder, and run `sh crouton -x` to extract out the juicy scripts
 contained within, but you'll be missing build-time stuff like the Makefile.
 
 crouton uses the concept of "targets" to decide what to install. While you will
@@ -77,7 +77,7 @@ when running in the chrooted environment. As such, if you expect to want
 something that is fulfilled by a target, install that target when you make the
 chroot and you'll have an easier time.  Don't worry if you forget to include a
 target; you can always update the chroot later and add it. You can see the list
-of available targets by running `sh -e ~/Downloads/crouton -t help`.
+of available targets by running `sh ~/Downloads/crouton -t help`.
 
 Once you've set up your chroot, you can easily enter it using the
 newly-installed `enter-chroot` command, or one of the target-specific
@@ -90,7 +90,7 @@ Examples
 ### The easy way (assuming you want an Ubuntu LTS with Xfce)
   1. Download `crouton`
   2. Open a shell (Ctrl+Alt+T, type `shell` and hit enter) and run
-     `sudo sh -e ~/Downloads/crouton -t xfce`
+     `sudo sh ~/Downloads/crouton -t xfce`
   3. Wait patiently and answer the prompts like a good person.
   4. Done! You can jump straight to your Xfce session by running
      `sudo enter-chroot startxfce4` or, as a special shortcut, `sudo startxfce4`
@@ -108,7 +108,7 @@ Examples
 
 ### Hey now, Ubuntu 12.04 is pretty old; I'm young and hip
   1. The `-r` parameter specifies which distro release you want to use.
-  2. Run `sh -e ~/Downloads/crouton -r list` to list the recognized releases and
+  2. Run `sh ~/Downloads/crouton -r list` to list the recognized releases and
      which distros they belong to.
 
 ### I don't always use Linux, but when I do, I use CLI
@@ -123,7 +123,7 @@ Examples
   1. Check for updates, download the latest version, and see what's new by
      running `croutonversion -u -d -c` from the chroot (run `croutonversion -h`
      to see what those parameters actually do).
-  2. Exit the chroot and run `sudo sh -e ~/Downloads/crouton -u -n chrootname`.
+  2. Exit the chroot and run `sudo sh ~/Downloads/crouton -u -n chrootname`.
      It will update all installed targets.
   3. You can use this with `-e` to encrypt a non-encrypted chroot, but make sure
      you don't interrupt the operation.
@@ -136,7 +136,7 @@ Examples
      timestamped tarball. You can explicitly specify the tarball with `-f`
   3. If your machine is new, powerwashed, or held upside-down and shaken, you
      can use the crouton installer to restore a chroot and relevant scripts:
-     `sudo sh -e ~/Downloads/crouton -f mybackup.tar.gz`
+     `sudo sh ~/Downloads/crouton -f mybackup.tar.gz`
 
 *Unlike with Chromium OS, the data in your chroot isn't synced to the cloud.*
 
@@ -150,17 +150,17 @@ Examples
   1. Use `-p` to specify the directory in which to install the chroot and
      scripts. Be sure to quote or escape spaces.
   2. When entering the chroot, either specify the full path of the enter-chroot
-     or start* scripts (i.e. `sudo sh -e /path/to/enter-chroot`), or use the
+     or start* scripts (i.e. `sudo sh /path/to/enter-chroot`), or use the
      `-c` parameter to explicitly specify the chroots directory.
 
 ### Downloading bootstrap files over and over again is a waste of time
   1. Download `crouton`
   2. Open a shell (Ctrl+Alt+T, type `shell` and hit enter) and run
-     `sudo sh -e ~/Downloads/crouton -d -f ~/Downloads/mybootstrap.tar.bz2`
+     `sudo sh ~/Downloads/crouton -d -f ~/Downloads/mybootstrap.tar.bz2`
   3. Include the `-r` parameter if you want to specify for which release to
      prepare a bootstrap.
   4. You can then create chroots using the tarball by running
-     `sudo sh -e ~/Downloads/crouton -f ~/Downloads/mybootstrap.tar.bz2`
+     `sudo sh ~/Downloads/crouton -f ~/Downloads/mybootstrap.tar.bz2`
 
 *This is the quickest way to create multiple chroots at once, since you won't
 have to determine and download the bootstrap files every time.*
