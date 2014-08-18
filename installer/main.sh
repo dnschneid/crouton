@@ -429,7 +429,7 @@ Either delete it, specify a different name (-n), or specify -u to update it."
     elif [ -n "$UPDATE" -a -z "$RESTORE" ]; then
         error 1 "$CHROOTSRC does not exist; cannot update.
 Valid chroots:
-`sh "$BINDIR/edit-chroot" -c "$CHROOTS" -a`"
+`sh "$HOSTBINDIR/edit-chroot" -c "$CHROOTS" -a`"
     fi
 
     # Restore the chroot now
