@@ -140,5 +140,5 @@ host enter-chroot -n "-$RELEASE" true
 
 # Delete both chroots
 host delete-chroot -y -- "-$RELEASE" "$RELEASE"
-fails host enter-chroot -c -n "$RELEASE" true
-fails host enter-chroot -c -n "-$RELEASE" true
+fails host enter-chroot -n "$RELEASE" true
+fails host enter-chroot -n -- "-$RELEASE" true
