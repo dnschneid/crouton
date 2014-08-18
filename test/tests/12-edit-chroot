@@ -16,28 +16,22 @@ host enter-chroot -n "$RELEASE" true
 
 # Tests with single parameter
 
-# List all chroots 
-# (output contains a single-spaced list of installed chroots)
-host edit-chroot -a
+# List all chroots
+host edit-chroot -a | passes grep "$RELEASE"
 
-# Check that the list all chroots option fails with anything else entered on the command line 
-# (output displays the USAGE message)
+# Check that the list all chroots option fails with anything else entered on the command line
 fails host enter-chroot -a $RELEASE
 
-# List all chroots with details 
-# (output displays the 'croutonversion' of each installed chroot)
-host edit-chroot -al
+# List all chroots with details
+host edit-chroot -al | passes grep "^release: $RELEASE"
 
-# List one chroot with details 
-# (output displays the 'croutonversion' of the chroot entered on the command line)
-host edit-chroot -l $RELEASE
+# List one chroot with details
+host edit-chroot -l $RELEASE | passes grep "^release: $RELEASE"
 
-# Cannot list a non-existing chroot's 'croutonversion' 
-# (output displays the USAGE message)
+# Cannot list a non-existing chroot's 'croutonversion'
 fails host edit-chroot -l x$RELEASE
 
-# Check that the list all chroots with details option fails with anything else entered on the command line 
-# (output displays the USAGE message)
+# Check that the list all chroots with details option fails with anything else entered on the command line
 fails host enter-chroot -al $RELEASE
 
 # Cannot backup a non-existing chroot
