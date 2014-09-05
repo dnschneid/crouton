@@ -121,11 +121,11 @@ flock 3
                 y -= tp ? log(-dy) * '"$ys"' + '"$yc"' : 1
             }
             while (y >= 1) {
-                output("mouseclick '"$d"'")
+                output("mouseclick '"$u"'")
                 y -= 1
             }
             while (y <= -1) {
-                output("mouseclick '"$u"'")
+                output("mouseclick '"$d"'")
                 y += 1
             }
         }
