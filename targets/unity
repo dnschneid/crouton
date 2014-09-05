@@ -2,9 +2,12 @@
 # Copyright (c) 2014 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-if [ ! "$TARGETS" = 'help' -a ! "${ARCH#arm}" = "$ARCH" ] \
-        && ! release -eq precise; then
-    error 1 "unity target does not work in xephyr in $RELEASE due to missing egl support."
+if [ "$TARGETS" != 'help' -a "$TARGETS" != 'check' ]; then
+    if [ "$DISTRO" != 'ubuntu' ]; then
+        error 99 "unity target is only supported on Ubuntu."
+    elif [ -a ! "${ARCH#arm}" = "$ARCH" ] && ! release -eq precise; then
+        error 99 "unity target does not work in xephyr in $RELEASE due to missing egl support."
+    fi
 fi
 REQUIRES='gtk-extra'
 DESCRIPTION='Installs the Unity desktop environment. (Approx. 700MB)'
