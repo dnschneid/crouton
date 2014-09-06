@@ -167,12 +167,6 @@ trap "SIG='USR1'" USR1
 # Set the PID after the trap is in place
 echo -n "$PID" > "$PIDFILE"
 
-# Create a dummy FIFO. Reading the FIFO will block until interrupted by a signal
-tmpdir="`mktemp -d --tmpdir=/tmp croutonclip.XXX`"
-addtrap "rm -rf --one-file-system '$tmpdir'"
-SIGFIFO="$tmpdir/clip.fifo"
-mkfifo -m 400 "$SIGFIFO"
-
 # Send signal on VT change (if user types Ctrl-Alt instead of Ctrl-Alt-Shift)
 if hash croutonvtmonitor 2>/dev/null; then
     ( croutonvtmonitor | while read line; do kill -USR1 "$PID"; done ) &
@@ -186,12 +180,13 @@ waitwebsocket
 
 while true; do
     if [ -z "$SIG" ]; then
-        # Redirect stderr to /dev/null to avoid "Interrupted system call"
-        # messages. Save stderr to fd 3 so we can restore it later.
-        exec 3>&2 2>/dev/null
-        # Block until a signal is received
-        read < "$SIGFIFO" || true
-        exec 2>&3 3>&-
+        # Block until a signal is received: we have at least one child, so we
+        # just wait on any of them.
+        # Wait returns an error when interrupted by a signal.
+        if wait; then
+            # No more children, bailing out to avoid busy-looping.
+            exit 1
+        fi
     fi
     # This is _not_ a potential race: the current display is read after this.
     SIG=''
