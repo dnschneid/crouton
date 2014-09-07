@@ -31,6 +31,19 @@ Check your internet connection or proxy settings and try again.'
     fi
 fi
 
+# Patch debootstrap so that it retries downloading packages
+awk '
+    t == 2 && /-z \"\$checksum\"/ { sub(/\$checksum/, "$checksum$failed"); t=0 }
+    t == 1 { sub(/if \[/, "elif ["); t=2 }
+    /if ! just_get \"\$from\" \"\$dest2\"; then continue 2; fi/ {
+        sub(/if !/, "failed=; if !")
+        sub(/continue 2; fi/, "failed=y")
+        t=1
+    }
+    1
+' "$tmp/functions" > "$tmp/functions.new"
+mv "$tmp/functions.new" "$tmp/functions"
+
 # Add the necessary debootstrap executables
 newpath="$PATH:$tmp"
 cp "$INSTALLERDIR/$DISTRO/ar" "$INSTALLERDIR/$DISTRO/pkgdetails" "$tmp/"
