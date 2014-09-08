@@ -201,10 +201,10 @@ fi
 
 # If this script was called with '-x' or '-v', pass that to prepare.sh
 SETOPTIONS=""
-if set -o | grep -q '^xtrace *on$'; then
+if set -o | grep -q '^xtrace.*on$'; then
     SETOPTIONS="-x"
 fi
-if set -o | grep -q '^verbose *on$'; then
+if set -o | grep -q '^verbose.*on$'; then
     SETOPTIONS="$SETOPTIONS -v"
 fi
 sh() {
