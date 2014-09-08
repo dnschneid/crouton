@@ -18,7 +18,7 @@ SCRIPTS := \
 EXTSOURCES = $(wildcard host-ext/crouton/*)
 GENVERSION = build/genversion.sh
 CONTRIBUTORSSED = build/CONTRIBUTORS.sed
-HEADS = .git/refs/heads
+RELEASE = build/release.sh
 VERSION = 1
 TARPARAMS ?= -j
 
@@ -55,14 +55,22 @@ $(SRCTARGETS): src/$(patsubst crouton%,src/%.c,$@) Makefile
 
 extension: $(EXTTARGET)
 
-$(CONTRIBUTORS): $(HEADS)/master $(CONTRIBUTORSSED)
+$(CONTRIBUTORS): $(GITHEAD) $(CONTRIBUTORSSED)
 	git shortlog -s | sed -f $(CONTRIBUTORSSED) | sort -u > $(CONTRIBUTORS)
 
 contributors: $(CONTRIBUTORS)
+
+release: $(CONTRIBUTORS) $(TARGET) $(RELEASE)
+	[ ! -d .git ] || git status | grep -q 'working directory clean' || \
+		{ echo "There are uncommitted changes. Aborting!" 1>&2; exit 2; }
+	$(RELEASE) $(TARGET)
+
+force-release: $(CONTRIBUTORS) $(TARGET) $(RELEASE)
+	$(RELEASE) -f $(TARGET)
 
 all: $(TARGET) $(SRCTARGETS) $(EXTTARGET)
 
 clean:
 	rm -f $(TARGET) $(EXTTARGET) $(SRCTARGETS)
 
-.PHONY: all clean contributors extension
+.PHONY: all clean contributors extension release force-release

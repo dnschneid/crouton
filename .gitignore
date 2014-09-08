@@ -3,3 +3,4 @@
 .*.tmp
 /crouton*
 /tests/run
+/releases/
