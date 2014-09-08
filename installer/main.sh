@@ -61,8 +61,8 @@ Options:
     -d          Downloads the bootstrap tarball but does not prepare the chroot.
     -e          Encrypt the chroot with ecryptfs using a passphrase.
                 If specified twice, prompt to change the encryption passphrase.
-    -f TARBALL  The bootstrap or backup tarball to use, or to download to in the
-                case of -d. When using an existing tarball, -a and -r are ignored.
+    -f TARBALL  The bootstrap or backup tarball to use, or to download to (-d).
+                When using an existing tarball, -a and -r are ignored.
     -k KEYFILE  File or directory to store the (encrypted) encryption keys in.
                 If unspecified, the keys will be stored in the chroot if doing a
                 first encryption, or auto-detected on existing chroots.
