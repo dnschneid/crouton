@@ -17,6 +17,8 @@ SCRIPTS := \
 	$(wildcard targets/*)
 EXTSOURCES = $(wildcard host-ext/crouton/*)
 GENVERSION = build/genversion.sh
+CONTRIBUTORSSED = build/CONTRIBUTORS.sed
+HEADS = .git/refs/heads
 VERSION = 1
 TARPARAMS ?= -j
 
@@ -53,8 +55,8 @@ $(SRCTARGETS): src/$(patsubst crouton%,src/%.c,$@) Makefile
 
 extension: $(EXTTARGET)
 
-$(CONTRIBUTORS):
-	git shortlog -s | cut -c8- | grep -v -e '^root$$' -e '^ttk153$$' > $(CONTRIBUTORS)
+$(CONTRIBUTORS): $(HEADS)/master $(CONTRIBUTORSSED)
+	git shortlog -s | sed -f $(CONTRIBUTORSSED) | sort -u > $(CONTRIBUTORS)
 
 contributors: $(CONTRIBUTORS)
 
@@ -63,4 +65,4 @@ all: $(TARGET) $(SRCTARGETS) $(EXTTARGET)
 clean:
 	rm -f $(TARGET) $(EXTTARGET) $(SRCTARGETS)
 
-.PHONY: all clean contributors $(CONTRIBUTORS) extension
+.PHONY: all clean contributors extension
