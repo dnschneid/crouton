@@ -42,7 +42,7 @@ awk '
     }
     1
 ' "$tmp/functions" > "$tmp/functions.new"
-mv "$tmp/functions.new" "$tmp/functions"
+mv -f "$tmp/functions.new" "$tmp/functions"
 
 # Add the necessary debootstrap executables
 newpath="$PATH:$tmp"
