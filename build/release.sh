@@ -56,21 +56,27 @@ for bundle in "$@"; do
         error 1 "$bundle bundle does not exist"
     fi
     version="`sh "$bundle" -V`"
-    if [ "$version" = "${version#crouton:}" ]; then
+    if [ "$version" = "${version#crouton*:}" ]; then
         error 1 "$bundle bundle is invalid"
     fi
+    branch="${version#*~}"
+    branch="${branch%:*}"
+    dest="${branch#master}"
+    dest="crouton${dest:+-}$dest"
     # Compare the current release to avoid duplicates
-    if diff -q "$bundle" "releases/$bundle" 2>/dev/null 1>&2; then
+    if [ -f "releases/$dest" ] && \
+            sh "releases/$dest" -V | grep -q "${version#*~}"; then
         echo "Release already current: `sh "$bundle" -V`"
         continue
     fi
     # Copy it in and make a commit
-    cp -fv "$bundle" "releases/$bundle"
-    git -C releases add "$bundle"
+    cp -fv "$bundle" "releases/$dest"
+    git -C releases add "$dest"
     git -C releases commit -m "$version"
 done
 
 # Push the resulting releases
 git -C releases push origin releases
+git -C releases fetch origin releases
 
 exit 0
