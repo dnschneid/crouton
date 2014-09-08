@@ -1,0 +1,69 @@
+#!/bin/sh -e
+# Copyright (c) 2014 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file of the source repository, which has been replicated
+# below for convenience of distribution:
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are
+# met:
+#
+#    * Redistributions of source code must retain the above copyright
+# notice, this list of conditions and the following disclaimer.
+#    * Redistributions in binary form must reproduce the above
+# copyright notice, this list of conditions and the following disclaimer
+# in the documentation and/or other materials provided with the
+# distribution.
+#    * Neither the name of Google Inc. nor the names of its
+# contributors may be used to endorse or promote products derived from
+# this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+# A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+# OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+# DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+# THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+# This is an indirect script. The actual installer will be downloaded, cached,
+# and run with any parameters provided. Cached installer will be retained for
+# 30 minutes unless this downloader is newer than the timestamp of the cache.
+# Set CROUTON_BRANCH to change the branch downloaded.
+
+set -e
+
+CROUTON_BRANCH="${CROUTON_BRANCH#master}"
+INSTALLER="crouton${CROUTON_BRANCH:+-}${CROUTON_BRANCH:-}"
+URL="https://raw.githubusercontent.com/dnschneid/crouton/releases/$INSTALLER"
+CACHEDIR="/tmp/${0##*/}-installer-cache"
+CACHEFILE="$CACHEDIR/$INSTALLER"
+MAXAGE="$((30*60))"
+
+# Check dates and update the cache
+mkdir -p "$CACHEDIR"
+if [ ! "$CACHEFILE" -nt "$0" ] || \
+        [ "`date -r "$CACHEFILE" '+%s'`" -lt "$((`date '+%s'`-$MAXAGE))" ]; then
+    echo "Downloading latest $INSTALLER installer..." 1>&2
+    if ! wget --no-verbose --timeout=60 -t2 "$URL" -O "$CACHEFILE"; then
+        echo "Failed to download $INSTALLER installer.
+Check your internet connection or proxy settings and try again." 1>&2
+        exit 1
+    fi
+fi
+
+# If this script was called with '-x' or '-v', pass that along.
+SETOPTIONS="-e"
+if set -o | grep -q '^xtrace.*on$'; then
+    SETOPTIONS="$SETOPTIONS -x"
+fi
+if set -o | grep -q '^verbose.*on$'; then
+    SETOPTIONS="$SETOPTIONS -v"
+fi
+
+# Launch the real script
+exec sh $SETOPTIONS "$CACHEFILE" "$@"
