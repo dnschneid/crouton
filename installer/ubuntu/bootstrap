@@ -32,17 +32,23 @@ Check your internet connection or proxy settings and try again.'
 fi
 
 # Patch debootstrap so that it retries downloading packages
-awk '
-    t == 2 && /-z \"\$checksum\"/ { sub(/\$checksum/, "$checksum$failed"); t=0 }
-    t == 1 { sub(/if \[/, "elif ["); t=2 }
+echo 'Patching debootstrap...' 1>&2
+if awk '
+    t == 2 && /-z \"\$checksum\"/ { sub(/\$checksum/, "$checksum$failed"); t=3 }
+    t == 1 { if (/if \[/) { sub(/if \[/, "elif ["); t=2 } else { exit 1 } }
     /if ! just_get \"\$from\" \"\$dest2\"; then continue 2; fi/ {
         sub(/if !/, "failed=; if !")
         sub(/continue 2; fi/, "failed=y")
         t=1
     }
     1
-' "$tmp/functions" > "$tmp/functions.new"
-mv -f "$tmp/functions.new" "$tmp/functions"
+    END { if (t != 3) exit 1 }
+        ' "$tmp/functions" > "$tmp/functions.new"; then
+    mv -f "$tmp/functions.new" "$tmp/functions"
+else
+    rm -f "$tmp/functions.new"
+    echo "Unable to patch debootstrap, moving on..." 1>&2
+fi
 
 # Add the necessary debootstrap executables
 newpath="$PATH:$tmp"
