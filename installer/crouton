@@ -44,6 +44,13 @@ CACHEDIR="/tmp/${0##*/}-installer-cache"
 CACHEFILE="$CACHEDIR/$INSTALLER"
 MAXAGE="$((30*60))"
 
+# Process arguments
+while getopts ':a:f:k:m:M:n:p:P:r:s:t:T:' f; do
+    if [ "$f" = 'P' ]; then
+        export http_proxy="$OPTARG" https_proxy="$OPTARG" ftp_proxy="$OPTARG"
+    fi
+done
+
 # Check dates and update the cache
 mkdir -p "$CACHEDIR"
 if [ ! "$CACHEFILE" -nt "$0" ] || \
@@ -51,7 +58,7 @@ if [ ! "$CACHEFILE" -nt "$0" ] || \
     echo "Downloading latest $INSTALLER installer..." 1>&2
     if ! wget --no-verbose --timeout=60 -t2 "$URL" -O "$CACHEFILE"; then
         echo "Failed to download $INSTALLER installer.
-Check your internet connection or proxy settings and try again." 1>&2
+Check your internet connection or proxy settings (-P) and try again." 1>&2
         exit 1
     fi
 fi
