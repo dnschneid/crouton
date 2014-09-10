@@ -18,7 +18,7 @@ COMMIT="${VERSION##*:}"
 CHANGESURL="https://github.com/dnschneid/crouton/compare/$COMMIT..."
 INSTALLER="crouton-$BRANCH"
 INSTALLER="${INSTALLER%-master}"
-CROUTONURL="https://raw.githubusercontent.com/dnschneid/crouton/releases/$INSTALLER"
+CROUTONURL="https://github.com/dnschneid/crouton/raw/releases/$INSTALLER"
 DEST="$HOME/Downloads/$INSTALLER"
 
 USAGE="$APPLICATION [options]

@@ -39,7 +39,7 @@ set -e
 
 CROUTON_BRANCH="${CROUTON_BRANCH#master}"
 INSTALLER="crouton${CROUTON_BRANCH:+-}${CROUTON_BRANCH:-}"
-URL="https://raw.githubusercontent.com/dnschneid/crouton/releases/$INSTALLER"
+URL="https://github.com/dnschneid/crouton/raw/releases/$INSTALLER"
 CACHEDIR="/tmp/${0##*/}-installer-cache"
 CACHEFILE="$CACHEDIR/$INSTALLER"
 MAXAGE="$((30*60))"
