@@ -343,6 +343,8 @@ for NAME in "$@"; do
             echo "Unable to backup $CHROOT." 1>&2
             exit $ret
         fi
+        # Make sure filesystem is sync'ed
+        sync
         undotrap
         echo "Finished backing up $CHROOT to $dest" 1>&2
     fi
@@ -383,6 +385,8 @@ for NAME in "$@"; do
         mkdir -p "$CHROOT"
         spinner 1 tar --checkpoint=200 --checkpoint-action=exec=echo \
             --one-file-system -xaf "$src" -C "$CHROOT" --strip-components=1
+        # Make sure filesystem is sync'ed
+        sync
         echo "Finished restoring $src to $CHROOT" 1>&2
     fi
 
