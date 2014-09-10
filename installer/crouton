@@ -52,14 +52,19 @@ while getopts ':a:f:k:m:M:n:p:P:r:s:t:T:' f; do
 done
 
 # Check dates and update the cache
-mkdir -p "$CACHEDIR"
+(umask 000; mkdir -p "$CACHEDIR")
 if [ ! "$CACHEFILE" -nt "$0" ] || \
         [ "`date -r "$CACHEFILE" '+%s'`" -lt "$((`date '+%s'`-$MAXAGE))" ]; then
-    echo "Downloading latest $INSTALLER installer..." 1>&2
-    if ! wget --no-verbose --timeout=60 -t2 "$URL" -O "$CACHEFILE"; then
-        echo "Failed to download $INSTALLER installer.
+    if [ ! -f "$CACHEFILE" -o -w "$CACHEFILE" ]; then
+        echo "Downloading latest $INSTALLER installer..." 1>&2
+        if ! (umask 022; \
+                wget --no-verbose --timeout=60 -t2 "$URL" -O "$CACHEFILE"); then
+            echo "Failed to download $INSTALLER installer.
 Check your internet connection or proxy settings (-P) and try again." 1>&2
-        exit 1
+            exit 1
+        fi
+    else
+        echo "Insufficient permissions to refresh $INSTALLER installer." 1>&2
     fi
 fi
 
