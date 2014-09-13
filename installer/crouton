@@ -53,16 +53,18 @@ done
 
 # Check dates and update the cache
 (umask 000; mkdir -p "$CACHEDIR")
-if [ ! "$CACHEFILE" -nt "$0" ] || \
+if [ ! -s "$CACHEFILE" -o ! "$CACHEFILE" -nt "$0" ] || \
         [ "`date -r "$CACHEFILE" '+%s'`" -lt "$((`date '+%s'`-$MAXAGE))" ]; then
     if [ ! -f "$CACHEFILE" -o -w "$CACHEFILE" ]; then
         echo "Downloading latest $INSTALLER installer..." 1>&2
+        trap "rm -f '$CACHEFILE'; exit 1" INT HUP TERM 0
         if ! (umask 022; \
                 wget --no-verbose --timeout=60 -t2 "$URL" -O "$CACHEFILE"); then
             echo "Failed to download $INSTALLER installer.
 Check your internet connection or proxy settings (-P) and try again." 1>&2
             exit 1
         fi
+        trap - INT HUP TERM 0
     else
         echo "Insufficient permissions to refresh $INSTALLER installer." 1>&2
     fi
