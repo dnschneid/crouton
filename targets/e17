@@ -3,7 +3,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 if [ "$TARGETS" != 'help' -a "$TARGETS" != 'check' ] &&
-        ( release -lt jessie || release -eq kali ); then
+        release -lt jessie -eq kali; then
     error 99 "e17 target is not supported on wheezy/kali."
 fi
 REQUIRES='gtk-extra'
