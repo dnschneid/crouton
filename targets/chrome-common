@@ -9,7 +9,8 @@
 # This command expects CHANNEL to be set with the requested Google Chrome
 # channel: stable, beta, or unstable.
 
-if [ ! "$TARGETS" = 'help' -a ! "${ARCH#arm}" = "$ARCH" ]; then
+if [ "$TARGETS" != 'help' -a "$TARGETS" != 'check' \
+        -a ! "${ARCH#arm}" = "$ARCH" ]; then
     echo 'Google Chrome does not yet have an ARM build. Installing Chromium instead.' 1>&2
     TARGET=chromium
     . "${TARGETSDIR:="$PWD"}/$TARGET"
