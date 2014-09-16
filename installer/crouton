@@ -39,7 +39,7 @@ set -e
 
 CROUTON_BRANCH="${CROUTON_BRANCH#master}"
 INSTALLER="crouton${CROUTON_BRANCH:+-}${CROUTON_BRANCH:-}"
-URL="https://github.com/dnschneid/crouton/raw/releases/$INSTALLER"
+URL="https://raw.githubusercontent.com/dnschneid/crouton/releases/$INSTALLER"
 CACHEDIR="/tmp/${0##*/}-installer-cache"
 CACHEFILE="$CACHEDIR/$INSTALLER"
 MAXAGE="$((30*60))"
@@ -59,7 +59,7 @@ if [ ! -s "$CACHEFILE" -o ! "$CACHEFILE" -nt "$0" ] || \
         echo "Downloading latest $INSTALLER installer..." 1>&2
         trap "rm -f '$CACHEFILE'; exit 1" INT HUP TERM 0
         if ! (umask 022; \
-                wget --no-verbose --timeout=60 -t2 "$URL" -O "$CACHEFILE"); then
+                curl -s --max-time 60 --retry 2 "$URL" -o "$CACHEFILE"); then
             echo "Failed to download $INSTALLER installer.
 Check your internet connection or proxy settings (-P) and try again." 1>&2
             exit 1
