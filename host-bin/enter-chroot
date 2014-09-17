@@ -263,6 +263,9 @@ mkdir -p "$CHROOT/var/host"
 # Copy in the current Chromium OS version for reference
 cp -f '/etc/lsb-release' "$CHROOT/var/host/"
 
+# Copy CRAS version into the chroot
+cras_test_client --version 2>/dev/null > "$CHROOT/var/host/cras-version" || true
+
 # Copy the latest Xauthority into the chroot
 if [ -f "${XAUTHORITY:=/home/chronos/.Xauthority}" ]; then
     cp -f "$XAUTHORITY" "$CHROOT/var/host/Xauthority"
