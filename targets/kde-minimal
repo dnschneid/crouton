@@ -1,0 +1,15 @@
+#!/bin/sh -e
+# Copyright (c) 2014 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+REQUIRES='x11'
+DESCRIPTION='Installs the KDE desktop environment. (Approx. 800MB)'
+HOSTBIN='startkde'
+. "${TARGETSDIR:="$PWD"}/common"
+
+### Append to prepare.sh:
+install kde-plasma-desktop --minimal -- network-manager
+
+TIPS="$TIPS
+You can start KDE via the startkde host command: sudo startkde
+"
