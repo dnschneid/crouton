@@ -165,7 +165,7 @@ fixkeyboardmode() {
                 tty='tty1'
             fi
             if [ -e "/dev/$tty" ]; then
-                kbd_mode -s -C "/dev/$tty"
+                kbd_mode -s -C "/dev/$tty" 2>/dev/null || true
             fi
         done
     fi
