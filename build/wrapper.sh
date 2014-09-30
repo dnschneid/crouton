@@ -38,8 +38,8 @@ set -e
 
 VERSION='git'
 
-# Minimum Chromium OS version is R28 stable
-CROS_MIN_VERS=4100
+# Minimum Chromium OS version is R31 stable
+CROS_MIN_VERS=4731
 
 if [ "$1" = '-x' -a "$#" -le 2 ]; then
     # Extract to the specified directory.

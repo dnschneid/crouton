@@ -10,7 +10,7 @@ for release in $SUPPORTED_RELEASES; do
 
     # We pass -fdat to aplay/arecord, which means 48kHz, 16-bit, stereo.
     # dd writes/reads 8 blocks of 48000 bytes: 2 seconds worth of sound.
-    host enter-chroot -n "$release" sh -exc '
+    exitswithin 0 30 host enter-chroot -n "$release" sh -exc '
         cras_test_client --dump_server_info
         dd if=/dev/zero bs=48000 count=8 | aplay -fdat -v
         arecord -fdat -v | dd of=/dev/null bs=48000 count=8 iflag=fullblock
@@ -33,7 +33,7 @@ for release in $SUPPORTED_RELEASES; do
             fi
         ' | crouton -T -U -n "$release"
 
-        host enter-chroot -n "$release" sh -exc '
+        exitswithin 0 30 host enter-chroot -n "$release" sh -exc '
             /usr/local/i386-linux-gnu/bin/cras_test_client --dump_server_info
             dd if=/dev/zero bs=48000 count=8 | \
                     /home/tmp/aplay -fdat -v
@@ -44,7 +44,7 @@ for release in $SUPPORTED_RELEASES; do
 
     echo 'install pulseaudio pulseaudio-utils' | \
             crouton -T -U -n "$release"
-    host enter-chroot -n "$release" sh -exc '
+    exitswithin 0 30 host enter-chroot -n "$release" sh -exc '
         pulseaudio --start
         echo | pacat -v
         dd if=/dev/zero bs=48000 count=8 | aplay -f dat -Dpulse -v
@@ -102,8 +102,8 @@ ADHD_HEADS="`wget --no-check-certificate --quiet -O- \
 'https://chromium.googlesource.com/chromiumos/third_party/adhd/+refs/heads?format=TEXT' \
     | awk '
     BEGIN {
-        # Do not test any release before R28 (stable as of 2013-07-30)
-        minrel=28
+        # Do not test any release before R31 (stable as of 2013-12-10)
+        minrel=31
     }
     $2 ~ /.*release-R[0-9]+-[0-9]+/ {
         split($2, s, /[-\.]R?/)
