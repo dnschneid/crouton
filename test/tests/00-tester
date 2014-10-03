@@ -6,7 +6,10 @@
 # Tests some of the more complex testing functions, and records the system info
 
 # Save the basic system info to the log
-log "$SYSTEM"
+log "System info"
+cat /etc/lsb-release | log
+log "Mirror info"
+env | grep CROUTON_MIRROR | log
 
 # Make sure test(), exitswithin() and runslongerthan(), passes(), fails()
 # work as expected
