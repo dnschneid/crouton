@@ -102,9 +102,12 @@ echo "Fetching CRAS (branch $ADHD_HEAD)..." 1>&2
 # not found (see crbug.com/417820).
 
 archive="$CRASBUILDTMP/adhd.tar.gz"
+log="$CRASBUILDTMP/wget.log"
 urlbase="https://chromium.googlesource.com/chromiumos/third_party/adhd/+archive"
-if ! wget --content-on-error -O "$archive" "$urlbase/$ADHD_HEAD.tar.gz"; then
-    if grep -q "Error 404" "$archive" 2>/dev/null; then
+( wget -O "$archive" "$urlbase/$ADHD_HEAD.tar.gz" 2>&1 \
+                                    || echo "Error fetching CRAS" ) | tee "$log"
+if tail -n 1 "$log" | grep -q "^Error"; then
+    if grep -q "404 Not Found" "$log" 2>/dev/null; then
         echo "Branch not found, falling back on master (audio might not work)..." 1>&2
         ADHD_HEAD="master"
         wget -O "$archive" "$urlbase/$ADHD_HEAD.tar.gz"
