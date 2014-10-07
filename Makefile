@@ -28,6 +28,8 @@ croutoncursor_LIBS = -lX11 -lXfixes -lXrender
 croutonwmtools_LIBS = -lX11
 croutonxi2event_LIBS = -lX11 -lXi
 
+croutonwebsocket_DEPS = src/websocket.h
+
 ifeq ($(wildcard .git/HEAD),)
     GITHEAD :=
 else
