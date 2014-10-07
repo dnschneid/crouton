@@ -98,8 +98,21 @@ fi
 
 echo "Fetching CRAS (branch $ADHD_HEAD)..." 1>&2
 
-wget -O "$CRASBUILDTMP/adhd.tar.gz" \
-"https://chromium.googlesource.com/chromiumos/third_party/adhd/+archive/$ADHD_HEAD.tar.gz"
+# Try to download the CRAS commit id first, and fall back on master if that is
+# not found (see crbug.com/417820).
+
+archive="$CRASBUILDTMP/adhd.tar.gz"
+urlbase="https://chromium.googlesource.com/chromiumos/third_party/adhd/+archive"
+if ! wget --content-on-error -O "$archive" "$urlbase/$ADHD_HEAD.tar.gz"; then
+    if grep -q "Error 404" "$archive" 2>/dev/null; then
+        echo "Branch not found, falling back on master (audio might not work)..." 1>&2
+        ADHD_HEAD="master"
+        wget -O "$archive" "$urlbase/$ADHD_HEAD.tar.gz"
+    else
+        # wget already printed an explicit error
+        exit 1
+    fi
+fi
 
 # Patch CRAS so that x86 client can connect to x86_64 server (multilib)
 # Assume current directory is "$CRASBUILDTMP"/cras/src
