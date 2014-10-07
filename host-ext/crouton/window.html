@@ -1,0 +1,69 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<!-- Copyright (c) 2014 The crouton Authors. All rights reserved.
+     Use of this source code is governed by a BSD-style license that can be
+     found in the LICENSE file. -->
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="-1">
+    <title>Crouton in a tab</title>
+    <script type="text/javascript" src="window.js"></script>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        background-color: rgba(0, 0, 0, 1);
+      }
+        #content {
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+      }
+      #status, #log {
+        color: rgba(255, 255, 255, 1);
+      }
+      #header {
+        height: 15px;
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+      }
+      #status {
+        position: absolute;
+        text-align: center;
+        width: 100%;
+        margin-top: 100px;
+        background-color: rgba(0, 0, 0, 1);
+        font-size: 12pt;
+      }
+      #listener {
+        width: 100%;
+        height: 100%;
+      }
+      #criat {
+        margin-left: 0px;
+        margin-top: 0px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="content">
+      <div id="header">
+        <div id="log">Initializing...</div>
+      </div>
+      <div id="status">Initializing...</div>
+      <div id="listener">
+        <embed id="criat"
+               width=800 height=600
+               src="criat.nmf"
+               type="application/x-pnacl" />
+      </div>
+    </div>
+  </body>
+</html>
