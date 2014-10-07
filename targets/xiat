@@ -1,0 +1,74 @@
+#!/bin/sh -e
+# Copyright (c) 2014 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+REQUIRES='core audio extension'
+PROVIDES='x11'
+DESCRIPTION='Crouton in a tab X11 backend. Improves compatibility but lacks GPU accel.'
+CHROOTBIN='brightness croutoncycle croutonfindnacl croutonpowerd croutonxinitrc-wrapper findres xinit'
+CHROOTETC='xbindkeysrc.scm xorg-dummy.conf xserverrc-xiat xserverrc-local.example'
+. "${TARGETSDIR:="$PWD"}/common"
+
+### Append to prepare.sh:
+XMETHOD="${XMETHOD:-xiat}"
+
+install xorg xserver-xorg-video-dummy
+
+# Compile croutonfbserver
+compile fbserver '-lX11 -lXfixes -lXdamage -lXext -lXtst' \
+    libx11-dev libxfixes-dev libxdamage-dev libxext-dev libxtst-dev
+
+tmp="`mktemp crouton.XXXXXX --tmpdir=/tmp`"
+addtrap "rm -f '$tmp'"
+
+awk '/###MODELINES###/{exit}; 1' /etc/crouton/xorg-dummy.conf > "$tmp"
+
+# Generate a set of reasonable resolutions
+echo '
+1280 800 l # Early models
+1366 768 l # HD
+768 1366 l # "P"HD
+2560 1700 h # Pixel
+1280 850 l # Pixel half-res
+1536 864 l # Down/upscaled resolution
+1920 1080 l # FHD
+1920 1200 l # Standard 20"
+2560 1600 l # Standard 30"
+' | while read w h flags _; do
+    if [ -z "$w" ]; then
+        continue
+    fi
+    rate=60 # 60Hz refresh
+    scale2=2 # 2*DPI scale
+    case "$flags" in
+        h) scale2=4;; # 2
+        *) scale2=2;; # 1 (low dpi)
+    esac
+    # Width: Allow for dock on sides + half-width window
+    dws="0 $((50*scale2/2)) $(((w-50*scale2/2)/2)) $((w/2))" # Measured: 47
+    for dw in $dws; do
+        nw="$((w-dw))"
+        # Height: Allow for title bar/dock, or title bar only
+        # Measured: 28,33,36,75,80,83,85,95
+        dhs="0 28 33 36 60 75 85 95 100"
+        for dh in $dhs; do
+            nh="$((h-(dh*scale2+1)/2))"
+            mhz="$((rate*(nw+3)*(nh+3)/1000000))"
+            echo "    Modeline \"${nw}x${nh}\" ${mhz} \
+${nw} $((nw+1)) $((nw+2)) $((nw+3)) \
+${nh} $((nh+1)) $((nh+2)) $((nh+3))" >> "$tmp"
+        done
+    done
+done
+
+awk 'p; /###MODELINES###/{p=1}' /etc/crouton/xorg-dummy.conf >> "$tmp"
+mv -f "$tmp" /etc/X11/xorg-dummy.conf
+chmod 0644 /etc/X11/xorg-dummy.conf
+undotrap
+
+TIPS="$TIPS
+You can flip through your running chroot desktops and Chromium OS by hitting
+Ctrl+Alt+Shift+Back and Ctrl+Alt+Shift+Forward.
+"
+
+### append x11-common
