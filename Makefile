@@ -25,10 +25,12 @@ TARPARAMS ?= -j
 CFLAGS=-g -Wall -Werror -Os
 
 croutoncursor_LIBS = -lX11 -lXfixes -lXrender
+croutonfbserver_LIBS = -lX11 -lXdamage -lXext -lXfixes -lXtst
 croutonwmtools_LIBS = -lX11
 croutonxi2event_LIBS = -lX11 -lXi
 
 croutonwebsocket_DEPS = src/websocket.h
+croutonfbserver_DEPS = src/websocket.h
 
 ifeq ($(wildcard .git/HEAD),)
     GITHEAD :=
