@@ -57,7 +57,8 @@ static int verbose = 0;
 
 #define trueorabort(expr, str, ...) do { \
     if (!(expr)) { \
-        printf("%s: " str "\n", __func__, ##__VA_ARGS__); \
+        printf("%s: ASSERTION " #expr " FAILED (" str ")\n", \
+               __func__, ##__VA_ARGS__);                     \
         abort(); \
     }            \
 } while (0)
