@@ -175,7 +175,7 @@ have to determine and download the bootstrap files every time.*
   1. The delete-chroot command is your sword, shield, and only true friend.
      `sudo delete-chroot evilchroot`
   2. It's actually just a shortcut to `sudo edit-chroot -d evilchroot`, which I
-     suppose makes it a bit of a deceptive swis-army-knife friend...still good?
+     suppose makes it a bit of a deceptive Swiss Army knife friend...still good?
 
 
 Tips
