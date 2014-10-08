@@ -42,11 +42,16 @@ else
 fi
 
 # Run crouton-specific commands:
+xmethod="`readlink -f '/etc/X11/xinit/xserverrc'`"
+xmethod="${xmethod##*-}"
 
 # Record the name of the chroot in the root window properties
 if [ -f '/etc/crouton/name' ] && hash xprop 2>/dev/null; then
     xprop -root -f CROUTON_NAME 8s -set CROUTON_NAME "`cat '/etc/crouton/name'`"
 fi
+
+# Record the crouton XMETHOD in the root window properties
+xprop -root -f CROUTON_XMETHOD 8s -set CROUTON_XMETHOD "$xmethod"
 
 # Launch the powerd poker daemon
 croutonpowerd --daemon &
@@ -55,27 +60,6 @@ croutonpowerd --daemon &
 if hash croutonclip 2>/dev/null; then
     croutonclip &
 fi
-
-# Apply the Chromebook keyboard map if installed.
-if [ -f '/usr/share/X11/xkb/compat/chromebook' ]; then
-    setxkbmap -model chromebook
-fi
-
-# Launch key binding daemon
-xmethod="`readlink -f '/etc/X11/xinit/xserverrc'`"
-xmethod="${xmethod##*-}"
-
-XMETHOD="$xmethod" xbindkeys -fg /etc/crouton/xbindkeysrc.scm
-
-# Launch xbindkeys for the Chromium OS X server if it isn't running
-mkdir -m 775 -p /tmp/crouton-lock
-{
-    # Only let one instance *really* run at a time
-    flock 3
-    XMETHOD='' host-x11 xbindkeys -n -fg /etc/crouton/xbindkeysrc.scm &
-    trap "kill '$!' 2>/dev/null" HUP INT TERM
-    wait "$!" || true
-} 3>/tmp/crouton-lock/xbindkeys &
 
 # Pass through the host cursor and correct mousewheels on xephyr
 if [ "$xmethod" = 'xephyr' ]; then
@@ -86,32 +70,84 @@ if [ "$xmethod" = 'xephyr' ]; then
     croutonwheel $CROUTON_WHEEL_PARAMS &
 fi
 
-# Launch touchegg if it is requested.
-toucheggconf='/etc/touchegg.conf'
-if [ -f "$toucheggconf" ]; then
-    mkdir -p "$HOME/.config/touchegg"
-    ln -sf "$toucheggconf" "$HOME/.config/touchegg/"
-    touchegg 2>/dev/null &
-fi
+# xbindkeys and other input-related apps are not needed for criat
+if [ "$xmethod" != "xiat" ]; then
+    # Apply the Chromebook keyboard map if installed.
+    if [ -f '/usr/share/X11/xkb/compat/chromebook' ]; then
+        setxkbmap -model chromebook
+    fi
 
-# Configure trackpad settings if needed
-if synclient >/dev/null 2>&1; then
-    case "`awk -F= '/_RELEASE_BOARD=/{print $2}' '/var/host/lsb-release'`" in
-        butterfly*|falco*)
-            SYNCLIENT="FingerLow=1 FingerHigh=5 $SYNCLIENT";;
-        parrot*|peppy*|wolf*)
-            SYNCLIENT="FingerLow=5 FingerHigh=10 $SYNCLIENT";;
-    esac
-    if [ -n "$SYNCLIENT" ]; then
-        synclient $SYNCLIENT
+    # Launch key binding daemon
+    XMETHOD="$xmethod" xbindkeys -fg /etc/crouton/xbindkeysrc.scm
+
+    # Launch xbindkeys for the Chromium OS X server if it isn't running
+    mkdir -m 775 -p /tmp/crouton-lock
+    {
+        # Only let one instance *really* run at a time
+        flock 3
+        XMETHOD='' host-x11 xbindkeys -n -fg /etc/crouton/xbindkeysrc.scm &
+        trap "kill '$!' 2>/dev/null" HUP INT TERM
+        wait "$!" || true
+    } 3>/tmp/crouton-lock/xbindkeys &
+
+    # Launch touchegg if it is requested.
+    toucheggconf='/etc/touchegg.conf'
+    if [ -f "$toucheggconf" ]; then
+        mkdir -p "$HOME/.config/touchegg"
+        ln -sf "$toucheggconf" "$HOME/.config/touchegg/"
+        touchegg 2>/dev/null &
+    fi
+
+    # Configure trackpad settings if needed
+    if synclient >/dev/null 2>&1; then
+        case "`awk -F= '/_RELEASE_BOARD=/{print $2}' '/var/host/lsb-release'`" in
+            butterfly*|falco*)
+                SYNCLIENT="FingerLow=1 FingerHigh=5 $SYNCLIENT";;
+            parrot*|peppy*|wolf*)
+                SYNCLIENT="FingerLow=5 FingerHigh=10 $SYNCLIENT";;
+        esac
+        if [ -n "$SYNCLIENT" ]; then
+            synclient $SYNCLIENT
+        fi
+    fi
+
+    # Make sure tap-to-click is enabled
+    if hash xinput 2>/dev/null; then
+        for id in `host-x11 xinput --list --id-only`; do
+            host-x11 xinput set-prop "$id" 'Tap Paused' 0 2>/dev/null || true
+        done
     fi
 fi
 
-# Make sure tap-to-click is enabled
-if hash xinput 2>/dev/null; then
-    for id in `host-x11 xinput --list --id-only`; do
-        host-x11 xinput set-prop "$id" 'Tap Paused' 0 2>/dev/null || true
-    done
+# Crouton-in-a-tab: Start fbserver and launch display
+if [ "$xmethod" = 'xiat' ]; then
+    # Set resolution to a default 1024x768, this is important so that the DPI
+    # looks reasonable when the WM/DE start.
+    findres 1024 768
+    croutonfbserver "$DISPLAY" &
+    (
+        try=1
+        PIPEDIR='/tmp/crouton-ext'
+        CRIATDISPLAY="$PIPEDIR/criat-display"
+        # criat-display may be out of date, clear it so we start fresh.
+        # FIXME: It would be cleaner to simply force croutoncycle
+        rm -f "$CRIATDISPLAY" 2>/dev/null
+        while ! croutoncycle "${DISPLAY#:}"; do
+            echo "Cannot connect to extension, retrying..."
+            if [ "$try" -eq 10 ]; then
+                echo "\
+Unable to start display, make sure the crouton extension is installed
+and enabled. (download from http://goo.gl/OVQOEt)" 1>&2
+            elif [ "$try" -ge 20 ]; then
+                # Send sigterm to the parent process
+                kill "$$"
+                break
+            fi
+            sleep 1
+            try="$((try+1))"
+        done
+        echo "Connected to extension, launched crouton in a tab window." 1>&2
+    ) &
 fi
 
 # Shell is the leader of a process group, so signals sent to this process are
