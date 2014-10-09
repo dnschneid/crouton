@@ -138,7 +138,7 @@ if ! awk -F= '/_RELEASE_VERSION=/ { exit int($2) < '"${CROS_MIN_VERS:-0}"' }' \
 If there are updates pending, please reboot and try again.
 Otherwise, you may not be getting automatic updates, in which case you should
 post your update_engine.log from chrome://system to http://crbug.com/296768 and
-restore your device using a recovery USB: http://goo.gl/AZ74hj"
+restore your device using a recovery USB: https://goo.gl/AZ74hj"
 fi
 
 # If the release is "list" or "help", print out all the valid releases.
@@ -495,7 +495,7 @@ You will likely run into issues, but things may work with some effort." 1>&2
     else
         echo "\
 If this is a surprise to you, $RELEASE has probably reached end of life.
-Refer to http://goo.gl/Z5LGVD for upgrade instructions." 1>&2
+Refer to https://goo.gl/Z5LGVD for upgrade instructions." 1>&2
     fi
     sleep 5
 fi

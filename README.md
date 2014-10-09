@@ -61,7 +61,7 @@ crouton is a powerful tool, and there are a *lot* of features, but basic usage
 is as simple as possible by design.
 
 If you're just here to use crouton, you can grab the latest release from
-[goo.gl/fd3zc](http://goo.gl/fd3zc). Download it, pop open a shell
+[https://goo.gl/fd3zc](https://goo.gl/fd3zc). Download it, pop open a shell
 (Ctrl+Alt+T, type `shell` and hit enter), and run `sh ~/Downloads/crouton` to
 see the help text. See the "examples" section for some usage examples.
 
@@ -116,7 +116,7 @@ Examples
      command-line tools using `-t core` or `-t cli-extra`
   2. Enter the chroot in as many crosh shells as you want simultaneously using
      `sudo enter-chroot`
-  3. Use the [Crosh Window](http://goo.gl/eczLT) extension to keep Chromium OS
+  3. Use the [Crosh Window](https://goo.gl/eczLT) extension to keep Chromium OS
      from eating standard keyboard shortcuts.
 
 ### A new version of crouton came out; my chroot is therefore obsolete and sad
