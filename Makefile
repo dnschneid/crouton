@@ -22,6 +22,8 @@ RELEASE = build/release.sh
 VERSION = 1
 TARPARAMS ?= -j
 
+CFLAGS=-g -Wall -Werror -Os
+
 croutoncursor_LIBS = -lX11 -lXfixes -lXrender
 croutonwmtools_LIBS = -lX11
 croutonxi2event_LIBS = -lX11 -lXi
@@ -50,8 +52,8 @@ $(TARGET): $(WRAPPER) $(SCRIPTS) $(GENVERSION) $(GITHEAD) Makefile
 $(EXTTARGET): $(EXTSOURCES) Makefile
 	rm -f $(EXTTARGET) && zip -q --junk-paths $(EXTTARGET) $(EXTSOURCES)
 
-$(SRCTARGETS): src/$(patsubst crouton%,src/%.c,$@) Makefile
-	gcc -g -Wall -Werror $(patsubst crouton%,src/%.c,$@) $($@_LIBS) -o $@
+$(SRCTARGETS): src/$(patsubst crouton%,src/%.c,$@) $($@_DEPS) Makefile
+	gcc $(CFLAGS) $(patsubst crouton%,src/%.c,$@) $($@_LIBS) -o $@
 
 extension: $(EXTTARGET)
 
