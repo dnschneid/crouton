@@ -25,7 +25,7 @@ host enter-chroot -n "$release" true
 host edit-chroot -a | tee /dev/stderr | passes grep "$release"
 
 # Check that the list all chroots option fails with anything else entered on the command line
-fails host enter-chroot -a $release
+fails host edit-chroot -a $release
 
 # List all chroots with details
 host edit-chroot -al | tee /dev/stderr | passes grep "^release: $release"
@@ -37,7 +37,7 @@ host edit-chroot -l $release | tee /dev/stderr | passes grep "^release: $release
 fails host edit-chroot -l x$release
 
 # Check that the list all chroots with details option fails with anything else entered on the command line
-fails host enter-chroot -al $release
+fails host edit-chroot -al $release
 
 # Cannot backup a non-existing chroot
 fails host edit-chroot -y -f "$BACKUPDIR" -b "$release.x"
