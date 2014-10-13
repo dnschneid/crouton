@@ -412,15 +412,16 @@ fi
         exit 0
     fi
 
+    # For each partition table change, call partx on the relevant partition
+    # number to update the kernel view
     if [ -n "$DELETE" ]; then
         echo "Removing partition $CROUTONPARTNUMBER..."
         cgpt add -i "$CROUTONPARTNUMBER" -b 0 -s 1 -l "" -t unused "$ROOTDEVICE"
+        partx -v -d "$CROUTONPARTNUMBER" "$ROOTDEVICE"
 
         echo "Resizing stateful partition..."
         cgpt add -i 1 -s "$newstatesize" "$ROOTDEVICE"
-
-        # Tell the kernel to re-read the partition table
-        partprobe "$ROOTDEVICE"
+        partx -v -u 1 "$ROOTDEVICE"
 
         # Resize the stateful partition
         e2fsck -f -p "${ROOTDEVICEPREFIX}1"
@@ -432,11 +433,11 @@ fi
 
         echo "Updating partition table..."
         cgpt add -i 1 -b "$statestart" -s "$newstatesize" -l STATE "$ROOTDEVICE"
+        partx -v -u 1 "$ROOTDEVICE"
+
         cgpt add -i "$CROUTONPARTNUMBER" -t data \
                  -b "$croutonstart" -s "$croutonsize" -l CROUTON "$ROOTDEVICE"
-
-        # Tell the kernel to re-read the partition table
-        partprobe "$ROOTDEVICE"
+        partx -v -a "$CROUTONPARTNUMBER" "$ROOTDEVICE"
 
         echo "Formatting crouton partition..."
         mkfs.ext4 "${ROOTDEVICEPREFIX}${CROUTONPARTNUMBER}"
