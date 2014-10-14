@@ -20,11 +20,10 @@ websocketcommand() {
         exit 0
     fi
 
-    (
-        flock 5
-        cat > "$PIPEIN"
-        cat "$PIPEOUT"
-    ) 5>"$PIPELOCK"
+    if ! timeout 3 \
+           sh -c "flock 5; cat > '$PIPEIN'; cat '$PIPEOUT'" 5>"$PIPELOCK"; then
+        echo "EError timeout"
+    fi
 }
 
 noswitch=''
