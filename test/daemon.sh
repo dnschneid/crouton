@@ -457,14 +457,14 @@ while sleep "$POLLINTERVAL"; do
                         status2="NO_DATA"
                     else
                         for path in "status.log" "debug/*" \
-                                "platform_crouton/debug/platform_crouton.*" \
-                                "platform_crouton/results/*"; do
+                                "platform_Crouton/debug/platform_Crouton.*" \
+                                "platform_Crouton/results/*"; do
                             # FIXME: Can we prevent partial fetches???
                             gsutil cp "${root}${path}" "$curtesthostroot" \
                                 > /dev/null 2>&1 || true
                         done
                         status2="`awk '($1 == "END") && \
-                                       (tolower($3) == "platform_crouton") \
+                                       ($3 == "platform_Crouton") \
                                            { print $2 }' \
                                        "$curtesthostroot/status.log"`"
                     fi
