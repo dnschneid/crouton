@@ -376,6 +376,8 @@ while sleep "$POLLINTERVAL"; do
                         $SCRIPTDIR/test/autotest_control.template \
                         > "$curtesthostroot/control"
 
+                    echo "$host" > "$curtesthostroot/host"
+
                     # Run test with atest
                     ret=
                     (
@@ -409,10 +411,14 @@ while sleep "$POLLINTERVAL"; do
         curtest="${curtestroot#$STATUSROOT/}"
         for curtesthostroot in "$curtestroot"/*; do
             curtesthost="${curtesthostroot#$curtestroot/}"
+            curtesthostresult="$curtesthostroot/results"
+
             # If jobid file exists, test is running, or results have not been
             # fetched yet
             if [ -f "$curtesthostroot/jobid" ]; then
+                mkdir -p "$curtesthostresult"
                 jobid="`cat "$curtesthostroot/jobid"`"
+                host="`cat "$curtesthostroot/host" || true`"
                 newstatusfile="$curtesthostroot/newstatus"
                 statusfile="$curtesthostroot/status"
                 if ! atest job list --parse "$jobid" > "$newstatusfile"; then
@@ -429,7 +435,16 @@ while sleep "$POLLINTERVAL"; do
                     rm -f "$newstatusfile"
                 fi
 
-                # TODO: If status is Running, we could rsync from the host
+                # If status is Running, rsync from the host
+                if [ "$status" = "Running" -a -n "$host" ]; then
+                    for path in "status.log" "debug/" \
+                        "platform_Crouton/debug/platform_Crouton." \
+                        "platform_Crouton/results/"; do
+                        rsync -aP \
+               "${host}.cros:/usr/local/autotest/results/default/${path}*" \
+                            "$curtesthostresult/" || true
+                    done
+                fi
 
                 # FIXME: Any more final statuses?
                 # Actually, partial Aborted tests end up as Completed
@@ -456,17 +471,17 @@ while sleep "$POLLINTERVAL"; do
                         fi
                         status2="NO_DATA"
                     else
-                        for path in "status.log" "debug/*" \
-                                "platform_Crouton/debug/platform_Crouton.*" \
-                                "platform_Crouton/results/*"; do
+                        for path in "status.log" "debug/" \
+                                "platform_Crouton/debug/platform_Crouton." \
+                                "platform_Crouton/results/"; do
                             # FIXME: Can we prevent partial fetches???
-                            gsutil cp "${root}${path}" "$curtesthostroot" \
+                            gsutil cp "${root}${path}*" "$curtesthostresult" \
                                 > /dev/null 2>&1 || true
                         done
                         status2="`awk '($1 == "END") && \
                                        ($3 == "platform_Crouton") \
                                            { print $2 }' \
-                                       "$curtesthostroot/status.log"`"
+                                       "$curtesthostresult/status.log"`"
                     fi
                     log "$curtest $curtesthost: $status ${status2:="UNKNOWN"}"
                     sed -i -e "s;\$;|Status2=$status2|;" "$statusfile"
