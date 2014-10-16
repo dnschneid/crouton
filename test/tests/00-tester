@@ -5,6 +5,11 @@
 
 # Tests some of the more complex testing functions, and records the system info
 
+if [ -z "$release" ]; then
+    echo "default"
+    exit 0
+fi
+
 # Save the basic system info to the log
 log "System info"
 cat /etc/lsb-release | log

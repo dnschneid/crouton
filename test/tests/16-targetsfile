@@ -7,28 +7,33 @@
 # an old chroot), and that we can recover the situation by specifying targets
 # manually.
 
+if [ -z "$release" ]; then
+    echo "default"
+    exit 0
+fi
+
 checktargetlist() {
     # Target list must include core only
-    [ "`host enter-chroot -n "$RELEASE" \
+    [ "`host enter-chroot -n "$release" \
         sed -e 's/,$//;s/^,//' /etc/crouton/targets`" = "core" ]
 }
 
 # Release-independent.
-snapshot "$RELEASE" core
+snapshot "$release" core
 
-host enter-chroot -n "$RELEASE" true
+host enter-chroot -n "$release" true
 checktargetlist
 
 # Update works
-crouton -n "$RELEASE" -u
+crouton -n "$release" -u
 checktargetlist
 
 # Update fails if /etc/crouton/targets is deleted
-host enter-chroot -n "$RELEASE" -u 0 rm /etc/crouton/targets
+host enter-chroot -n "$release" -u 0 rm /etc/crouton/targets
 fails checktargetlist
-fails crouton -n "$RELEASE" -u
+fails crouton -n "$release" -u
 fails checktargetlist
 
 # But we can recover the chroot by specifying targets
-crouton -n "$RELEASE" -u -t core
+crouton -n "$release" -u -t core
 checktargetlist
