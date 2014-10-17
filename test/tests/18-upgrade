@@ -13,8 +13,8 @@
 # PROMPT: choose normal or lts upgrade
 
 UPGRADEPATHS='\
-saucy;trusty;;normal
-precise;;trusty;lts'
+trusty;;utopic;normal
+precise;trusty;;lts'
 
 if [ -z "$release" ]; then
     # Only test upgrade if no release was set explicitly
