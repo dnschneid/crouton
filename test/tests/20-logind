@@ -4,10 +4,8 @@
 # found in the LICENSE file.
 
 if [ -z "$release" ]; then
-    cat <<EOF
-saucy
-trusty
-EOF
+    echo "trusty"
+    echo "utopic"
     exit 0
 fi
 
