@@ -408,6 +408,7 @@ while sleep "$POLLINTERVAL"; do
         if [ ! -d "$curtestroot" ]; then
             continue
         fi
+        curtestupdated=
         curtest="${curtestroot#$STATUSROOT/}"
         for curtesthostroot in "$curtestroot"/*; do
             curtesthost="${curtesthostroot#$curtestroot/}"
@@ -429,7 +430,7 @@ while sleep "$POLLINTERVAL"; do
                              "$newstatusfile"`"
                 if ! diff -q "$newstatusfile" "$statusfile" >/dev/null 2>&1; then
                     log "$curtest $curtesthost: $status"
-                    testupdated=y
+                    curtestupdated=y
                     mv "$newstatusfile" "$statusfile"
                 else
                     rm -f "$newstatusfile"
@@ -444,6 +445,7 @@ while sleep "$POLLINTERVAL"; do
                "${host}.cros:/usr/local/autotest/results/default/${path}*" \
                             "$curtesthostresult/" || true
                     done
+                    curtestupdated=y
                 fi
 
                 # FIXME: Any more final statuses?
@@ -486,6 +488,7 @@ while sleep "$POLLINTERVAL"; do
                     log "$curtest $curtesthost: $status ${status2:="UNKNOWN"}"
                     sed -i -e "s;\$;|Status2=$status2|;" "$statusfile"
                     rm $curtesthostroot/jobid
+                    curtestupdated=y
                 fi
             fi
         done
@@ -507,8 +510,13 @@ while sleep "$POLLINTERVAL"; do
             if ! diff -q newstatus status >/dev/null 2>&1; then
                 mv newstatus status
                 forceupdate=y
+                curtestupdated=y
             else
                 rm -f newstatus
+            fi
+
+            if [ -n "$curtestupdated" ]; then
+                "$SCRIPTDIR"/test/genreport.sh > status.html
             fi
         )
     done
