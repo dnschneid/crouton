@@ -22,16 +22,16 @@ host enter-chroot -n "$release" true
 # Tests with single parameter
 
 # List all chroots
-host edit-chroot -a | passes grep "$release"
+host edit-chroot -a | tee /dev/stderr | passes grep "$release"
 
 # Check that the list all chroots option fails with anything else entered on the command line
 fails host enter-chroot -a $release
 
 # List all chroots with details
-host edit-chroot -al | passes grep "^release: $release"
+host edit-chroot -al | tee /dev/stderr | passes grep "^release: $release"
 
 # List one chroot with details
-host edit-chroot -l $release | passes grep "^release: $release"
+host edit-chroot -l $release | tee /dev/stderr | passes grep "^release: $release"
 
 # Cannot list a non-existing chroot's 'croutonversion'
 fails host edit-chroot -l x$release
