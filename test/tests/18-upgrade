@@ -13,8 +13,19 @@
 # PROMPT: choose normal or lts upgrade
 
 UPGRADEPATHS='\
-saucy;trusty;;normal
-precise;;trusty;lts'
+trusty;;utopic;normal
+precise;trusty;;lts'
+
+if [ -z "$release" ]; then
+    # Only test upgrade if no release was set explicitly
+    if [ -z "$SUPPORTED_RELEASES_SET" ]; then
+        # Output all releases that are first in the upgrade paths
+        echo "$UPGRADEPATHS" | while read line; do
+            echo "${line%%;*}"
+        done
+    fi
+    exit 0
+fi
 
 # Install critical targets that are likely to break, as they manually pull in
 # packages from the mirror, or install alternative packages.
@@ -47,36 +58,32 @@ versioninfo() {
         ' | log
 }
 
-# Only test upgrade if no release was set explicitly
-if [ -z "$SUPPORTED_RELEASES_SET" ]; then
-    echo "$UPGRADEPATHS" | while read line; do
-        FIRST="${line%%;*}"
-        line="${line#$FIRST;}"
-        NEXT="${line%%;*}"
-        line="${line#$NEXT;}"
-        DEV="${line%%;*}"
-        line="${line#$DEV;}"
-        PROMPT="${line%%;*}"
+# Test upgrade paths starting with the selected release
+echo "$UPGRADEPATHS" | grep "^$release;" | while read line; do
+    FIRST="${line%%;*}"
+    line="${line#$FIRST;}"
+    NEXT="${line%%;*}"
+    line="${line#$NEXT;}"
+    DEV="${line%%;*}"
+    line="${line#$DEV;}"
+    PROMPT="${line%%;*}"
 
-        log "Trying upgrade path FIRST='$FIRST' to NEXT='$NEXT' (DEV='$DEV'). PROMPT='$PROMPT'"
+    log "Trying upgrade path FIRST='$FIRST' to NEXT='$NEXT' (DEV='$DEV'). PROMPT='$PROMPT'"
 
-        crouton -T -r "$FIRST" -t "$TARGETS" <<EOF
+    crouton -T -r "$FIRST" -t "$TARGETS" <<EOF
 install update-manager-core python-apt
 sed -i -e 's/Prompt=lts/Prompt=$PROMPT/' /etc/update-manager/release-upgrades
 EOF
-        versioninfo
+    versioninfo
 
-        for next in $NEXT; do
-            upgrade "$next"
-        done
-
-        # Then upgrade to latest development version as well
-        if [ -n "$DEV" ]; then
-            upgrade -d "$DEV"
-        fi
-
-        host delete-chroot "$FIRST"
+    for next in $NEXT; do
+        upgrade "$next"
     done
-else
-    log "SUPPORTED_RELEASES was set explicitly: not running upgrade test."
-fi
+
+    # Then upgrade to latest development version as well
+    if [ -n "$DEV" ]; then
+        upgrade -d "$DEV"
+    fi
+
+    host delete-chroot "$FIRST"
+done
