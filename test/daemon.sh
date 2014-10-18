@@ -417,7 +417,6 @@ while sleep "$POLLINTERVAL"; do
             # If jobid file exists, test is running, or results have not been
             # fetched yet
             if [ -f "$curtesthostroot/jobid" ]; then
-                mkdir -p "$curtesthostresult"
                 jobid="`cat "$curtesthostroot/jobid"`"
                 host="`cat "$curtesthostroot/host" || true`"
                 newstatusfile="$curtesthostroot/newstatus"
@@ -436,15 +435,22 @@ while sleep "$POLLINTERVAL"; do
                     rm -f "$newstatusfile"
                 fi
 
-                # If status is Running, rsync from the host
+                # If status is Running, rsync from the host. Move the current
+                # results dir away, then use rsync --link-dest, so that partial
+                # files are used, but old files deleted
                 if [ "$status" = "Running" -a -n "$host" ]; then
+                    rm -rf "$curtesthostresult.old"
+                    mkdir -p "$curtesthostresult"
+                    mv -T "$curtesthostresult" "$curtesthostresult.old"
+                    mkdir -p "$curtesthostresult"
                     for path in "status.log" "debug/" \
                         "platform_Crouton/debug/platform_Crouton." \
                         "platform_Crouton/results/"; do
-                        rsync -aP \
+                        rsync -aP --link-dest="$curtesthostresult.old/" \
                "${host}.cros:/usr/local/autotest/results/default/${path}*" \
                             "$curtesthostresult/" || true
                     done
+                    rm -rf "$curtesthostresult.old"
                     curtestupdated=y
                 fi
 
@@ -473,6 +479,9 @@ while sleep "$POLLINTERVAL"; do
                         fi
                         status2="NO_DATA"
                     else
+                        # Ensure results are fully re-fetched
+                        rm -rf "$curtesthostresult" "$curtesthostresult.old"
+                        mkdir -p "$curtesthostresult"
                         for path in "status.log" "debug/" \
                                 "platform_Crouton/debug/platform_Crouton." \
                                 "platform_Crouton/results/"; do
