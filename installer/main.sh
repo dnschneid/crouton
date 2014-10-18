@@ -294,13 +294,14 @@ if [ -z "$DOWNLOADONLY" ]; then
             for t in "$TARGETSDIR/"*; do
                 TARGET="${t##*/}"
                 if [ "${TARGET%common}" = "$TARGET" ]; then
-                    (. "$t") 1>&2
+                    (TARGETNOINSTALL='y'; . "$t") 1>&2
                 fi
             done
             exit 2
         elif [ ! "${TARGET%common}" = "$TARGET" ] || \
              [ ! -r "$TARGETSDIR/$TARGET" ] || \
-             ! (TARGETS='check'; . "$TARGETSDIR/$TARGET"); then
+             ! (TARGETNOINSTALL='y'; TARGETS='check';
+                . "$TARGETSDIR/$TARGET"); then
             error 2 "Invalid target \"$TARGET\"."
         fi
     done
@@ -656,6 +657,7 @@ cat "$DISTRODIR/prepare" >> "$CHROOT/prepare.sh"
 echo -n '' > "$TARGETDEDUPFILE"
 # Run each target, appending stdout to the prepare script.
 unset SIMULATE
+TARGETNOINSTALL=""
 if [ -n "$TARGETFILE" ]; then
     TARGET="`readlink -f "$TARGETFILE"`"
     (. "$TARGET") >> "$CHROOT/prepare.sh"
