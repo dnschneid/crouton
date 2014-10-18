@@ -13,8 +13,10 @@
 # PROMPT: choose normal or lts upgrade
 
 UPGRADEPATHS='\
-trusty;;utopic;normal
 precise;trusty;;lts'
+
+#FIXME: add trusty;;utopic;normal then this is fixed:
+# https://bugs.launchpad.net/ubuntu/+source/update-manager-core/+bug/1382707
 
 if [ -z "$release" ]; then
     # Only test upgrade if no release was set explicitly
