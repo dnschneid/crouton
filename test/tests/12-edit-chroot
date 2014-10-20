@@ -65,6 +65,17 @@ fails host enter-chroot -n "$release" true
 # Restore the chroot
 host edit-chroot -y -f "$BACKUPDIR/$release.tar" -r "$release"
 host enter-chroot -n "$release" true
+# Verify croutonversion outputs correct information
+host edit-chroot -l $release | tee /dev/stderr | passes grep "^release: $release"
+
+# Delete it
+host delete-chroot -y "$release"
+fails host enter-chroot -n "$release" true
+
+# Restore the chroot using the crouton installer (without update)
+crouton -f "$BACKUPDIR/$release.tar" -n "$release"
+host enter-chroot -n "$release" true
+host edit-chroot -l $release | tee /dev/stderr | passes grep "^release: $release"
 rm "$BACKUPDIR/$release.tar"
 
 # Backup a chroot with automatic naming
