@@ -8,7 +8,7 @@ var VERSION = 2; /* Note: the extension must always be backward compatible */
 var MAXLOGGERLEN = 20;
 var RETRY_TIMEOUT = 5;
 var UPDATE_CHECK_INTERVAL = 15*60; /* Check for updates every 15' at most */
-var WINDOW_UPDATE_INTERVAL = 15*60; /* Update window list every 15' at most */
+var WINDOW_UPDATE_INTERVAL = 15; /* Update window list every 15" at most */
 /* String to copy to the clipboard if it should be empty */
 var DUMMY_EMPTYSTRING = "%";
 
@@ -25,6 +25,7 @@ var websocket_ = null; /* Active connection */
 
 /* State variables */
 var debug_ = false;
+var hidpi_ = false; /* true if criat windows should be opened in HiDPI mode */
 var enabled_ = true; /* true if we are trying to connect */
 var active_ = false; /* true if we are connected to a server */
 var error_ = false; /* true if there was an error during the last connection */
@@ -38,6 +39,9 @@ var status_ = "";
 var sversion_ = 0; /* Version of the websocket server */
 var logger_ = []; /* Array of status messages: [LogLevel, time, message] */
 var windows_ = []; /* Array of windows (xorg, xephyr, host-x11, etc) */
+
+var criat_win_ = {}; /* Array of criat windows (.id, .window: window element) */
+var focus_win_ = -1; /* Focused criat window. -1 if no criat window focused. */
 
 /* Set the current status string.
  * active is a boolean, true if the WebSocket connection is established. */
@@ -96,8 +100,24 @@ function updateWindowList(force) {
     if (force || lastwindowlistupdate_ == null ||
             (currenttime-lastwindowlistupdate_) > 1000*WINDOW_UPDATE_INTERVAL) {
         printLog("Sending window list request", LogLevel.DEBUG);
+        websocket_.send("Cs" + focus_win_);
         websocket_.send("Cl");
         lastwindowlistupdate_ = currenttime;
+    }
+}
+
+/* Called from criat (window.js), so we can directly access each window */
+function registerCriat(display, window) {
+    if (criat_win_[display] && criat_win_[display].id >= 0) {
+        criat_win_[display].window = window;
+    }
+}
+
+/* Close the popup window */
+function closePopup() {
+    var views = chrome.extension.getViews({type: "popup"});
+    for (var i = 0; i < views.length; views++) {
+        views[i].close();
     }
 }
 
@@ -157,13 +177,37 @@ function refreshUI() {
             debugcheck.onclick = function() {
                 debug_ = debugcheck.checked;
                 refreshUI();
+                var disps = Object.keys(criat_win_);
+                for (var i = 0; i < disps.length; i++) {
+                    if (criat_win_[disps[i]].window)
+                        criat_win_[disps[i]].window.setDebug(debug_?1:0);
+                }
             }
             debugcheck.checked = debug_;
+
+            /* Update hidpi mode according to checkbox state. */
+            hidpicheck = view.document.getElementById("hidpicheck");
+            if (window.devicePixelRatio > 1) {
+                hidpicheck.onclick = function() {
+                    hidpi_ = hidpicheck.checked;
+                    refreshUI();
+                    var disps = Object.keys(criat_win_);
+                    for (var i = 0; i < disps.length; i++) {
+                        if (criat_win_[disps[i]].window)
+                            criat_win_[disps[i]].window.setHiDPI(hidpi_?1:0);
+                    }
+                }
+                hidpicheck.disabled = false;
+            } else {
+                hidpicheck.disabled = true;
+            }
+            hidpicheck.checked = hidpi_;
 
             /* Update status box */
             view.document.getElementById("info").textContent = status_;
 
             /* Update window table */
+            /* FIXME: Improve UI */
             windowlist = view.document.getElementById("windowlist");
 
             while (windowlist.rows.length > 0) {
@@ -181,7 +225,10 @@ function refreshUI() {
                 cell2.className = "name";
                 cell2.innerHTML = windows_[i].substring(3)
                 cell2.onclick = (function(i) { return function() {
-                    websocket_.send("C" + i);
+                    if (active_) {
+                        websocket_.send("C" + i);
+                        closePopup();
+                    }
                 } })(i);
             }
 
@@ -359,6 +406,49 @@ function websocketMessage(evt) {
         }
         refreshUI();
         break;
+    case 'X': /* Ask to open a crouton-in-a-tab window */
+        display = parseInt(payload);
+        if (display <= 0) {
+            /* Get out of full screen, for the current window */
+            var disps = Object.keys(criat_win_);
+            for (var i = 0; i < disps.length; i++) {
+                var winid = criat_win_[disps[i]].id;
+                chrome.windows.update(winid, {focused: false});
+                chrome.windows.get(winid, function(win) {
+                    chrome.windows.update(winid, {'state': 'minimized'},
+                                          function(win) {});
+                })
+            }
+        } else if (criat_win_[display] && criat_win_[display].id >= 0 &&
+                   (!criat_win_[display].window ||
+                    !criat_win_[display].window.closing)) {
+            /* focus/full screen an existing window */
+            var winid = criat_win_[disps[i]].id;
+            chrome.windows.update(winid, {focused: true});
+            chrome.windows.get(winid, function(win) {
+                if (win.state == "maximized")
+                    chrome.windows.update(winid, {'state': 'fullscreen'},
+                                          function(win) {})
+            })
+        } else {
+            /* Open a new window */
+            criat_win_[display] = new Object();
+            criat_win_[display].id = -1;
+            criat_win_[display].window = null;
+            chrome.windows.create({ 'url': "window.html?display=" + display +
+                                           "&debug=" + (debug_ ? 1 : 0) +
+                                           "&hidpi=" + (hidpi_ ? 1 : 0),
+                                    'type': "popup" },
+                                  function(newwin) {
+                                      criat_win_[display].id = newwin.id;
+                                      focus_win_ = display;
+                                      if (active_ && sversion_ >= 2)
+                                          websocket_.send("Cs" + focus_win_);
+                                  });
+        }
+        websocket_.send("XOK");
+        closePopup();
+        break;
     case 'P': /* Ping */
         websocket_.send(received_msg);
         break;
@@ -431,7 +521,8 @@ function error(str, enabled) {
     enabled_ = enabled;
     error_ = true;
     refreshUI();
-    websocket_.close();
+    if (websocket != null)
+        websocket_.close();
     /* Force check for extension update (possible reason for the error) */
     checkUpdate(true);
 }
@@ -468,6 +559,35 @@ chrome.runtime.getPlatformInfo(function(platforminfo) {
         chrome.runtime.onUpdateAvailable.addListener(function(details) {
             updateAvailable(details.version);
         });
+
+        /* Monitor window focus changes and report to croutonclip */
+        chrome.windows.onFocusChanged.addListener(function(windowid) {
+            var disps = Object.keys(criat_win_);
+            nextfocus_win_ = -1;
+            for (var i = 0; i < disps.length; i++) {
+                if (criat_win_[disps[i]].id == windowid) {
+                    nextfocus_win_ = disps[i];
+                    break;
+                }
+            }
+            if (focus_win_ != nextfocus_win_) {
+                focus_win_ = nextfocus_win_;
+                if (active_ && sversion_ >= 2)
+                    websocket_.send("Cs" + focus_win_);
+                printLog("Window " + focus_win_ + " focused", LogLevel.DEBUG);
+            }
+        })
+
+        chrome.windows.onRemoved.addListener(function(windowid) {
+            var disps = Object.keys(criat_win_);
+            for (var i = 0; i < disps.length; i++) {
+                if (criat_win_[disps[i]].id == windowid) {
+                    criat_win_[disps[i]].id = -1;
+                    criat_win_[disps[i]].window = null;
+                    printLog("Window " + disps[i] + " removed", LogLevel.DEBUG);
+                }
+            }
+        })
     } else {
         /* Disable the icon on non-Chromium OS. */
         chrome.browserAction.setTitle(

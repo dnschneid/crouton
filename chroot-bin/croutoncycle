@@ -18,6 +18,9 @@ Cycles through running graphical chroots.
 #     - aura: Chromium OS
 #     - 0: Chromium OS X11 display (non-aura window)
 #     - 1-9: chroot displays
+#   s<num>: informs of a Chromium OS window change (called from extension):
+#     - 0: any Chromium OS window
+#     - n: criat window: X11 display number
 
 case "$1" in
 [Ll]*) cmd='l';;
@@ -25,10 +28,33 @@ case "$1" in
 [Cc]*) cmd='0';;
 [Pp]*) cmd='p';;
 [Nn]*) cmd='n';;
+[Ss]*) cmd='s' disp="${1#s}";;
 :*) cmd=":$((${1#:}))";;
 [0-9]*) cmd="$(($1))";;
 *) echo "$USAGE" 1>&2; exit 2;;
 esac
+
+# FIXME: This is our third copy, we need to move it to a common file
+PIPEDIR='/tmp/crouton-ext'
+PIPEIN="$PIPEDIR/in"
+PIPEOUT="$PIPEDIR/out"
+PIPELOCK="$PIPEDIR/lock"
+CRIATDISPLAY="$PIPEDIR/criat-display"
+CROUTONCLIPPIDFILE='/tmp/crouton-lock/clip'
+
+# Write a command to croutonwebsocket, and read back response
+websocketcommand() {
+    # Check that $PIPEDIR and the FIFO pipes exist
+    if ! [ -d "$PIPEDIR" -a -p "$PIPEIN" -a -p "$PIPEOUT" ]; then
+        echo "EError $PIPEIN or $PIPEOUT are not pipes."
+        exit 0
+    fi
+
+    if ! timeout 3 \
+           sh -c "flock 5; cat > '$PIPEIN'; cat '$PIPEOUT'" 5>"$PIPELOCK"; then
+        echo "EError timeout"
+    fi
+}
 
 # Returns the chroot name of an X11 display specified in $1 on stdout
 getname() {
@@ -47,24 +73,42 @@ mkdir -m 775 -p /tmp/crouton-lock
 exec 3>/tmp/crouton-lock/cycle
 flock 3
 
+# set display command from extension
+if [ "$cmd" = 's' ]; then
+    echo "$disp" > "$CRIATDISPLAY"
+    if [ -s "$CROUTONCLIPPIDFILE" ]; then
+        kill -USR1 "`cat "$CROUTONCLIPPIDFILE"`" || true
+    fi
+    exit 0
+fi
+
 # Ensure environment sanity
 export XAUTHORITY=''
+
+# Set to y if there is any xiat instance running
+xiatactive=''
 
 # Prepare display list for easier looping
 displist=''
 for disp in /tmp/.X*-lock; do
     disp="${disp#*X}"
     disp=":${disp%-lock}"
-    # Only add VT-based chroots here
+    # Only add VT-based and xiat-based chroots here (that excludes Xephyr)
     if [ "$disp" = ':0' ]; then
         continue
     elif DISPLAY="$disp" xprop -root 'XFree86_VT' 2>/dev/null \
             | grep -q 'INTEGER'; then
         displist="$displist $disp"
+    elif DISPLAY="$disp" xprop -root 'CROUTON_XMETHOD' 2>/dev/null \
+            | grep -q '= "xiat"$'; then
+        displist="$displist $disp"
+        xiatactive='y'
     fi
 done
 # List windows on :0. Includes aura
 winlist="`host-x11 croutonwmtools list nim | sort | awk '{ printf $NF " " }'`"
+aurawin="`host-x11 croutonwmtools list ni | \
+              awk '$1 == "aura_root_0" { print $NF; exit }'`"
 
 # Combine the two
 fulllist="$winlist$displist"
@@ -77,6 +121,13 @@ if [ "$tty" = 'tty1' ]; then
     for disp in $winlist; do
         if [ "${disp%"*"}" != "$disp" ]; then
             curdisp="$disp"
+            if [ -n "$xiatactive" -a "${disp%"*"}" = "$aurawin" -a \
+                    -s "$CRIATDISPLAY" ]; then
+                criatdisp="`cat $CRIATDISPLAY`"
+                if [ "$criatdisp" -ge 0 ]; then
+                    curdisp=":$criatdisp"
+                fi
+            fi
             break
         fi
     done
@@ -217,19 +268,38 @@ if [ "${destdisp#:}" = "$destdisp" ]; then
         sleep .1
     fi
     croutonwmtools raise "${destdisp%"*"}"
+
+    if [ -n "$xiatactive" -a "${destdisp%"*"}" = "$aurawin" ]; then
+        STATUS="`echo "X-1" | websocketcommand`"
+        if [ "$STATUS" != 'XOK' ]; then
+            echo "${STATUS#?}" 1>&2
+            exit 1
+        fi
+    fi
 else
     export DISPLAY="$destdisp"
-    dest="`xprop -root 'XFree86_VT' 2>/dev/null`"
-    dest="${dest##* }"
-    if [ "${dest#[1-9]}" = "$dest" ]; then
-        dest='1'
+    if xprop -root 'CROUTON_XMETHOD' 2>/dev/null | grep -q '= "xiat"$'; then
+        if [ "$tty" != 'tty1' ]; then
+            sudo -n chvt 1
+            sleep .1
+        fi
+        STATUS="`echo "X${destdisp#:}" | websocketcommand`"
+        if [ "$STATUS" != 'XOK' ]; then
+            echo "${STATUS#?}" 1>&2
+            exit 1
+        fi
+    else
+        dest="`xprop -root 'XFree86_VT' 2>/dev/null`"
+        dest="${dest##* }"
+        if [ "${dest#[1-9]}" = "$dest" ]; then
+            dest='1'
+        fi
+        sudo -n chvt "$dest"
     fi
-    sudo -n chvt "$dest"
 fi
 
-CROUTONPIDFILE='/tmp/crouton-lock/clip'
-if [ -s "$CROUTONPIDFILE" ]; then
-    kill -USR1 "`cat "$CROUTONPIDFILE"`" || true
+if [ -s "$CROUTONCLIPPIDFILE" ]; then
+    kill -USR1 "`cat "$CROUTONCLIPPIDFILE"`" || true
 fi
 
 # Wait a flip and then refresh the display for good measure
