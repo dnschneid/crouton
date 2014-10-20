@@ -301,7 +301,7 @@ if [ -L "$CHROOT/etc/crouton/cmt" ]; then
   ln -sfT $CHROOT_CMT/usr/lib/xorg/modules/input/cmt_drv.so $CHROOT/usr/lib/xorg/modules/input/cmt_drv.so
 
   # libs loaded by cmt driver
-  for lib in libbase-core-242728 libevdev libgestures libjsoncpp
+  for lib in libbase-core-271506 libevdev libgestures libjsoncpp
   do
     cp /usr/lib64/$lib.so $CHROMIUM_CMT/usr/lib
     ln -sfT $CHROOT_CMT/usr/lib/$lib.so $CHROOT/usr/lib/$lib.so
