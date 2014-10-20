@@ -39,6 +39,19 @@ fails host edit-chroot -l x$release
 # Check that the list all chroots with details option fails with anything else entered on the command line
 fails host edit-chroot -al $release
 
+# Check that we can restore host-bin files.
+md5sum "$PREFIX/bin"/* > "$BACKUPDIR/csum"
+rm "$PREFIX/bin"/*
+fails md5sum -c "$BACKUPDIR/csum"
+fails host enter-chroot -n "$release" true
+# Restore binaries
+crouton -b
+md5sum -c "$BACKUPDIR/csum"
+rm "$BACKUPDIR/csum"
+host enter-chroot -n "$release" true
+# Verify croutonversion outputs correct information
+host edit-chroot -l $release | tee /dev/stderr | passes grep "^release: $release"
+
 # Cannot backup a non-existing chroot
 fails host edit-chroot -y -f "$BACKUPDIR" -b "$release.x"
 fails ls "$BACKUPDIR"/*
