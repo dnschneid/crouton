@@ -19,16 +19,26 @@ execfromconf() {
 
 # Launch window-stack-bridge for Unity HUD support, and unity-panel-service for
 # indicators.
-if [ "$RELEASE" = 'saucy' -o "$RELEASE" = 'trusty' ]; then
+launchpanelservices() {
     services="unity-panel-service window-stack-bridge"
     for service in $services; do
         conf_file=/usr/share/upstart/sessions/"$service".conf
         execfromconf "$conf_file"
-   done
+    done
+}
+
+# Upstart launches unity on utopic, and this needs to be started before
+# any dependent services.
+if [ "$RELEASE" = 'utopic' ]; then
+    PATH="$PATH":/sbin /usr/bin/unity &
 fi
 
-# If on trusty, indicators also need to be started.
-if [ "$RELEASE" = 'trusty' ]; then
+case "$RELEASE" in
+saucy|trusty|utopic) launchpanelservices;;
+esac
+
+# If on trusty or later, indicators also need to be started.
+if [ "$RELEASE" = 'trusty' -o "$RELEASE" = 'utopic' ]; then
     for conf_file in /usr/share/upstart/sessions/*.conf; do
         if grep -q '^start on.* indicator-services-start' "$conf_file"; then
             execfromconf "$conf_file"
