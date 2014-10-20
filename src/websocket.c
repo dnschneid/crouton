@@ -346,7 +346,10 @@ static void socket_client_read() {
                 length++;
             } else {
                 /* Launch command in background (this is necessary as
-                   croutoncycle may send a websocket command) */
+                   croutoncycle may send a websocket command, leaving us
+                   deadlocked...) */
+                /* FIXME: These processes are not reaped and leave lots of
+                 * zombies. Scary. */
                 pid_t pid = fork();
                 if (pid < 0) {
                     syserror("Fork error.");

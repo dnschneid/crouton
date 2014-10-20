@@ -126,7 +126,7 @@ static int block_write(int fd, char* buffer, size_t size) {
 
 /* Run external command, piping some data on its stdin, and reading back
  * the output. Returns the number of bytes read from the process (at most
- * outlen), or -1 on error. */
+ * outlen), or a negative number on error (-exit status). */
 static int popen2(char* cmd, char *const argv[],
                   char* input, int inlen, char* output, int outlen) {
     pid_t pid = 0;
@@ -157,8 +157,8 @@ static int popen2(char* cmd, char *const argv[],
             execlp(cmd, cmd, NULL);
         }
 
-        error("Error running '%s'.", cmd);
-        exit(1);
+        syserror("Error running '%s'.", cmd);
+        exit(127);
     }
 
     /* Parent */
@@ -173,11 +173,12 @@ static int popen2(char* cmd, char *const argv[],
     fds[1].fd = stdin_fd[1];
 
     pid_t wait_pid;
+    int status = 0;
     int readlen = 0;
     int writelen = 0;
     while (1) {
         /* Get child status */
-        wait_pid = waitpid(pid, NULL, WNOHANG);
+        wait_pid = waitpid(pid, &status, WNOHANG);
         /* Check if there is data to read, no matter the process status. */
         /* Timeout after 10ms, or immediately if the process exited already */
         int polln = poll(fds, 2, (wait_pid == pid) ? 0 : 10);
@@ -218,8 +219,12 @@ static int popen2(char* cmd, char *const argv[],
                 goto error;
             }
             log(3, "read n=%d", n);
-
             readlen += n;
+
+            if (verbose >= 3) {
+                fwrite(output, 1, readlen, stdout);
+            }
+
             if (readlen >= outlen) {
                 error("Output too long.");
                 ret = readlen;
@@ -238,6 +243,17 @@ static int popen2(char* cmd, char *const argv[],
             goto error;
         } else if (wait_pid == pid) {
             log(3, "child exited!");
+            if (WIFEXITED(status)) {
+                if (WEXITSTATUS(status) != 0) {
+                    error("child exited with status %d", WEXITSTATUS(status));
+                    ret = -WEXITSTATUS(status);
+                    goto error;
+                }
+            } else {
+                error("child process did not exit: %d", status);
+                ret = -1;
+                goto error;
+            }
             break;
         }
     }
