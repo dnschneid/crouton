@@ -1,5 +1,5 @@
 #!/bin/sh -e
-# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2014 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -8,7 +8,7 @@ set -e
 APPLICATION="${0##*/}"
 BACKGROUND=''
 BINDIR="`dirname "\`readlink -f "$0"\`"`"
-CHROOTS="`readlink -f "$BINDIR/../chroots"`"
+CHROOTS="`readlink -m "$BINDIR/../chroots"`"
 KEYFILE=''
 LOGIN=''
 NAME=''
@@ -65,7 +65,7 @@ while getopts 'bc:k:ln:t:u:x' f; do
     prevoptind="$OPTIND"
     case "$f" in
     b) BACKGROUND='y';;
-    c) CHROOTS="`readlink -f "$OPTARG"`";;
+    c) CHROOTS="`readlink -m "$OPTARG"`";;
     k) KEYFILE="$OPTARG";;
     l) LOGIN='y';;
     n) NAME="$OPTARG";;
@@ -263,6 +263,9 @@ mkdir -p "$CHROOT/var/host"
 # Copy in the current Chromium OS version for reference
 cp -f '/etc/lsb-release' "$CHROOT/var/host/"
 
+# Copy CRAS version into the chroot
+cras_test_client --version 2>/dev/null > "$CHROOT/var/host/cras-version" || true
+
 # Copy the latest Xauthority into the chroot
 if [ -f "${XAUTHORITY:=/home/chronos/.Xauthority}" ]; then
     cp -f "$XAUTHORITY" "$CHROOT/var/host/Xauthority"
@@ -405,8 +408,15 @@ done
 # Add a shm symlink to our new /var/run
 ln -sfT /dev/shm "`fixabslinks '/var/run'`/shm"
 
-# Add a /run/udev symlink for later versions of udev
-ln -sfT /dev/.udev "`fixabslinks '/var/run'`/udev"
+# Setup udev control directory in the chroot
+# Chromium OS >=6092 uses /run/udev, older versions /dev/.udev
+if [ -d /var/run/udev ]; then
+    bindmount /var/run/udev /var/host/udev
+    ln -sfT /var/host/udev "`fixabslinks '/var/run'`/udev"
+else
+    # Add a /run/udev symlink for later versions of udev in chroot
+    ln -sfT /dev/.udev "`fixabslinks '/var/run'`/udev"
+fi
 
 # Add a /var/host/cras symlink for CRAS clients
 ln -sfT /var/host/cras "`fixabslinks '/var/run'`/cras"

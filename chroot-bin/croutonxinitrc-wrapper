@@ -1,5 +1,5 @@
 #!/bin/sh -e
-# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2014 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -107,6 +107,13 @@ if [ ! -L /etc/crouton/cmt ]; then
             synclient $SYNCLIENT
         fi
     fi
+fi
+
+# Make sure tap-to-click is enabled
+if hash xinput 2>/dev/null; then
+    for id in `host-x11 xinput --list --id-only`; do
+        host-x11 xinput set-prop "$id" 'Tap Paused' 0 2>/dev/null || true
+    done
 fi
 
 # Shell is the leader of a process group, so signals sent to this process are

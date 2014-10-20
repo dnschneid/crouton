@@ -1,5 +1,5 @@
 #!/bin/sh -e
-# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2014 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -25,6 +25,8 @@ MIRROR=''
 MIRROR2=''
 NAME=''
 PREFIX='/usr/local'
+PREFIXSET=''
+CHROOTSLINK='/mnt/stateful_partition/crouton/chroots'
 PROXY='unspecified'
 RELEASE=''
 RESTORE=''
@@ -59,8 +61,8 @@ Options:
     -d          Downloads the bootstrap tarball but does not prepare the chroot.
     -e          Encrypt the chroot with ecryptfs using a passphrase.
                 If specified twice, prompt to change the encryption passphrase.
-    -f TARBALL  The bootstrap or backup tarball to use, or to download to in the
-                case of -d. When using an existing tarball, -a and -r are ignored.
+    -f TARBALL  The bootstrap or backup tarball to use, or to download to (-d).
+                When using an existing tarball, -a and -r are ignored.
     -k KEYFILE  File or directory to store the (encrypted) encryption keys in.
                 If unspecified, the keys will be stored in the chroot if doing a
                 first encryption, or auto-detected on existing chroots.
@@ -74,7 +76,9 @@ Options:
     -n NAME     Name of the chroot. Default is the release name.
                 Cannot contain any slash (/).
     -p PREFIX   The root directory in which to install the bin and chroot
-                subdirectories and data. Default: $PREFIX
+                subdirectories and data.
+                Default: $PREFIX, with $PREFIX/chroots linked to
+                $CHROOTSLINK.
     -P PROXY    Set an HTTP proxy for the chroot; effectively sets http_proxy.
                 Specify an empty string to remove a proxy when updating.
     -r RELEASE  Name of the distribution release. Default: $DEFAULTRELEASE,
@@ -114,7 +118,7 @@ while getopts 'a:def:k:m:M:n:p:P:r:s:t:T:uUV' f; do
     m) MIRROR="$OPTARG";;
     M) MIRROR2="$OPTARG";;
     n) NAME="$OPTARG";;
-    p) PREFIX="`readlink -f "$OPTARG"`";;
+    p) PREFIX="`readlink -m "$OPTARG"`"; PREFIXSET='y';;
     P) PROXY="$OPTARG";;
     r) RELEASE="$OPTARG";;
     t) TARGETS="$TARGETS${TARGETS:+","}$OPTARG";;
@@ -134,7 +138,7 @@ if ! awk -F= '/_RELEASE_VERSION=/ { exit int($2) < '"${CROS_MIN_VERS:-0}"' }' \
 If there are updates pending, please reboot and try again.
 Otherwise, you may not be getting automatic updates, in which case you should
 post your update_engine.log from chrome://system to http://crbug.com/296768 and
-restore your device using a recovery USB: http://goo.gl/AZ74hj"
+restore your device using a recovery USB: https://goo.gl/AZ74hj"
 fi
 
 # If the release is "list" or "help", print out all the valid releases.
@@ -197,10 +201,10 @@ fi
 
 # If this script was called with '-x' or '-v', pass that to prepare.sh
 SETOPTIONS=""
-if set -o | grep -q '^xtrace *on$'; then
+if set -o | grep -q '^xtrace.*on$'; then
     SETOPTIONS="-x"
 fi
-if set -o | grep -q '^verbose *on$'; then
+if set -o | grep -q '^verbose.*on$'; then
     SETOPTIONS="$SETOPTIONS -v"
 fi
 sh() {
@@ -363,6 +367,54 @@ fi
 
 # Confirm we have write access to the directory before starting.
 if [ -z "$DOWNLOADONLY" ]; then
+    # If no prefix is set, check that /usr/local/chroots ($CHROOTS) is a
+    # symbolic link to /mnt/stateful_partition/crouton/chroots ($CHROOTSLINK)
+    if [ -z "$PREFIXSET" -a ! -h "$CHROOTS" ]; then
+        # Detect if chroots are left in the old chroots directory, and move them
+        # to the new directory.
+        if [ -e "$CHROOTS" ] && ! rmdir "$CHROOTS" 2>/dev/null; then
+            echo \
+"Migrating data from legacy chroots directory $CHROOTS to $CHROOTSLINK..." 1>&2
+
+            # /mnt/stateful_partition/dev_image is bind-mounted to /usr/local,
+            # so mv does not understand that they are on the same filesystem
+            # Instead, use the direct path.
+            truechroots="/mnt/stateful_partition/dev_image/chroots"
+
+            # Be extra careful and check both files are indeed the same
+            if [ "`stat -c '%i' "$truechroots"`" != \
+                    "`stat -c '%i' "$CHROOTS"`" ]; then
+                error 1 \
+"$truechroots and $CHROOTS are not the same file as expected."
+            fi
+
+            # Check that CHROOTSLINK is empty
+            if [ -e "$CHROOTSLINK" ] && ! rmdir "$CHROOTSLINK" 2>/dev/null; then
+                error 1 \
+"There is data in both $CHROOTS and $CHROOTSLINK.
+Make sure all chroots are unmounted, then manually move the contents of
+$truechroots to $CHROOTSLINK."
+            fi
+
+            # Wait for currently-mounted chroots to be unmounted
+            if grep -q "$CHROOTS" /proc/mounts && \
+                    ! sh "$HOSTBINDIR/unmount-chroot" -a -y -c "$CHROOTS"; then
+                echo -n \
+"The above chroots appear to be running from the legacy chroots directory.
+Log out of all running chroots and the install will automatically continue.
+Press Ctrl-C at any time to abort the installation." 1>&2
+                while grep -q "$CHROOTS" /proc/mounts; do
+                    sleep 1
+                done
+                echo 1>&2
+            fi
+
+            mkdir -p "$CHROOTSLINK"
+            mv -T "$truechroots" "$CHROOTSLINK"
+        fi
+        ln -sT "$CHROOTSLINK" "$CHROOTS"
+    fi
+
     create='-n'
     if [ -d "$CHROOT" ] && ! rmdir "$CHROOT" 2>/dev/null; then
         if [ -n "$RESTORE" ]; then
@@ -375,7 +427,9 @@ Either delete it, specify a different name (-n), or specify -u to update it."
         create=''
         echo "$CHROOTSRC already exists; updating it..." 1>&2
     elif [ -n "$UPDATE" -a -z "$RESTORE" ]; then
-        error 1 "$CHROOTSRC does not exist; cannot update."
+        error 1 "$CHROOTSRC does not exist; cannot update.
+Valid chroots:
+`sh "$HOSTBINDIR/edit-chroot" -c "$CHROOTS" -a`"
     fi
 
     # Restore the chroot now
@@ -403,7 +457,7 @@ Either delete it, specify a different name (-n), or specify -u to update it."
 "Release doesn't match! Please correct the -r option, or specify a second -u to
 change the release, upgrading the chroot (dangerous)."
         else
-            echo "WARNING: Changing the chroot release to $RELEASE." 2>&1
+            echo "WARNING: Changing the chroot release to $RELEASE." 1>&2
             echo "Press Control-C to abort; upgrade will continue in 5 seconds." 1>&2
             sleep 5
         fi
@@ -441,7 +495,7 @@ You will likely run into issues, but things may work with some effort." 1>&2
     else
         echo "\
 If this is a surprise to you, $RELEASE has probably reached end of life.
-Refer to http://goo.gl/Z5LGVD for upgrade instructions." 1>&2
+Refer to https://goo.gl/Z5LGVD for upgrade instructions." 1>&2
     fi
     sleep 5
 fi

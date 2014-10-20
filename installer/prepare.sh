@@ -1,5 +1,5 @@
 #!/bin/sh -e
-# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2014 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -165,7 +165,7 @@ fixkeyboardmode() {
                 tty='tty1'
             fi
             if [ -e "/dev/$tty" ]; then
-                kbd_mode -s -C "/dev/$tty"
+                kbd_mode -s -C "/dev/$tty" 2>/dev/null || true
             fi
         done
     fi

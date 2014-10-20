@@ -1,8 +1,9 @@
 #!/bin/sh -e
-# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2014 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-if [ "$TARGETS" != 'help' -a "${ARCH#arm}" != "$ARCH" ]; then
+if [ "$TARGETS" != 'help' -a "$TARGETS" != 'check' \
+        -a "${ARCH#arm}" != "$ARCH" ]; then
     error 1 'xorg target does not work on ARM.'
 fi
 REQUIRES='core audio'

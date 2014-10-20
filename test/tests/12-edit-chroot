@@ -1,59 +1,82 @@
 #!/bin/sh -e
-# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2014 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 # Ensure all parameters of edit-chroot work properly (except encryption,
 # tested in 17-encryption).
 
+if [ -z "$release" ]; then
+    echo "default"
+    exit 0
+fi
+
 BACKUPDIR="$PREFIX/my backups"
 mkdir -p "$BACKUPDIR"
 
 # Release-independent.
-snapshot "$RELEASE" core
+snapshot "$release" core
 
-host enter-chroot -n "$RELEASE" true
+host enter-chroot -n "$release" true
 
 # Tests with single parameter
 
+# List all chroots
+host edit-chroot -a | tee /dev/stderr | passes grep "$release"
+
+# Check that the list all chroots option fails with anything else entered on the command line
+fails host enter-chroot -a $release
+
+# List all chroots with details
+host edit-chroot -al | tee /dev/stderr | passes grep "^release: $release"
+
+# List one chroot with details
+host edit-chroot -l $release | tee /dev/stderr | passes grep "^release: $release"
+
+# Cannot list a non-existing chroot's 'croutonversion'
+fails host edit-chroot -l x$release
+
+# Check that the list all chroots with details option fails with anything else entered on the command line
+fails host enter-chroot -al $release
+
 # Cannot backup a non-existing chroot
-fails host edit-chroot -y -f "$BACKUPDIR" -b "$RELEASE.x"
+fails host edit-chroot -y -f "$BACKUPDIR" -b "$release.x"
 fails ls "$BACKUPDIR"/*
 
 # BACKUPDIR contains a space: these must fail as well
-fails host edit-chroot -y -b -f $BACKUPDIR "$RELEASE"
-fails host edit-chroot -y -f $BACKUPDIR -b "$RELEASE"
+fails host edit-chroot -y -b -f $BACKUPDIR "$release"
+fails host edit-chroot -y -f $BACKUPDIR -b "$release"
 fails ls "$BACKUPDIR"/*
 
 # Backup a chroot (wrong parameter order fails)
-fails host edit-chroot -y -b "$RELEASE" -f "$BACKUPDIR/$RELEASE.tar"
+fails host edit-chroot -y -b "$release" -f "$BACKUPDIR/$release.tar"
 fails ls "$BACKUPDIR"/*
-host edit-chroot -y -f "$BACKUPDIR/$RELEASE.tar" -b "$RELEASE"
+host edit-chroot -y -f "$BACKUPDIR/$release.tar" -b "$release"
 
 # Move an existing chroot (wrong parameter order fails)
-fails host edit-chroot -y "$RELEASE" -m "$RELEASE.2"
-host edit-chroot -y -m "$RELEASE.2" "$RELEASE"
-host enter-chroot -n "$RELEASE.2" true
+fails host edit-chroot -y "$release" -m "$release.2"
+host edit-chroot -y -m "$release.2" "$release"
+host enter-chroot -n "$release.2" true
 
 # Restore the chroot (wrong parameter order fails)
-fails host edit-chroot -y -r "$RELEASE" -f "$BACKUPDIR/$RELEASE.tar"
-fails host enter-chroot -n "$RELEASE" true
+fails host edit-chroot -y -r "$release" -f "$BACKUPDIR/$release.tar"
+fails host enter-chroot -n "$release" true
 
 # Restore the chroot
-host edit-chroot -y -f "$BACKUPDIR/$RELEASE.tar" -r "$RELEASE"
-host enter-chroot -n "$RELEASE" true
-rm "$BACKUPDIR/$RELEASE.tar"
+host edit-chroot -y -f "$BACKUPDIR/$release.tar" -r "$release"
+host enter-chroot -n "$release" true
+rm "$BACKUPDIR/$release.tar"
 
 # Backup a chroot with automatic naming
-host edit-chroot -y -f "$BACKUPDIR" -b "$RELEASE"
+host edit-chroot -y -f "$BACKUPDIR" -b "$release"
 
 # Delete it
-host delete-chroot -y "$RELEASE"
-fails host enter-chroot -n "$RELEASE" true
+host delete-chroot -y "$release"
+fails host enter-chroot -n "$release" true
 
 # Restore the chroot with automatically named tarball
-host edit-chroot -y -f "$BACKUPDIR" -r "$RELEASE"
-host enter-chroot -n "$RELEASE" true
+host edit-chroot -y -f "$BACKUPDIR" -r "$release"
+host enter-chroot -n "$release" true
 rm "$BACKUPDIR"/*.tar.*
 
 # Backing up a chroot fails if there if not enough disk space
@@ -63,64 +86,64 @@ mkfs.ext2 -F "$PREFIX/img"
 mkdir -p "$PREFIX/img.mnt"
 mount -o loop "$PREFIX/img" "$PREFIX/img.mnt"
 # Make sure backup does not complete
-fails host edit-chroot -y -f "$PREFIX/img.mnt" -b "$RELEASE"
+fails host edit-chroot -y -f "$PREFIX/img.mnt" -b "$release"
 fails ls "$PREFIX/img.mnt"/*.tar.*
 umount "$PREFIX/img.mnt"
 rm -f "$PREFIX/img"
 
-# Tests with multiple parameters (we have $RELEASE and $RELEASE.2 at this stage)
+# Tests with multiple parameters (we have $release and $release.2 at this stage)
 
 # No archive gets created if one of the chroots does not exist
 fails host edit-chroot -y -f "$BACKUPDIR" -b \
-    "$RELEASE" "$RELEASE.2" "$RELEASE.3"
+    "$release" "$release.2" "$release.3"
 fails ls "$BACKUPDIR"/*
 
 # Backup both chroots
-host edit-chroot -y -f "$BACKUPDIR" -b "$RELEASE" "$RELEASE.2"
+host edit-chroot -y -f "$BACKUPDIR" -b "$release" "$release.2"
 
 # Move them to a new prefix: destination needs to end with a slash
-fails host edit-chroot -y -m "$PREFIX/chroots.2" "$RELEASE" "$RELEASE.2"
-host enter-chroot -n "$RELEASE" true
-host enter-chroot -n "$RELEASE.2" true
+fails host edit-chroot -y -m "$PREFIX/chroots.2" "$release" "$release.2"
+host enter-chroot -n "$release" true
+host enter-chroot -n "$release.2" true
 
-host edit-chroot -y -m "$PREFIX/chroots.2/" "$RELEASE" "$RELEASE.2"
-host enter-chroot -c "$PREFIX/chroots.2" -n "$RELEASE" true
-host enter-chroot -c "$PREFIX/chroots.2" -n "$RELEASE.2" true
+host edit-chroot -y -m "$PREFIX/chroots.2/" "$release" "$release.2"
+host enter-chroot -c "$PREFIX/chroots.2" -n "$release" true
+host enter-chroot -c "$PREFIX/chroots.2" -n "$release.2" true
 
 # Delete both chroots
-host delete-chroot -y -c "$PREFIX/chroots.2" "$RELEASE" "$RELEASE.2"
-fails host enter-chroot -c "$PREFIX/chroots.2" -n "$RELEASE" true
-fails host enter-chroot -c "$PREFIX/chroots.2" -n "$RELEASE.2" true
+host delete-chroot -y -c "$PREFIX/chroots.2" "$release" "$release.2"
+fails host enter-chroot -c "$PREFIX/chroots.2" -n "$release" true
+fails host enter-chroot -c "$PREFIX/chroots.2" -n "$release.2" true
 
 OLDCWD="`pwd`"
 
 # Restore both chroots from automatically named tarballs in current directory
 cd "$BACKUPDIR"
-host edit-chroot -y -r "$RELEASE" "$RELEASE.2"
-host enter-chroot -n "$RELEASE" true
-host enter-chroot -n "$RELEASE.2" true
+host edit-chroot -y -r "$release" "$release.2"
+host enter-chroot -n "$release" true
+host enter-chroot -n "$release.2" true
 cd "$OLDCWD"
 rm "$BACKUPDIR"/*.tar.*
 
 # chroot name can start with -
-host edit-chroot -y -m "-$RELEASE" "$RELEASE.2"
-host enter-chroot -n "-$RELEASE" true
+host edit-chroot -y -m "-$release" "$release.2"
+host enter-chroot -n "-$release" true
 
 # Check that invalid chroot name is detected in parameters
-fails host edit-chroot -b -y "test/$RELEASE"
-fails host edit-chroot -b -y ".." "$RELEASE.2"
-fails host edit-chroot -b -y "$RELEASE.2" "."
-fails host edit-chroot -b -y "$RELEASE.2" ""
+fails host edit-chroot -b -y "test/$release"
+fails host edit-chroot -b -y ".." "$release.2"
+fails host edit-chroot -b -y "$release.2" "."
+fails host edit-chroot -b -y "$release.2" ""
 fails ls "$BACKUPDIR"/*
 
 # Check invalid names are also detected in parameter to -m
 # (/ are acceptable in this context, as target directory)
-fails host edit-chroot -y -m "." -- "-$RELEASE"
-fails host edit-chroot -y -m ".." -- "-$RELEASE"
-fails host edit-chroot -y -m "" -- "-$RELEASE"
-host enter-chroot -n "-$RELEASE" true
+fails host edit-chroot -y -m "." -- "-$release"
+fails host edit-chroot -y -m ".." -- "-$release"
+fails host edit-chroot -y -m "" -- "-$release"
+host enter-chroot -n "-$release" true
 
 # Delete both chroots
-host delete-chroot -y -- "-$RELEASE" "$RELEASE"
-fails host enter-chroot -c -n "$RELEASE" true
-fails host enter-chroot -c -n "-$RELEASE" true
+host delete-chroot -y -- "-$release" "$release"
+fails host enter-chroot -n "$release" true
+fails host enter-chroot -n -- "-$release" true

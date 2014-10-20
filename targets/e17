@@ -1,7 +1,11 @@
 #!/bin/sh -e
-# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2014 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+if [ "$TARGETS" != 'help' -a "$TARGETS" != 'check' ] &&
+        release -lt jessie -eq kali; then
+    error 99 "e17 target is not supported on wheezy/kali."
+fi
 REQUIRES='gtk-extra'
 DESCRIPTION='Installs the enlightenment desktop environment. (Approx. 50MB)'
 HOSTBIN='starte17'

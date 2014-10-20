@@ -1,5 +1,5 @@
 #!/bin/sh -e
-# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2014 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 REQUIRES='gtk-extra'
@@ -8,7 +8,7 @@ HOSTBIN='startlxde'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
-install lxde -- dictionaries-common chromium-browser
+install lxde -- dictionaries-common chromium-browser network-manager
 
 TIPS="$TIPS
 You can start LXDE via the startlxde host command: sudo startlxde

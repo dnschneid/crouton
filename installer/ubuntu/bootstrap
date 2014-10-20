@@ -1,5 +1,5 @@
 #!/bin/sh -e
-# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2014 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -29,6 +29,25 @@ Check your internet connection or proxy settings and try again.'
             | tar -C "$tmp" --strip-components=1 -Jx 2>/dev/null; then
         error 1 'Failed to download debootstrap.'
     fi
+fi
+
+# Patch debootstrap so that it retries downloading packages
+echo 'Patching debootstrap...' 1>&2
+if awk '
+    t == 2 && /-z \"\$checksum\"/ { sub(/\$checksum/, "$checksum$failed"); t=3 }
+    t == 1 { if (/if \[/) { sub(/if \[/, "elif ["); t=2 } else { exit 1 } }
+    /if ! just_get \"\$from\" \"\$dest2\"; then continue 2; fi/ {
+        sub(/if !/, "failed=; if !")
+        sub(/continue 2; fi/, "failed=y")
+        t=1
+    }
+    1
+    END { if (t != 3) exit 1 }
+        ' "$tmp/functions" > "$tmp/functions.new"; then
+    mv -f "$tmp/functions.new" "$tmp/functions"
+else
+    rm -f "$tmp/functions.new"
+    echo "Unable to patch debootstrap, moving on..." 1>&2
 fi
 
 # Add the necessary debootstrap executables

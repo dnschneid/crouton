@@ -1,5 +1,5 @@
 #!/bin/sh -e
-# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2014 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -139,11 +139,11 @@ flock 3
                 y -= tp ? log(-dy) * '"$ys"' + '"$yc"' : 1
             }
             while (y >= 1) {
-                output("mouseclick '"$d"'")
+                output("mouseclick '"$u"'")
                 y -= 1
             }
             while (y <= -1) {
-                output("mouseclick '"$u"'")
+                output("mouseclick '"$d"'")
                 y += 1
             }
         }

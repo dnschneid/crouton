@@ -1,5 +1,5 @@
 #!/bin/sh -e
-# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2014 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -10,15 +10,16 @@ ARCH='unknown'
 APPLICATION="${0##*/}"
 CHANGES=''
 DOWNLOAD=''
-DEST="$HOME/Downloads/crouton"
 UPDATES=''
 
 BRANCH="${VERSION##*~}"
 BRANCH="${BRANCH%%:*}"
 COMMIT="${VERSION##*:}"
 CHANGESURL="https://github.com/dnschneid/crouton/compare/$COMMIT..."
-CROUTONURL='http://goo.gl/cZ2PL'
-
+INSTALLER="crouton-$BRANCH"
+INSTALLER="${INSTALLER%-master}"
+CROUTONURL="https://github.com/dnschneid/crouton/raw/releases/$INSTALLER"
+DEST="$HOME/Downloads/$INSTALLER"
 
 USAGE="$APPLICATION [options]
 
@@ -91,13 +92,13 @@ tmpdir=''
 if [ -n "$UPDATES$DOWNLOAD" ]; then
     tmpdir="`mktemp -d --tmpdir=/tmp crouton.XXX`"
     trap "rm -rf --one-file-system '$tmpdir'" INT HUP 0
-    echo "Retrieving latest version of crouton" 1>&2
-    if ! wget "$CROUTONURL" -O "$tmpdir/crouton" 2>"$tmpdir/log"; then
+    echo "Retrieving latest version of $INSTALLER" 1>&2
+    if ! wget "$CROUTONURL" -O "$tmpdir/$INSTALLER" 2>"$tmpdir/log"; then
         cat "$tmpdir/log" 1>&2
-        echo "Failed to retrieve latest version of crouton" 1>&2
+        echo "Failed to retrieve latest version of $INSTALLER" 1>&2
         exit 1
     fi
-    latest="`awk -F"'" '/^VERSION=/{print $2;exit}' "$tmpdir/crouton"`"
+    latest="`awk -F"'" '/^VERSION=/{print $2;exit}' "$tmpdir/$INSTALLER"`"
 fi
 
 # Print out latest version number if requested
@@ -110,7 +111,7 @@ fi
 # Save latest version if requested
 if [ -n "$DOWNLOAD" -a ! "$VERSION" = "$latest" ]; then
     echo "Saving latest version to $DEST" 1>&2
-    mv -f "$tmpdir/crouton" "$DEST"
+    mv -f "$tmpdir/$INSTALLER" "$DEST"
 fi
 
 # Launch changelog if requested

@@ -1,10 +1,11 @@
-# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2014 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 TARGET = crouton
 EXTTARGET = crouton.zip
 SRCTARGETS = $(patsubst src/%.c,crouton%,$(wildcard src/*.c))
+CONTRIBUTORS = CONTRIBUTORS
 WRAPPER = build/wrapper.sh
 SCRIPTS := \
 	$(wildcard chroot-bin/*) \
@@ -16,6 +17,8 @@ SCRIPTS := \
 	$(wildcard targets/*)
 EXTSOURCES = $(wildcard host-ext/crouton/*)
 GENVERSION = build/genversion.sh
+CONTRIBUTORSSED = build/CONTRIBUTORS.sed
+RELEASE = build/release.sh
 VERSION = 1
 TARPARAMS ?= -j
 
@@ -52,9 +55,22 @@ $(SRCTARGETS): src/$(patsubst crouton%,src/%.c,$@) Makefile
 
 extension: $(EXTTARGET)
 
+$(CONTRIBUTORS): $(GITHEAD) $(CONTRIBUTORSSED)
+	git shortlog -s | sed -f $(CONTRIBUTORSSED) | sort -u > $(CONTRIBUTORS)
+
+contributors: $(CONTRIBUTORS)
+
+release: $(CONTRIBUTORS) $(TARGET) $(RELEASE)
+	[ ! -d .git ] || git status | grep -q 'working directory clean' || \
+		{ echo "There are uncommitted changes. Aborting!" 1>&2; exit 2; }
+	$(RELEASE) $(TARGET)
+
+force-release: $(CONTRIBUTORS) $(TARGET) $(RELEASE)
+	$(RELEASE) -f $(TARGET)
+
 all: $(TARGET) $(SRCTARGETS) $(EXTTARGET)
 
 clean:
 	rm -f $(TARGET) $(EXTTARGET) $(SRCTARGETS)
 
-.PHONY: all clean extension
+.PHONY: all clean contributors extension release force-release
