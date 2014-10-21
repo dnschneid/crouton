@@ -185,8 +185,8 @@ if [ -n "$UPDATE$RESTOREBIN" -a -n "$ARCH" ]; then
 fi
 
 # Release or name cannot be specified when restoring binaries
-if [ -n "$RESTOREBIN" -a -n "$NAME$RELEASE" ]; then
-    error 2 "Name or release cannot be specified with -b."
+if [ -n "$RESTOREBIN" -a -n "$NAME$RELEASE$ENCRYPT" ]; then
+    error 2 "Name, release and encrypt cannot be specified with -b."
 fi
 
 # MIRROR and MIRROR2 must not be specified on update
@@ -380,22 +380,12 @@ fi
 
 # Mount the chroot specified by $1, and return its path
 mountchroot() {
-    local ret=0
-
-    # Mount the chroot. mount-chroot output the chroot path
-    if [ -n "$KEYFILE" ]; then
-        sh "$HOSTBINDIR/mount-chroot" -k "$KEYFILE" \
-                          $create $ENCRYPT -p -c "$CHROOTS" -- "$1" || ret=$?
-    else
-        sh "$HOSTBINDIR/mount-chroot" \
-                          $create $ENCRYPT -p -c "$CHROOTS" -- "$1" || ret=$?
-    fi
-
-    return $ret
+    sh "$HOSTBINDIR/mount-chroot" -k "$KEYFILE" \
+        $create $ENCRYPT -p -c "$CHROOTS" -- "$1"
 }
 
 # Confirm we have write access to the directory before starting.
-if [ -z "$RESTOREBIN" -a -z "$DOWNLOADONLY" ]; then
+if [ -z "$RESTOREBIN$DOWNLOADONLY" ]; then
     # Validate chroot name
     if ! validate_name "$NAME"; then
         error 2 "Invalid chroot name '$NAME'."
@@ -581,21 +571,19 @@ elif [ -z "$DOWNLOADONLY" ] && \
 fi
 
 # Unpack the tarball if appropriate
-if [ -z "$RESTOREBIN" -a -z "$RESTORE" -a \
-            -z "$UPDATE" -a -z "$DOWNLOADONLY" ]; then
+if [ -z "$RESTOREBIN$RESTORE$UPDATE$DOWNLOADONLY" ]; then
     echo "Installing $RELEASE-$ARCH chroot to $CHROOTSRC" 1>&2
     if [ -n "$TARBALL" ]; then
         # Unpack the chroot
         echo 'Unpacking chroot environment...' 1>&2
         tar -C "$CHROOT" --strip-components=1 -xf "$TARBALL"
     fi
-elif [ -z "$RESTOREBIN" -a -z "$RESTORE" -a -z "$UPDATE" ]; then
+elif [ -z "$RESTOREBIN$RESTORE$UPDATE" ]; then
     echo "Downloading $RELEASE-$ARCH bootstrap to $TARBALL" 1>&2
 fi
 
 # Download the bootstrap data if appropriate
-if [ -z "$UPDATE" -a -z "$RESTOREBIN" ] && \
-        [ -n "$DOWNLOADONLY" -o -z "$TARBALL" ]; then
+if [ -z "$UPDATE$RESTOREBIN" ] && [ -n "$DOWNLOADONLY" -o -z "$TARBALL" ]; then
     # Create the temporary directory and delete it upon exit
     tmp="`mktemp -d --tmpdir=/tmp "$APPLICATION.XXX"`"
     subdir="$RELEASE-$ARCH"
@@ -698,6 +686,7 @@ Please specify targets with -t."
         echo "$TARGETS" > "$TARGETSFILE"
     fi
 else
+    # Collect targets over all chroots (ignore the ones that cannot be mounted)
     for file in "$CHROOTS"/*; do
         if [ ! -d "$file" ]; then
             continue
