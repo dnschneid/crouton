@@ -7,7 +7,7 @@
 
 VALID_TOOLCHAINS := pnacl
 
-NACL_SDK_ROOT ?= $(HOME)/nacl_sdk/pepper_35
+NACL_SDK_ROOT ?= $(HOME)/nacl_sdk/pepper_37
 
 ../crouton/criat.pexe: pnacl/Release/criat.pexe
 	cp pnacl/Release/criat.pexe ../crouton/criat.pexe
