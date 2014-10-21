@@ -655,27 +655,27 @@ deduptargets() {
 
 if [ -z "$RESTOREBIN" ] && [ -z "$RESTORE" -o -n "$UPDATE" ]; then
     PREPARE="$CHROOT/prepare.sh"
+
+    # Create the setup script inside the chroot
+    echo 'Preparing chroot environment...' 1>&2
+    VAREXPAND="s/releases=.*\$/releases=\"\
+`sed 's/$/\\\\/' "$DISTRODIR/releases"`
+\"/;"
+    VAREXPAND="${VAREXPAND}s #ARCH# $ARCH ;s #DISTRO# $DISTRO ;"
+    VAREXPAND="${VAREXPAND}s #MIRROR# $MIRROR ;s #MIRROR2# $MIRROR2 ;"
+    VAREXPAND="${VAREXPAND}s #RELEASE# $RELEASE ;s #PROXY# $PROXY ;"
+    VAREXPAND="${VAREXPAND}s #VERSION# ${VERSION:-"git"} ;"
+    VAREXPAND="${VAREXPAND}s #USERNAME# $CROUTON_USERNAME ;"
+    VAREXPAND="${VAREXPAND}s/#SETOPTIONS#/$SETOPTIONS/;"
+    installscript "$INSTALLERDIR/prepare.sh" "$PREPARE" "$VAREXPAND"
+    # Append the distro-specific prepare.sh
+    cat "$DISTRODIR/prepare" >> "$PREPARE"
 else # Restore host-bin only
     PREPARE="/dev/null"
 
     # Make sure targets are aware that we only want to restore host-bin
     RESTOREHOSTBIN='y'
 fi
-
-# Create the setup script inside the chroot
-echo 'Preparing chroot environment...' 1>&2
-VAREXPAND="s/releases=.*\$/releases=\"\
-`sed 's/$/\\\\/' "$DISTRODIR/releases"`
-\"/;"
-VAREXPAND="${VAREXPAND}s #ARCH# $ARCH ;s #DISTRO# $DISTRO ;"
-VAREXPAND="${VAREXPAND}s #MIRROR# $MIRROR ;s #MIRROR2# $MIRROR2 ;"
-VAREXPAND="${VAREXPAND}s #RELEASE# $RELEASE ;s #PROXY# $PROXY ;"
-VAREXPAND="${VAREXPAND}s #VERSION# ${VERSION:-"git"} ;"
-VAREXPAND="${VAREXPAND}s #USERNAME# $CROUTON_USERNAME ;"
-VAREXPAND="${VAREXPAND}s/#SETOPTIONS#/$SETOPTIONS/;"
-installscript "$INSTALLERDIR/prepare.sh" "$PREPARE" "$VAREXPAND"
-# Append the distro-specific prepare.sh
-cat "$DISTRODIR/prepare" >> "$PREPARE"
 
 if [ -z "$RESTOREBIN" ]; then
     # Ensure that /usr/local/bin and /etc/crouton exist
