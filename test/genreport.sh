@@ -1,7 +1,7 @@
 
 # Collect list of tests
 tests="`ls */results/*-test | sed -e 's|.*/\([^\.]*\)\..*|\1|' | sort -u`"
-machines="`ls -d */results | sed -e 's|\([^/]*\)/.*|\1|' | sort -u`"
+machines="`ls -d */status | sed -e 's|\([^/]*\)/.*|\1|' | sort -u`"
 
 cat <<EOF
 <html>
