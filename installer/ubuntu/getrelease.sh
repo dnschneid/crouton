@@ -20,7 +20,7 @@ fi
 
 rel="`awk '/^deb .* main( .*)?$/ { print $3; exit }' \
           "$sources" "$sources.d"/*.list 2>/dev/null`"
-if [ -z "$rel" ] || ! grep -q "^$rel[^a-z]*$" "`dirname "$0"`/releases"; then
+if [ -z "$rel" ] || ! grep -q "^$rel[^a-z]*" "`dirname "$0"`/releases"; then
     exit 1
 fi
 
