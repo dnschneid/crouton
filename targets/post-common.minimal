@@ -1,0 +1,23 @@
+#!/bin/sh -e
+# Copyright (c) 2014 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# This is a target, but it's not selectable by the user. These are the commands
+# that get executed at the very end of the generated prepare.sh.
+# These commands are not optional and are automatically added to targets.
+# This file only contains the bare minimum that needs to be run after
+# installing any target (e.g., when running audio target on auto-update)
+
+REQUIRES='post-common.minimal'
+DESCRIPTION=''
+HOSTBIN=''
+. "${TARGETSDIR:="$PWD"}/common"
+
+### Append to prepare.sh:
+
+echo 'Cleaning up...' 1>&2
+if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
+    apt-get -y --purge autoremove
+    apt-get clean
+fi
