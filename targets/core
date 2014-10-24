@@ -2,12 +2,38 @@
 # Copyright (c) 2014 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-REQUIRES=''
+REQUIRES='core.minimal'
 DESCRIPTION='Performs core system configuration. Most users would want this.'
 CHROOTBIN='brightness croutonpowerd croutonversion host-dbus host-x11'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
+if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
+    # Run debootstrap second stage if it hasn't already happened
+    if [ -r /debootstrap ]; then
+        # Debootstrap doesn't like anything mounted under /sys or /var when it
+        # runs. We request a re-mount after bootstrapping, so these mounts will
+        # be fixed. We also can't detect the mounts properly due to the chroot,
+        # so we have to recursively find mountpoints under /sys, and hardcode
+        # /var umounts.
+        find /sys/* -maxdepth 2 -depth -type d \
+            -exec mountpoint -q {} \; -exec umount {} \;
+        umount '/var/run/lock' '/var/run'
+        # Start the bootstrap
+        /debootstrap/debootstrap --second-stage
+        # Clean contents of /var/run (since we'll always be mounting over it).
+        rm -rf --one-file-system /var/run/*
+        # Request a script restart to refresh the mount environment
+        relaunch_setup
+    else
+        # Do any pending configuration, in case of an unfortunately-timed Ctrl-C
+        dpkg --configure -a
+
+        # Fix the keyboard mode in case it got reverted to raw
+        fixkeyboardmode
+    fi
+fi
+
 echo 'Preparing environment...' 1>&2
 if [ ! "$VERSION" = '#VERSION#' ]; then
     sed -e "s ^VERSION=.*\$ VERSION='$VERSION' ;" \
@@ -16,33 +42,8 @@ if [ ! "$VERSION" = '#VERSION#' ]; then
         -i '/usr/local/bin/croutonversion'
 fi
 
-# Create the new environment file
-oldenv='/etc/environment'
-newenv='/etc/environment.new'
-{
-    echo '### begin crouton-generated environment variables'
-    if [ "$PROXY" = 'unspecified' -o "$PROXY" = '#PROXY#' ]; then
-        # Copy over previously generated content
-        awk '/^### end/ { exit }
-             x && tolower($0) ~ /^[a-z]*_proxy=/
-             /^### begin/ { x=1 }' "$oldenv" 2>/dev/null || true
-    elif [ -n "$PROXY" ]; then
-        for var in http_proxy HTTP_PROXY https_proxy HTTPS_PROXY \
-                   ftp_proxy FTP_PROXY; do
-            echo "$var='$PROXY'"
-        done
-        for var in no_proxy NO_PROXY; do
-            echo "$var='localhost,127.0.0.1'"
-        done
-    fi
-    echo '### end crouton-generated environment variables'
-} > "$newenv"
-
-# Set proxy variables for this script
-. "$newenv"
-export http_proxy https_proxy ftp_proxy
-
 # Copy in previous user-environment settings
+# (oldenv/newenv are defined in core.minimal, and $newenv is generated there)
 if [ -r "$oldenv" ]; then
     awk '/^### begin/{x=1}!x;/^### end/{x=0}' "$oldenv" >> "$newenv"
 fi
