@@ -638,7 +638,13 @@ deduptargets() {
     fi
 }
 
+PREPAREDIR="/etc/crouton/prepare"
+
 if [ -z "$RESTOREBIN" ] && [ -z "$RESTORE" -o -n "$UPDATE" ]; then
+    if [ -z "$UPDATEIGNOREEXISTING" ]; then
+        rm -rf --one-file-system "$CHROOT$PREPAREDIR"
+    fi
+    mkdir -p -m 0700 "$CHROOT$PREPAREDIR"
     PREPARE="$CHROOT/prepare.sh"
 
     # Create the setup script inside the chroot
@@ -652,9 +658,13 @@ if [ -z "$RESTOREBIN" ] && [ -z "$RESTORE" -o -n "$UPDATE" ]; then
     VAREXPAND="${VAREXPAND}s #VERSION# ${VERSION:-"git"} ;"
     VAREXPAND="${VAREXPAND}s #USERNAME# $CROUTON_USERNAME ;"
     VAREXPAND="${VAREXPAND}s/#SETOPTIONS#/$SETOPTIONS/;"
-    installscript "$INSTALLERDIR/prepare.sh" "$PREPARE" "$VAREXPAND"
+    installscript "$INSTALLERDIR/prepare.sh" \
+                  "$CHROOT$PREPAREDIR/prepare.sh" "$VAREXPAND"
     # Append the distro-specific prepare.sh
-    cat "$DISTRODIR/prepare" >> "$PREPARE"
+    cat "$DISTRODIR/prepare" > "$CHROOT$PREPAREDIR/distroprepare"
+
+    echo ". '$PREPAREDIR/prepare.sh'" > "$PREPARE"
+    echo ". '$PREPAREDIR/distroprepare'" >> "$PREPARE"
 else # Restore host-bin only
     PREPARE="/dev/null"
 
