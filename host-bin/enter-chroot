@@ -498,11 +498,9 @@ if [ ! "$NOLOGIN" = 1 ] && grep -q '^root:' "$passwd" 2>/dev/null; then
     fi
 
     # Launch systemd-logind if available and not already running
-    # Whitelisted for saucy and trusty
     systemd_dir="`fixabslinks '/run/systemd'`"
     if [ -x "$CHROOT/lib/systemd/systemd-logind" ] && \
-            [ ! -d "$systemd_dir" ] && \
-            [ "$CHROOTRELEASE" = 'saucy' -o "$CHROOTRELEASE" = 'trusty' ]; then
+            [ ! -d "$systemd_dir" ]; then
         # Every piece of systemd code ever assumes that this directory exists
         mkdir -p "$systemd_dir"
 
