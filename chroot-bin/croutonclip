@@ -31,15 +31,17 @@ websocketcommand() {
 }
 
 # rundisplay :X cmd ...
-# Run a command on the specified display (uses host-x11 on :0)
+# Run a command on the specified display
 rundisplay() {
     local disp="$1"
     shift
-    if [ "$disp" = ":0" ]; then
-        host-x11 "$@"
-    else
+    (
+        # If display is :0, setup XAUTHORITY
+        if [ "$disp" = ":0" ]; then
+            eval "`host-x11`" 2>/dev/null
+        fi
         DISPLAY="$disp" "$@"
-    fi
+    )
 }
 
 copyclip() {
