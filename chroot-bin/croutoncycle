@@ -21,6 +21,14 @@ Cycles through running graphical chroots.
 #   s<num>: informs of a Chromium OS window change (called from extension):
 #     - 0: any Chromium OS window
 #     - n: criat window: X11 display number
+#   force [command]: Force switching display, even if it does not appear
+#                    to be necessary.
+
+force=''
+if [ "${1#[Ff]}" != "$1" ]; then
+    force='y'
+    shift
+fi
 
 case "$1" in
 [Ll]*) cmd='l';;
@@ -268,7 +276,7 @@ else
 fi
 
 # No-op on no-op
-if [ "$destdisp" = "$curdisp" ]; then
+if [ "$destdisp" = "$curdisp" -a -z "$force" ]; then
     exit 0
 fi
 

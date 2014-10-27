@@ -128,12 +128,7 @@ if [ "$xmethod" = 'xiat' ]; then
     croutonfbserver "$DISPLAY" &
 
     try=1
-    PIPEDIR='/tmp/crouton-ext'
-    CRIATDISPLAY="$PIPEDIR/criat-display"
-    # criat-display may be out of date, clear it so we start fresh.
-    # FIXME: It would be cleaner to simply force croutoncycle
-    rm -f "$CRIATDISPLAY" 2>/dev/null
-    while ! croutoncycle "${DISPLAY#:}"; do
+    while ! croutoncycle force "${DISPLAY#:}"; do
         echo "Cannot connect to extension, retrying..."
         if [ "$try" -ge 10 ]; then
             echo "\
