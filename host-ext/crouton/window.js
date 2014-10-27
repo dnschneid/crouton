@@ -26,6 +26,7 @@ function moduleDidLoad() {
     CriatModule_.postMessage('display:' + display_);
     CriatModule_.postMessage('debug:' + debug_);
     CriatModule_.postMessage('hidpi:' + hidpi_);
+    CriatModule_.focus();
 }
 
 /* NaCl module failed to load */
@@ -184,6 +185,8 @@ function handleFocusBlur(evt) {
         else
             CriatModule_.postMessage("hide:");
     }
+    console.log("active: " + document.activeElement);
+    CriatModule_.focus();
 }
 
 /* Start in full screen */
