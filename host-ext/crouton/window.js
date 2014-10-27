@@ -13,6 +13,11 @@ var display_ = null; /* Display number to use */
 var connected_ = false;
 var closing_ = false; /* Disconnected, and waiting for the window to close */
 
+function registerWindow(register) {
+    chrome.extension.getBackgroundPage().
+        registerCriat(display_, register ? window : null);
+}
+
 /* NaCl module loaded */
 function moduleDidLoad() {
     CriatModule_ = document.getElementById('criat');
@@ -21,8 +26,25 @@ function moduleDidLoad() {
     CriatModule_.postMessage('display:' + display_);
     CriatModule_.postMessage('debug:' + debug_);
     CriatModule_.postMessage('hidpi:' + hidpi_);
-    /* Register window with background page */
-    chrome.extension.getBackgroundPage().registerCriat(display_, window);
+}
+
+/* NaCl module failed to load */
+function handleError(event) {
+    // We can't use common.naclModule yet because the module has not been
+    // loaded.
+    CriatModule_ = document.getElementById('criat');
+    updateStatus('ERROR: ' + CriatModule_.lastError);
+    registerWindow(false);
+}
+
+/* NaCl module crashed */
+function handleCrash(event) {
+    if (CriatModule_.exitStatus == -1) {
+        updateStatus('NaCl module crashed.');
+    } else {
+        updateStatus('NaCl module exited: ' + CriatModule_.exitStatus);
+    }
+    registerWindow(false);
 }
 
 /* Change debugging level */
@@ -92,6 +114,7 @@ function handleMessage(message) {
         } else {
             updateStatus("Disconnected, please close the window.");
         }
+        registerWindow(false);
     } else if (type == "state" && payload == "fullscreen") {
         /* Toggle full screen */
         chrome.windows.getCurrent(function(win) {
@@ -170,6 +193,8 @@ chrome.windows.update(chrome.windows.WINDOW_ID_CURRENT,
 document.addEventListener('DOMContentLoaded', function() {
     listener_ = document.getElementById('listener');
     listener_.addEventListener('load', moduleDidLoad, true);
+    listener_.addEventListener('error', handleError, true);
+    listener_.addEventListener('crash', handleCrash, true);
     listener_.addEventListener('message', handleMessage, true);
     window.addEventListener('resize', handleResize);
     window.addEventListener('focus', handleFocusBlur);
@@ -189,4 +214,6 @@ document.addEventListener('DOMContentLoaded', function() {
         else if (keyval[0] == "hidpi")
             setHiDPI(keyval[1]);
     }
+
+    registerWindow(true);
 })
