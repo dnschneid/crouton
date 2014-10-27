@@ -11,6 +11,7 @@
 cmd=''
 extraargs=''
 binary=''
+ret=0
 
 # This part is a translation of what is found in xorg's xinit.c
 
@@ -123,49 +124,50 @@ fi
 if [ "$xmethod" = 'xiat' ]; then
     # Set resolution to a default 1024x768, this is important so that the DPI
     # looks reasonable when the WM/DE start.
-    findres 1024 768
+    findres 1024 768 > /dev/null
     croutonfbserver "$DISPLAY" &
-    (
-        try=1
-        PIPEDIR='/tmp/crouton-ext'
-        CRIATDISPLAY="$PIPEDIR/criat-display"
-        # criat-display may be out of date, clear it so we start fresh.
-        # FIXME: It would be cleaner to simply force croutoncycle
-        rm -f "$CRIATDISPLAY" 2>/dev/null
-        while ! croutoncycle "${DISPLAY#:}"; do
-            echo "Cannot connect to extension, retrying..."
-            if [ "$try" -eq 10 ]; then
-                echo "\
+
+    try=1
+    PIPEDIR='/tmp/crouton-ext'
+    CRIATDISPLAY="$PIPEDIR/criat-display"
+    # criat-display may be out of date, clear it so we start fresh.
+    # FIXME: It would be cleaner to simply force croutoncycle
+    rm -f "$CRIATDISPLAY" 2>/dev/null
+    while ! croutoncycle "${DISPLAY#:}"; do
+        echo "Cannot connect to extension, retrying..."
+        if [ "$try" -ge 10 ]; then
+            echo "\
 Unable to start display, make sure the crouton extension is installed
-and enabled. (download from http://goo.gl/OVQOEt)" 1>&2
-            elif [ "$try" -ge 20 ]; then
-                # Send sigterm to the parent process
-                kill "$$"
-                break
-            fi
-            sleep 1
-            try="$((try+1))"
-        done
+and enabled, and up to date. (download from http://goo.gl/OVQOEt)" 1>&2
+            ret=1
+            break
+        fi
+        sleep 1
+        try="$((try+1))"
+    done
+    if [ "$ret" -eq 0 ]; then
         echo "Connected to extension, launched crouton in a tab window." 1>&2
-    ) &
+    fi
 fi
 
-# Shell is the leader of a process group, so signals sent to this process are
-# propagated to its children. We ignore signals in this process, but the child
-# handles them and exits. We use a no-op handler, as "" causes the signal to be
-# ignored in children as well (see NOTES in "man 2 sigaction" for details).
-# This process then runs exit commands, and terminates.
-trap "true" HUP INT TERM
+# Only run if no error occured before (e.g. cannot connect to extension)
+if [ "$ret" -eq 0 ]; then
+    # Shell is the leader of a process group, so signals sent to this process
+    # are propagated to its children. We ignore signals in this process, but the
+    # child handles them and exits. We use a no-op handler, as "" causes the
+    # signal to be ignored in children as well (see NOTES in "man 2 sigaction"
+    # for details). This process then runs exit commands, and terminates.
+    trap "true" HUP INT TERM
 
-# Run the client itself if it is executable, otherwise run it in a shell.
-ret=0
-if [ -n "$binary" -o -x "$cmd" ]; then
-    "$cmd" $extraargs "$@" || ret=$?
-else
-    /bin/sh "$cmd" $extraargs "$@" || ret=$?
+    # Run the client itself if it is executable, otherwise run it in a shell.
+    if [ -n "$binary" -o -x "$cmd" ]; then
+        "$cmd" $extraargs "$@" || ret=$?
+    else
+        /bin/sh "$cmd" $extraargs "$@" || ret=$?
+    fi
+
+    trap - HUP INT TERM
 fi
-
-trap - HUP INT TERM
 
 # Run crouton-specific commands before the server exits:
 
