@@ -3,9 +3,33 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+# croutonfindnacl address signature ["pids"]
+#
+# This script is used by croutonfbserver to find the nacl_helper process it is
+# connected to, and, in particular, the file descriptor corresponding to the shm
+# memory that the nacl_helper process shares with Chromium.
+#
+# - address:   NaCl-space address of the shared memory (hexadecimal). We assume
+#              that the NaCl/hardware memory mapping conserves the address,
+#              possibly with a prefix in the MSBs.
+# - signature: random 8 byte pattern (hexadecimal, machine byte order) that is
+#              written at the beginning of the shared buffer by the NaCl
+#              application. The first 8 bytes of each candidate buffer is read,
+#              guaranteeing that the correct buffer is returned.
+# - pids:      (normally ununsed, defaults to all processes named "nacl_helper")
+#              Space-separated list of PIDs to scan for.
+#
+# On success, prints "pid:filename" and exits with code 0.
+# On error (shm not found, invalid parameters), exits with code >0.
+
 set -e
 
 VERBOSE=
+
+if [ "$#" -lt 2 -o "$#" -gt 3 ]; then
+    echo "Invalid parameters"
+    exit 2
+fi
 
 ADDRESS="$1"
 PATTERN="$2"
