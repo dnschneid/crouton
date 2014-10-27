@@ -24,15 +24,15 @@ res="`xrandr | awk '
     BEGIN {
         tw='"$TARGETW"'
         th='"$TARGETH"'
-        penalty = 1000000
+        oversize_penalty = 1000000
     }
     $1 ~ /[0-9]+x[0-9]+/ {
         res = $1; sub(/_[0-9]+/, "", res)
         w = res; sub(/x[0-9]*/, "", w); w = int(w)
         h = res; sub(/[0-9]*x/, "", h); h = int(h)
         score = abs(tw-w) + abs(th-h)
-        if (w > tw) score += penalty
-        if (h > th) score += penalty
+        if (w > tw) score += oversize_penalty
+        if (h > th) score += oversize_penalty
         if (!cmode || score < cscore) {
             cmode = $1
             cscore = score
@@ -45,7 +45,7 @@ res="`xrandr | awk '
 '`"
 
 if [ -z "$res" ]; then
-   echo Cannot find resolution 1>&2
+   echo "Cannot find resolution" 1>&2
    exit 1
 fi
 
