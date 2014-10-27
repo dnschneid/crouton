@@ -108,33 +108,30 @@ for disp in /tmp/.X*-lock; do
         xiatactive='y'
     fi
 done
-# Detect if a server is running on :0
-if host-x11 croutonwmtools list 1 >/dev/null 2>&1; then
+
+# host-x11 fails if no Chromium OS server exist
+if host-x11 true 2>/dev/null; then
     # List windows on :0. Includes aura
     winlist="`host-x11 croutonwmtools list nim | \
               sort | awk '{ printf $NF " " }'`"
     aurawin="`host-x11 croutonwmtools list ni | \
               awk '$1 == "aura_root_0" { print $NF; exit }'`"
+    tty="`cat '/sys/class/tty/tty0/active'`"
 else
     # No X11 server
     noaurax='y'
     winlist="aura*"
     aurawin="aura"
+    tty="tty1"
 fi
 
 # Combine the two
 fulllist="$winlist$displist"
 fulllist="${fulllist% }"
 
-# Figure out the current display number
-if [ -z "$noaurax" ]; then
-    tty="`cat '/sys/class/tty/tty0/active'`"
-else
-    tty="tty1"
-fi
-
 if [ "$tty" = 'tty1' ]; then
-    # Either in Chromium OS, xephyr chroot, or window. Active window is starred.
+    # Either in Chromium OS, xephyr/xiat chroot, or window.
+    # Active window is starred.
     for disp in $winlist; do
         if [ "${disp%"*"}" != "$disp" ]; then
             curdisp="$disp"
