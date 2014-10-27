@@ -13,6 +13,10 @@ var display_ = null; /* Display number to use */
 var connected_ = false;
 var closing_ = false; /* Disconnected, and waiting for the window to close */
 
+ /* Rate limit resize events */
+var resizePending_ = false;
+var resizeLimited_ = false;
+
 function registerWindow(register) {
     chrome.extension.getBackgroundPage().
         registerCriat(display_, register ? window : null);
@@ -22,7 +26,7 @@ function registerWindow(register) {
 function moduleDidLoad() {
     CriatModule_ = document.getElementById('criat');
     updateStatus('Starting...');
-    handleResize();
+    criatResize();
     CriatModule_.postMessage('display:' + display_);
     CriatModule_.postMessage('debug:' + debug_);
     CriatModule_.postMessage('hidpi:' + hidpi_);
@@ -60,7 +64,7 @@ function setDebug(debug) {
     }
     if (CriatModule_) {
         CriatModule_.postMessage('debug:' + debug_);
-        handleResize();
+        criatResize();
     }
 }
 
@@ -69,7 +73,7 @@ function setHiDPI(hidpi) {
     hidpi_ = hidpi;
     if (CriatModule_) {
         CriatModule_.postMessage('hidpi:' + hidpi_);
-        handleResize();
+        criatResize();
     }
 }
 
@@ -158,10 +162,25 @@ function handleMessage(message) {
 
 /* Tell the module that the window was resized (this triggers a change of
  * resolution, followed by a resize message. */
-function handleResize() {
+function criatResize() {
     console.log("resize! " + listener_.clientWidth + "/" + listener_.clientHeight);
     if (CriatModule_)
         CriatModule_.postMessage('resize:' + listener_.clientWidth + "/" + listener_.clientHeight);
+}
+
+/* Window was resize, limit to one event per second */
+function handleResize() {
+    if (!resizeLimited_) {
+        criatResize();
+        setTimeout(function() {
+            if (resizePending_)
+                criatResize();
+            resizeLimited_ = resizePending_ = false;
+        }, 1000);
+        resizeLimited_ = true;
+    } else {
+        resizePending_ = true;
+    }
 }
 
 /* Called when window changes focus/visiblity */
