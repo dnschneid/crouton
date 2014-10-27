@@ -92,28 +92,13 @@ if [ -z "$ALLCHROOTS$BACKUP$DELETE$ENCRYPT$KEYFILE$LISTDETAILS$MOVE$RESTORE" ]; 
     error 2 "$USAGE"
 fi
 
-# Need at least one chroot listed, or -a; not both.
-if [ $# = 0 -a -z "$ALLCHROOTS" ] || [ ! $# = 0 -a -n "$ALLCHROOTS" ]; then
+# Need at least one chroot listed if not using -r with -f or -a.
+if [ $# = 0 ] && ! [ -n "$RESTORE" -a -n "$TARBALL" -o -n "$ALLCHROOTS" ]; then
     error 2 "$USAGE"
 fi
 
-# If we specified -a option, bring in all chroots.
-if [ -n "$ALLCHROOTS" ]; then
-    if [ ! -d "$CHROOTS" ]; then
-        error 1 "$CHROOTS not found."
-    fi
-    for crname in "$CHROOTS"/*; do
-        if [ -d "$crname" ]; then
-            set -- "$@" "${crname##*/}"
-        fi
-    done
-    if [ $# = 0 ]; then
-        error 1 "No chroots found in $CHROOTS"
-    fi
-fi
-
-# Need at least one chroot listed if not using -r with -f.
-if [ $# = 0 ] && ! [ -n "$RESTORE" -a -n "$TARBALL" ]; then
+# Cannot specify a chroot and -a.
+if [ $# -gt 0 -a -n "$ALLCHROOTS" ]; then
     error 2 "$USAGE"
 fi
 
@@ -130,6 +115,21 @@ fi
 # Cannot specify delete with anything else.
 if [ -n "$DELETE" -a -n "$BACKUP$ENCRYPT$KEYFILE$MOVE$RESTORE" ]; then
     error 2 "$USAGE"
+fi
+
+# If we specified -a option, bring in all chroots.
+if [ -n "$ALLCHROOTS" ]; then
+    if [ ! -d "$CHROOTS" ]; then
+        error 1 "$CHROOTS not found."
+    fi
+    for crname in "$CHROOTS"/*; do
+        if [ -d "$crname" ]; then
+            set -- "$@" "${crname##*/}"
+        fi
+    done
+    if [ $# = 0 ]; then
+        error 1 "No chroots found in $CHROOTS"
+    fi
 fi
 
 # If multiple chroots are listed, KEYFILE and MOVE must be empty or directories.
