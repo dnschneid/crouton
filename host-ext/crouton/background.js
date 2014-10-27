@@ -423,7 +423,7 @@ function websocketMessage(evt) {
                    (!criat_win_[display].window ||
                     !criat_win_[display].window.closing)) {
             /* focus/full screen an existing window */
-            var winid = criat_win_[disps[i]].id;
+            var winid = criat_win_[display].id;
             chrome.windows.update(winid, {focused: true});
             chrome.windows.get(winid, function(win) {
                 if (win.state == "maximized")
