@@ -268,7 +268,7 @@ if [ -n "$RELEASE" -o -z "$UPDATE" ]; then
     fi
     for DISTRODIR in "$INSTALLERDIR"/*/; do
         DISTRODIR="${DISTRODIR%/}"
-        if grep -q "^$RELEASE[^a-z]*" "$DISTRODIR/releases"; then
+        if grep -q "^$RELEASE\([^a-z].*\)*$" "$DISTRODIR/releases"; then
             DISTRO="${DISTRODIR##*/}"
             . "$DISTRODIR/defaults"
             break
@@ -484,7 +484,8 @@ change the release, upgrading the chroot (dangerous)."
 fi
 
 # Check if RELEASE is supported
-releaseline="`sed -n "s/^\($RELEASE[^a-z|]*\).*$/\1/p" "$DISTRODIR/releases"`"
+releaseline="`sed -n "s/^\($RELEASE[^a-z|]*\)\(|.*\)*$/\1/p" \
+                                                         "$DISTRODIR/releases"`"
 if [ "${releaseline%"*"}" != "$releaseline" ]; then
     echo "WARNING: $RELEASE is an unsupported release.
 You will likely run into issues, but things may work with some effort." 1>&2
