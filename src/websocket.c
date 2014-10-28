@@ -348,17 +348,25 @@ static void socket_client_read() {
                 /* Launch command in background (this is necessary as
                    croutoncycle may send a websocket command, leaving us
                    deadlocked...) */
-                /* FIXME: These processes are not reaped and leave lots of
-                 * zombies. Scary. */
                 pid_t pid = fork();
                 if (pid < 0) {
                     syserror("Fork error.");
                     exit(1);
                 } else if (pid == 0) {
-                    execvp(cmd, args);
-                    error("Error running '%s'.", cmd);
-                    exit(127);
+                    /* Double-fork to avoid zombies */
+                    pid_t pid2 = fork();
+                    if (pid2 < 0) {
+                        syserror("Fork error.");
+                        exit(1);
+                    } else if (pid2 == 0) {
+                        execvp(cmd, args);
+                        error("Error running '%s'.", cmd);
+                        exit(127);
+                    }
+                    exit(0);
                 }
+                /* Wait for first fork to complete. */
+                waitpid(pid, NULL, 0);
                 length = 1;
             }
             if (socket_client_write_frame(buffer, length,
