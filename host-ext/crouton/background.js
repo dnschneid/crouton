@@ -54,9 +54,6 @@ function setStatus(status, active) {
     if (update_ && !active_)
         chrome.runtime.reload();
 
-    /* Force a window list update */
-    updateWindowList(true);
-
     refreshUI();
 }
 
@@ -100,10 +97,10 @@ function updateWindowList(force) {
 
     if (force || lastwindowlistupdate_ == null ||
             (currenttime-lastwindowlistupdate_) > 1000*WINDOW_UPDATE_INTERVAL) {
+        lastwindowlistupdate_ = currenttime;
         printLog("Sending window list request", LogLevel.DEBUG);
         websocket_.send("Cs" + focus_win_);
         websocket_.send("Cl");
-        lastwindowlistupdate_ = currenttime;
     }
 }
 
@@ -345,6 +342,8 @@ function websocketMessage(evt) {
             websocket_.send("VOK");
             /* Set active_ to true */
             setStatus(sversion_ >= 2 ? "" : "Connected", true);
+            /* Force a window list update */
+            updateWindowList(true);
             return;
         } else {
             error("Received frame while waiting for version", false);
@@ -467,6 +466,8 @@ function websocketMessage(evt) {
         }
         websocket_.send("XOK");
         closePopup();
+        /* Force a window list update */
+        updateWindowList(true);
         break;
     case 'P': /* Ping */
         websocket_.send(received_msg);
