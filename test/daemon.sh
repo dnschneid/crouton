@@ -515,13 +515,13 @@ while sleep "$POLLINTERVAL"; do
                                    data["Status2"] }
                     ' "$dir/status"
                 fi
-            done > newstatus
-            if ! diff -q newstatus status >/dev/null 2>&1; then
-                mv newstatus status
+            done > "$TMPROOT/newstatus"
+            if ! diff -q "$TMPROOT/newstatus" status >/dev/null 2>&1; then
+                mv "$TMPROOT/newstatus" status
                 forceupdate=y
                 curtestupdated=y
             else
-                rm -f newstatus
+                rm -f "$TMPROOT/newstatus"
             fi
 
             if [ -n "$curtestupdated" ]; then
