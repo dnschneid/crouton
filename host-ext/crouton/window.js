@@ -4,6 +4,7 @@
 
 var CLOSE_TIMEOUT = 2; /* Close window x seconds after disconnect */
 var DEBUG_LEVEL = 2; /* If debug is enabled, use this level in NaCl */
+var RESIZE_RATE_LIMIT = 300; /* No more than 1 resize query every x ms */
 
 var CriatModule_ = null; /* NaCl module */
 var listener_ = null; /* listener div element */
@@ -181,7 +182,7 @@ function handleResize() {
             if (resizePending_)
                 criatResize();
             resizeLimited_ = resizePending_ = false;
-        }, 1000);
+        }, RESIZE_RATE_LIMIT);
         resizeLimited_ = true;
     } else {
         resizePending_ = true;
