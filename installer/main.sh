@@ -378,12 +378,6 @@ else
     addtrap "rm -f '$TARGETDEDUPFILE'"
 fi
 
-# Mount the chroot specified by $1, and return its path
-mountchroot() {
-    sh "$HOSTBINDIR/mount-chroot" -k "$KEYFILE" \
-        $create $ENCRYPT -p -c "$CHROOTS" -- "$1"
-}
-
 # Confirm we have write access to the directory before starting.
 if [ -z "$RESTOREBIN$DOWNLOADONLY" ]; then
     # Validate chroot name
@@ -462,7 +456,9 @@ Valid chroots:
     fi
 
     # Mount the chroot and update CHROOT path
-    CHROOT="`mountchroot "$NAME"`"
+    CHROOT="`sh "$HOSTBINDIR/mount-chroot" -k "$KEYFILE" \
+             $create $ENCRYPT -p -c "$CHROOTS" -- "$NAME"`"
+
     # Auto-unmount the chroot when the script exits
     addtrap "sh '$HOSTBINDIR/unmount-chroot' -y -c '$CHROOTS' -- '$NAME' 2>/dev/null"
 
@@ -618,7 +614,7 @@ fi
 # Add the list of targets in file $1 to $TARGETS
 deduptargets() {
     if [ -r "$1" ]; then
-        read -r t < "$1"
+        t="`cat "$1" | tr '\n' ,`"
         t="${t%,},"
         while [ -n "$t" ]; do
             TARGET="${t%%,*}"
@@ -692,16 +688,11 @@ else
             continue
         fi
 
-        name="${file#$CHROOTS/}"
-        if ! chroot="`mountchroot "$name"`"; then
-            echo "Unable to mount chroot $name: ignoring." 2>&1
-        else
-            # Auto-unmount the chroot when the script exits
-            addtrap "sh -e '$HOSTBINDIR/unmount-chroot' \
-                        -y -c '$CHROOTS' -- '$name' 2>/dev/null"
-
-            deduptargets "$chroot/etc/crouton/targets"
-        fi
+        chroot="$CHROOTS/$file"
+        # Use both /etc/crouton/targets (more reliable but not available for
+        # encrypted chroot) and /.crouton-targets (always available)
+        deduptargets "$chroot/etc/crouton/targets"
+        deduptargets "$chroot/.crouton-targets"
     done
 fi
 
@@ -722,7 +713,7 @@ while [ -n "$t" ]; do
     fi
 done
 
-if [ "$PREPARE" != "/dev/null" ]; then
+if [ -f "$PREPARE" ]; then
     chmod 500 "$PREPARE"
 
     # Run the setup script inside the chroot
