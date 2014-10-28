@@ -38,9 +38,10 @@ var lastwindowlistupdate_ = null;
 var status_ = "";
 var sversion_ = 0; /* Version of the websocket server */
 var logger_ = []; /* Array of status messages: [LogLevel, time, message] */
-var windows_ = []; /* Array of windows (xorg, xephyr, host-x11, etc) */
+var windows_ = []; /* Array of windows. (.display, .name) */
 
-var criat_win_ = {}; /* Array of criat windows (.id, .window: window element) */
+var criat_win_ = {}; /* Map of criat windows. Key is display, value is object
+                        (.id, .window: window element) */
 var focus_win_ = -1; /* Focused criat window. -1 if no criat window focused. */
 
 /* Set the current status string.
@@ -215,15 +216,13 @@ function refreshUI() {
             }
 
             for (var i = 0; i < windows_.length; i++) {
-                if (!windows_[i].length)
-                    continue;
                 var row = windowlist.insertRow(-1);
                 var cell1 = row.insertCell(0);
                 var cell2 = row.insertCell(1);
                 cell1.className = "display";
-                cell1.innerHTML = windows_[i][0];
+                cell1.innerHTML = windows_[i].display;
                 cell2.className = "name";
-                cell2.innerHTML = windows_[i].substring(3)
+                cell2.innerHTML = windows_[i].name;
                 cell2.onclick = (function(i) { return function() {
                     if (active_) {
                         websocket_.send("C" + i);
@@ -402,7 +401,22 @@ function websocketMessage(evt) {
     case 'C': /* Returned data from a croutoncycle command */
         /* Non-zero length has a window list; otherwise it's a cycle signal */
         if (payload.length > 0) {
-            windows_ = payload.split('\n');
+            windows_ = payload.split('\n').filter(
+                function(x) { return x.length > 3 }
+            ).map(
+                function(x) {
+                    k = new Object()
+                    k.display = x[0];
+                    k.name = x.substring(3);
+                    return k;
+                }
+            )
+
+            windows_.forEach(function(k) {
+                if (criat_win_[k.display] && criat_win_[k.display].window) {
+                    criat_win_[k.display].window.setTitle(k.name);
+                }
+            })
         }
         refreshUI();
         break;
@@ -435,9 +449,14 @@ function websocketMessage(evt) {
             criat_win_[display] = new Object();
             criat_win_[display].id = -1;
             criat_win_[display].window = null;
+
+            win = windows_.filter(function(x){ return x.display == display })[0]
+            name = win ? win.name : "crouton in a tab";
+
             chrome.windows.create({ 'url': "window.html?display=" + display +
                                            "&debug=" + (debug_ ? 1 : 0) +
-                                           "&hidpi=" + (hidpi_ ? 1 : 0),
+                                           "&hidpi=" + (hidpi_ ? 1 : 0) +
+                                           "&title=" + encodeURIComponent(name),
                                     'type': "popup" },
                                   function(newwin) {
                                       criat_win_[display].id = newwin.id;

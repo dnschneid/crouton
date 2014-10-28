@@ -10,6 +10,7 @@ var listener_ = null; /* listener div element */
 var debug_ = 0; /* Debuging level, passed to NaCl module */
 var hidpi_ = 0; /* HiDPI mode */
 var display_ = null; /* Display number to use */
+var title_ = "crouton in a tab"; /* window title */
 var connected_ = false;
 var closing_ = false; /* Disconnected, and waiting for the window to close */
 
@@ -75,6 +76,10 @@ function setHiDPI(hidpi) {
         CriatModule_.postMessage('hidpi:' + hidpi_);
         criatResize();
     }
+}
+
+function setTitle(title) {
+    document.title = "crouton in a tab: " + title + " (" + display_ + ")";
 }
 
 function updateStatus(message) {
@@ -231,11 +236,15 @@ document.addEventListener('DOMContentLoaded', function() {
         var keyval = args[i].split('=')
         if (keyval[0] == "display")
             display_ = keyval[1];
+        else if (keyval[0] == "title")
+            title_ = decodeURIComponent(keyval[1]);
         else if (keyval[0] == "debug")
             setDebug(keyval[1]);
         else if (keyval[0] == "hidpi")
             setHiDPI(keyval[1]);
     }
+
+    setTitle(title_);
 
     registerWindow(true);
 })
