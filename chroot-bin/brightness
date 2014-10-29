@@ -31,8 +31,8 @@ esac
 host-dbus dbus-send --system --dest=org.chromium.PowerManager \
           --type=method_call $print /org/chromium/PowerManager \
           org.chromium.PowerManager.${precmd}${device}Brightness${postcmd} | {
-    read junk
-    read double percent
+    read -r junk
+    read -r double percent
     if [ -n "$print" ]; then
         echo "${percent%.*}"
     fi

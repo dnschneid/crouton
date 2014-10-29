@@ -157,7 +157,7 @@ syncstatus() {
                 cd $STATUSROOT
                 mkdir -p "archive"
                 find -maxdepth 1 -type d -mtime +"$ARCHIVEMAXAGE" \
-                     -regex '\./[-0-9]*_[-0-9]*_.*' | while read dir; do
+                     -regex '\./[-0-9]*_[-0-9]*_.*' | while read -r dir; do
                     dest="archive/${dir##*/}.tar.bz2"
                     rm -f "$dest"
                     tar -caf "$dest" "${dir#./}"
@@ -253,13 +253,13 @@ gsutil cp "$TMPROOT/test-platform_Crouton.tar.bz2" \
 syncstatus
 
 while sleep "$POLLINTERVAL"; do
-    read lastline last < "$LASTFILE"
+    read -r lastline last < "$LASTFILE"
     # Grab the queue, skip to the next interesting line, convert field
     # boundaries into pipe characters, and then parse the result.
     # Any line still containing a double-quote after parsing is ignored
     (wget -qO- "$QUEUEURL" && echo) | tail -n"+$lastline" \
             | sed 's/^"//; s/","/|/g; s/"$//; s/.*".*//' | {
-        while IFS='|' read date repo branch params run _; do
+        while IFS='|' read -r date repo branch params run _; do
             if [ -z "$date" ]; then
                 continue
             fi

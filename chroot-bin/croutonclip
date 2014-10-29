@@ -185,7 +185,7 @@ addtrap "echo -n > '$PIDFILE' 2>/dev/null"
 ) | (
     # Do not hold the lock in this subshell and children (especially xclip)
     exec 3>/dev/null
-    while read line; do
+    while read -r line; do
         display="`croutoncycle display`"
         copyclip "$display"
     done

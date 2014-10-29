@@ -46,7 +46,7 @@ if ! grep -q ':1000:' /etc/passwd; then
             username="$USERNAME"
             echo "$username" 1>&2
         else
-            read username junk
+            read -r username junk
         fi
     done
     useradd -u 1000 -G "$groups" -s '/bin/bash' -m "$username"

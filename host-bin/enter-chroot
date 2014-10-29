@@ -206,7 +206,7 @@ if [ -z "$NOLOGIN" -a -f "$CHROOT$SETUPSCRIPT" ]; then
     fi
     if [ -t 0 -a -z "$response" ]; then
         echo -n 'Would you like to finish the setup? [Y/n/d] ' 1>&2
-        read response
+        read -r response
     fi
     if [ -z "$response" -o "${response#[Yy]}" != "$response" ]; then
         echo 'Preparing chroot environment...' 1>&2

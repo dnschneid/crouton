@@ -15,8 +15,8 @@ if [ -z "$o" ]; then
     o="`xrandr -q | awk 'x{print $1;exit}/^Screen 0/{x=1}'`"
 fi
 cvt "$x" "$y" "$r" | {
-    read _
-    read _ mode data
+    read -r _
+    read -r _ mode data
     mode="${mode#\"}"
     mode="${mode%\"}"
     xrandr --newmode "$mode" $data 2>/dev/null || true

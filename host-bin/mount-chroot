@@ -279,7 +279,7 @@ no   -- You don't want to decide one way or another quite yet.
                 response="$CROUTON_MOUNT_RESPONSE"
                 echo "$response" 1>&2
             else
-                read response
+                read -r response
             fi
             break
         fi
