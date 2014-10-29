@@ -247,8 +247,8 @@ $passphrase" | ecryptfs-rewrap-passphrase "$wrappedfnek" -
         fi
 
         mnt="ecryptfs_sig=$keysig,ecryptfs_fnek_sig=$fneksig"
-        mnt="$mnt,no_sig_cache,ecryptfs_cipher=aes,ecryptfs_key_bytes=16"
-        mnt="$mnt,ecryptfs_passthrough=n,ecryptfs_unlink_sigs,$MOUNTOPTS"
+        mnt="$mnt,ecryptfs_cipher=aes,ecryptfs_key_bytes=16"
+        mnt="$mnt,ecryptfs_unlink_sigs,$MOUNTOPTS"
 
         if ! mount -i -t ecryptfs -o "$mnt" "$CHROOTSRC" "$CHROOT"; then
             error 1 "Failed to mount $NAME."
