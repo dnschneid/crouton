@@ -111,7 +111,30 @@ logto() {
     local AWK='mawk -W interactive'
     # srand() uses system time as seed but returns previous seed. Call it twice.
     ((((ret=0; TRAP=''
-        ( release="$2" . "$1" ) </dev/null 3>&- || ret=$?
+        (
+            PREFIX="`mktemp -d --tmpdir="$PREFIXROOT" "$tname.XXX"`"
+            # Remount noexec/etc to make the environment as harsh as possible
+            mount --bind "$PREFIX" "$PREFIX"
+            mount -i -o remount,nosuid,nodev,noexec "$PREFIX"
+
+            # Get subshell pid
+            pid="`sh -c 'echo $PPID'`"
+
+            # Clean up on exit
+            settrap "
+                set -x
+                echo Running trap...
+                if [ -d '$PREFIX/chroots' ]; then
+                    sh -e '$SCRIPTDIR/host-bin/unmount-chroot' \
+                        -a -f -y -c '$PREFIX/chroots'
+                fi
+                # Kill any leftover subprocess
+                pkill -9 -P '$pid'
+                umount -l '$PREFIX'
+                rm -rf --one-file-system '$PREFIX'
+            "
+            release="$2" . "$1"
+        ) </dev/null 3>&- || ret=$?
         sleep 1
         if [ "$ret" = 0 ]; then
             log "TEST PASSED: $retpreamble $ret"
@@ -546,19 +569,6 @@ while true; do
     tname="${t##*/}.$rel.$try"
     # Run the test
     (
-        PREFIX="`mktemp -d --tmpdir="$PREFIXROOT" "$tname.XXX"`"
-        # Remount PREFIX noexec/etc to make the environment as harsh as possible
-        mount --bind "$PREFIX" "$PREFIX"
-        mount -i -o remount,nosuid,nodev,noexec "$PREFIX"
-        # Clean up on exit
-        settrap "
-            if [ -d '$PREFIX/chroots' ]; then
-                sh -e '$SCRIPTDIR/host-bin/unmount-chroot' \
-                    -a -y -c '$PREFIX/chroots'
-            fi
-            umount -l '$PREFIX'
-            rm -rf --one-file-system '$PREFIX'
-        "
         if ! logto "$TESTDIR/$tname" "$t" "$rel" "$try"; then
             if [ "$((try+1))" -lt "$MAXTRIES" ]; then
                 # Test failed, try again...
