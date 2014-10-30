@@ -35,6 +35,13 @@ function moduleDidLoad() {
     CriatModule_.focus();
 }
 
+/* NaCl is loading... */
+function handleProgress(event) {
+    /* We could compute a percentage, but loading gets stuck at 89% (while
+     * translating?), so it's not very useful... */
+    updateStatus('Loading...');
+}
+
 /* NaCl module failed to load */
 function handleError(event) {
     // We can't use common.naclModule yet because the module has not been
@@ -221,6 +228,7 @@ chrome.windows.update(chrome.windows.WINDOW_ID_CURRENT,
 document.addEventListener('DOMContentLoaded', function() {
     listener_ = document.getElementById('listener');
     listener_.addEventListener('load', moduleDidLoad, true);
+    listener_.addEventListener('progress', handleProgress, true);
     listener_.addEventListener('error', handleError, true);
     listener_.addEventListener('crash', handleCrash, true);
     listener_.addEventListener('message', handleMessage, true);
