@@ -94,9 +94,7 @@ findboard() {
 echo
 echo "HWID=`crossystem hwid`"
 cat /etc/lsb-release
-' | ssh "root@${host}.cros" -o IdentityFile="$SSHKEY" \
-            -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-            -o ConnectTimeout=30 > "$hostinfonew"; then
+' | ssh "root@${host}.cros" $DUTSSHOPTIONS > "$hostinfonew"; then
         mv "$hostinfonew" "$hostinfo"
     fi
 
@@ -240,6 +238,15 @@ echo "Fetching testing ssh keys..." 1>&2
 SSHKEY="$LOCALROOT/testing_rsa"
 wget "$TESTINGSSHKEYURL?format=TEXT" -O- | base64 -d > "$SSHKEY"
 chmod 0600 "$SSHKEY"
+
+# ssh control directory
+mkdir -p "$TMPROOT/ssh"
+
+# ssh options for the DUTs
+DUTSSHOPTIONS="-o ConnectTimeout=30 -o IdentityFile=$SSHKEY \
+-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+-o ControlPath=$TMPROOT/ssh/%h \
+-o ControlMaster=auto -o ControlPersist=10m"
 
 # FIXME: Remove this when test is merged
 echo "Building latest test-plaform_Crouton tarball..." 1>&2
@@ -446,8 +453,9 @@ while sleep "$POLLINTERVAL"; do
                     for path in "status.log" "debug/" \
                         "platform_Crouton/debug/platform_Crouton." \
                         "platform_Crouton/results/"; do
-                        rsync -aP --link-dest="$curtesthostresult.old/" \
-               "${host}.cros:/usr/local/autotest/results/default/${path}*" \
+                        rsync -e "ssh $DUTSSHOPTIONS" -aP \
+                                         --link-dest="$curtesthostresult.old/" \
+              "root@${host}.cros:/usr/local/autotest/results/default/${path}*" \
                             "$curtesthostresult/" || true
                     done
                     rm -rf "$curtesthostresult.old"
