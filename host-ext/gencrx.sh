@@ -24,7 +24,7 @@ rm -f "$EXTNAME.crx" "$EXTNAME.zip"
 
 trap "rm -f '$EXTNAME.sig' '$EXTNAME.pub'" 0
 
-rm "$CRIAT_PEXE"
+rm -f "$CRIAT_PEXE"
 # Build NaCl module
 make -C nacl_src clean
 make -C nacl_src
