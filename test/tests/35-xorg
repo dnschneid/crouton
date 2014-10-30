@@ -30,7 +30,7 @@ exec /usr/bin/xterm -e true
 END
 ' | crouton -T -U -n "$release"
 
-vtlock exitswithin 0 60 host \
+vtlockrun exitswithin 0 60 host \
     enter-chroot -n "$release" exec xinit "/home/tmp/xinitrc"
 host enter-chroot -n "$release" sh -c '
     echo "====GLX info"

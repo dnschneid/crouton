@@ -379,15 +379,23 @@ SyntaxError: invalid syntax" 1>&2
 }
 
 # Ensures only one test can play with graphics at one time
+# Run it without parameters, in a subshell. The lock will be released when
+# the subshell exits
 vtlock() {
     local vtlockfile='/var/lock/croutonvt'
-    {
-        if ! flock -n 4; then
-            log 'Waiting for VT lock...'
-            flock 4
-        fi
+    exec 4>>"$vtlockfile"
+    if ! flock -n 4; then
+        log 'Waiting for VT lock...'
+        flock 4
+    fi
+}
+
+# Runs the provided command under vtlock
+vtlockrun() {
+    (
+        vtlock
         "$@" || return $?
-    } 4>>"$vtlockfile"
+    )
 }
 
 # Default responses to questions
