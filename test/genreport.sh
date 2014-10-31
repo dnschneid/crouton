@@ -18,6 +18,9 @@ th.outer,td.outer {
 th.outer {
     padding: 3px
 }
+td.outer {
+    text-align: center;
+}
 table.inner {
     width: 100%;
     height: 100%;
