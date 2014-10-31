@@ -35,6 +35,8 @@ UPLOADROOT="$HOME"
 AUTOTESTGIT="https://chromium.googlesource.com/chromiumos/third_party/autotest"
 TESTINGSSHKEYURL="https://chromium.googlesource.com/chromiumos/chromite/+/master/ssh_keys/testing_rsa"
 MIRRORENV=""
+# Maximum test run time (minutes): 12 hours
+MAXTESTRUNTIME="$((12*60))"
 GSAUTOTEST="gs://chromeos-autotest-results"
 # FIXME: Remove this when test is merged
 GSCROUTONTEST="gs://drinkcat-crouton/crouton-test/packages"
@@ -392,6 +394,7 @@ while sleep "$POLLINTERVAL"; do
                         atest job create -m "$host" -w cautotest \
                             -f "$curtesthostroot/control" \
                             -d "cros-version:${board}-release/$release" \
+                            -B always --max_runtime="$MAXTESTRUNTIME" \
                             "$tname-$hostfull"
                     ) > "$curtesthostroot/atest" 2>&1 || ret=$?
 
