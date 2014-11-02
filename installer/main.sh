@@ -500,57 +500,96 @@ Refer to https://goo.gl/Z5LGVD for upgrade instructions." 1>&2
     sleep 5
 fi
 
-# Checks if it's safe to enable boot signing verification.
-# We check by attempting to mount / read-write. We do so in a bind mount to a
-# temporary directory to avoid changing its state permanently if it is
-# successful.
-vboot_is_safe() {
-    local tmp="`mktemp -d --tmpdir=/tmp 'crouton-rwtest.XXX'`"
-    local unmount="umount -l '$tmp' 2>/dev/null; rmdir '$tmp'"
-    addtrap "$unmount"
-    mount --bind / "$tmp" >/dev/null
-    local ret=1
-    mount -o remount,rw "$tmp" 2>/dev/null || ret=0
-    undotrap
-    eval "$unmount"
-    return "$ret"
+# Verify if kernels are signed: We use this to decide if we should set
+# dev_boot_signed_only=1. We are conservative, and only return 0 if all bootable
+# kernels are signed with factory keys.
+# We do not take non-bootable kernels into account, as those will be ignored
+# during the boot process (e.g. KERN-C in a typical setup), or, if no
+# bootable kernel is present, the Chromebook will not boot no matter the value
+# of dev_boot_signed_only.
+verifykernelsig() {
+    echo 'Checking if kernels are verified...' 1>&2
+    ( dev_debug_vboot -c -i "`rootdev -s -d`" && echo "OK" ) | awk '
+        # Print every line
+        1
+        # Detect end of kernel "section"
+        !/^  / {
+            partition = ""
+        }
+        /^Kernel / {
+            partition=$2
+            sub(/:$/, "", partition)
+
+            # Only consider kernels whose header is valid
+            if ($3 == "OK") {
+                okkernel[partition] = 0
+            } else {
+                partition = ""
+            }
+        }
+        # Accept either kern_subkey_A or kern_subkey_B (ignore recovery key)
+        partition && /^  Verify / && $4 ~ /^kern_subkey_[AB].vbpubk:$/ {
+            if ($5 == "OK") {
+                okkernel[partition] = 1
+            }
+        }
+
+        END {
+            if ($0 != "OK") {
+                print "Error running dev_debug_vboot."
+                exit 1
+            }
+            ret=0
+            for (part in okkernel) {
+                if (!okkernel[part]) {
+                    print "Kernel " part " is not verified."
+                    ret=1
+                }
+            }
+            if (!ret) print "All bootable kernels are verified."
+            exit ret
+        }
+    ' 1>&2
 }
 
+verifykernelpid=''
+# Tips that should be displayed if the installer succeeds
+crossystemtips=''
 # Check and update dev boot settings. This may fail on old systems; ignore it.
-if [ -z "$DOWNLOADONLY" ] && ! vboot_is_safe; then
-    echo "WARNING: Your rootfs is writable. Signed boot verification cannot be enabled." 1>&2
-    echo "If this is a surprise to you, you should do a full system recovery via USB." 1>&2
-    sleep 5
-elif [ -z "$DOWNLOADONLY" ] && \
-    boot="`crossystem dev_boot_usb dev_boot_legacy dev_boot_signed_only`"; then
+if [ -z "$DOWNLOADONLY" ]; then
     # db_usb and db_legacy be off, db_signed_only should be on.
-    echo "$boot" | {
-        read usb legacy signed
-        suggest=''
-        if [ ! "$usb" = 0 ]; then
-            echo "WARNING: USB booting is enabled; consider disabling it." 1>&2
-            suggest="$suggest dev_boot_usb=0"
+
+    suggest=''
+    if [ "`crossystem dev_boot_usb`" = 1 ]; then
+        crossystemtips="$crossystemtips
+WARNING: USB booting is enabled; consider disabling it."
+        suggest="$suggest dev_boot_usb=0"
+    fi
+    if [ "`crossystem dev_boot_legacy`" = 1 ]; then
+        crossystemtips="$crossystemtips
+WARNING: Legacy booting is enabled; consider disabling it."
+        suggest="$suggest dev_boot_legacy=0"
+    fi
+    signed="`crossystem dev_boot_signed_only || true`"
+    if [ -n "$suggest" ]; then
+        if [ "$signed" = 0 ]; then
+            crossystemtips="$crossystemtips
+WARNING: Signed boot verification is disabled; consider enabling it."
+            suggest="$suggest dev_boot_signed_only=1"
         fi
-        if [ ! "$legacy" = 0 ]; then
-            echo "WARNING: Legacy booting is enabled; consider disabling it." 1>&2
-            suggest="$suggest dev_boot_legacy=0"
-        fi
-        if [ -n "$suggest" ]; then
-            if [ ! "$signed" = 1 ]; then
-                echo "WARNING: Signed boot verification is disabled; consider enabling it." 1>&2
-                suggest="$suggest dev_boot_signed_only=1"
-            fi
-            echo "You can use the following command: sudo crossystem$suggest" 1>&2
-            sleep 5
-        elif [ ! "$signed" = 1 ]; then
-            # Only enable signed booting if the user hasn't enabled alternate
-            # boot options, since those are opt-in.
-            echo "WARNING: Signed boot verification is disabled; enabling it for security." 1>&2
-            echo "You can disable it again using: sudo crossystem dev_boot_signed_only=0" 1>&2
-            crossystem dev_boot_signed_only=1 || true
-            sleep 2
-        fi
-    }
+        crossystemtips="$crossystemtips
+You can use the following command: sudo crossystem$suggest"
+    elif [ "$signed" = 0 ]; then
+        # Only enable signed booting if the user hasn't enabled alternate
+        # boot options, since those are opt-in.
+
+        # Check, in background, if the kernels are signed
+        verifykernelsig >/dev/null 2>&1 &
+        verifykernelpid="$!"
+        # If this script fails (bootstrap error, or other '-e' error), wait for
+        # the verification process to finish
+        addtrap '[ -n "$verifykernelpid" ] && wait "$verifykernelpid"'
+    fi
 fi
 
 # Unpack the tarball if appropriate
@@ -596,6 +635,21 @@ if [ -z "$UPDATE" ] && [ -n "$DOWNLOADONLY" -o -z "$TARBALL" ]; then
     addtrap "rm -rf --one-file-system '$CHROOT'"
     mv -f "$tmp/$subdir/"* "$CHROOT"
     undotrap
+fi
+
+# Make sure kernel verification completes before we enter the chroot.
+if [ -n "$verifykernelpid" ]; then
+    echo "Waiting for kernel verification to complete..." 1>&2
+    if wait "$verifykernelpid"; then
+        addtrap 'echo "
+Signed boot verification was enabled for security.
+You can disable it again using: sudo crossystem dev_boot_signed_only=0" 1>&2'
+        crossystem dev_boot_signed_only=1 || true
+    else
+        crossystemtips="$crossystemtips
+WARNING: Signed boot verification is disabled, and kernels cannot be verified." 1>&2
+    fi
+    verifykernelpid=
 fi
 
 # Ensure that /usr/local/bin and /etc/crouton exist
@@ -677,6 +731,11 @@ if [ -z "$RESTORE" -o -n "$UPDATE" ]; then
 else
     # We don't actually need to run the prepare.sh when only restoring
     rm -f "$CHROOT/prepare.sh"
+fi
+
+if [ -n "$crossystemtips" ]; then
+    echo "$crossystemtips
+" 1>&2
 fi
 
 echo "Done! You can enter the chroot using enter-chroot." 1>&2
