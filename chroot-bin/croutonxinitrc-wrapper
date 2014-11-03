@@ -128,7 +128,7 @@ if [ "$xmethod" = 'xiat' ]; then
     croutonfbserver "$DISPLAY" &
 
     try=1
-    while ! croutoncycle force "${DISPLAY#:}"; do
+    while ! croutoncycle force "$DISPLAY"; do
         echo "Cannot connect to extension, retrying..."
         if [ "$try" -ge 10 ]; then
             echo "\
