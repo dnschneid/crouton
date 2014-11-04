@@ -210,11 +210,14 @@ convert_automake() {
         # Convert automake to shell
         s/^[^ ]*:/#\0/
         s/^\t/#\0/
+        s/\t/ /g
         s/ *= */=/
         s/\([^ ]*\) *+= */\1=${\1}\ /
-            s/ /\\ /g
-            y/()/{}/
-        ' 'Makefile.am'
+        s/ /\\ /g
+        y/()/{}/
+        s/if\\ \(.*\)/if [ -n "${\1}" ]; then/
+        s/endif/fi/
+    ' 'Makefile.am'
     echo '
         # buildsources: Build all source files for target
         #  $1: target
@@ -226,12 +229,13 @@ convert_automake() {
 
             eval local sources=\"\$${target}_SOURCES\"
             eval local cppflags=\"\$${target}_CPPFLAGS\"
+            local cflags="$cppflags ${CFLAGS} ${AM_CFLAGS}"
 
             for dep in $sources; do
                 if [ "${dep%.c}" != "$dep" ]; then
                     ofile="${dep%.c}.o"
                     gcc -c "$dep" -o "$ofile" '"$archgccflags"' \
-                        $cppflags $extragccflags 1>&2 || return $?
+                        $cflags $extragccflags 1>&2 || return $?
                     echo -n "$ofile "
                 fi
             done
