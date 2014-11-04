@@ -34,7 +34,7 @@ echo '
 1920 1080 l # FHD
 1920 1200 l # Standard 20"
 2560 1600 l # Standard 30"
-' | while read w h flags _; do
+' | while read -r w h flags _; do
     if [ -z "$w" ]; then
         continue
     fi
