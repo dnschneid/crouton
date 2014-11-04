@@ -144,16 +144,15 @@ function handleMessage(message) {
     } else if (type == "state" && payload == "hide") {
         /* Hide window */
         chrome.windows.getCurrent(function(win) {
+            minimize = function(win) {
+                chrome.windows.update(chrome.windows.WINDOW_ID_CURRENT,
+                                      {'state': 'minimized'}, function(win) {})}
             /* To make restore nicer, first exit full screen, then minimize */
             if (win.state == "fullscreen") {
                 chrome.windows.update(chrome.windows.WINDOW_ID_CURRENT,
-                                      {'state': 'maximized'}, function(win) {
-                    chrome.windows.update(chrome.windows.WINDOW_ID_CURRENT,
-                                      {'state': 'minimized'}, function(win) {})
-                })
+                                      {'state': 'maximized'}, minimize)
             } else {
-                chrome.windows.update(chrome.windows.WINDOW_ID_CURRENT,
-                                      {'state': 'minimized'}, function(win) {})
+                minimize()
             }
         })
     } else if (type == "resize") {
