@@ -35,7 +35,7 @@ public:
     explicit CriatInstance(PP_Instance instance)
         : pp::Instance(instance),
           callback_factory_(this),
-	  scale_(1.0f),
+          scale_(1.0f),
           image_data_(NULL),
           k_(0),
           websocket_(this),
