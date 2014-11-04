@@ -268,6 +268,10 @@ function clipboardStart() {
              LogLevel.INFO);
     setStatus("Started...", false);
 
+    /* Monitor window focus changes/removals and report to croutonclip */
+    chrome.windows.onFocusChanged.addListener(windowFocusChanged)
+    chrome.windows.onRemoved.addListener(windowRemoved)
+
     clipboardholder_ = document.getElementById("clipboardholder");
 
     websocketConnect();
@@ -506,6 +510,37 @@ function websocketClose() {
     checkUpdate(false);
 }
 
+/* Called when window in focus changes: feeback to the extension so the
+ * clipboard can be transfered. */
+function windowFocusChanged(windowid) {
+    var disps = Object.keys(criat_win_);
+    nextfocus_win_ = -1;
+    for (var i = 0; i < disps.length; i++) {
+        if (criat_win_[disps[i]].id == windowid) {
+            nextfocus_win_ = disps[i];
+            break;
+        }
+    }
+    if (focus_win_ != nextfocus_win_) {
+        focus_win_ = nextfocus_win_;
+        if (active_ && sversion_ >= 2)
+            websocket_.send("Cs" + focus_win_);
+        printLog("Window " + focus_win_ + " focused", LogLevel.DEBUG);
+    }
+}
+
+/* Called when a window is removed, so we can delete its reference. */
+function windowRemoved(windowid) {
+    var disps = Object.keys(criat_win_);
+    for (var i = 0; i < disps.length; i++) {
+        if (criat_win_[disps[i]].id == windowid) {
+            criat_win_[disps[i]].id = -1;
+            criat_win_[disps[i]].window = null;
+            printLog("Window " + disps[i] + " removed", LogLevel.DEBUG);
+        }
+    }
+}
+
 function padstr0(i) {
     var s = i + "";
     if (s.length < 2)
@@ -579,35 +614,6 @@ chrome.runtime.getPlatformInfo(function(platforminfo) {
         chrome.runtime.onUpdateAvailable.addListener(function(details) {
             updateAvailable(details.version);
         });
-
-        /* Monitor window focus changes and report to croutonclip */
-        chrome.windows.onFocusChanged.addListener(function(windowid) {
-            var disps = Object.keys(criat_win_);
-            nextfocus_win_ = -1;
-            for (var i = 0; i < disps.length; i++) {
-                if (criat_win_[disps[i]].id == windowid) {
-                    nextfocus_win_ = disps[i];
-                    break;
-                }
-            }
-            if (focus_win_ != nextfocus_win_) {
-                focus_win_ = nextfocus_win_;
-                if (active_ && sversion_ >= 2)
-                    websocket_.send("Cs" + focus_win_);
-                printLog("Window " + focus_win_ + " focused", LogLevel.DEBUG);
-            }
-        })
-
-        chrome.windows.onRemoved.addListener(function(windowid) {
-            var disps = Object.keys(criat_win_);
-            for (var i = 0; i < disps.length; i++) {
-                if (criat_win_[disps[i]].id == windowid) {
-                    criat_win_[disps[i]].id = -1;
-                    criat_win_[disps[i]].window = null;
-                    printLog("Window " + disps[i] + " removed", LogLevel.DEBUG);
-                }
-            }
-        })
     } else {
         /* Disable the icon on non-Chromium OS. */
         chrome.browserAction.setTitle(
