@@ -3,6 +3,16 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+# Changes the resolution of the current display.
+# If XMETHOD is criat, tries to create a new exact resolution, and change mode
+# to that. If that fails (e.g. non-patched xorg-dummy), take the closest,
+# smaller, available resolution in xrandr, and if no smaller resolution is
+# available, pick the closest one.
+# If XMETHOD is anything else, set a resolution from cvt output.
+# In all cases, outputs the applied resolution.
+
+set -e
+
 if [ "$#" -lt 2 -o "$#" -gt 4 ]; then
     echo "USAGE: ${0##*/} x y [r [output]]" 1>&2
     exit 2
@@ -14,12 +24,88 @@ o="${4}"
 if [ -z "$o" ]; then
     o="`xrandr -q | awk 'x{print $1;exit}/^Screen 0/{x=1}'`"
 fi
-cvt "$x" "$y" "$r" | {
-    read -r _
-    read -r _ mode data
-    mode="${mode#\"}"
-    mode="${mode%\"}"
-    xrandr --newmode "$mode" $data 2>/dev/null || true
-    xrandr --addmode "$o" "$mode"
-    xrandr --output "$o" --mode "$mode"
+
+if [ "$XMETHOD" != "xiat" ]; then
+    cvt "$x" "$y" "$r" | {
+        read -r _
+        read -r _ mode data
+        mode="${mode#\"}"
+        mode="${mode%\"}"
+        xrandr --newmode "$mode" $data 2>/dev/null || true
+        xrandr --addmode "$o" "$mode"
+        xrandr --output "$o" --mode "$mode"
+        echo "$o"
+    }
+    exit 0
+fi
+
+# Replace mode $2 in output $1, with new data $3..$#
+# Deletes the mode if $3 is not provided
+replacemode() {
+    local o="$1"
+    local mode="$2"
+    shift 2
+    xrandr --delmode "$o" "$mode" 2>/dev/null || true
+    xrandr --rmmode "$mode" 2>/dev/null || true
+    if [ "$#" -gt 0 ]; then
+        xrandr --newmode "$mode" "$@"
+        xrandr --addmode "$o" "$mode"
+    fi
 }
+
+# Try to change to arbitrary resolution
+mhz="$((r*x*y/1000000))"
+name="Crouton in a tab"
+
+# Tweak the temp mode so xrandr knows the 2 modes are different, and
+# switches away from the temp mode.
+replacemode "$o" "$name (tmp)" $mhz $x $x $x $((x+1)) $y $y $y $y
+
+# This fails on non-patched xorg-dummy
+if xrandr --output "$o" --mode "$name (tmp)"; then
+    replacemode "$o" "$name" $mhz $x $x $x $x $y $y $y $y
+    xrandr --output "$o" --mode "$name"
+    replacemode "$o" "$name (tmp)"
+    echo "${x}x${y}_${r}"
+    exit 0
+else
+    # Delete the temp mode
+    replacemode "$o" "$name (tmp)"
+fi
+
+# Setting a custom mode failed, fall back on best match
+
+# This assumes modes have "canonical" names, in the form "<w>x<h>[_<r>]"
+res="`xrandr | awk '
+    function abs(x) { return x > 0 ? x : -x }
+    BEGIN {
+        tw='"$x"'
+        th='"$y"'
+        oversize_penalty = 1000000
+    }
+    $1 ~ /[0-9]+x[0-9]+/ {
+        res = $1; sub(/_[0-9]+/, "", res)
+        w = res; sub(/x[0-9]*/, "", w); w = int(w)
+        h = res; sub(/[0-9]*x/, "", h); h = int(h)
+        score = abs(tw-w) + abs(th-h)
+        if (w > tw) score += oversize_penalty
+        if (h > th) score += oversize_penalty
+        if (!cmode || score < cscore) {
+            cmode = $1
+            cscore = score
+        }
+    }
+    END {
+        if (!cmode) exit 1
+        print cmode
+    }
+'`"
+
+if [ -z "$res" ]; then
+   echo "Cannot find resolution" 1>&2
+   exit 1
+fi
+
+xrandr -s "$res" 2>/dev/null
+echo "$res"
+exit 0

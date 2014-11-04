@@ -124,8 +124,8 @@ fi
 if [ "$xmethod" = 'xiat' ]; then
     # Set resolution to a default 1024x768, this is important so that the DPI
     # looks reasonable when the WM/DE start.
-    findres 1024 768 > /dev/null
-    croutonfbserver "$DISPLAY" &
+    XMETHOD="xiat" setres 1024 768 > /dev/null
+    XMETHOD="xiat" croutonfbserver "$DISPLAY" &
 
     try=1
     while ! croutoncycle force "$DISPLAY"; do

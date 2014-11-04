@@ -5,7 +5,7 @@
 REQUIRES='core audio extension'
 PROVIDES='x11'
 DESCRIPTION='Crouton in a tab X11 backend. Improves compatibility but lacks GPU accel.'
-CHROOTBIN='brightness croutoncycle croutonfindnacl croutonpowerd croutonxinitrc-wrapper findres xinit'
+CHROOTBIN='brightness croutoncycle croutonfindnacl croutonpowerd croutonxinitrc-wrapper setres xinit'
 CHROOTETC='xbindkeysrc.scm xorg-dummy.conf xserverrc-xiat xserverrc-local.example'
 . "${TARGETSDIR:="$PWD"}/common"
 

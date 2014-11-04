@@ -168,7 +168,7 @@ static int init_display(char* name) {
  * Reply must be a resolution in "canonical" form: <w>x<h>[_<rate>] */
 /* FIXME: Maybe errors here should not be fatal... */
 void change_resolution(const struct resolution* rin) {
-    char* cmd = "findres";
+    char* cmd = "setres";
     char arg1[32], arg2[32], buffer[256];
     int c;
     char* args[] = {cmd, arg1, arg2, NULL};
@@ -196,7 +196,7 @@ void change_resolution(const struct resolution* rin) {
     trueorabort(buffer != endptr && *endptr == '\0',
                     "Invalid width: '%s'", buffer);
     long nheight = strtol(cut+1, &endptr, 10);
-    trueorabort(cut+1 != endptr && *endptr == '\0',
+    trueorabort(cut+1 != endptr && (*endptr == '\0' || *endptr == '\n'),
                     "Invalid height: '%s'", cut+1);
     log(1, "New resolution %ld x %ld", nwidth, nheight);
 
