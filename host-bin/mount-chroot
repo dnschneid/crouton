@@ -63,7 +63,7 @@ promptNewPassphrase() {
     echo -n "Choose an encryption passphrase for $NAME: " 1>&2
     [ -t 0 ] && stty -echo
     while [ -z "$passphrase" ]; do
-        read passphrase
+        read -r passphrase
         if [ -z "$passphrase" ]; then
             echo 1>&2
             echo -n 'You must specify a passphrase: ' 1>&2
@@ -71,7 +71,7 @@ promptNewPassphrase() {
         fi
         echo 1>&2
         echo -n 'Please confirm your passphrase: ' 1>&2
-        read confirmation
+        read -r confirmation
         if [ ! "$confirmation" = "$passphrase" ]; then
             passphrase=''
             echo 1>&2
@@ -203,7 +203,7 @@ $passphrase" | ecryptfs-wrap-passphrase "$wrappedfnek" -
             echo -n "Enter encryption passphrase for $NAME: " 1>&2
             [ -t 0 ] && stty -echo
             if [ -z "$passphrase" ]; then
-                read passphrase
+                read -r passphrase
             fi
             [ -t 0 ] && stty echo
             echo 1>&2
@@ -247,8 +247,8 @@ $passphrase" | ecryptfs-rewrap-passphrase "$wrappedfnek" -
         fi
 
         mnt="ecryptfs_sig=$keysig,ecryptfs_fnek_sig=$fneksig"
-        mnt="$mnt,no_sig_cache,ecryptfs_cipher=aes,ecryptfs_key_bytes=16"
-        mnt="$mnt,ecryptfs_passthrough=n,ecryptfs_unlink_sigs,$MOUNTOPTS"
+        mnt="$mnt,ecryptfs_cipher=aes,ecryptfs_key_bytes=16"
+        mnt="$mnt,ecryptfs_unlink_sigs,$MOUNTOPTS"
 
         if ! mount -i -t ecryptfs -o "$mnt" "$CHROOTSRC" "$CHROOT"; then
             error 1 "Failed to mount $NAME."
@@ -279,7 +279,7 @@ no   -- You don't want to decide one way or another quite yet.
                 response="$CROUTON_MOUNT_RESPONSE"
                 echo "$response" 1>&2
             else
-                read response
+                read -r response
             fi
             break
         fi

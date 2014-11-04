@@ -309,7 +309,7 @@ for NAME in "$@"; do
                 YES="$CROUTON_EDIT_RESPONSE"
                 echo "$YES" 1>&2
             else
-                read YES
+                read -r YES
             fi
             if [ "${YES#[AaYy]}" = "$YES" ]; then
                  error 2 "Aborting deletion of $CHROOT"
@@ -486,7 +486,7 @@ for NAME in "$@"; do
                     YES="$CROUTON_EDIT_RESPONSE"
                     echo "$YES" 1>&2
                 else
-                    read YES
+                    read -r YES
                 fi
                 if [ "${YES#[AaYy]}" = "$YES" ]; then
                      error 2 "Aborting move of $CHROOT"

@@ -99,7 +99,7 @@ if [ "$cmd" = 'l' -o "$cmd" = 'd' ]; then
         chromiumos="`awk -F= '/_RELEASE_NAME=/{print $2}' \
                              '/var/host/lsb-release'`"
     fi
-    host-x11 croutonwmtools list nim | sort | while read line; do
+    host-x11 croutonwmtools list nim | sort | while read -r line; do
         disp="${line##* }"
         line="${line% *}"
         number='0'

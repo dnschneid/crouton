@@ -36,14 +36,14 @@ shift 2
 # Read in from $ARCHIVE
 {
     # Check header
-    read magic
+    read -r magic
     if [ ! "$magic" = "!<arch>" ]; then
         echo "$APPLICATION: $ARCHIVE: File format not recognized" 1>&2
         exit 1
     fi
 
     # Process each file
-    while read name modtime owner group mode size magic; do
+    while read -r name modtime owner group mode size magic; do
         # Absorb extra newlines
         if [ -z "$name" ]; then
             continue;

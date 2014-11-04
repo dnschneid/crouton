@@ -148,7 +148,7 @@ if [ "$RELEASE" = 'list' -o "$RELEASE" = 'help' ]; then
         DISTRO="${DISTRODIR##*/}"
         echo "Recognized $DISTRO releases:" 1>&2
         accum=''
-        while read RELEASE; do
+        while read -r RELEASE; do
             newaccum="${accum:-"   "} $RELEASE"
             if [ "${#newaccum}" -gt 80 ]; then
                 echo "$accum" 1>&2
@@ -525,7 +525,7 @@ elif [ -z "$DOWNLOADONLY" ] && \
     boot="`crossystem dev_boot_usb dev_boot_legacy dev_boot_signed_only`"; then
     # db_usb and db_legacy be off, db_signed_only should be on.
     echo "$boot" | {
-        read usb legacy signed
+        read -r usb legacy signed
         suggest=''
         if [ ! "$usb" = 0 ]; then
             echo "WARNING: USB booting is enabled; consider disabling it." 1>&2
@@ -606,7 +606,7 @@ if [ -z "$UPDATEIGNOREEXISTING" ]; then
     # Read the explicit targets file in the chroot (if it exists)
     TARGETSFILE="$CHROOT/etc/crouton/targets"
     if [ -r "$TARGETSFILE" ]; then
-        read t < "$TARGETSFILE"
+        read -r t < "$TARGETSFILE"
         t="${t%,},"
         while [ -n "$t" ]; do
             TARGET="${t%%,*}"

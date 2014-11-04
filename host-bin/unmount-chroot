@@ -251,7 +251,7 @@ unmount() {
                     YES="$CROUTON_UNMOUNT_RESPONSE"
                     echo "$YES" 1>&2
                 else
-                    read YES
+                    read -r YES
                 fi
                 if [ ! "${YES#[Kk]}" = "$YES" ]; then
                     SIGNAL='KILL'
