@@ -35,6 +35,8 @@ UPLOADROOT="$HOME"
 AUTOTESTGIT="https://chromium.googlesource.com/chromiumos/third_party/autotest"
 TESTINGSSHKEYURL="https://chromium.googlesource.com/chromiumos/chromite/+/master/ssh_keys/testing_rsa"
 MIRRORENV=""
+# Maximum test run time (minutes): 12 hours
+MAXTESTRUNTIME="$((12*60))"
 GSAUTOTEST="gs://chromeos-autotest-results"
 # FIXME: Remove this when test is merged
 GSCROUTONTEST="gs://drinkcat-crouton/crouton-test/packages"
@@ -94,9 +96,7 @@ findboard() {
 echo
 echo "HWID=`crossystem hwid`"
 cat /etc/lsb-release
-' | ssh "root@${host}.cros" -o IdentityFile="$SSHKEY" \
-            -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-            -o ConnectTimeout=30 > "$hostinfonew"; then
+' | ssh "root@${host}.cros" $DUTSSHOPTIONS > "$hostinfonew"; then
         mv "$hostinfonew" "$hostinfo"
     fi
 
@@ -240,6 +240,15 @@ echo "Fetching testing ssh keys..." 1>&2
 SSHKEY="$LOCALROOT/testing_rsa"
 wget "$TESTINGSSHKEYURL?format=TEXT" -O- | base64 -d > "$SSHKEY"
 chmod 0600 "$SSHKEY"
+
+# ssh control directory
+mkdir -p "$TMPROOT/ssh"
+
+# ssh options for the DUTs
+DUTSSHOPTIONS="-o ConnectTimeout=30 -o IdentityFile=$SSHKEY \
+-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+-o ControlPath=$TMPROOT/ssh/%h \
+-o ControlMaster=auto -o ControlPersist=10m"
 
 # FIXME: Remove this when test is merged
 echo "Building latest test-plaform_Crouton tarball..." 1>&2
@@ -385,6 +394,7 @@ while sleep "$POLLINTERVAL"; do
                         atest job create -m "$host" -w cautotest \
                             -f "$curtesthostroot/control" \
                             -d "cros-version:${board}-release/$release" \
+                            -B always --max_runtime="$MAXTESTRUNTIME" \
                             "$tname-$hostfull"
                     ) > "$curtesthostroot/atest" 2>&1 || ret=$?
 
@@ -446,8 +456,9 @@ while sleep "$POLLINTERVAL"; do
                     for path in "status.log" "debug/" \
                         "platform_Crouton/debug/platform_Crouton." \
                         "platform_Crouton/results/"; do
-                        rsync -aP --link-dest="$curtesthostresult.old/" \
-               "${host}.cros:/usr/local/autotest/results/default/${path}*" \
+                        rsync -e "ssh $DUTSSHOPTIONS" -aP \
+                                         --link-dest="$curtesthostresult.old/" \
+              "root@${host}.cros:/usr/local/autotest/results/default/${path}*" \
                             "$curtesthostresult/" || true
                     done
                     rm -rf "$curtesthostresult.old"
@@ -515,13 +526,13 @@ while sleep "$POLLINTERVAL"; do
                                    data["Status2"] }
                     ' "$dir/status"
                 fi
-            done > newstatus
-            if ! diff -q newstatus status >/dev/null 2>&1; then
-                mv newstatus status
+            done > "$TMPROOT/newstatus"
+            if ! diff -q "$TMPROOT/newstatus" status >/dev/null 2>&1; then
+                mv "$TMPROOT/newstatus" status
                 forceupdate=y
                 curtestupdated=y
             else
-                rm -f newstatus
+                rm -f "$TMPROOT/newstatus"
             fi
 
             if [ -n "$curtestupdated" ]; then
