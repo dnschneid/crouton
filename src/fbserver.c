@@ -8,7 +8,6 @@
  *
  */
 
-#define _GNU_SOURCE /* for ppoll */
 #include "websocket.h"
 #include "fbserver-proto.h"
 #include <fcntl.h>
@@ -23,10 +22,10 @@
 #include <X11/extensions/Xdamage.h>
 #include <X11/extensions/Xfixes.h>
 
+/* X11-related variables */
 static Display *dpy;
-
-int damageEvent;
-int fixesEvent;
+static int damageEvent;
+static int fixesEvent;
 
 /* shm entry cache */
 struct cache_entry {
@@ -36,8 +35,8 @@ struct cache_entry {
     size_t length; /* mmap length */
 };
 
-struct cache_entry cache[2];
-int next_entry;
+static struct cache_entry cache[2];
+static int next_entry;
 
 /* Remember which keys/buttons are currently pressed */
 typedef enum { INVALID=0, MOUSE=1, KEYBOARD=2 } keybuttontype;
@@ -48,9 +47,10 @@ struct keybutton {
 
 /* Store currently pressed keys/buttons in an array.
  * No valid entry on or after curmax. */
-struct keybutton pressed[256];
-int curmax = 0;
+static struct keybutton pressed[256];
+static int curmax = 0;
 
+/* Adds a key/button to array of pressed keys */
 void kb_add(keybuttontype type, uint32_t code) {
     trueorabort(curmax < sizeof(pressed)/sizeof(struct keybutton),
                 "Too many keys pressed");
@@ -70,6 +70,7 @@ void kb_add(keybuttontype type, uint32_t code) {
         curmax++;
 }
 
+/* Removes a key/button to array of pressed keys */
 void kb_remove(keybuttontype type, uint32_t code) {
     int lastvalid = -1;
     int i;
@@ -83,6 +84,7 @@ void kb_remove(keybuttontype type, uint32_t code) {
     curmax = lastvalid+1;
 }
 
+/* Releases all pressed key/buttons, and empties array */
 void kb_release_all() {
     int i;
     log(2, "Releasing all keys...");
@@ -104,7 +106,7 @@ static int xerror_handler(Display *dpy, XErrorEvent *e) {
     return 0;
 }
 
-/* Register XDamage events for a given Window. */
+/* Registers XDamage events for a given Window. */
 static void register_damage(Display *dpy, Window win) {
     XWindowAttributes attrib;
     if (XGetWindowAttributes(dpy, win, &attrib) &&
@@ -113,6 +115,7 @@ static void register_damage(Display *dpy, Window win) {
     }
 }
 
+/* Connects to the X11 display, initializes extensions, register for events */
 static int init_display(char* name) {
     dpy = XOpenDisplay(name);
 
@@ -162,7 +165,7 @@ static int init_display(char* name) {
     return 0;
 }
 
-/* Change resolution using external handler.
+/* Changes resolution using external handler.
  * Reply must be a resolution in "canonical" form: <w>x<h>[_<rate>] */
 /* FIXME: Maybe errors here should not be fatal... */
 void change_resolution(const struct resolution* rin) {
@@ -193,10 +196,10 @@ void change_resolution(const struct resolution* rin) {
     char* endptr;
     long nwidth = strtol(buffer, &endptr, 10);
     trueorabort(buffer != endptr && *endptr == '\0',
-                    "Invalid width: '%s'", buffer);
+                "Invalid width: '%s'", buffer);
     long nheight = strtol(cut+1, &endptr, 10);
     trueorabort(cut+1 != endptr && (*endptr == '\0' || *endptr == '\n'),
-                    "Invalid height: '%s'", cut+1);
+                "Invalid height: '%s'", cut+1);
     log(1, "New resolution %ld x %ld", nwidth, nheight);
 
     char reply_raw[FRAMEMAXHEADERSIZE+sizeof(struct resolution)];
@@ -207,6 +210,7 @@ void change_resolution(const struct resolution* rin) {
     socket_client_write_frame(reply_raw, sizeof(*r), WS_OPCODE_BINARY, 1);
 }
 
+/* Closes the mmap/fd in the entry. */
 void close_mmap(struct cache_entry* entry) {
     if (!entry->map)
         return;
@@ -217,17 +221,17 @@ void close_mmap(struct cache_entry* entry) {
     entry->map = NULL;
 }
 
-/* Find NaCl/Chromium shm memory using external handler.
+/* Finds NaCl/Chromium shm memory using external handler.
  * Reply must be in the form PID:file */
 struct cache_entry* find_shm(uint64_t paddr, uint64_t sig, size_t length) {
     struct cache_entry* entry = NULL;
 
     /* Find entry in cache */
-    if (cache[0].paddr == paddr)
+    if (cache[0].paddr == paddr) {
         entry = &cache[0];
-    else if (cache[1].paddr == paddr)
+    } else if (cache[1].paddr == paddr) {
         entry = &cache[1];
-    else {
+    } else {
         /* Not found: erase an existing entry. */
         entry = &cache[next_entry];
         next_entry = (next_entry + 1) % 2;
@@ -238,9 +242,9 @@ struct cache_entry* find_shm(uint64_t paddr, uint64_t sig, size_t length) {
     for (try = 0; try < 2; try++) {
         /* Check signature */
         if (entry->map) {
-            if (*((uint64_t*)entry->map) == sig) {
+            if (*((uint64_t*)entry->map) == sig)
                 return entry;
-            }
+
             error("Invalid signature, fetching new shm!");
             close_mmap(entry);
         }
@@ -316,11 +320,11 @@ struct cache_entry* find_shm(uint64_t paddr, uint64_t sig, size_t length) {
 XImage* img = NULL;
 XShmSegmentInfo shminfo;
 
-/* Write framebuffer image to websocket/shm */
+/* Writes framebuffer image to websocket/shm */
 int write_image(const struct screen* screen) {
     char reply_raw[FRAMEMAXHEADERSIZE+sizeof(struct screen_reply)];
     struct screen_reply* reply =
-                           (struct screen_reply*)(reply_raw+FRAMEMAXHEADERSIZE);
+        (struct screen_reply*)(reply_raw+FRAMEMAXHEADERSIZE);
     int refresh = 0;
 
     memset(reply_raw, 0, sizeof(*reply_raw));
@@ -398,7 +402,7 @@ int write_image(const struct screen* screen) {
     int size = img->bytes_per_line * img->height;
 
     trueorabort(size == screen->width*screen->height*4,
-                    "Invalid screen byte count");
+                "Invalid screen byte count");
 
     if (screen->shm) {
         struct cache_entry* entry = find_shm(screen->paddr, screen->sig, size);
@@ -442,14 +446,14 @@ int write_image(const struct screen* screen) {
     return 0;
 }
 
-/* Write cursor image to websocket */
+/* Writes cursor image to websocket */
 int write_cursor() {
     XFixesCursorImage *img = XFixesGetCursorImage(dpy);
     int size = img->width*img->height;
     const int replylength = sizeof(struct cursor_reply)+sizeof(uint32_t)*size;
     char reply_raw[FRAMEMAXHEADERSIZE+replylength];
     struct cursor_reply* reply =
-                           (struct cursor_reply*)(reply_raw+FRAMEMAXHEADERSIZE);
+        (struct cursor_reply*)(reply_raw+FRAMEMAXHEADERSIZE);
 
     memset(reply_raw, 0, sizeof(*reply_raw));
 
@@ -470,7 +474,7 @@ int write_cursor() {
     return 0;
 }
 
-/* Check if a packet size is correct */
+/* Checks if a packet size is correct */
 int check_size(int length, int target, char* error) {
     if (length != target) {
         error("Invalid %s packet (%d != %d)", error, length, target);
@@ -480,6 +484,7 @@ int check_size(int length, int target, char* error) {
     return 1;
 }
 
+/* Prints usage */
 void usage(char* argv0) {
     fprintf(stderr, "%s [-v 0-3] display\n", argv0);
     exit(1);
@@ -555,8 +560,11 @@ int main(int argc, char** argv) {
                 log(2, "Key: ks=%04x kc=%04x\n", k->keysym, kc);
                 if (kc != 0) {
                     XTestFakeKeyEvent(dpy, kc, k->down, CurrentTime);
-                    if (k->down) kb_add(KEYBOARD, kc);
-                    else kb_remove(KEYBOARD, kc);
+                    if (k->down) {
+                        kb_add(KEYBOARD, kc);
+                    } else {
+                        kb_remove(KEYBOARD, kc);
+                    }
                 } else {
                     error("Invalid keysym %04x.", k->keysym);
                 }
@@ -568,8 +576,11 @@ int main(int argc, char** argv) {
                     break;
                 struct mouseclick* mc = (struct mouseclick*)buffer;
                 XTestFakeButtonEvent(dpy, mc->button, mc->down, CurrentTime);
-                if (mc->down) kb_add(MOUSE, mc->button);
-                else kb_remove(MOUSE, mc->button);
+                if (mc->down) {
+                    kb_add(MOUSE, mc->button);
+                } else {
+                    kb_remove(MOUSE, mc->button);
+                }
                 break;
             }
             case 'M': { /* Mouse move */

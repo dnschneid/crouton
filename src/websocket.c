@@ -7,7 +7,6 @@
  *
  */
 
-#define _GNU_SOURCE /* for ppoll */
 #include "websocket.h"
 #include <fcntl.h>
 #include <sys/stat.h>

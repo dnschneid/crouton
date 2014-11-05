@@ -12,6 +12,7 @@
  *  - Ping packets
  */
 
+#define _GNU_SOURCE /* for ppoll */
 #include <ctype.h>
 #include <errno.h>
 #include <poll.h>
