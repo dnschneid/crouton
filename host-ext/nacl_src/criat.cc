@@ -440,6 +440,10 @@ public:
                 status << " " << (down ? "DOWN" : "UP");
                 status << " " << (mouse_event.GetButton());
 
+                /* SendClick calls SocketSend, which flushes the mouse position
+                 * before sending the click event.
+                 * Also, Javascript button numbers are 0-based (left=0), while
+                 * X11 numbers are 1-based (left=1). */
                 SendClick(mouse_event.GetButton()+1, down ? 1 : 0);
             }
 
@@ -628,7 +632,8 @@ private:
         target_fps_ = new_target_fps;
     }
 
-    /* Send a mouse click */
+    /* Send a mouse click.
+     * button is a X11 button number (e.g. 1 is left click) */
     void SendClick(int button, int down) {
         struct mouseclick* mc;
 
