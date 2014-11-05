@@ -39,7 +39,8 @@ public:
     virtual bool Init(uint32_t argc, const char* argn[], const char* argv[]) {
         RequestInputEvents(PP_INPUTEVENT_CLASS_MOUSE |
                            PP_INPUTEVENT_CLASS_WHEEL |
-                           PP_INPUTEVENT_CLASS_TOUCH);
+                           PP_INPUTEVENT_CLASS_TOUCH |
+                           PP_INPUTEVENT_CLASS_IME);
         RequestFilteringInputEvents(PP_INPUTEVENT_CLASS_KEYBOARD);
 
         srand(pp::Module::Get()->core()->GetTime());
@@ -612,7 +613,17 @@ public:
                        << touch_event_pos.y();
                 LogMessage(2, status.str());
             }
-        } /* FIXME: Handle IMEInputEvents too */
+        } else if (event.GetType() == PP_INPUTEVENT_TYPE_IME_TEXT) {
+            /* FIXME: There are other IME event types... */
+            pp::IMEInputEvent ime_event(event);
+
+            /* FIXME: Do something with these events. We probably need to "type"
+             * the letters one by one... */
+
+            std::ostringstream status;
+            status << "IME TEXT: " << ime_event.GetText().AsString();
+            LogMessage(0, status.str());
+        }
 
         return PP_TRUE;
     }
