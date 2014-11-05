@@ -25,7 +25,9 @@ if [ -z "$o" ]; then
     o="`xrandr -q | awk 'x{print $1;exit}/^Screen 0/{x=1}'`"
 fi
 
-if [ "$XMETHOD" != "xiat" ]; then
+xmethod="`xprop -root 'CROUTON_XMETHOD' | sed -n 's/^.*\"\(.*\)\"/\1/p'`"
+
+if [ "$xmethod" != "xiat" ]; then
     cvt "$x" "$y" "$r" | {
         read -r _
         read -r _ mode data
