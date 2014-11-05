@@ -336,6 +336,7 @@ private:
         /* Convert binary/text to char* */
         const char* data;
         int datalen;
+        std::string str;
         if (receive_var_.is_array_buffer()) {
             pp::VarArrayBuffer array_buffer(receive_var_);
             data = static_cast<char*>(array_buffer.Map());
@@ -344,8 +345,8 @@ private:
             status << "receive (binary): " << data[0];
             LogMessage(data[0] == 'S' ? 3 : 2, status.str());
         } else {
-            LogMessage(3, "receive (text): " + receive_var_.AsString());
-            std::string str = receive_var_.AsString();
+            str = receive_var_.AsString();
+            LogMessage(3, "receive (text): " + str);
             data = str.c_str();
             datalen = str.length();
         }
