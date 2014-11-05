@@ -757,11 +757,11 @@ private:
         s->shm = 1;
         s->refresh = force_refresh_;
         force_refresh_ = false;
-        s->width = image_data_->size().width();
-        s->height = image_data_->size().height();
-        s->paddr = (uint64_t)image_data_->data();
+        s->width = image_data_.size().width();
+        s->height = image_data_.size().height();
+        s->paddr = (uint64_t)image_data_.data();
         uint64_t sig = ((uint64_t)rand() << 32) ^ rand();
-        uint64_t* data = static_cast<uint64_t*>(image_data_->data());
+        uint64_t* data = static_cast<uint64_t*>(image_data_.data());
         *data = sig;
         s->sig = sig;
 
@@ -801,7 +801,7 @@ private:
         /* Allocate next image. If size_ is the same, the previous buffer will
          * be reused. */
         PP_ImageDataFormat format = pp::ImageData::GetNativeImageDataFormat();
-        image_data_ = new pp::ImageData(this, format, size_, false);
+        image_data_ = pp::ImageData(this, format, size_, false);
 
         /* Request for next frame */
         if (isinf(delay)) {
@@ -827,8 +827,8 @@ private:
         }
 
         if (blank) {
-            uint32_t* data = (uint32_t*)image_data_->data();
-            int size = image_data_->size().width()*image_data_->size().height();
+            uint32_t* data = (uint32_t*)image_data_.data();
+            int size = image_data_.size().width()*image_data_.size().height();
             for (int i = 0; i < size; i++) {
                 if (debug_ == 0)
                     data[i] = 0xFF000000;
@@ -839,7 +839,7 @@ private:
 
         /* Using Graphics2D::ReplaceContents is the fastest way to update the
          * entire canvas every frame. */
-        context_.ReplaceContents(image_data_);
+        context_.ReplaceContents(&image_data_);
 
         /* Store a reference to the context that is being flushed; this ensures
          * the callback is called, even if context_ changes before the flush
@@ -867,7 +867,7 @@ private:
     pp::Size size_;
     float scale_ = 1.0f;
 
-    pp::ImageData* image_data_ = NULL;
+    pp::ImageData image_data_;
     int k_ = 0;
 
     pp::WebSocket websocket_{this};
