@@ -6,6 +6,9 @@
  *
  */
 
+#ifndef FB_SERVER_PROTO_H_
+#define FB_SERVER_PROTO_H_
+
 #include <stdint.h>
 
 /* WebSocket constants */
@@ -70,3 +73,5 @@ struct  __attribute__((__packed__)) mouseclick {
     uint8_t down:1;
     uint8_t button;
 };
+
+#endif /* FB_SERVER_PROTO_H_ */

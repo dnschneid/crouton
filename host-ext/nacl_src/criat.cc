@@ -1,6 +1,13 @@
 /* Copyright (c) 2014 The crouton Authors. All rights reserved.
  * Use of this source code is governed by a BSD-style license that can be
  * found in the LICENSE file.
+ *
+ * This is a NaCl module, used by the crouton extension, to provide
+ * a display for crouton-in-a-tab.
+ * On one end, it communicates with the Javascript module window.js, on the
+ * other, it requests, via WebSocket, frames from croutonfbserver, and sends
+ * inputs events.
+ *
  */
 
 #include <sstream>
@@ -28,7 +35,7 @@ public:
 
     virtual ~CriatInstance() {}
 
-    /* Register events */
+    /* Registers events */
     virtual bool Init(uint32_t argc, const char* argn[], const char* argv[]) {
         RequestInputEvents(PP_INPUTEVENT_CLASS_MOUSE |
                            PP_INPUTEVENT_CLASS_WHEEL |
@@ -42,8 +49,8 @@ public:
 
     /** Interface with Javascript **/
 public:
-    /* Handle message from Javascript */
-    /* Format: <type>:<str> */
+    /* Handles message from Javascript
+     * Format: <type>:<str> */
     virtual void HandleMessage(const pp::Var& var_message) {
         if (!var_message.is_string())
             return;
@@ -89,23 +96,24 @@ public:
     }
 
 private:
-    /* Send a status message to Javascript */
+    /* Sends a status message to Javascript */
     void StatusMessage(std::string str) {
         ControlMessage("status", str);
     }
 
-    /* Send a logging message to Javascript */
+    /* Sends a logging message to Javascript */
     void LogMessage(int level, std::string str) {
         if (level <= debug_) {
             std::ostringstream status;
-            double delta = (pp::Module::Get()->core()->GetTime()-lasttime_)*1000;
+            double delta = 1000 *
+                (pp::Module::Get()->core()->GetTime() - lasttime_);
             status << "(" << level << ") " << (int)delta << " " << str;
             ControlMessage("log", status.str());
         }
     }
 
-    /* Send a control message to Javascript */
-    /* Format: <type>:<str> */
+    /* Sends a control message to Javascript
+     * Format: <type>:<str> */
     void ControlMessage(std::string type, std::string str) {
         std::ostringstream status;
         status << type << ":" << str;
@@ -114,8 +122,9 @@ private:
 
     /** WebSocket interface **/
 private:
-    /* Connect to WebSocket server */
-    void SocketConnect(int32_t result = 0) {
+    /* Connects to WebSocket server
+     * Parameter is ignored: used for callbacks */
+    void SocketConnect(int32_t /*result*/ = 0) {
         if (display_ < 0) {
             LogMessage(-1, "SocketConnect: No display defined yet.");
             return;
@@ -129,7 +138,7 @@ private:
         StatusMessage("Connecting...");
     }
 
-    /* WebSocket connected (or failed to connect) */
+    /* Called when WebSocket is connected (or failed to connect) */
     void OnSocketConnectCompletion(int32_t result) {
         if (result != PP_OK) {
             std::ostringstream status;
@@ -147,8 +156,8 @@ private:
         StatusMessage("Connected.");
     }
 
-    /* WebSocket closed */
-    void OnSocketClosed(int32_t result = 0) {
+    /* Called when WebSocket is closed */
+    void OnSocketClosed(int32_t result) {
         StatusMessage("Disconnected...");
         ControlMessage("disconnected", "Socket closed");
         connected_ = false;
@@ -156,19 +165,23 @@ private:
         Paint(true);
     }
 
-    /* Check if a packet size is valid */
-    bool CheckSize(int length, int target, std::string type) {
+    /* Checks if a WebSocket request size is valid:
+     *  - length: payload length
+     *  - target: expected length for request type
+     *  - type: request type, to be printed on error
+     */
+    bool CheckSize(int length, int target, const std::string& type) {
         if (length == target)
             return true;
 
         std::stringstream status;
-        status << "Invalid " << type << " packet (" << length
+        status << "Invalid " << type << " request (" << length
                << " != " << target << ").";
         LogMessage(-1, status.str());
         return false;
     }
 
-    /* Received a frame from WebSocket server */
+    /* Called when a frame is received from WebSocket server */
     void OnSocketReceiveCompletion(int32_t result) {
         std::stringstream status;
         status << "ReadCompletion: " << result << ".";
@@ -229,12 +242,13 @@ private:
         }
 
         if (data[0] == 'S') { /* Screen */
-            if (!CheckSize(datalen, sizeof(struct screen_reply), "screen_reply"))
+            if (!CheckSize(datalen, sizeof(struct screen_reply),
+                           "screen_reply"))
                 goto error;
             struct screen_reply* reply = (struct screen_reply*)data;
             if (reply->updated) {
                 if (!reply->shmfailed) {
-                    Paint();
+                    Paint(false);
                 } else {
                     /* Blank the frame if shm failed */
                     Paint(true);
@@ -243,11 +257,13 @@ private:
             } else {
                 screen_flying_ = false;
                 /* No update: Ask for next frame in 1000/target_fps_ */
-                if (target_fps_ > 0)
+                if (target_fps_ > 0) {
                     pp::Module::Get()->core()->CallOnMainThread(
                         1000/target_fps_,
-                        callback_factory_.NewCallback(&CriatInstance::RequestScreen),
+                        callback_factory_.NewCallback(
+                            &CriatInstance::RequestScreen),
                         request_token_);
+                }
             }
 
             if (reply->cursor_updated) {
@@ -332,16 +348,18 @@ private:
     error:
         LogMessage(-1, "Receive error.");
         websocket_.Close(0, pp::Var("Receive error"),
-                 callback_factory_.NewCallback(&CriatInstance::OnSocketClosed));
+            callback_factory_.NewCallback(&CriatInstance::OnSocketClosed));
     }
 
-    /* Ask to receive the next WebSocket frame */
-    void SocketReceive(int32_t result = 0) {
+    /* Asks to receive the next WebSocket frame
+     * Parameter is ignored: used for callbacks */
+    void SocketReceive(int32_t /*result*/ = 0) {
         websocket_.ReceiveMessage(&receive_var_, callback_factory_.NewCallback(
-                                    &CriatInstance::OnSocketReceiveCompletion));
+                &CriatInstance::OnSocketReceiveCompletion));
     }
 
-    /* Send a WebSocket Frame, possibly flushing current mouse position first */
+    /* Sends a WebSocket request, possibly flushing current mouse position
+     * first */
     void SocketSend(const pp::Var& var, bool flushmouse) {
         if (!connected_) {
             LogMessage(-1, "SocketSend: not connected!");
@@ -365,12 +383,14 @@ private:
 
     /** UI functions **/
 public:
+    /* Called when the NaCl module view changes (size, visibility) */
     virtual void DidChangeView(const pp::View& view) {
         view_scale_ = view.GetDeviceScale();
         view_rect_ = view.GetRect();
         InitContext();
     }
 
+    /* Called when an input event is received */
     virtual bool HandleInputEvent(const pp::InputEvent& event) {
         if (event.GetType() == PP_INPUTEVENT_TYPE_KEYDOWN ||
             event.GetType() == PP_INPUTEVENT_TYPE_KEYUP) {
@@ -486,12 +506,16 @@ public:
 
             pp::TouchInputEvent touch_event(event);
 
-            int count = touch_event.GetTouchCount(PP_TOUCHLIST_TYPE_CHANGEDTOUCHES);
+            int count = touch_event.GetTouchCount(
+                PP_TOUCHLIST_TYPE_CHANGEDTOUCHES);
             std::ostringstream status;
             status << "TOUCH " << count;
             for (int i = 0; i < count; i++) {
-                pp::TouchPoint tp = touch_event.GetTouchByIndex(PP_TOUCHLIST_TYPE_CHANGEDTOUCHES, i);
-                status << std::endl << tp.id() << "//" << tp.position().x() << "/" << tp.position().y() << "@" << tp.pressure();
+                pp::TouchPoint tp = touch_event.GetTouchByIndex(
+                    PP_TOUCHLIST_TYPE_CHANGEDTOUCHES, i);
+                status << std::endl << tp.id() << "//"
+                       << tp.position().x() << "/" << tp.position().y()
+                       << "@" << tp.pressure();
             }
 
             LogMessage(0, status.str());
@@ -501,7 +525,7 @@ public:
     }
 
 private:
-    /* Initialize Graphics context */
+    /* Initializes Graphics context */
     void InitContext() {
         if (view_rect_.width() <= 0 || view_rect_.height() <= 0)
             return;
@@ -528,6 +552,7 @@ private:
         force_refresh_ = true;
     }
 
+    /* Requests the server for a resolution change. */
     void ChangeResolution(int width, int height) {
         std::ostringstream status;
         status << "Asked for resolution " << width << "x" << height;
@@ -549,8 +574,8 @@ private:
         }
     }
 
-    /* Convert "IE"/JavaScript keycode to X11 KeySym,
-     * see http://unixpapa.com/js/key.html */
+    /* Converts "IE"/JavaScript keycode to X11 KeySym.
+     * See http://unixpapa.com/js/key.html */
     uint32_t KeyCodeToKeySym(uint32_t keycode, std::string code) {
         if (code == "ControlLeft") return 0xffe3;
         if (code == "ControlRight") return 0xffe4;
@@ -622,6 +647,7 @@ private:
         return 0x00;
     }
 
+    /* Changes the target FPS: avoid unecessary refreshes to save CPU */
     void SetTargetFPS(int new_target_fps) {
         /* When increasing the fps, immediately ask for a frame, and force refresh
          * the display (we probably just gained focus). */
@@ -632,8 +658,9 @@ private:
         target_fps_ = new_target_fps;
     }
 
-    /* Send a mouse click.
-     * button is a X11 button number (e.g. 1 is left click) */
+    /* Sends a mouse click.
+     * - button is a X11 button number (e.g. 1 is left click)
+     * SocketSend flushes the mouse position before the click is sent. */
     void SendClick(int button, int down) {
         struct mouseclick* mc;
 
@@ -653,6 +680,7 @@ private:
         SetTargetFPS(kFullFPS);
     }
 
+    /* Sends a key press */
     void SendKey(uint32_t keysym, int down) {
         struct key* k;
         pp::VarArrayBuffer array_buffer(sizeof(*k));
@@ -667,8 +695,8 @@ private:
         SetTargetFPS(kFullFPS);
     }
 
-    /* Request the next framebuffer grab */
-    /* The parameter is a token that must be equal to request_token_.
+    /* Requests the next framebuffer grab.
+     * The parameter is a token that must be equal to request_token_.
      * This makes sure only one screen requests is waiting at one time
      * (e.g. when changing frame rate), since we have no way of cancelling
      * scheduled callbacks. */
@@ -711,13 +739,14 @@ private:
         SocketSend(array_buffer, true);
     }
 
-    /* Last frame was displayed (Vsync-ed): allocate next buffer and request
-       frame. */
-    void OnFlush(int32_t result = 0) {
+    /* Called when the last frame was displayed (Vsync-ed): allocates next
+     * buffer and requests next frame.
+     * Parameter is ignored: used for callbacks */
+    void OnFlush(int32_t /*result*/ = 0) {
         PP_Time time_ = pp::Module::Get()->core()->GetTime();
         PP_Time deltat = time_-lasttime_;
 
-        double delay = (target_fps_ > 0) ? (1.0/target_fps_ - deltat) : INFINITY;
+        double delay = (target_fps_>0) ? (1.0/target_fps_ - deltat) : INFINITY;
 
         double cfps = deltat > 0 ? 1.0/deltat : 1000;
         lasttime_ = time_;
@@ -726,7 +755,8 @@ private:
         avgfps_ = 0.9*avgfps_ + 0.1*cfps;
         if ((k_ % ((int)avgfps_+1)) == 0 || debug_ >= 1) {
             std::stringstream ss;
-            ss << "fps: " << (int)(cfps+0.5) << " (" << (int)(avgfps_+0.5) << ")"
+            ss << "fps: " << (int)(cfps+0.5)
+               << " (" << (int)(avgfps_+0.5) << ")"
                << " delay: " << (int)(delay*1000)
                << " deltat: " << (int)(deltat*1000)
                << " target fps: " << (int)(target_fps_)
@@ -756,11 +786,12 @@ private:
         }
     }
 
-    /* Paint the frame. */
-    void Paint(bool blank = false) {
+    /* Paints the frame. In our context, simply replace the front buffer
+     * content with image_data_. */
+    void Paint(bool blank) {
         if (context_.is_null()) {
-            /* The current Graphics2D context is null, so updating and rendering is
-             * pointless. */
+            /* The current Graphics2D context is null, so updating and rendering
+             * is pointless. */
             flush_context_ = context_;
             return;
         }
