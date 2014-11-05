@@ -533,25 +533,86 @@ public:
                 mouse_wheel_y -= 16;
             }
         } else if (event.GetType() == PP_INPUTEVENT_TYPE_TOUCHSTART ||
+                   event.GetType() == PP_INPUTEVENT_TYPE_TOUCHMOVE ||
                    event.GetType() == PP_INPUTEVENT_TYPE_TOUCHEND) {
-            /* FIXME: To be implemented */
+            /* FIXME: This is a very primitive implementation:
+             * we only handle single touch */
 
             pp::TouchInputEvent touch_event(event);
 
+            std::ostringstream status;
             int count = touch_event.GetTouchCount(
                 PP_TOUCHLIST_TYPE_CHANGEDTOUCHES);
-            std::ostringstream status;
-            status << "TOUCH " << count;
+            status << "TOUCH " << count << " ";
+
+            /* We only care about the first touch (when count goes from 0
+             * to 1), and record the id in touch_id_. */
+            switch (event.GetType()) {
+            case PP_INPUTEVENT_TYPE_TOUCHSTART:
+                if (touch_count_ == 0 && count == 1) {
+                    touch_id_ = touch_event.GetTouchByIndex(
+                        PP_TOUCHLIST_TYPE_CHANGEDTOUCHES, 0).id();
+                }
+                touch_count_ += count;
+                status << "START";
+                break;
+            case PP_INPUTEVENT_TYPE_TOUCHMOVE:
+                status << "MOVE";
+                break;
+            case PP_INPUTEVENT_TYPE_TOUCHEND:
+                touch_count_ -= count;
+                status << "END";
+                break;
+            default:
+                break;
+            }
+
+            /* FIXME: Is there a better way to figure out if a touch id
+             * is present? (GetTouchById is unhelpful and returns a TouchPoint
+             * full of zeros, which may well be valid...) */
+            bool has_tpid = false;
             for (int i = 0; i < count; i++) {
                 pp::TouchPoint tp = touch_event.GetTouchByIndex(
                     PP_TOUCHLIST_TYPE_CHANGEDTOUCHES, i);
                 status << std::endl << tp.id() << "//"
                        << tp.position().x() << "/" << tp.position().y()
                        << "@" << tp.pressure();
+                if (tp.id() == touch_id_)
+                    has_tpid = true;
             }
+            LogMessage(2, status.str());
 
-            LogMessage(0, status.str());
-        }  /* FIXME: Handle IMEInputEvents too */
+            if (has_tpid) {
+                std::ostringstream status;
+                /* Emulate a click: only care about touch at id touch_id_ */
+                pp::TouchPoint tp = touch_event.GetTouchById(
+                    PP_TOUCHLIST_TYPE_CHANGEDTOUCHES, touch_id_);
+
+                pp::Point touch_event_pos(
+                    tp.position().x() * scale_,
+                    tp.position().y() * scale_);
+                bool down = event.GetType() == PP_INPUTEVENT_TYPE_TOUCHSTART;
+
+                if (mouse_pos_.x() != touch_event_pos.x() ||
+                    mouse_pos_.y() != touch_event_pos.y()) {
+                    pending_mouse_move_ = true;
+                    mouse_pos_ = touch_event_pos;
+                }
+
+                status << "Emulated mouse ";
+
+                if (event.GetType() != PP_INPUTEVENT_TYPE_TOUCHMOVE) {
+                    status << (down ? "DOWN" : "UP");
+                    SendClick(1, down ? 1 : 0);
+                } else {
+                    status << "MOVE";
+                }
+
+                status << " " << touch_event_pos.x() << "/"
+                       << touch_event_pos.y();
+                LogMessage(2, status.str());
+            }
+        } /* FIXME: Handle IMEInputEvents too */
 
         return PP_TRUE;
     }
@@ -887,6 +948,10 @@ private:
     int mouse_wheel_y = 0;
     /* Super_L press has been delayed */
     bool pending_super_l_ = false;
+
+    /* Touch */
+    int touch_count_;  /* Number of points currently pressed */
+    int touch_id_;  /* First touch id */
 
     /* Performance metrics */
     PP_Time lasttime_;
