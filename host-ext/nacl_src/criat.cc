@@ -156,6 +156,12 @@ private:
         StatusMessage("Connected.");
     }
 
+    /* Closes the WebSocket connection. */
+    void SocketClose(std::string reason) {
+        websocket_.Close(0, pp::Var(reason),
+            callback_factory_.NewCallback(&CriatInstance::OnSocketClosed));
+    }
+
     /* Called when WebSocket is closed */
     void OnSocketClosed(int32_t result) {
         StatusMessage("Disconnected...");
@@ -181,6 +187,131 @@ private:
         return false;
     }
 
+    /* Receives and handles a version request */
+    bool SocketParseVersion(const char* data, int datalen) {
+        if (connected_) {
+            LogMessage(-1, "Got a version while connected?!?");
+            return false;
+        }
+        if (strcmp(data, VERSION)) {
+            LogMessage(-1, "Invalid version received (" +
+                       std::string(data) + ").");
+            return false;
+        }
+        connected_ = true;
+        SocketSend(pp::Var("VOK"), false);
+        ControlMessage("connected", "Version received");
+        ChangeResolution(size_.width(), size_.height());
+        // Start requesting frames
+        OnFlush();
+        return true;
+    }
+
+    /* Receives and handles a screen_reply request */
+    bool SocketParseScreen(const char* data, int datalen) {
+        if (!CheckSize(datalen, sizeof(struct screen_reply), "screen_reply"))
+            return false;
+
+        struct screen_reply* reply = (struct screen_reply*)data;
+        if (reply->updated) {
+            if (!reply->shmfailed) {
+                Paint(false);
+            } else {
+                /* Blank the frame if shm failed */
+                Paint(true);
+                force_refresh_ = true;
+            }
+        } else {
+            screen_flying_ = false;
+            /* No update: Ask for next frame in 1000/target_fps_ */
+            if (target_fps_ > 0) {
+                pp::Module::Get()->core()->CallOnMainThread(
+                    1000/target_fps_,
+                    callback_factory_.NewCallback(
+                        &CriatInstance::RequestScreen),
+                    request_token_);
+            }
+        }
+
+        if (reply->cursor_updated) {
+            /* Cursor updated: find it in cache */
+            std::unordered_map<uint32_t, Cursor>::iterator it =
+                cursor_cache_.find(reply->cursor_serial);
+            if (it == cursor_cache_.end()) {
+                /* No cache entry, ask for data. */
+                SocketSend(pp::Var("P"), false);
+            } else {
+                std::ostringstream status;
+                status << "Cursor use cache for " << (reply->cursor_serial);
+                LogMessage(2, status.str());
+                pp::MouseCursor::SetCursor(this, PP_MOUSECURSOR_TYPE_CUSTOM,
+                                           it->second.img, it->second.hot);
+            }
+        }
+        return true;
+    }
+
+    /* Receives and handles a cursor_reply request */
+    bool SocketParseCursor(const char* data, int datalen) {
+        if (datalen < sizeof(struct cursor_reply)) {
+            std::stringstream status;
+            status << "Invalid cursor_reply packet (" << datalen
+                   << " < " << sizeof(struct cursor_reply) << ").";
+            LogMessage(-1, status.str());
+            return false;
+        }
+
+        struct cursor_reply* cursor = (struct cursor_reply*)data;
+        if (!CheckSize(datalen,
+                       sizeof(struct cursor_reply) +
+                           4*cursor->width*cursor->height,
+                       "cursor_reply"))
+            return false;
+
+        std::ostringstream status;
+        status << "Cursor " << (cursor->width) << "/" << (cursor->height);
+        status << " " << (cursor->xhot) << "/" << (cursor->yhot);
+        status << " " << (cursor->cursor_serial);
+        LogMessage(0, status.str());
+
+        /* Scale down if needed */
+        int scale = 1;
+        while (cursor->width/scale > 32 || cursor->height/scale > 32)
+            scale *= 2;
+
+        int w = cursor->width/scale;
+        int h = cursor->height/scale;
+        pp::ImageData img(this, pp::ImageData::GetNativeImageDataFormat(),
+                          pp::Size(w, h), true);
+        uint32_t* imgdata = (uint32_t*)img.data();
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) {
+                /* Nearest neighbour is least ugly */
+                imgdata[y*w+x] = cursor->pixels[scale*y*scale*w+scale*x];
+            }
+        }
+        pp::Point hot(cursor->xhot/scale, cursor->yhot/scale);
+
+        cursor_cache_[cursor->cursor_serial].img = img;
+        cursor_cache_[cursor->cursor_serial].hot = hot;
+        pp::MouseCursor::SetCursor(this, PP_MOUSECURSOR_TYPE_CUSTOM,
+                                       img, hot);
+        return true;
+    }
+
+    /* Receives and handles a resolution request */
+    bool SocketParseResolution(const char* data, int datalen) {
+        if (!CheckSize(datalen, sizeof(struct resolution), "resolution"))
+            return false;
+        struct resolution* r = (struct resolution*)data;
+        std::ostringstream newres;
+        newres << (r->width/scale_) << "/" << (r->height/scale_);
+        /* Tell Javascript so that it can center us on the page */
+        ControlMessage("resize", newres.str());
+        force_refresh_ = true;
+        return true;
+    }
+
     /* Called when a frame is received from WebSocket server */
     void OnSocketReceiveCompletion(int32_t result) {
         std::stringstream status;
@@ -193,7 +324,8 @@ private:
             /* Not fatal: just wait for next call */
             return;
         } else if (result != PP_OK) {
-            goto error;
+            LogMessage(-1, "Receive error.");
+            SocketClose("Receive error.");
         }
 
         /* Get ready to receive next frame */
@@ -218,137 +350,35 @@ private:
         }
 
         if (data[0] == 'V') { /* Version */
-            if (connected_) {
-                LogMessage(-1, "Got a version while connected?!?");
-                goto error;
-            }
-            if (strcmp(data, VERSION)) {
-                LogMessage(-1, "Invalid version received (" +
-                               std::string(data) + ").");
-                goto error;
-            }
-            connected_ = true;
-            SocketSend(pp::Var("VOK"), false);
-            ControlMessage("connected", "Version received");
-            ChangeResolution(size_.width(), size_.height());
-            // Start requesting frames
-            OnFlush();
+            if (!SocketParseVersion(data, datalen))
+                SocketClose("Incorrect version.");
+
             return;
         }
 
-        if (!connected_) {
-            LogMessage(-1, "Got some packet before version...");
-            goto error;
-        }
-
-        if (data[0] == 'S') { /* Screen */
-            if (!CheckSize(datalen, sizeof(struct screen_reply),
-                           "screen_reply"))
-                goto error;
-            struct screen_reply* reply = (struct screen_reply*)data;
-            if (reply->updated) {
-                if (!reply->shmfailed) {
-                    Paint(false);
-                } else {
-                    /* Blank the frame if shm failed */
-                    Paint(true);
-                    force_refresh_ = true;
-                }
-            } else {
-                screen_flying_ = false;
-                /* No update: Ask for next frame in 1000/target_fps_ */
-                if (target_fps_ > 0) {
-                    pp::Module::Get()->core()->CallOnMainThread(
-                        1000/target_fps_,
-                        callback_factory_.NewCallback(
-                            &CriatInstance::RequestScreen),
-                        request_token_);
-                }
-            }
-
-            if (reply->cursor_updated) {
-                /* Cursor updated: find it in cache */
-                std::unordered_map<uint32_t, Cursor>::iterator it =
-                    cursor_cache_.find(reply->cursor_serial);
-                if (it == cursor_cache_.end()) {
-                    /* No cache entry, ask for data. */
-                    SocketSend(pp::Var("P"), false);
-                } else {
-                    std::ostringstream status;
-                    status << "Cursor use cache for " << (reply->cursor_serial);
-                    LogMessage(2, status.str());
-                    pp::MouseCursor::SetCursor(this, PP_MOUSECURSOR_TYPE_CUSTOM,
-                                               it->second.img, it->second.hot);
-                }
-            }
-
-            return;
-        } else if (data[0] == 'P') { /* New cursor data is received */
-            if (datalen < sizeof(struct cursor_reply)) {
+        if (connected_) {
+            switch(data[0]) {
+            case 'S': /* Screen */
+                if (SocketParseScreen(data, datalen)) return;
+                break;
+            case 'P': /* New cursor data is received */
+                if (SocketParseCursor(data, datalen)) return;
+                break;
+            case 'R': /* Resolution request reply */
+                if (SocketParseResolution(data, datalen)) return;
+                break;
+            default: {
                 std::stringstream status;
-                status << "Invalid cursor_reply packet (" << datalen
-                       << " < " << sizeof(struct cursor_reply) << ").";
+                status << "Invalid request. First char: " << (int)data[0];
                 LogMessage(-1, status.str());
-                goto error;
+                /* Fall-through: disconnect. */
             }
-
-            struct cursor_reply* cursor = (struct cursor_reply*)data;
-            if (!CheckSize(datalen,
-                           sizeof(struct cursor_reply) +
-                               4*cursor->width*cursor->height,
-                           "cursor_reply"))
-                goto error;
-
-            std::ostringstream status;
-            status << "Cursor " << (cursor->width) << "/" << (cursor->height);
-            status << " " << (cursor->xhot) << "/" << (cursor->yhot);
-            status << " " << (cursor->cursor_serial);
-            LogMessage(0, status.str());
-
-            /* Scale down if needed */
-            int scale = 1;
-            while (cursor->width/scale > 32 || cursor->height/scale > 32)
-                scale *= 2;
-
-            int w = cursor->width/scale;
-            int h = cursor->height/scale;
-            pp::ImageData img(this, pp::ImageData::GetNativeImageDataFormat(),
-                              pp::Size(w, h), true);
-            uint32_t* data = (uint32_t*)img.data();
-            for (int y = 0; y < h; y++) {
-                for (int x = 0; x < w; x++) {
-                    /* Nearest neighbour is least ugly */
-                    data[y*w+x] = cursor->pixels[scale*y*scale*w+scale*x];
-                }
             }
-            pp::Point hot(cursor->xhot/scale, cursor->yhot/scale);
-
-            cursor_cache_[cursor->cursor_serial].img = img;
-            cursor_cache_[cursor->cursor_serial].hot = hot;
-            pp::MouseCursor::SetCursor(this, PP_MOUSECURSOR_TYPE_CUSTOM,
-                                       img, hot);
-            return;
-        } else if (data[0] == 'R') { /* Resolution request reply */
-            if (!CheckSize(datalen, sizeof(struct resolution), "resolution"))
-                goto error;
-            struct resolution* r = (struct resolution*)data;
-            std::ostringstream newres;
-            newres << (r->width/scale_) << "/" << (r->height/scale_);
-            /* Tell Javascript so that it can center us on the page */
-            ControlMessage("resize", newres.str());
-            force_refresh_ = true;
-            return;
         } else {
-            std::stringstream status;
-            status << "Error: first char " << (int)data[0];
-            LogMessage(0, status.str());
-            /* fall-through: disconnect */
+            LogMessage(-1, "Got some packet before version...");
         }
 
-    error:
-        LogMessage(-1, "Receive error.");
-        websocket_.Close(0, pp::Var("Receive error"),
-            callback_factory_.NewCallback(&CriatInstance::OnSocketClosed));
+        SocketClose("Invalid payload.");
     }
 
     /* Asks to receive the next WebSocket frame
