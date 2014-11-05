@@ -22,12 +22,6 @@
 namespace {
     /* Protocol data structures */
 #include "../../src/fbserver-proto.h"
-    /* SuperL keycode (search key) */
-    const uint32_t SUPER_L = 0xffeb;
-
-    const int FULLFPS = 30; /* Maximum fps */
-    const int BLURFPS = 5; /* fps when window is possibly hidden */
-    const int HIDDENFPS = 0; /* fps when window is hidden */
 }  /* namespace */
 
 class CriatInstance : public pp::Instance {
@@ -80,10 +74,10 @@ public:
                 /* Release all keys */
                 SocketSend(pp::Var("Q"), false);
                 /* Throttle/stop refresh */
-                SetTargetFPS((type == "blur") ? BLURFPS : HIDDENFPS);
+                SetTargetFPS((type == "blur") ? kBlurFPS : kHiddenFPS);
             } else if (type == "focus") {
                 /* Force refresh and ask for next frame */
-                SetTargetFPS(FULLFPS);
+                SetTargetFPS(kFullFPS);
             } else if (type == "debug") {
                 debug_ = stoi(message.substr(pos+1));
             } else if (type == "hidpi") {
@@ -422,9 +416,9 @@ public:
             }
 
             bool letter = (keycode >= 65 && keycode <= 90);
-            if (letter && pending_super_l_ && down) SendKey(SUPER_L, 1);
+            if (letter && pending_super_l_ && down) SendKey(kSUPER_L, 1);
             SendKey(keysym, down ? 1 : 0);
-            if (letter && pending_super_l_ && !down) SendKey(SUPER_L, 0);
+            if (letter && pending_super_l_ && !down) SendKey(kSUPER_L, 0);
         } else if (event.GetType() == PP_INPUTEVENT_TYPE_MOUSEDOWN ||
                    event.GetType() == PP_INPUTEVENT_TYPE_MOUSEUP   ||
                    event.GetType() == PP_INPUTEVENT_TYPE_MOUSEMOVE) {
@@ -595,7 +589,7 @@ private:
         case 42: return 0xff61; // print screen
         case 45: return 0xff63; // insert
         case 46: return 0xffff; // delete
-        case 91: return SUPER_L; // super
+        case 91: return kSUPER_L; // super
         case 106: return 0xffaa; // num multiply
         case 107: return 0xffab; // num plus
         case 109: return 0xffad; // num minus
@@ -640,7 +634,7 @@ private:
     void SendClick(int button, int down) {
         struct mouseclick* mc;
 
-        if (pending_super_l_ && down) SendKey(SUPER_L, 1);
+        if (pending_super_l_ && down) SendKey(kSUPER_L, 1);
 
         pp::VarArrayBuffer array_buffer(sizeof(*mc));
         mc = static_cast<struct mouseclick*>(array_buffer.Map());
@@ -650,10 +644,10 @@ private:
         array_buffer.Unmap();
         SocketSend(array_buffer, true);
 
-        if (pending_super_l_ && !down) SendKey(SUPER_L, 0);
+        if (pending_super_l_ && !down) SendKey(kSUPER_L, 0);
 
         /* That means we have focus */
-        SetTargetFPS(FULLFPS);
+        SetTargetFPS(kFullFPS);
     }
 
     void SendKey(uint32_t keysym, int down) {
@@ -667,7 +661,7 @@ private:
         SocketSend(array_buffer, true);
 
         /* That means we have focus */
-        SetTargetFPS(FULLFPS);
+        SetTargetFPS(kFullFPS);
     }
 
     /* Request the next framebuffer grab */
@@ -792,6 +786,15 @@ private:
     }
 
 private:
+    /* Constants */
+    /* SuperL keycode (search key) */
+    const uint32_t kSUPER_L = 0xffeb;
+
+    const int kFullFPS = 30; /* Maximum fps */
+    const int kBlurFPS = 5; /* fps when window is possibly hidden */
+    const int kHiddenFPS = 0; /* fps when window is hidden */
+
+    /* Class members */
     pp::CompletionCallbackFactory<CriatInstance> callback_factory_{this};
     pp::Graphics2D context_;
     pp::Graphics2D flush_context_;
@@ -807,7 +810,7 @@ private:
     bool connected_ = false;
     bool screen_flying_ = false;
     pp::Var receive_var_;
-    int target_fps_ = FULLFPS;
+    int target_fps_ = kFullFPS;
     int request_token_ = 0;
     bool force_refresh_ = false;
 
