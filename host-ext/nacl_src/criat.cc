@@ -118,10 +118,9 @@ private:
 
     /* Send a logging message to Javascript */
     void LogMessage(int level, std::string str) {
-        double delta = (pp::Module::Get()->core()->GetTime()-lasttime_)*1000;
-
         if (level <= debug_) {
             std::ostringstream status;
+            double delta = (pp::Module::Get()->core()->GetTime()-lasttime_)*1000;
             status << "(" << level << ") " << (int)delta << " " << str;
             ControlMessage("log", status.str());
         }
