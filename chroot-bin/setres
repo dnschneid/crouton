@@ -36,7 +36,7 @@ if [ "$xmethod" != "xiat" ]; then
         xrandr --newmode "$mode" $data 2>/dev/null || true
         xrandr --addmode "$o" "$mode"
         xrandr --output "$o" --mode "$mode"
-        echo "$o"
+        echo "$mode"
     }
     exit 0
 fi
