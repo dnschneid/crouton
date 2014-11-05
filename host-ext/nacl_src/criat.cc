@@ -32,21 +32,7 @@ namespace {
 
 class CriatInstance : public pp::Instance {
 public:
-    explicit CriatInstance(PP_Instance instance)
-        : pp::Instance(instance),
-          callback_factory_(this),
-          scale_(1.0f),
-          image_data_(NULL),
-          k_(0),
-          websocket_(this),
-          connected_(false),
-          target_fps_(FULLFPS),
-          pending_mouse_move_(false),
-          mouse_pos_(-1, -1),
-          avgfps_(0),
-          display_(-1),
-          debug_(0),
-          hidpi_(false) {}
+    explicit CriatInstance(PP_Instance instance): pp::Instance(instance) {}
 
     virtual ~CriatInstance() {}
 
@@ -443,13 +429,13 @@ public:
                    event.GetType() == PP_INPUTEVENT_TYPE_MOUSEUP   ||
                    event.GetType() == PP_INPUTEVENT_TYPE_MOUSEMOVE) {
             pp::MouseInputEvent mouse_event(event);
-	    pp::Point mouse_event_pos(
+            pp::Point mouse_event_pos(
                 mouse_event.GetPosition().x() * scale_,
                 mouse_event.GetPosition().y() * scale_);
             bool down = event.GetType() == PP_INPUTEVENT_TYPE_MOUSEDOWN;
 
             if (mouse_pos_.x() != mouse_event_pos.x() ||
-		mouse_pos_.y() != mouse_event_pos.y()) {
+        	mouse_pos_.y() != mouse_event_pos.y()) {
                 pending_mouse_move_ = true;
                 mouse_pos_ = mouse_event_pos;
             }
@@ -526,7 +512,7 @@ private:
 
         scale_ = hidpi_ ? view_scale_ : 1.0f;
         pp::Size new_size = pp::Size(view_rect_.width()  * scale_,
-				     view_rect_.height() * scale_);
+        			     view_rect_.height() * scale_);
 
         std::ostringstream status;
         status << "InitContext " << new_size.width() << "x" << new_size.height()
@@ -535,7 +521,7 @@ private:
 
         const bool kIsAlwaysOpaque = true;
         context_ = pp::Graphics2D(this, new_size, kIsAlwaysOpaque);
-	context_.SetScale(1.0f / scale_);
+        context_.SetScale(1.0f / scale_);
         if (!BindGraphics(context_)) {
             LogMessage(0, "Unable to bind 2d context!");
             context_ = pp::Graphics2D();
@@ -806,36 +792,36 @@ private:
     }
 
 private:
-    pp::CompletionCallbackFactory<CriatInstance> callback_factory_;
+    pp::CompletionCallbackFactory<CriatInstance> callback_factory_{this};
     pp::Graphics2D context_;
     pp::Graphics2D flush_context_;
     pp::Rect view_rect_;
-    float view_scale_;
+    float view_scale_ = 1.0f;
     pp::Size size_;
-    float scale_;
+    float scale_ = 1.0f;
 
-    pp::ImageData* image_data_;
-    int k_;
+    pp::ImageData* image_data_ = NULL;
+    int k_ = 0;
 
-    pp::WebSocket websocket_;
-    bool connected_;
-    bool screen_flying_;
+    pp::WebSocket websocket_{this};
+    bool connected_ = false;
+    bool screen_flying_ = false;
     pp::Var receive_var_;
-    int target_fps_;
-    int request_token_;
-    bool force_refresh_;
+    int target_fps_ = FULLFPS;
+    int request_token_ = 0;
+    bool force_refresh_ = false;
 
-    bool pending_mouse_move_;
-    pp::Point mouse_pos_;
+    bool pending_mouse_move_ = false;
+    pp::Point mouse_pos_{-1, -1};
     /* Mouse wheel accumulators */
-    int mouse_wheel_x;
-    int mouse_wheel_y;
+    int mouse_wheel_x = 0;
+    int mouse_wheel_y = 0;
     /* Super_L press has been delayed */
-    bool pending_super_l_;
+    bool pending_super_l_ = false;
 
     /* Performance metrics */
     PP_Time lasttime_;
-    double avgfps_;
+    double avgfps_ = 0.0;
 
     /* Cursor cache */
     class Cursor {
@@ -846,9 +832,9 @@ public:
     std::unordered_map<uint32_t, Cursor> cursor_cache_;
 
     /* Display to connect to */
-    int display_;
-    int debug_;
-    bool hidpi_;
+    int display_ = -1;
+    int debug_ = 0;
+    bool hidpi_ = false;
 };
 
 class CriatModule : public pp::Module {
