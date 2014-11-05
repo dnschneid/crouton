@@ -326,6 +326,7 @@ private:
         } else if (result != PP_OK) {
             LogMessage(-1, "Receive error.");
             SocketClose("Receive error.");
+            return;
         }
 
         /* Get ready to receive next frame */
