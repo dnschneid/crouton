@@ -19,10 +19,8 @@
 #include "ppapi/cpp/websocket.h"
 #include "ppapi/utility/completion_callback_factory.h"
 
-namespace {
-    /* Protocol data structures */
+/* Protocol data structures */
 #include "../../src/fbserver-proto.h"
-}  /* namespace */
 
 class CriatInstance : public pp::Instance {
 public:
