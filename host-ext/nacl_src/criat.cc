@@ -633,7 +633,7 @@ private:
         case 17: return 0xffe3; // control (caught earlier!)
         case 18: return 0xffe9; // alt (caught earlier!)
         case 19: return 0xff13; // pause
-        case 20: return 0xffe5; // caps lock
+        case 20: return 0; // caps lock (FIXME: reenable, 0xffe5)
         case 27: return 0xff1b; // esc
         case 32: return 0x20; // space
         case 33: return 0xff55; // page up
@@ -653,7 +653,7 @@ private:
         case 109: return 0xffad; // num minus
         case 110: return 0xffae; // num dot
         case 111: return 0xffaf; // num divide
-        case 144: return 0xff7f; // num lock (maybe better not to pass through???)
+        case 144: return 0xff7f; // num lock
         case 145: return 0xff14; // scroll lock
         case 151: return 0x1008ff95; // WLAN
         case 166: return 0x1008ff26; // back
