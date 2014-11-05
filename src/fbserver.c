@@ -114,8 +114,6 @@ static void register_damage(Display *dpy, Window win) {
 }
 
 static int init_display(char* name) {
-    int event, error, major, minor;
-
     dpy = XOpenDisplay(name);
 
     if (!dpy) {
@@ -124,6 +122,7 @@ static int init_display(char* name) {
     }
 
     /* We need XTest, XDamage and XFixes */
+    int event, error, major, minor;
     if (!XTestQueryExtension(dpy, &event, &error, &major, &minor)) {
         error("XTest not available!");
         return -1;
@@ -139,15 +138,14 @@ static int init_display(char* name) {
         return -1;
     }
 
-    Window root = DefaultRootWindow(dpy);
-    Window rootp, parent;
-    Window *children;
-    unsigned int nchildren, i;
-
     /* Get notified when new windows are created. */
+    Window root = DefaultRootWindow(dpy);
     XSelectInput(dpy, root, SubstructureNotifyMask);
 
     /* Register damage events for existing windows */
+    Window rootp, parent;
+    Window *children;
+    unsigned int i, nchildren;
     XQueryTree(dpy, root, &rootp, &parent, &children, &nchildren);
 
     /* FIXME: We never reset the handler, is that a good thing? */
@@ -168,17 +166,17 @@ static int init_display(char* name) {
  * Reply must be a resolution in "canonical" form: <w>x<h>[_<rate>] */
 /* FIXME: Maybe errors here should not be fatal... */
 void change_resolution(const struct resolution* rin) {
-    char* cmd = "setres";
-    char arg1[32], arg2[32], buffer[256];
-    int c;
-    char* args[] = {cmd, arg1, arg2, NULL};
-    char* endptr;
-
     /* Setup parameters and run command */
+    char arg1[32], arg2[32];
+    int c;
     c = snprintf(arg1, sizeof(arg1), "%d", rin->width);
     trueorabort(c > 0, "snprintf");
     c = snprintf(arg2, sizeof(arg2), "%d", rin->height);
     trueorabort(c > 0, "snprintf");
+
+    char* cmd = "setres";
+    char* args[] = {cmd, arg1, arg2, NULL};
+    char buffer[256];
     log(2, "Running %s %s %s", cmd, arg1, arg2);
     c = popen2(cmd, args, NULL, 0, buffer, sizeof(buffer));
     trueorabort(c > 0, "popen2");
@@ -192,6 +190,7 @@ void change_resolution(const struct resolution* rin) {
     trueorabort(cut, "Invalid answer: %s", buffer);
     *cut = 0;
 
+    char* endptr;
     long nwidth = strtol(buffer, &endptr, 10);
     trueorabort(buffer != endptr && *endptr == '\0',
                     "Invalid width: '%s'", buffer);
@@ -222,7 +221,6 @@ void close_mmap(struct cache_entry* entry) {
  * Reply must be in the form PID:file */
 struct cache_entry* find_shm(uint64_t paddr, uint64_t sig, size_t length) {
     struct cache_entry* entry = NULL;
-    int try;
 
     /* Find entry in cache */
     if (cache[0].paddr == paddr)
@@ -236,6 +234,7 @@ struct cache_entry* find_shm(uint64_t paddr, uint64_t sig, size_t length) {
         close_mmap(entry);
     }
 
+    int try;
     for (try = 0; try < 2; try++) {
         /* Check signature */
         if (entry->map) {
@@ -247,21 +246,22 @@ struct cache_entry* find_shm(uint64_t paddr, uint64_t sig, size_t length) {
         }
 
         /* Setup parameters and run command */
-        char* cmd = "croutonfindnacl";
-        char arg1[32], arg2[32], buffer[256];
-        char* args[] = {cmd, arg1, arg2, NULL};
-        int c, i, p = 0;
-        char* endptr;
+        char arg1[32], arg2[32];
+        int c;
 
         c = snprintf(arg1, sizeof(arg1), "%08lx", (long)paddr & 0xffffffff);
         trueorabort(c > 0, "snprintf");
-        p = 0;
+        int i, p = 0;
         for (i = 0; i < 8; i++) {
             c = snprintf(arg2+p, sizeof(arg2)-p, "%02x",
                          ((uint8_t*)&sig)[i]);
             trueorabort(c > 0, "snprintf");
             p += c;
         }
+
+        char* cmd = "croutonfindnacl";
+        char* args[] = {cmd, arg1, arg2, NULL};
+        char buffer[256];
         log(2, "Running %s %s %s", cmd, arg1, arg2);
         c = popen2(cmd, args, NULL, 0, buffer, sizeof(buffer));
         if (c <= 0) {
@@ -279,6 +279,7 @@ struct cache_entry* find_shm(uint64_t paddr, uint64_t sig, size_t length) {
         }
         *cut = 0;
 
+        char* endptr;
         long pid = strtol(buffer, &endptr, 10);
         if(buffer == endptr || *endptr != '\0') {
             error("Invalid pid: %s", buffer);
@@ -320,10 +321,7 @@ int write_image(const struct screen* screen) {
     char reply_raw[FRAMEMAXHEADERSIZE+sizeof(struct screen_reply)];
     struct screen_reply* reply =
                            (struct screen_reply*)(reply_raw+FRAMEMAXHEADERSIZE);
-    Window root = DefaultRootWindow(dpy);
     int refresh = 0;
-    XEvent ev;
-    int ret;
 
     memset(reply_raw, 0, sizeof(*reply_raw));
 
@@ -350,7 +348,7 @@ int write_image(const struct screen* screen) {
         shminfo.shmaddr = img->data = shmat(shminfo.shmid, 0, 0);
         trueorabort(shminfo.shmaddr != (void*)-1, "shmat");
         shminfo.readOnly = False;
-        ret = XShmAttach(dpy, &shminfo);
+        int ret = XShmAttach(dpy, &shminfo);
         trueorabort(ret, "XShmAttach");
         /* Force refresh */
         refresh = 1;
@@ -362,6 +360,7 @@ int write_image(const struct screen* screen) {
         refresh = 1;
     }
 
+    XEvent ev;
     /* Register damage on new windows */
     while (XCheckTypedEvent(dpy, MapNotify, &ev)) {
         register_damage(dpy, ev.xcreatewindow.window);
@@ -394,7 +393,7 @@ int write_image(const struct screen* screen) {
     }
 
     /* Get new image from framebuffer */
-    XShmGetImage(dpy, root, img, 0, 0, AllPlanes);
+    XShmGetImage(dpy, DefaultRootWindow(dpy), img, 0, 0, AllPlanes);
 
     int size = img->bytes_per_line * img->height;
 
@@ -451,7 +450,6 @@ int write_cursor() {
     char reply_raw[FRAMEMAXHEADERSIZE+replylength];
     struct cursor_reply* reply =
                            (struct cursor_reply*)(reply_raw+FRAMEMAXHEADERSIZE);
-    int i = 0;
 
     memset(reply_raw, 0, sizeof(*reply_raw));
 
@@ -462,19 +460,9 @@ int write_cursor() {
     reply->yhot = img->yhot;
     reply->cursor_serial = img->cursor_serial;
     /* This casts long[] to uint32_t[] */
+    int i;
     for (i = 0; i < size; i++)
         reply->pixels[i] = img->pixels[i];
-
-#if 0
-    /* Debug: dump cursor image */
-    int x, y;
-    for (y = 0; y < img->height; y++) {
-        for (x = 0; x < img->width; x++) {
-            printf("%01x", (reply->pixels[y*img->width+x] >> 28) & 0xf);
-        }
-        printf("\n");
-    }
-#endif
 
     socket_client_write_frame(reply_raw, replylength, WS_OPCODE_BINARY, 1);
     XFree(img);
@@ -499,10 +487,6 @@ void usage(char* argv0) {
 
 int main(int argc, char** argv) {
     int c;
-    char* display;
-    char* endptr;
-    int displaynum;
-
     while ((c = getopt(argc, argv, "v:")) != -1) {
         switch (c) {
         case 'v':
@@ -516,11 +500,12 @@ int main(int argc, char** argv) {
     if (optind != argc-1)
         usage(argv[0]);
 
-    display = argv[optind];
+    char* display = argv[optind];
 
     trueorabort(display[0] == ':', "Invalid display: '%s'", display);
 
-    displaynum = (int)strtol(display+1, &endptr, 10);
+    char* endptr;
+    int displaynum = (int)strtol(display+1, &endptr, 10);
     trueorabort(display+1 != endptr && (*endptr == '\0' || *endptr == '.'),
                     "Invalid display number: '%s'", display);
 
@@ -531,11 +516,6 @@ int main(int argc, char** argv) {
     int length;
 
     while (1) {
-        struct key* k;
-        struct mouseclick* mc;
-        struct mousemove* mm;
-        KeyCode kc;
-
         socket_server_accept(VERSION);
         while (1) {
             length = socket_client_read_frame((char*)buffer, sizeof(buffer));
@@ -567,11 +547,11 @@ int main(int argc, char** argv) {
                     break;
                 change_resolution((struct resolution*)buffer);
                 break;
-            case 'K': /* Key */
+            case 'K': { /* Key */
                 if (!check_size(length, sizeof(struct key), "key"))
                     break;
-                k = (struct key*)buffer;
-                kc = XKeysymToKeycode(dpy, k->keysym);
+                struct key* k = (struct key*)buffer;
+                KeyCode kc = XKeysymToKeycode(dpy, k->keysym);
                 log(2, "Key: ks=%04x kc=%04x\n", k->keysym, kc);
                 if (kc != 0) {
                     XTestFakeKeyEvent(dpy, kc, k->down, CurrentTime);
@@ -581,21 +561,24 @@ int main(int argc, char** argv) {
                     error("Invalid keysym %04x.", k->keysym);
                 }
                 break;
-            case 'C': /* Click */
+            }
+            case 'C': { /* Click */
                 if (!check_size(length, sizeof(struct mouseclick),
                                 "mouseclick"))
                     break;
-                mc = (struct mouseclick*)buffer;
+                struct mouseclick* mc = (struct mouseclick*)buffer;
                 XTestFakeButtonEvent(dpy, mc->button, mc->down, CurrentTime);
                 if (mc->down) kb_add(MOUSE, mc->button);
                 else kb_remove(MOUSE, mc->button);
                 break;
-            case 'M': /* Mouse move */
+            }
+            case 'M': { /* Mouse move */
                 if (!check_size(length, sizeof(struct mousemove), "mousemove"))
                     break;
-                mm = (struct mousemove*)buffer;
+                struct mousemove* mm = (struct mousemove*)buffer;
                 XTestFakeMotionEvent(dpy, 0, mm->x, mm->y, CurrentTime);
                 break;
+            }
             case 'Q': /* "Quit": release all keys */
                 kb_release_all();
                 break;
