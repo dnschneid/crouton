@@ -44,6 +44,13 @@ const int WS_OPCODE_CLOSE = 0x8;
 const int WS_OPCODE_PING = 0x9;
 const int WS_OPCODE_PONG = 0xA;
 
+/* WebSocket bitmasks */
+const char WS_HEADER0_FIN = 0x80; /* fin */
+const char WS_HEADER0_RSV = 0x70; /* reserved */
+const char WS_HEADER0_OPCODE_MASK = 0x0F; /* reserved */
+const char WS_HEADER1_MASK = 0x80; /* mask */
+const char WS_HEADER1_LEN_MASK = 0x7F; /* payload length */
+
 /* 0 - Quiet
  * 1 - General messages (init, new connections)
  * 2 - 1 + Information on each transfer
@@ -56,6 +63,7 @@ static int verbose = 0;
 
 #define error(str, ...) printf("%s: " str "\n", __func__, ##__VA_ARGS__)
 
+/* Aborts if expr is false */
 #define trueorabort(expr, str, ...) do { \
     if (!(expr)) { \
         printf("%s: ASSERTION " #expr " FAILED (" str ")\n", \
@@ -331,8 +339,8 @@ static int socket_client_write_frame(char* buffer, unsigned int size,
         }
     }
 
-    pbuffer[0] = opcode & 0x0f;
-    if (fin) pbuffer[0] |= 0x80;
+    pbuffer[0] = opcode & WS_HEADER0_OPCODE_MASK;
+    if (fin) pbuffer[0] |= WS_HEADER0_FIN;
     pbuffer[1] = payloadlen; /* No mask (0x80) in server->client direction */
 
     int wlen = 2+extlensize+size;
@@ -373,15 +381,15 @@ static int socket_client_read_frame_header(int* fin, uint32_t* maskkey,
 
     int opcode, mask;
     uint64_t length;
-    *fin = (header[0] & 0x80) != 0;
-    if (header[0] & 0x70) { /* Reserved bits are on */
+    *fin = (header[0] & WS_HEADER0_FIN) != 0;
+    if (header[0] & WS_HEADER0_RSV) { /* Reserved bits are on */
         error("Reserved bits are on.");
         socket_client_close(1);
         return -1;
     }
-    opcode = header[0] & 0x0F;
-    mask = (header[1] & 0x80) != 0;
-    length = header[1] & 0x7F;
+    opcode = header[0] & WS_HEADER0_OPCODE_MASK;
+    mask = (header[1] & WS_HEADER1_MASK) != 0;
+    length = header[1] & WS_HEADER1_LEN_MASK;
 
     log(2, "fin=%d; opcode=%d; mask=%d; length=%llu",
                *fin, opcode, mask, (long long unsigned int)length);
