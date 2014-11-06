@@ -67,9 +67,10 @@ mv -f "$tmp" /etc/X11/xorg-dummy.conf
 chmod 0644 /etc/X11/xorg-dummy.conf
 undotrap
 
-TIPS="$TIPS
-You can flip through your running chroot desktops and Chromium OS by hitting
-Ctrl+Alt+Shift+Back and Ctrl+Alt+Shift+Forward.
-"
+TIPS="$TIPS"'
+You can open your running chroot desktops by clicking on the extension icon.
+Once in a crouton window, press fullscreen or the "switch window" key to switch
+back to Chromium OS.
+'
 
 ### append x11-common

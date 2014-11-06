@@ -451,7 +451,7 @@ public:
                 if (!down)
                     ControlMessage("state", "fullscreen");
                 return PP_TRUE;
-            } else if (keycode == 182) { /* Expos'e => minimize window */
+            } else if (keycode == 182) { /* Page flipper => minimize window */
                 if (!down)
                     ControlMessage("state", "hide");
                 return PP_TRUE;
@@ -660,7 +660,7 @@ private:
         case 166: return 0x1008ff26; // back
         case 167: return 0x1008ff27; // forward
         case 168: return 0x1008ff73; // refresh
-        case 182: return 0x1008ff51; // "expos'e" ("F5")
+        case 182: return 0x1008ff51; // page flipper ("F5")
         case 183: return 0x1008ff59; // fullscreen/display
         case 186: return 0x3b; // ;
         case 187: return 0x3d; // =
