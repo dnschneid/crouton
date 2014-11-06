@@ -34,6 +34,7 @@ echo '
 1920 1080 l # FHD
 1920 1200 l # Standard 20"
 2560 1600 l # Standard 30"
+3840 2160 h # 4K
 ' | while read -r w h flags _; do
     if [ -z "$w" ]; then
         continue
