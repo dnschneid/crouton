@@ -148,7 +148,7 @@ if [ "$RELEASE" = 'list' -o "$RELEASE" = 'help' ]; then
         DISTRO="${DISTRODIR##*/}"
         echo "Recognized $DISTRO releases:" 1>&2
         accum=''
-        while read -r RELEASE; do
+        while IFS="|" read -r RELEASE _; do
             newaccum="${accum:-"   "} $RELEASE"
             if [ "${#newaccum}" -gt 80 ]; then
                 echo "$accum" 1>&2
@@ -268,8 +268,7 @@ if [ -n "$RELEASE" -o -z "$UPDATE" ]; then
     fi
     for DISTRODIR in "$INSTALLERDIR"/*/; do
         DISTRODIR="${DISTRODIR%/}"
-        releaseline="`grep "^$RELEASE[^a-z]*$" "$DISTRODIR/releases" || true`"
-        if [ -n "$releaseline" ]; then
+        if grep -q "^$RELEASE\([^a-z].*\)*$" "$DISTRODIR/releases"; then
             DISTRO="${DISTRODIR##*/}"
             . "$DISTRODIR/defaults"
             break
@@ -485,7 +484,8 @@ change the release, upgrading the chroot (dangerous)."
 fi
 
 # Check if RELEASE is supported
-releaseline="`grep "^$RELEASE[^a-z]*$" "$DISTRODIR/releases" || true`"
+releaseline="`sed -n "s/^\($RELEASE[^a-z|]*\)\(|.*\)*$/\1/p" \
+                                                         "$DISTRODIR/releases"`"
 if [ "${releaseline%"*"}" != "$releaseline" ]; then
     echo "WARNING: $RELEASE is an unsupported release.
 You will likely run into issues, but things may work with some effort." 1>&2

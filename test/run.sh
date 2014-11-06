@@ -19,8 +19,10 @@ set -e
 APPLICATION="${0##*/}"
 SCRIPTDIR="`readlink -f "\`dirname "$0"\`/.."`"
 # List of all supported (non-*'d) releases
-SUPPORTED_RELEASES="`awk '/[^*]$/ { printf $1 " " }' \
-                         "$SCRIPTDIR/installer/"*"/releases"`"
+SUPPORTED_RELEASES="`awk -F'|' '
+    ($1 ~ /[^*]$/ && $2 !~ /(^|,)notest($|,)/) || $2 ~ /(^|,)test($|,)/ \
+        { sub(/[^a-z]*$/, "", $1); printf $1 " " }' \
+    "$SCRIPTDIR/installer/"*"/releases"`"
 SUPPORTED_RELEASES="${SUPPORTED_RELEASES%" "}"
 SUPPORTED_RELEASES_SET=''
 # System info
