@@ -39,7 +39,7 @@ static struct cache_entry cache[2];
 static int next_entry;
 
 /* Remember which keys/buttons are currently pressed */
-typedef enum { INVALID=0, MOUSE=1, KEYBOARD=2 } keybuttontype;
+typedef enum { MOUSE=1, KEYBOARD=2 } keybuttontype;
 struct keybutton {
     keybuttontype type;
     uint32_t code; /* KeyCode or mouse button */
@@ -48,47 +48,37 @@ struct keybutton {
 /* Store currently pressed keys/buttons in an array.
  * No valid entry on or after curmax. */
 static struct keybutton pressed[256];
-static int curmax = 0;
+static int pressed_len = 0;
 
 /* Adds a key/button to array of pressed keys */
 void kb_add(keybuttontype type, uint32_t code) {
-    trueorabort(curmax < sizeof(pressed)/sizeof(struct keybutton),
+    trueorabort(pressed_len < sizeof(pressed)/sizeof(struct keybutton),
                 "Too many keys pressed");
-    int firstfree = curmax;
-    int i;
-    for (i = 0; i < curmax; i++) {
-        if (pressed[i].type == type && pressed[i].code == code) {
-            /* Key already recorded */
-            return;
-        } else if (pressed[i].type == INVALID && firstfree == curmax) {
-            firstfree = i;
-        }
-    }
-    pressed[firstfree].type = type;
-    pressed[firstfree].code = code;
-    if (firstfree == curmax)
-        curmax++;
+    pressed[pressed_len].type = type;
+    pressed[pressed_len].code = code;
+    pressed_len++;
 }
 
-/* Removes a key/button to array of pressed keys */
+/* Removes a key/button from array of pressed keys */
 void kb_remove(keybuttontype type, uint32_t code) {
-    int lastvalid = -1;
     int i;
-    for (i = 0; i < curmax; i++) {
+    for (i = 0; i < pressed_len; i++) {
         if (pressed[i].type == type && pressed[i].code == code) {
-            pressed[i].type = INVALID;
-        } else if (pressed[i].type != INVALID) {
-            lastvalid = i;
+            if (i < pressed_len-1) {
+                pressed[i].type = pressed[pressed_len-1].type;
+                pressed[i].code = pressed[pressed_len-1].code;
+            }
+            pressed_len--;
+            return;
         }
     }
-    curmax = lastvalid+1;
 }
 
 /* Releases all pressed key/buttons, and empties array */
 void kb_release_all() {
     int i;
     log(2, "Releasing all keys...");
-    for (i = 0; i < curmax; i++) {
+    for (i = 0; i < pressed_len; i++) {
         if (pressed[i].type == MOUSE) {
             log(2, "Mouse %d", pressed[i].code);
             XTestFakeButtonEvent(dpy, pressed[i].code, 0, CurrentTime);
@@ -97,7 +87,7 @@ void kb_release_all() {
             XTestFakeKeyEvent(dpy, pressed[i].code, 0, CurrentTime);
         }
     }
-    curmax = 0;
+    pressed_len = 0;
 }
 
 /* X11-related functions */
