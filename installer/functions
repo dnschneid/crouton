@@ -155,7 +155,7 @@ validate_name() {
 
 # Websocket interface
 PIPEDIR='/tmp/crouton-ext'
-CRIATDISPLAY="$PIPEDIR/criat-display"
+CRIATDISPLAY="$PIPEDIR/kiwi-display"
 
 # Write a command to croutonwebsocket, and read back response
 websocketcommand() {

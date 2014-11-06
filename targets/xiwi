@@ -6,11 +6,11 @@ REQUIRES='core audio extension'
 PROVIDES='x11'
 DESCRIPTION='Crouton in a tab X11 backend. Improves compatibility but lacks GPU accel.'
 CHROOTBIN='brightness croutoncycle croutonfindnacl croutonpowerd croutonxinitrc-wrapper setres xinit'
-CHROOTETC='xbindkeysrc.scm xorg-dummy.conf xserverrc-xiat xserverrc-local.example'
+CHROOTETC='xbindkeysrc.scm xorg-dummy.conf xserverrc-xiwi xserverrc-local.example'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
-XMETHOD="${XMETHOD:-xiat}"
+XMETHOD="${XMETHOD:-xiwi}"
 
 install xorg xserver-xorg-video-dummy
 

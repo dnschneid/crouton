@@ -29,11 +29,11 @@
 /* Protocol data structures */
 #include "../../src/fbserver-proto.h"
 
-class CriatInstance : public pp::Instance {
+class KiwiInstance : public pp::Instance {
 public:
-    explicit CriatInstance(PP_Instance instance): pp::Instance(instance) {}
+    explicit KiwiInstance(PP_Instance instance): pp::Instance(instance) {}
 
-    virtual ~CriatInstance() {}
+    virtual ~KiwiInstance() {}
 
     /* Registers events */
     virtual bool Init(uint32_t argc, const char* argn[], const char* argv[]) {
@@ -134,7 +134,7 @@ private:
         url << "ws://localhost:" << (PORT_BASE + display_) << "/";
         websocket_.Connect(pp::Var(url.str()), NULL, 0,
                            callback_factory_.NewCallback(
-                               &CriatInstance::OnSocketConnectCompletion));
+                               &KiwiInstance::OnSocketConnectCompletion));
         StatusMessage("Connecting...");
     }
 
@@ -145,7 +145,7 @@ private:
             status << "Connection failed (" << result << "), retrying...";
             StatusMessage(status.str());
             pp::Module::Get()->core()->CallOnMainThread(1000,
-                callback_factory_.NewCallback(&CriatInstance::SocketConnect));
+                callback_factory_.NewCallback(&KiwiInstance::SocketConnect));
             return;
         }
 
@@ -159,7 +159,7 @@ private:
     /* Closes the WebSocket connection. */
     void SocketClose(std::string reason) {
         websocket_.Close(0, pp::Var(reason),
-            callback_factory_.NewCallback(&CriatInstance::OnSocketClosed));
+            callback_factory_.NewCallback(&KiwiInstance::OnSocketClosed));
     }
 
     /* Called when WebSocket is closed */
@@ -228,7 +228,7 @@ private:
                 pp::Module::Get()->core()->CallOnMainThread(
                     1000/target_fps_,
                     callback_factory_.NewCallback(
-                        &CriatInstance::RequestScreen),
+                        &KiwiInstance::RequestScreen),
                     request_token_);
             }
         }
@@ -331,7 +331,7 @@ private:
 
         /* Get ready to receive next frame */
         pp::Module::Get()->core()->CallOnMainThread(0,
-                  callback_factory_.NewCallback(&CriatInstance::SocketReceive));
+                  callback_factory_.NewCallback(&KiwiInstance::SocketReceive));
 
         /* Convert binary/text to char* */
         const char* data;
@@ -387,7 +387,7 @@ private:
      * Parameter is ignored: used for callbacks */
     void SocketReceive(int32_t /*result*/ = 0) {
         websocket_.ReceiveMessage(&receive_var_, callback_factory_.NewCallback(
-                &CriatInstance::OnSocketReceiveCompletion));
+                &KiwiInstance::OnSocketReceiveCompletion));
     }
 
     /* Sends a WebSocket request, possibly flushing current mouse position
@@ -811,7 +811,7 @@ private:
         } else if (delay >= 0) {
             pp::Module::Get()->core()->CallOnMainThread(
                 delay*1000,
-                callback_factory_.NewCallback(&CriatInstance::RequestScreen),
+                callback_factory_.NewCallback(&KiwiInstance::RequestScreen),
                 request_token_);
         } else {
             RequestScreen(request_token_);
@@ -848,7 +848,7 @@ private:
          * completes. */
         flush_context_ = context_;
         context_.Flush(
-            callback_factory_.NewCallback(&CriatInstance::OnFlush));
+            callback_factory_.NewCallback(&KiwiInstance::OnFlush));
     }
 
 private:
@@ -861,7 +861,7 @@ private:
     const int kHiddenFPS = 0;  /* fps when window is hidden */
 
     /* Class members */
-    pp::CompletionCallbackFactory<CriatInstance> callback_factory_{this};
+    pp::CompletionCallbackFactory<KiwiInstance> callback_factory_{this};
     pp::Graphics2D context_;
     pp::Graphics2D flush_context_;
     pp::Rect view_rect_;
@@ -906,20 +906,20 @@ public:
     bool hidpi_ = false;
 };
 
-class CriatModule : public pp::Module {
+class KiwiModule : public pp::Module {
 public:
-    CriatModule() : pp::Module() {}
-    virtual ~CriatModule() {}
+    KiwiModule() : pp::Module() {}
+    virtual ~KiwiModule() {}
 
     virtual pp::Instance* CreateInstance(PP_Instance instance) {
-        return new CriatInstance(instance);
+        return new KiwiInstance(instance);
     }
 };
 
 namespace pp {
 
 Module* CreateModule() {
-    return new CriatModule();
+    return new KiwiModule();
 }
 
 }  /* namespace pp */

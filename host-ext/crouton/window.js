@@ -6,7 +6,7 @@ var CLOSE_TIMEOUT = 2; /* Close window x seconds after disconnect */
 var DEBUG_LEVEL = 2; /* If debug is enabled, use this level in NaCl */
 var RESIZE_RATE_LIMIT = 300; /* No more than 1 resize query every x ms */
 
-var CriatModule_ = null; /* NaCl module */
+var KiwiModule_ = null; /* NaCl module */
 var listener_ = null; /* listener div element */
 var debug_ = 0; /* Debuging level, passed to NaCl module */
 var hidpi_ = 0; /* HiDPI mode */
@@ -21,18 +21,18 @@ var resizeLimited_ = false;
 
 function registerWindow(register) {
     chrome.extension.getBackgroundPage().
-        registerCriat(display_, register ? window : null);
+        registerKiwi(display_, register ? window : null);
 }
 
 /* NaCl module loaded */
 function moduleDidLoad() {
-    CriatModule_ = document.getElementById('criat');
+    KiwiModule_ = document.getElementById('kiwi');
     updateStatus('Starting...');
-    criatResize();
-    CriatModule_.postMessage('display:' + display_);
-    CriatModule_.postMessage('debug:' + debug_);
-    CriatModule_.postMessage('hidpi:' + hidpi_);
-    CriatModule_.focus();
+    kiwiResize();
+    KiwiModule_.postMessage('display:' + display_);
+    KiwiModule_.postMessage('debug:' + debug_);
+    KiwiModule_.postMessage('hidpi:' + hidpi_);
+    KiwiModule_.focus();
 }
 
 /* NaCl is loading... */
@@ -46,17 +46,17 @@ function handleProgress(event) {
 function handleError(event) {
     // We can't use common.naclModule yet because the module has not been
     // loaded.
-    CriatModule_ = document.getElementById('criat');
-    updateStatus('ERROR: ' + CriatModule_.lastError);
+    KiwiModule_ = document.getElementById('kiwi');
+    updateStatus('ERROR: ' + KiwiModule_.lastError);
     registerWindow(false);
 }
 
 /* NaCl module crashed */
 function handleCrash(event) {
-    if (CriatModule_.exitStatus == -1) {
+    if (KiwiModule_.exitStatus == -1) {
         updateStatus('NaCl module crashed.');
     } else {
-        updateStatus('NaCl module exited: ' + CriatModule_.exitStatus);
+        updateStatus('NaCl module exited: ' + KiwiModule_.exitStatus);
     }
     registerWindow(false);
 }
@@ -71,18 +71,18 @@ function setDebug(debug) {
         document.getElementById('content').style.paddingTop = "0px";
         document.getElementById('header').style.display = 'none';
     }
-    if (CriatModule_) {
-        CriatModule_.postMessage('debug:' + debug_);
-        criatResize();
+    if (KiwiModule_) {
+        KiwiModule_.postMessage('debug:' + debug_);
+        kiwiResize();
     }
 }
 
 /* Change HiDPI mode */
 function setHiDPI(hidpi) {
     hidpi_ = hidpi;
-    if (CriatModule_) {
-        CriatModule_.postMessage('hidpi:' + hidpi_);
-        criatResize();
+    if (KiwiModule_) {
+        KiwiModule_.postMessage('hidpi:' + hidpi_);
+        kiwiResize();
     }
 }
 
@@ -165,28 +165,28 @@ function handleMessage(message) {
         var lheight = listener_.clientHeight;
         var marginleft = (lwidth-width)/2;
         var margintop = (lheight-height)/2;
-        CriatModule_.style.marginLeft = Math.max(marginleft, 0) + "px";
-        CriatModule_.style.marginTop = Math.max(margintop, 0) + "px";
-        CriatModule_.width = width;
-        CriatModule_.height = height;
+        KiwiModule_.style.marginLeft = Math.max(marginleft, 0) + "px";
+        KiwiModule_.style.marginTop = Math.max(margintop, 0) + "px";
+        KiwiModule_.width = width;
+        KiwiModule_.height = height;
     }
 }
 
 /* Tell the module that the window was resized (this triggers a change of
  * resolution, followed by a resize message. */
-function criatResize() {
+function kiwiResize() {
     console.log("resize! " + listener_.clientWidth + "/" + listener_.clientHeight);
-    if (CriatModule_)
-        CriatModule_.postMessage('resize:' + listener_.clientWidth + "/" + listener_.clientHeight);
+    if (KiwiModule_)
+        KiwiModule_.postMessage('resize:' + listener_.clientWidth + "/" + listener_.clientHeight);
 }
 
 /* Window was resize, limit to one event per second */
 function handleResize() {
     if (!resizeLimited_) {
-        criatResize();
+        kiwiResize();
         setTimeout(function() {
             if (resizePending_)
-                criatResize();
+                kiwiResize();
             resizeLimited_ = resizePending_ = false;
         }, RESIZE_RATE_LIMIT);
         resizeLimited_ = true;
@@ -202,22 +202,22 @@ function handleFocusBlur(evt) {
      * See http://crbug.com/403061 */
     console.log("focus/blur: " + evt.type + ", focus=" + document.hasFocus() +
                 ", hidden=" + document.hidden + "/" + document.visibilityState);
-    if (!CriatModule_)
+    if (!KiwiModule_)
         return;
 
     if (document.hasFocus()) {
-        CriatModule_.postMessage("focus:");
+        KiwiModule_.postMessage("focus:");
     } else {
         if (closing_)
             window.close();
 
         if (!document.hidden)
-            CriatModule_.postMessage("blur:");
+            KiwiModule_.postMessage("blur:");
         else
-            CriatModule_.postMessage("hide:");
+            KiwiModule_.postMessage("hide:");
     }
     console.log("active: " + document.activeElement);
-    CriatModule_.focus();
+    KiwiModule_.focus();
 }
 
 /* Start in full screen */

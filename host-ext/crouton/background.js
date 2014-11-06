@@ -25,7 +25,7 @@ var websocket_ = null; /* Active connection */
 
 /* State variables */
 var debug_ = false;
-var hidpi_ = false; /* true if criat windows should be opened in HiDPI mode */
+var hidpi_ = false; /* true if kiwi windows should be opened in HiDPI mode */
 var enabled_ = true; /* true if we are trying to connect */
 var active_ = false; /* true if we are connected to a server */
 var error_ = false; /* true if there was an error during the last connection */
@@ -40,9 +40,9 @@ var sversion_ = 0; /* Version of the websocket server */
 var logger_ = []; /* Array of status messages: [LogLevel, time, message] */
 var windows_ = []; /* Array of windows. (.display, .name) */
 
-var criat_win_ = {}; /* Map of criat windows. Key is display, value is object
+var kiwi_win_ = {}; /* Map of kiwi windows. Key is display, value is object
                         (.id, .window: window element) */
-var focus_win_ = -1; /* Focused criat window. -1 if no criat window focused. */
+var focus_win_ = -1; /* Focused kiwi window. -1 if no kiwi window focused. */
 
 /* Set the current status string.
  * active is a boolean, true if the WebSocket connection is established. */
@@ -104,10 +104,10 @@ function updateWindowList(force) {
     }
 }
 
-/* Called from criat (window.js), so we can directly access each window */
-function registerCriat(display, window) {
-    if (criat_win_[display] && criat_win_[display].id >= 0) {
-        criat_win_[display].window = window;
+/* Called from kiwi (window.js), so we can directly access each window */
+function registerKiwi(display, window) {
+    if (kiwi_win_[display] && kiwi_win_[display].id >= 0) {
+        kiwi_win_[display].window = window;
     }
 }
 
@@ -175,10 +175,10 @@ function refreshUI() {
             debugcheck.onclick = function() {
                 debug_ = debugcheck.checked;
                 refreshUI();
-                var disps = Object.keys(criat_win_);
+                var disps = Object.keys(kiwi_win_);
                 for (var i = 0; i < disps.length; i++) {
-                    if (criat_win_[disps[i]].window)
-                        criat_win_[disps[i]].window.setDebug(debug_?1:0);
+                    if (kiwi_win_[disps[i]].window)
+                        kiwi_win_[disps[i]].window.setDebug(debug_?1:0);
                 }
             }
             debugcheck.checked = debug_;
@@ -189,10 +189,10 @@ function refreshUI() {
                 hidpicheck.onclick = function() {
                     hidpi_ = hidpicheck.checked;
                     refreshUI();
-                    var disps = Object.keys(criat_win_);
+                    var disps = Object.keys(kiwi_win_);
                     for (var i = 0; i < disps.length; i++) {
-                        if (criat_win_[disps[i]].window)
-                            criat_win_[disps[i]].window.setHiDPI(hidpi_?1:0);
+                        if (kiwi_win_[disps[i]].window)
+                            kiwi_win_[disps[i]].window.setHiDPI(hidpi_?1:0);
                     }
                 }
                 hidpicheck.disabled = false;
@@ -416,8 +416,8 @@ function websocketMessage(evt) {
             )
 
             windows_.forEach(function(k) {
-                if (criat_win_[k.display] && criat_win_[k.display].window) {
-                    criat_win_[k.display].window.setTitle(k.name);
+                if (kiwi_win_[k.display] && kiwi_win_[k.display].window) {
+                    kiwi_win_[k.display].window.setTitle(k.name);
                 }
             })
         }
@@ -427,20 +427,20 @@ function websocketMessage(evt) {
         display = parseInt(payload);
         if (display <= 0) {
             /* Get out of full screen, for the current window */
-            var disps = Object.keys(criat_win_);
+            var disps = Object.keys(kiwi_win_);
             for (var i = 0; i < disps.length; i++) {
-                var winid = criat_win_[disps[i]].id;
+                var winid = kiwi_win_[disps[i]].id;
                 chrome.windows.update(winid, {focused: false});
                 chrome.windows.get(winid, function(win) {
                     chrome.windows.update(winid, {'state': 'minimized'},
                                           function(win) {});
                 })
             }
-        } else if (criat_win_[display] && criat_win_[display].id >= 0 &&
-                   (!criat_win_[display].window ||
-                    !criat_win_[display].window.closing)) {
+        } else if (kiwi_win_[display] && kiwi_win_[display].id >= 0 &&
+                   (!kiwi_win_[display].window ||
+                    !kiwi_win_[display].window.closing)) {
             /* focus/full screen an existing window */
-            var winid = criat_win_[display].id;
+            var winid = kiwi_win_[display].id;
             chrome.windows.update(winid, {focused: true});
             chrome.windows.get(winid, function(win) {
                 if (win.state == "maximized")
@@ -449,9 +449,9 @@ function websocketMessage(evt) {
             })
         } else {
             /* Open a new window */
-            criat_win_[display] = new Object();
-            criat_win_[display].id = -1;
-            criat_win_[display].window = null;
+            kiwi_win_[display] = new Object();
+            kiwi_win_[display].id = -1;
+            kiwi_win_[display].window = null;
 
             win = windows_.filter(function(x){ return x.display == display })[0]
             name = win ? win.name : "crouton in a tab";
@@ -462,7 +462,7 @@ function websocketMessage(evt) {
                                            "&title=" + encodeURIComponent(name),
                                     'type': "popup" },
                                   function(newwin) {
-                                      criat_win_[display].id = newwin.id;
+                                      kiwi_win_[display].id = newwin.id;
                                       focus_win_ = display;
                                       if (active_ && sversion_ >= 2)
                                           websocket_.send("Cs" + focus_win_);
@@ -513,10 +513,10 @@ function websocketClose() {
 /* Called when window in focus changes: feeback to the extension so the
  * clipboard can be transfered. */
 function windowFocusChanged(windowid) {
-    var disps = Object.keys(criat_win_);
+    var disps = Object.keys(kiwi_win_);
     nextfocus_win_ = -1;
     for (var i = 0; i < disps.length; i++) {
-        if (criat_win_[disps[i]].id == windowid) {
+        if (kiwi_win_[disps[i]].id == windowid) {
             nextfocus_win_ = disps[i];
             break;
         }
@@ -531,11 +531,11 @@ function windowFocusChanged(windowid) {
 
 /* Called when a window is removed, so we can delete its reference. */
 function windowRemoved(windowid) {
-    var disps = Object.keys(criat_win_);
+    var disps = Object.keys(kiwi_win_);
     for (var i = 0; i < disps.length; i++) {
-        if (criat_win_[disps[i]].id == windowid) {
-            criat_win_[disps[i]].id = -1;
-            criat_win_[disps[i]].window = null;
+        if (kiwi_win_[disps[i]].id == windowid) {
+            kiwi_win_[disps[i]].id = -1;
+            kiwi_win_[disps[i]].window = null;
             printLog("Window " + disps[i] + " removed", LogLevel.DEBUG);
         }
     }

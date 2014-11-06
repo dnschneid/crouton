@@ -22,7 +22,7 @@ Cycles through running graphical chroots.
 #     - 1-9: chroot displays
 #   s<num>: informs of a Chromium OS window change (called from extension):
 #     - 0: any Chromium OS window
-#     - n: criat window: X11 display number
+#     - n: kiwi window: X11 display number
 #   force [command]: Force switching display, even if it does not appear
 #                    to be necessary.
 
@@ -73,8 +73,8 @@ fi
 # Ensure environment sanity
 export XAUTHORITY=''
 
-# Set to y if there is any xiat instance running
-xiatactive=''
+# Set to y if there is any xiwi instance running
+xiwiactive=''
 
 # Set to y if aura is running without a X server
 noaurax=''
@@ -84,16 +84,16 @@ displist=''
 for disp in /tmp/.X*-lock; do
     disp="${disp#*X}"
     disp=":${disp%-lock}"
-    # Only add VT-based and xiat-based chroots here (that excludes Xephyr)
+    # Only add VT-based and xiwi-based chroots here (that excludes Xephyr)
     if [ "$disp" = ':0' ]; then
         continue
     elif DISPLAY="$disp" xprop -root 'XFree86_VT' 2>/dev/null \
             | grep -q 'INTEGER'; then
         displist="$displist $disp"
     elif DISPLAY="$disp" xprop -root 'CROUTON_XMETHOD' 2>/dev/null \
-            | grep -q '= "xiat"$'; then
+            | grep -q '= "xiwi"$'; then
         displist="$displist $disp"
-        xiatactive='y'
+        xiwiactive='y'
     fi
 done
 
@@ -118,16 +118,16 @@ fulllist="$winlist$displist"
 fulllist="${fulllist% }"
 
 if [ "$tty" = 'tty1' ]; then
-    # Either in Chromium OS, xephyr/xiat chroot, or window.
+    # Either in Chromium OS, xephyr/xiwi chroot, or window.
     # Active window is starred.
     for disp in $winlist; do
         if [ "${disp%"*"}" != "$disp" ]; then
             curdisp="$disp"
-            if [ -n "$xiatactive" -a "${disp%"*"}" = "$aurawin" -a \
+            if [ -n "$xiwiactive" -a "${disp%"*"}" = "$aurawin" -a \
                     -s "$CRIATDISPLAY" ]; then
-                criatdisp="`cat $CRIATDISPLAY`"
-                if [ "$criatdisp" -ge 0 ]; then
-                    curdisp=":$criatdisp"
+                kiwidisp="`cat $CRIATDISPLAY`"
+                if [ "$kiwidisp" -ge 0 ]; then
+                    curdisp=":$kiwidisp"
                 fi
             fi
             break
@@ -277,7 +277,7 @@ if [ "${destdisp#:}" = "$destdisp" ]; then
         croutonwmtools raise "${destdisp%"*"}"
     fi
 
-    if [ -n "$xiatactive" -a "${destdisp%"*"}" = "$aurawin" ]; then
+    if [ -n "$xiwiactive" -a "${destdisp%"*"}" = "$aurawin" ]; then
         STATUS="`echo "X-1" | websocketcommand`"
         if [ "$STATUS" != 'XOK' ]; then
             error 1 "${STATUS#?}"
@@ -285,7 +285,7 @@ if [ "${destdisp#:}" = "$destdisp" ]; then
     fi
 else
     export DISPLAY="$destdisp"
-    if xprop -root 'CROUTON_XMETHOD' 2>/dev/null | grep -q '= "xiat"$'; then
+    if xprop -root 'CROUTON_XMETHOD' 2>/dev/null | grep -q '= "xiwi"$'; then
         if [ -z "$noaurax" -a "$tty" != 'tty1' ]; then
             sudo -n chvt 1
             sleep .1

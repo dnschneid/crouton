@@ -71,8 +71,8 @@ if [ "$xmethod" = 'xephyr' ]; then
     croutonwheel $CROUTON_WHEEL_PARAMS &
 fi
 
-# xbindkeys and other input-related apps are not needed for criat
-if [ "$xmethod" != "xiat" ]; then
+# xbindkeys and other input-related apps are not needed for kiwi
+if [ "$xmethod" != "xiwi" ]; then
     # Apply the Chromebook keyboard map if installed.
     if [ -f '/usr/share/X11/xkb/compat/chromebook' ]; then
         setxkbmap -model chromebook
@@ -121,7 +121,7 @@ if [ "$xmethod" != "xiat" ]; then
 fi
 
 # Crouton-in-a-tab: Start fbserver and launch display
-if [ "$xmethod" = 'xiat' ]; then
+if [ "$xmethod" = 'xiwi' ]; then
     # Set resolution to a default 1024x768, this is important so that the DPI
     # looks reasonable when the WM/DE start.
     setres 1024 768 > /dev/null

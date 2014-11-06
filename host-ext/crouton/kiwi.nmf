@@ -2,7 +2,7 @@
   "program": {
     "portable": {
       "pnacl-translate": {
-        "url": "criat.pexe"
+        "url": "kiwi.pexe"
       }
     }
   }
