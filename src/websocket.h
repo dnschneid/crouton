@@ -831,6 +831,8 @@ static int socket_server_accept(char* version) {
         exit(1);
     }
 
+    /* Make sure sscanf does not read too much data */
+    buffer[2*SHA1_LEN+1] = '\0';
     for (i = 0; i < SHA1_LEN; i++) {
         unsigned int value;
         if (sscanf(&buffer[i*2], "%02x", &value) != 1) {

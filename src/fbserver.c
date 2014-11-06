@@ -64,10 +64,9 @@ void kb_remove(keybuttontype type, uint32_t code) {
     int i;
     for (i = 0; i < pressed_len; i++) {
         if (pressed[i].type == type && pressed[i].code == code) {
-            if (i < pressed_len-1) {
-                pressed[i].type = pressed[pressed_len-1].type;
-                pressed[i].code = pressed[pressed_len-1].code;
-            }
+            if (i < pressed_len-1)
+                pressed[i] = pressed[pressed_len-1];
+
             pressed_len--;
             return;
         }
@@ -148,6 +147,8 @@ static int init_display(char* name) {
     for (i = 0; i < nchildren; i++) {
         register_damage(dpy, children[i]);
     }
+
+    XFree(children);
 
     /* Register for cursor events */
     XFixesSelectCursorInput(dpy, root, XFixesDisplayCursorNotifyMask);
@@ -317,7 +318,7 @@ int write_image(const struct screen* screen) {
         (struct screen_reply*)(reply_raw+FRAMEMAXHEADERSIZE);
     int refresh = 0;
 
-    memset(reply_raw, 0, sizeof(*reply_raw));
+    memset(reply_raw, 0, sizeof(reply_raw));
 
     reply->type = 'S';
     reply->width = screen->width;
