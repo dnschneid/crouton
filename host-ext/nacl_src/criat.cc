@@ -131,7 +131,7 @@ private:
         }
 
         std::ostringstream url;
-        url << "ws://localhost:" << (PORT_BASE+display_) << "/";
+        url << "ws://localhost:" << (PORT_BASE + display_) << "/";
         websocket_.Connect(pp::Var(url.str()), NULL, 0,
                            callback_factory_.NewCallback(
                                &CriatInstance::OnSocketConnectCompletion));
@@ -202,7 +202,7 @@ private:
         SocketSend(pp::Var("VOK"), false);
         ControlMessage("connected", "Version received");
         ChangeResolution(size_.width(), size_.height());
-        // Start requesting frames
+        /* Start requesting frames */
         OnFlush();
         return true;
     }
@@ -287,7 +287,7 @@ private:
         for (int y = 0; y < h; y++) {
             for (int x = 0; x < w; x++) {
                 /* Nearest neighbour is least ugly */
-                imgdata[y*w+x] = cursor->pixels[scale*y*scale*w+scale*x];
+                imgdata[y*w + x] = cursor->pixels[scale*y*scale*w + scale*x];
             }
         }
         pp::Point hot(cursor->xhot/scale, cursor->yhot/scale);
@@ -351,7 +351,7 @@ private:
             datalen = str.length();
         }
 
-        if (data[0] == 'V') { /* Version */
+        if (data[0] == 'V') {  /* Version */
             if (!SocketParseVersion(data, datalen))
                 SocketClose("Incorrect version.");
 
@@ -359,14 +359,14 @@ private:
         }
 
         if (connected_) {
-            switch(data[0]) {
-            case 'S': /* Screen */
+            switch (data[0]) {
+            case 'S':  /* Screen */
                 if (SocketParseScreen(data, datalen)) return;
                 break;
-            case 'P': /* New cursor data is received */
+            case 'P':  /* New cursor data is received */
                 if (SocketParseCursor(data, datalen)) return;
                 break;
-            case 'R': /* Resolution request reply */
+            case 'R':  /* Resolution request reply */
                 if (SocketParseResolution(data, datalen)) return;
                 break;
             default: {
@@ -447,11 +447,11 @@ public:
 
             LogMessage(1, status.str());
 
-            if (keycode == 183) { /* Fullscreen => toggle fullscreen */
+            if (keycode == 183) {  /* Fullscreen => toggle fullscreen */
                 if (!down)
                     ControlMessage("state", "fullscreen");
                 return PP_TRUE;
-            } else if (keycode == 182) { /* Page flipper => minimize window */
+            } else if (keycode == 182) {  /* Page flipper => minimize window */
                 if (!down)
                     ControlMessage("state", "hide");
                 return PP_TRUE;
@@ -496,7 +496,7 @@ public:
                  * before sending the click event.
                  * Also, Javascript button numbers are 0-based (left=0), while
                  * X11 numbers are 1-based (left=1). */
-                SendClick(mouse_event.GetButton()+1, down ? 1 : 0);
+                SendClick(mouse_event.GetButton() + 1, down ? 1 : 0);
             }
 
             LogMessage(3, status.str());
@@ -551,7 +551,7 @@ public:
             }
 
             LogMessage(0, status.str());
-        } /* FIXME: Handle IMEInputEvents too */
+        }  /* FIXME: Handle IMEInputEvents too */
 
         return PP_TRUE;
     }
@@ -599,7 +599,7 @@ private:
             r->height = height;
             array_buffer.Unmap();
             SocketSend(array_buffer, false);
-        } else { /* Just assume we can take up the space */
+        } else {  /* Just assume we can take up the space */
             std::ostringstream status;
             status << width/scale_ << "/" << height/scale_;
             ControlMessage("resize", status.str());
@@ -616,64 +616,64 @@ private:
         if (code == "ShiftLeft") return 0xffe1;
         if (code == "ShiftRight") return 0xffe2;
 
-        if (keycode >= 65 && keycode <= 90) /* A to Z */
-            return keycode+32;
-        if (keycode >= 48 && keycode <= 57) /* 0 to 9 */
+        if (keycode >= 65 && keycode <= 90)  /* A to Z */
+            return keycode + 32;
+        if (keycode >= 48 && keycode <= 57)  /* 0 to 9 */
             return keycode;
-        if (keycode >= 96 && keycode <= 105) /* KP 0 to 9 */
-            return keycode-96+0xffb0;
-        if (keycode >= 112 && keycode <= 123) /* F1-F12 */
-            return keycode-112+0xffbe;
+        if (keycode >= 96 && keycode <= 105)  /* KP 0 to 9 */
+            return keycode - 96 + 0xffb0;
+        if (keycode >= 112 && keycode <= 123)  /* F1-F12 */
+            return keycode - 112 + 0xffbe;
 
-        switch(keycode) {
-        case 8: return 0xff08; // backspace
-        case 9: return 0xff09; // tab
-        case 12: return 0xff9d; // num 5
-        case 13: return 0xff0d; // enter
-        case 16: return 0xffe1; // shift (caught earlier!)
-        case 17: return 0xffe3; // control (caught earlier!)
-        case 18: return 0xffe9; // alt (caught earlier!)
-        case 19: return 0xff13; // pause
-        case 20: return 0; // caps lock (FIXME: reenable, 0xffe5)
-        case 27: return 0xff1b; // esc
-        case 32: return 0x20; // space
-        case 33: return 0xff55; // page up
-        case 34: return 0xff56; // page down
-        case 35: return 0xff57; // end
-        case 36: return 0xff50; // home
-        case 37: return 0xff51; // left
-        case 38: return 0xff52; // top
-        case 39: return 0xff53; // right
-        case 40: return 0xff54; // bottom
-        case 42: return 0xff61; // print screen
-        case 45: return 0xff63; // insert
-        case 46: return 0xffff; // delete
-        case 91: return kSUPER_L; // super
-        case 106: return 0xffaa; // num multiply
-        case 107: return 0xffab; // num plus
-        case 109: return 0xffad; // num minus
-        case 110: return 0xffae; // num dot
-        case 111: return 0xffaf; // num divide
-        case 144: return 0xff7f; // num lock
-        case 145: return 0xff14; // scroll lock
-        case 151: return 0x1008ff95; // WLAN
-        case 166: return 0x1008ff26; // back
-        case 167: return 0x1008ff27; // forward
-        case 168: return 0x1008ff73; // refresh
-        case 182: return 0x1008ff51; // page flipper ("F5")
-        case 183: return 0x1008ff59; // fullscreen/display
-        case 186: return 0x3b; // ;
-        case 187: return 0x3d; // =
-        case 188: return 0x2c; // ,
-        case 189: return 0x2d; // -
-        case 190: return 0x2e; // .
-        case 191: return 0x2f; // /
-        case 192: return 0x60; // `
-        case 219: return 0x5b; // [
-        case 220: return 0x5c; // '\'
-        case 221: return 0x5d; // ]
-        case 222: return 0x27; // '
-        case 229: return 0;    // dead key (', `, ~): no way of knowing which...
+        switch (keycode) {
+        case 8:   return 0xff08;  // backspace
+        case 9:   return 0xff09;  // tab
+        case 12:  return 0xff9d;  // num 5
+        case 13:  return 0xff0d;  // enter
+        case 16:  return 0xffe1;  // shift (caught earlier!)
+        case 17:  return 0xffe3;  // control (caught earlier!)
+        case 18:  return 0xffe9;  // alt (caught earlier!)
+        case 19:  return 0xff13;  // pause
+        case 20:  return 0;       // caps lock. FIXME: reenable (0xffe5)
+        case 27:  return 0xff1b;  // esc
+        case 32:  return 0x20;    // space
+        case 33:  return 0xff55;  // page up
+        case 34:  return 0xff56;  // page down
+        case 35:  return 0xff57;  // end
+        case 36:  return 0xff50;  // home
+        case 37:  return 0xff51;  // left
+        case 38:  return 0xff52;  // top
+        case 39:  return 0xff53;  // right
+        case 40:  return 0xff54;  // bottom
+        case 42:  return 0xff61;  // print screen
+        case 45:  return 0xff63;  // insert
+        case 46:  return 0xffff;  // delete
+        case 91:  return kSUPER_L; // super
+        case 106: return 0xffaa;  // num multiply
+        case 107: return 0xffab;  // num plus
+        case 109: return 0xffad;  // num minus
+        case 110: return 0xffae;  // num dot
+        case 111: return 0xffaf;  // num divide
+        case 144: return 0xff7f;  // num lock
+        case 145: return 0xff14;  // scroll lock
+        case 151: return 0x1008ff95;  // WLAN
+        case 166: return 0x1008ff26;  // back
+        case 167: return 0x1008ff27;  // forward
+        case 168: return 0x1008ff73;  // refresh
+        case 182: return 0x1008ff51;  // page flipper ("F5")
+        case 183: return 0x1008ff59;  // fullscreen/display
+        case 186: return 0x3b;  // ;
+        case 187: return 0x3d;  // =
+        case 188: return 0x2c;  // ,
+        case 189: return 0x2d;  // -
+        case 190: return 0x2e;  // .
+        case 191: return 0x2f;  // /
+        case 192: return 0x60;  // `
+        case 219: return 0x5b;  // [
+        case 220: return 0x5c;  // '\'
+        case 221: return 0x5d;  // ]
+        case 222: return 0x27;  // '
+        case 229: return 0;  // dead key ('`~). FIXME: no way of knowing which
         }
 
         return 0x00;
@@ -681,8 +681,8 @@ private:
 
     /* Changes the target FPS: avoid unecessary refreshes to save CPU */
     void SetTargetFPS(int new_target_fps) {
-        /* When increasing the fps, immediately ask for a frame, and force refresh
-         * the display (we probably just gained focus). */
+        /* When increasing the fps, immediately ask for a frame, and force
+         * refresh the display (we probably just gained focus). */
         if (new_target_fps > target_fps_) {
             force_refresh_ = true;
             RequestScreen(request_token_);
@@ -835,7 +835,7 @@ private:
                 if (debug_ == 0)
                     data[i] = 0xFF000000;
                 else
-                    data[i] = 0xFF800000+i;
+                    data[i] = 0xFF800000 + i;
             }
         }
 
@@ -856,9 +856,9 @@ private:
     /* SuperL keycode (search key) */
     const uint32_t kSUPER_L = 0xffeb;
 
-    const int kFullFPS = 30; /* Maximum fps */
-    const int kBlurFPS = 5; /* fps when window is possibly hidden */
-    const int kHiddenFPS = 0; /* fps when window is hidden */
+    const int kFullFPS = 30;   /* Maximum fps */
+    const int kBlurFPS = 5;    /* fps when window is possibly hidden */
+    const int kHiddenFPS = 0;  /* fps when window is hidden */
 
     /* Class members */
     pp::CompletionCallbackFactory<CriatInstance> callback_factory_{this};

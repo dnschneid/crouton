@@ -42,7 +42,7 @@ static int next_entry;
 typedef enum { MOUSE=1, KEYBOARD=2 } keybuttontype;
 struct keybutton {
     keybuttontype type;
-    uint32_t code; /* KeyCode or mouse button */
+    uint32_t code;  /* KeyCode or mouse button */
 };
 
 /* Store currently pressed keys/buttons in an array.
@@ -193,8 +193,8 @@ void change_resolution(const struct resolution* rin) {
                 "Invalid height: '%s'", cut+1);
     log(1, "New resolution %ld x %ld", nwidth, nheight);
 
-    char reply_raw[FRAMEMAXHEADERSIZE+sizeof(struct resolution)];
-    struct resolution* r = (struct resolution*)(reply_raw+FRAMEMAXHEADERSIZE);
+    char reply_raw[FRAMEMAXHEADERSIZE + sizeof(struct resolution)];
+    struct resolution* r = (struct resolution*)(reply_raw + FRAMEMAXHEADERSIZE);
     r->type = 'R';
     r->width = nwidth;
     r->height = nheight;
@@ -248,7 +248,7 @@ struct cache_entry* find_shm(uint64_t paddr, uint64_t sig, size_t length) {
         trueorabort(c > 0, "snprintf");
         int i, p = 0;
         for (i = 0; i < 8; i++) {
-            c = snprintf(arg2+p, sizeof(arg2)-p, "%02x",
+            c = snprintf(arg2 + p, sizeof(arg2) - p, "%02x",
                          ((uint8_t*)&sig)[i]);
             trueorabort(c > 0, "snprintf");
             p += c;
@@ -313,9 +313,9 @@ XShmSegmentInfo shminfo;
 
 /* Writes framebuffer image to websocket/shm */
 int write_image(const struct screen* screen) {
-    char reply_raw[FRAMEMAXHEADERSIZE+sizeof(struct screen_reply)];
+    char reply_raw[FRAMEMAXHEADERSIZE + sizeof(struct screen_reply)];
     struct screen_reply* reply =
-        (struct screen_reply*)(reply_raw+FRAMEMAXHEADERSIZE);
+        (struct screen_reply*)(reply_raw + FRAMEMAXHEADERSIZE);
     int refresh = 0;
 
     memset(reply_raw, 0, sizeof(reply_raw));
@@ -363,13 +363,13 @@ int write_image(const struct screen* screen) {
     }
 
     /* Check for damage */
-    while (XCheckTypedEvent(dpy, damageEvent+XDamageNotify, &ev)) {
+    while (XCheckTypedEvent(dpy, damageEvent + XDamageNotify, &ev)) {
         refresh = 1;
     }
 
     /* Check for cursor events */
     reply->cursor_updated = 0;
-    while (XCheckTypedEvent(dpy, fixesEvent+XFixesCursorNotify, &ev)) {
+    while (XCheckTypedEvent(dpy, fixesEvent + XFixesCursorNotify, &ev)) {
         XFixesCursorNotifyEvent* curev = (XFixesCursorNotifyEvent*)&ev;
         char* name = XGetAtomName(dpy, curev->cursor_name);
         log(2, "cursor! %ld %s", curev->cursor_serial, name);
@@ -441,10 +441,10 @@ int write_image(const struct screen* screen) {
 int write_cursor() {
     XFixesCursorImage *img = XFixesGetCursorImage(dpy);
     int size = img->width*img->height;
-    const int replylength = sizeof(struct cursor_reply)+sizeof(uint32_t)*size;
-    char reply_raw[FRAMEMAXHEADERSIZE+replylength];
+    const int replylength = sizeof(struct cursor_reply) + size*sizeof(uint32_t);
+    char reply_raw[FRAMEMAXHEADERSIZE + replylength];
     struct cursor_reply* reply =
-        (struct cursor_reply*)(reply_raw+FRAMEMAXHEADERSIZE);
+        (struct cursor_reply*)(reply_raw + FRAMEMAXHEADERSIZE);
 
     memset(reply_raw, 0, sizeof(*reply_raw));
 
@@ -503,10 +503,10 @@ int main(int argc, char** argv) {
     char* endptr;
     int displaynum = (int)strtol(display+1, &endptr, 10);
     trueorabort(display+1 != endptr && (*endptr == '\0' || *endptr == '.'),
-                    "Invalid display number: '%s'", display);
+                "Invalid display number: '%s'", display);
 
     init_display(display);
-    socket_server_init(PORT_BASE+displaynum);
+    socket_server_init(PORT_BASE + displaynum);
 
     unsigned char buffer[BUFFERSIZE];
     int length;
@@ -527,23 +527,23 @@ int main(int argc, char** argv) {
             }
 
             switch (buffer[0]) {
-            case 'S': /* Screen */
+            case 'S':  /* Screen */
                 if (!check_size(length, sizeof(struct screen), "screen"))
                     break;
                 write_image((struct screen*)buffer);
                 break;
-            case 'P': /* Cursor */
+            case 'P':  /* Cursor */
                 if (!check_size(length, sizeof(struct cursor), "cursor"))
                     break;
                 write_cursor();
                 break;
-            case 'R': /* Resolution */
+            case 'R':  /* Resolution */
                 if (!check_size(length, sizeof(struct resolution),
                                 "resolution"))
                     break;
                 change_resolution((struct resolution*)buffer);
                 break;
-            case 'K': { /* Key */
+            case 'K': {  /* Key */
                 if (!check_size(length, sizeof(struct key), "key"))
                     break;
                 struct key* k = (struct key*)buffer;
@@ -561,7 +561,7 @@ int main(int argc, char** argv) {
                 }
                 break;
             }
-            case 'C': { /* Click */
+            case 'C': {  /* Click */
                 if (!check_size(length, sizeof(struct mouseclick),
                                 "mouseclick"))
                     break;
@@ -574,14 +574,14 @@ int main(int argc, char** argv) {
                 }
                 break;
             }
-            case 'M': { /* Mouse move */
+            case 'M': {  /* Mouse move */
                 if (!check_size(length, sizeof(struct mousemove), "mousemove"))
                     break;
                 struct mousemove* mm = (struct mousemove*)buffer;
                 XTestFakeMotionEvent(dpy, 0, mm->x, mm->y, CurrentTime);
                 break;
             }
-            case 'Q': /* "Quit": release all keys */
+            case 'Q':  /* "Quit": release all keys */
                 kb_release_all();
                 break;
             default:

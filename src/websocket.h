@@ -45,11 +45,11 @@ const int WS_OPCODE_PING = 0x9;
 const int WS_OPCODE_PONG = 0xA;
 
 /* WebSocket bitmasks */
-const char WS_HEADER0_FIN = 0x80; /* fin */
-const char WS_HEADER0_RSV = 0x70; /* reserved */
-const char WS_HEADER0_OPCODE_MASK = 0x0F; /* reserved */
-const char WS_HEADER1_MASK = 0x80; /* mask */
-const char WS_HEADER1_LEN_MASK = 0x7F; /* payload length */
+const char WS_HEADER0_FIN = 0x80;  /* fin */
+const char WS_HEADER0_RSV = 0x70;  /* reserved */
+const char WS_HEADER0_OPCODE_MASK = 0x0F;  /* opcode */
+const char WS_HEADER1_MASK = 0x80;  /* mask */
+const char WS_HEADER1_LEN_MASK = 0x7F;  /* payload length */
 
 /* 0 - Quiet
  * 1 - General messages (init, new connections)
@@ -103,12 +103,12 @@ static int block_read(int fd, char* buffer, size_t size) {
     int tot = 0;
 
     while (tot < size) {
-        n = read(fd, buffer+tot, size-tot);
+        n = read(fd, buffer + tot, size - tot);
         log(3, "n=%d+%d/%zd", n, tot, size);
         if (n < 0)
             return n;
         if (n == 0)
-            return -1; /* EOF */
+            return -1;  /* EOF */
         tot += n;
     }
 
@@ -122,7 +122,7 @@ static int block_write(int fd, char* buffer, size_t size) {
     int tot = 0;
 
     while (tot < size) {
-        n = write(fd, buffer+tot, size-tot);
+        n = write(fd, buffer + tot, size - tot);
         log(3, "n=%d+%d/%zd", n, tot, size);
         if (n < 0)
             return n;
@@ -203,7 +203,7 @@ static int popen2(char* cmd, char *const argv[],
         /* We can write something to stdin */
         if (fds[1].revents & POLLOUT) {
             if (inlen > writelen) {
-                int n = write(stdin_fd[1], input+writelen, inlen-writelen);
+                int n = write(stdin_fd[1], input + writelen, inlen - writelen);
                 if (n < 0) {
                     error("write error.");
                     goto error;
@@ -223,7 +223,7 @@ static int popen2(char* cmd, char *const argv[],
 
         /* We can read something from stdout */
         if (fds[0].revents & POLLIN) {
-            int n = read(stdout_fd[0], output+readlen, outlen-readlen);
+            int n = read(stdout_fd[0], output + readlen, outlen - readlen);
             if (n < 0) {
                 error("read error.");
                 goto error;
@@ -315,7 +315,7 @@ static void socket_client_close(int sendclose) {
 static int socket_client_write_frame(char* buffer, unsigned int size,
                                      unsigned int opcode, int fin) {
     /* Start of frame, with header: at least 2 bytes before the actual data */
-    char* pbuffer = buffer+FRAMEMAXHEADERSIZE-2;
+    char* pbuffer = buffer + FRAMEMAXHEADERSIZE - 2;
     int payloadlen = size;
     int extlensize = 0;
 
@@ -341,9 +341,9 @@ static int socket_client_write_frame(char* buffer, unsigned int size,
 
     pbuffer[0] = opcode & WS_HEADER0_OPCODE_MASK;
     if (fin) pbuffer[0] |= WS_HEADER0_FIN;
-    pbuffer[1] = payloadlen; /* No mask (0x80) in server->client direction */
+    pbuffer[1] = payloadlen;  /* No mask (0x80) in server->client direction */
 
-    int wlen = 2+extlensize+size;
+    int wlen = 2 + extlensize + size;
     if (block_write(client_fd, pbuffer, wlen) != wlen) {
         syserror("Write error.");
         socket_client_close(0);
@@ -382,7 +382,7 @@ static int socket_client_read_frame_header(int* fin, uint32_t* maskkey,
     int opcode, mask;
     uint64_t length;
     *fin = (header[0] & WS_HEADER0_FIN) != 0;
-    if (header[0] & WS_HEADER0_RSV) { /* Reserved bits are on */
+    if (header[0] & WS_HEADER0_RSV) {
         error("Reserved bits are on.");
         socket_client_close(1);
         return -1;
@@ -467,16 +467,16 @@ static int socket_client_read_frame_header(int* fin, uint32_t* maskkey,
             return -1;
         }
 
-        if (opcode == WS_OPCODE_CLOSE) { /* Connection close. */
+        if (opcode == WS_OPCODE_CLOSE) {  /* Connection close. */
             error("Connection close from WebSocket client.");
             socket_client_close(1);
             free(buffer);
             return -1;
-        } else if (opcode == WS_OPCODE_PING) { /* Ping */
+        } else if (opcode == WS_OPCODE_PING) {  /* Ping */
             socket_client_write_frame(buffer, length, WS_OPCODE_PONG, 1);
-        } else if (opcode == WS_OPCODE_PONG) { /* Pong */
+        } else if (opcode == WS_OPCODE_PONG) {  /* Pong */
             /* Do nothing */
-        } else { /* Unknown opcode */
+        } else {  /* Unknown opcode */
             error("Unknown packet (%x).", opcode);
             socket_client_close(1);
             free(buffer);
@@ -549,7 +549,7 @@ static int socket_client_read_frame(char* buffer, int size) {
             return -1;
         }
 
-        if (socket_client_read_frame_data(buffer+buflen, len, maskkey) < 0) {
+        if (socket_client_read_frame_data(buffer + buflen, len, maskkey) < 0) {
             socket_client_close(0);
             return -1;
         }
@@ -562,8 +562,8 @@ static int socket_client_read_frame(char* buffer, int size) {
 /* Send a version packet to the extension, and read VOK reply. */
 static int socket_client_sendversion(char* version) {
     int versionlen = strlen(version);
-    char* outbuf = malloc(FRAMEMAXHEADERSIZE+versionlen);
-    memcpy(outbuf+FRAMEMAXHEADERSIZE, version, versionlen);
+    char* outbuf = malloc(FRAMEMAXHEADERSIZE + versionlen);
+    memcpy(outbuf + FRAMEMAXHEADERSIZE, version, versionlen);
 
     log(2, "Sending version packet (%s).", version);
 
@@ -716,7 +716,7 @@ static int socket_server_read_header(int newclient_fd, char* websocket_key) {
         if (strlen(key) == 0 && !value)
             break;
 
-        if (first) { /* Normally GET / HTTP/1.1 */
+        if (first) {  /* Normally GET / HTTP/1.1 */
             first = 0;
 
             char* tok = strtok(key, " ");
@@ -803,7 +803,7 @@ static int socket_server_accept(char* version) {
     }
 
     /* key from client + GUID */
-    int websocket_keylen = SECKEY_LEN+strlen(GUID);
+    int websocket_keylen = SECKEY_LEN + strlen(GUID);
     char websocket_key[websocket_keylen];
 
     /* Read and parse HTTP header */
@@ -818,11 +818,11 @@ static int socket_server_accept(char* version) {
     char sha1[SHA1_LEN];
 
     /* Some margin so we can read the full output of base64 */
-    int b64_len = SHA1_BASE64_LEN+4;
+    int b64_len = SHA1_BASE64_LEN + 4;
     char b64[b64_len];
     int i;
 
-    memcpy(websocket_key+SECKEY_LEN, GUID, strlen(GUID));
+    memcpy(websocket_key + SECKEY_LEN, GUID, strlen(GUID));
 
     /* SHA-1 is 20 bytes long (40 characters in hex form) */
     if (popen2("sha1sum", NULL, websocket_key, websocket_keylen,
@@ -832,7 +832,7 @@ static int socket_server_accept(char* version) {
     }
 
     /* Make sure sscanf does not read too much data */
-    buffer[2*SHA1_LEN+1] = '\0';
+    buffer[2*SHA1_LEN + 1] = '\0';
     for (i = 0; i < SHA1_LEN; i++) {
         unsigned int value;
         if (sscanf(&buffer[i*2], "%02x", &value) != 1) {
