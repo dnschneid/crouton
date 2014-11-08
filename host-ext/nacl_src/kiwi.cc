@@ -482,14 +482,36 @@ public:
              * letter keys (a-z). This way, Home (Search+Left) appears without
              * modifiers (instead of Super_L+Home) */
             if (keystr == "OSLeft") {
-                pending_super_l_ = down;
-                return PP_TRUE;
+                if (down) {
+                    search_state_ = kSearchUpFirst;
+                } else {
+                    if (search_state_ == kSearchUpFirst) {
+                        /* No other key was pressed: press+release */
+                        SendKey(kSUPER_L, 1);
+                        SendKey(kSUPER_L, 0);
+                    } else if (search_state_ == kSearchDown) {
+                        SendKey(kSUPER_L, 0);
+                    }
+                    search_state_ = kSearchInactive;
+                }
+                return PP_TRUE;  /* Ignore key */
             }
 
-            bool letter = (keycode >= 65 && keycode <= 90);
-            if (letter && pending_super_l_ && down) SendKey(kSUPER_L, 1);
+            if (keycode >= 65 && keycode <= 90) {  /* letter */
+                /* Search is active, send Super_L if needed */
+                if (down && (search_state_ == kSearchUpFirst ||
+                             search_state_ == kSearchUp)) {
+                    SendKey(kSUPER_L, 1);
+                    search_state_ = kSearchDown;
+                }
+            } else {  /* non-letter */
+                /* Release Super_L if needed */
+                if (search_state_ == kSearchDown)
+                    SendKey(kSUPER_L, 0);
+                /* Transition from UpFirst to Up */
+                search_state_ = kSearchUp;
+            }
             SendKey(keysym, down ? 1 : 0);
-            if (letter && pending_super_l_ && !down) SendKey(kSUPER_L, 0);
         } else if (event.GetType() == PP_INPUTEVENT_TYPE_MOUSEDOWN ||
                    event.GetType() == PP_INPUTEVENT_TYPE_MOUSEUP   ||
                    event.GetType() == PP_INPUTEVENT_TYPE_MOUSEMOVE) {
@@ -774,7 +796,11 @@ private:
     void SendClick(int button, int down) {
         struct mouseclick* mc;
 
-        if (pending_super_l_ && down) SendKey(kSUPER_L, 1);
+        if (down && (search_state_ == kSearchUpFirst ||
+                     search_state_ == kSearchUp)) {
+            SendKey(kSUPER_L, 1);
+            search_state_ = kSearchDown;
+        }
 
         pp::VarArrayBuffer array_buffer(sizeof(*mc));
         mc = static_cast<struct mouseclick*>(array_buffer.Map());
@@ -783,8 +809,6 @@ private:
         mc->button = button;
         array_buffer.Unmap();
         SocketSend(array_buffer, true);
-
-        if (pending_super_l_ && !down) SendKey(kSUPER_L, 0);
 
         /* That means we have focus */
         SetTargetFPS(kFullFPS);
@@ -959,8 +983,16 @@ private:
     /* Mouse wheel accumulators */
     int mouse_wheel_x = 0;
     int mouse_wheel_y = 0;
-    /* Super_L press has been delayed */
-    bool pending_super_l_ = false;
+
+    /* Search key state:
+     * - active/inactive: Key is pushed on Chromium OS side
+     * - down/up: Key is pushed on xiwi side */
+    enum {
+        kSearchInactive,  /* Inactive (up) */
+        kSearchUpFirst,   /* Active, up, no other key (yet) */
+        kSearchUp,        /* Active, up */
+        kSearchDown       /* Active, down */
+    } search_state_ = kSearchInactive;
 
     /* Touch */
     int touch_count_;  /* Number of points currently pressed */
