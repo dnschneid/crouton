@@ -54,6 +54,13 @@ static int pressed_len = 0;
 void kb_add(keybuttontype type, uint32_t code) {
     trueorabort(pressed_len < sizeof(pressed)/sizeof(struct keybutton),
                 "Too many keys pressed");
+
+    int i;
+    for (i = 0; i < pressed_len; i++) {
+        if (pressed[i].type == type && pressed[i].code == code)
+            return;
+    }
+
     pressed[pressed_len].type = type;
     pressed[pressed_len].code = code;
     pressed_len++;
