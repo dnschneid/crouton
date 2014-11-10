@@ -426,14 +426,25 @@ function websocketMessage(evt) {
     case 'X': /* Ask to open a crouton-in-a-tab window */
         display = parseInt(payload);
         if (display <= 0) {
-            /* Get out of full screen, for the current window */
+            /* Minimize all kiwi windows  */
             var disps = Object.keys(kiwi_win_);
             for (var i = 0; i < disps.length; i++) {
                 var winid = kiwi_win_[disps[i]].id;
                 chrome.windows.update(winid, {focused: false});
+
+                minimize = function(win) {
+                    chrome.windows.update(winid,
+                                      {'state': 'minimized'}, function(win) {})}
+
                 chrome.windows.get(winid, function(win) {
-                    chrome.windows.update(winid, {'state': 'minimized'},
-                                          function(win) {});
+                    /* To make restore nicer, first exit full screen,
+                     * then minimize */
+                    if (win.state == "fullscreen") {
+                        chrome.windows.update(winid,
+                                              {'state': 'maximized'}, minimize)
+                    } else {
+                        minimize()
+                    }
                 })
             }
         } else if (kiwi_win_[display] && kiwi_win_[display].id >= 0 &&
