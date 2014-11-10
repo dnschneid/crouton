@@ -32,7 +32,7 @@ if [ "$TARGETS" = 'help' ]; then
     if [ -n "$REQUIRES" ]; then
         echo "	Requires: $REQUIRES"
     fi
-elif [ ! "$TARGETS" = 'check' ]; then
+elif [ -z "$TARGETNOINSTALL" -o -n "$RESTOREHOSTBIN" ]; then
     # Avoid double-adding targets
     if grep -q "^$TARGET\$" "${TARGETDEDUPFILE:-/dev/null}"; then
         exit
