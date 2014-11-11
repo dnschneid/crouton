@@ -11,6 +11,9 @@
 #   3*: small-target/tech tests, e.g. cli-extra, audio
 #   5*: DE tests, e.g. xfce, xbmc
 #   9*: misc application tests, e.g. chrome
+# Alphabetic tests are long, and not run by default:
+#   w*: Start all DE/wm, and take snapshots
+#   x*: Install test all targets that do not have tests
 # Numbering within a category is arbitrary and can have overlaps.
 # Tests are always run in alphanumeric order unless specified by parameters.
 

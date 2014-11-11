@@ -18,8 +18,10 @@ for target in "$SCRIPTDIR/targets/"*; do
         continue
     fi
 
-    # Some other targets do not require testing in this context
-    for blacklist in audio core x11 xephyr xorg; do
+    # Some other targets do not require testing in this context,
+    # or have their own w* tests
+    for blacklist in audio core x11 xephyr xorg \
+                     e17 gnome kde lxde unity xbmc xfce; do
         if [ "$target" = "$blacklist" ]; then
             break
         fi
