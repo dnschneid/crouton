@@ -156,6 +156,7 @@ validate_name() {
 # Websocket interface
 PIPEDIR='/tmp/crouton-ext'
 CRIATDISPLAY="$PIPEDIR/kiwi-display"
+CROUTONLOCKDIR='/tmp/crouton-lock'
 
 # Write a command to croutonwebsocket, and read back response
 websocketcommand() {

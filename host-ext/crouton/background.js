@@ -222,7 +222,7 @@ function refreshUI() {
                 cell2.innerHTML = windows_[i].name;
                 cell2.onclick = (function(i) { return function() {
                     if (active_) {
-                        websocket_.send("C" + i);
+                        websocket_.send("C" + windows_[i].display);
                         closePopup();
                     }
                 } })(i);
@@ -404,16 +404,22 @@ function websocketMessage(evt) {
     case 'C': /* Returned data from a croutoncycle command */
         /* Non-zero length has a window list; otherwise it's a cycle signal */
         if (payload.length > 0) {
-            windows_ = payload.split('\n').filter(
-                function(x) { return x.length > 3 }
-            ).map(
+            windows_ = payload.split('\n').map(
                 function(x) {
+                    m = x.match(/^([^ *]*)\*? +(.*)$/)
+                    if (!m)
+                        return null;
+
+                    /* Only display cros and X11 servers (no window) */
+                    if (m[1] != "cros" && !m[1].match(/^:([0-9]+)$/))
+                        return null;
+
                     k = new Object()
-                    k.display = x[0];
-                    k.name = x.substring(3);
+                    k.display = m[1];
+                    k.name = m[2];
                     return k;
                 }
-            )
+            ).filter( function(x) { return !!x; } )
 
             windows_.forEach(function(k) {
                 if (kiwi_win_[k.display] && kiwi_win_[k.display].window) {
@@ -424,8 +430,10 @@ function websocketMessage(evt) {
         refreshUI();
         break;
     case 'X': /* Ask to open a crouton-in-a-tab window */
-        display = parseInt(payload);
-        if (display <= 0) {
+        display = payload
+        match = display.match(/^:([0-9]+)$/)
+        displaynum = match ? match[1] : null
+        if (!displaynum) {
             /* Minimize all kiwi windows  */
             var disps = Object.keys(kiwi_win_);
             for (var i = 0; i < disps.length; i++) {
@@ -467,7 +475,7 @@ function websocketMessage(evt) {
             win = windows_.filter(function(x){ return x.display == display })[0]
             name = win ? win.name : "crouton in a tab";
 
-            chrome.windows.create({ 'url': "window.html?display=" + display +
+            chrome.windows.create({ 'url': "window.html?display=" + displaynum +
                                            "&debug=" + (debug_ ? 1 : 0) +
                                            "&hidpi=" + (hidpi_ ? 1 : 0) +
                                            "&title=" + encodeURIComponent(name),
@@ -525,7 +533,7 @@ function websocketClose() {
  * clipboard can be transfered. */
 function windowFocusChanged(windowid) {
     var disps = Object.keys(kiwi_win_);
-    nextfocus_win_ = -1;
+    nextfocus_win_ = "cros";
     for (var i = 0; i < disps.length; i++) {
         if (kiwi_win_[disps[i]].id == windowid) {
             nextfocus_win_ = disps[i];

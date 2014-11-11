@@ -17,12 +17,12 @@ Cycles through running graphical chroots.
 # Undocumented:
 #   display: return display associated with current window
 #            (used from croutonclip):
-#     - aura: Chromium OS
-#     - 0: Chromium OS X11 display (non-aura window)
-#     - 1-9: chroot displays
+#     - cros: Chromium OS
+#     - :0: Chromium OS X11 display (non-aura window)
+#     - :1-9: chroot displays
 #   s<num>: informs of a Chromium OS window change (called from extension):
-#     - 0: any Chromium OS window
-#     - n: kiwi window: X11 display number
+#     - cros: any Chromium OS window
+#     - :1-9: kiwi window: X11 display number
 #   force [command]: Force switching display, even if it does not appear
 #                    to be necessary.
 
@@ -57,15 +57,15 @@ getname() {
 }
 
 # Only let one instance run at a time to avoid nasty race conditions
-mkdir -m 775 -p /tmp/crouton-lock
-exec 3>/tmp/crouton-lock/cycle
+mkdir -m 775 -p "$CROUTONLOCKDIR"
+exec 3>"$CROUTONLOCKDIR/cycle"
 flock 3
 
 # set display command from extension
 if [ "$cmd" = 's' ]; then
     echo "$disp" > "$CRIATDISPLAY"
-    if [ -s "$CROUTONCLIPPIDFILE" ]; then
-        kill -USR1 "`cat "$CROUTONCLIPPIDFILE"`" || true
+    if [ -s "$CROUTONLOCKDIR/clip" ]; then
+        kill -USR1 "`cat "$CROUTONLOCKDIR/clip"`" || true
     fi
     exit 0
 fi
@@ -126,8 +126,8 @@ if [ "$tty" = 'tty1' ]; then
             if [ -n "$xiwiactive" -a "${disp%"*"}" = "$aurawin" -a \
                     -s "$CRIATDISPLAY" ]; then
                 kiwidisp="`cat $CRIATDISPLAY`"
-                if [ "$kiwidisp" -ge 0 ]; then
-                    curdisp=":$kiwidisp"
+                if [ "${kiwidisp#:[0-9]}" != "$kiwidisp" ]; then
+                    curdisp="$kiwidisp"
                 fi
             fi
             break
@@ -169,6 +169,7 @@ if [ "$cmd" = 'l' -o "$cmd" = 'd' ]; then
             if [ "${number#[0-9]}" = "$number" ]; then
                 number='0'
             else
+                disp=":$number"
                 line="`getname "$number"`"
             fi
         fi
@@ -176,7 +177,7 @@ if [ "$cmd" = 'l' -o "$cmd" = 'd' ]; then
             active='*'
             if [ "$cmd" = 'd' ]; then
                 if [ "$line" = 'aura_root_0' ]; then
-                    echo 'aura'
+                    echo 'cros'
                 else
                     echo ":$number"
                 fi
@@ -186,13 +187,14 @@ if [ "$cmd" = 'l' -o "$cmd" = 'd' ]; then
         fi
         if [ "$line" = 'aura_root_0' ]; then
             line="$chromiumos"
+            disp="cros"
+            window=''
         fi
         if [ "$cmd" = 'l' ]; then
-            echo "$number$active $line"
+            echo "${disp%"*"}$active $line"
         fi
     done
     for disp in $displist; do
-        number="${disp#:}"
         active=' '
         if [ "$disp" = "$curdisp" ]; then
             active='*'
@@ -203,7 +205,7 @@ if [ "$cmd" = 'l' -o "$cmd" = 'd' ]; then
         fi
 
         if [ "$cmd" = 'l' ]; then
-            echo -n "$number$active "
+            echo -n "$disp$active "
             getname "$disp"
         fi
     done
@@ -278,7 +280,7 @@ if [ "${destdisp#:}" = "$destdisp" ]; then
     fi
 
     if [ -n "$xiwiactive" -a "${destdisp%"*"}" = "$aurawin" ]; then
-        STATUS="`echo "X-1" | websocketcommand`"
+        STATUS="`echo -n "Xcros" | websocketcommand`"
         if [ "$STATUS" != 'XOK' ]; then
             error 1 "${STATUS#?}"
         fi
@@ -290,7 +292,7 @@ else
             sudo -n chvt 1
             sleep .1
         fi
-        STATUS="`echo "X${destdisp#:}" | websocketcommand`"
+        STATUS="`echo -n "X${destdisp}" | websocketcommand`"
         if [ "$STATUS" != 'XOK' ]; then
             error 1 "${STATUS#?}"
         fi
@@ -304,8 +306,8 @@ else
     fi
 fi
 
-if [ -s "$CROUTONCLIPPIDFILE" ]; then
-    kill -USR1 "`cat "$CROUTONCLIPPIDFILE"`" || true
+if [ -s "$CROUTONLOCKDIR/clip" ]; then
+    kill -USR1 "`cat "$CROUTONLOCKDIR/clip"`" || true
 fi
 
 # Wait a flip and then refresh the display for good measure

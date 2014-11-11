@@ -50,8 +50,8 @@ fi
 eval "`host-x11`"
 
 # Only let one instance *really* run at a time
-mkdir -m 775 -p /tmp/crouton-lock
-exec 3>/tmp/crouton-lock/wheel
+mkdir -m 775 -p "$CROUTONLOCKDIR"
+exec 3>"$CROUTONLOCKDIR/wheel"
 flock 3
 
 # Monitor xinput2 events, reacting only to scroll events (axes 2 and 3).
