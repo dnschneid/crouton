@@ -25,6 +25,7 @@ var websocket_ = null; /* Active connection */
 
 /* State variables */
 var debug_ = false;
+var showlog_ = false; /* true if extension log should be shown */
 var hidpi_ = false; /* true if kiwi windows should be opened in HiDPI mode */
 var enabled_ = true; /* true if we are trying to connect */
 var active_ = false; /* true if we are connected to a server */
@@ -147,7 +148,6 @@ function refreshUI() {
             helplink = view.document.getElementById("help");
             helplink.onclick = showHelp;
             /* Update enable/disable link. */
-            /* FIXME: Sometimes, there is a little box coming around the link */
             enablelink = view.document.getElementById("enable");
             if (enabled_) {
                 enablelink.textContent = "Disable";
@@ -240,9 +240,11 @@ function refreshUI() {
             /* Only update if "show log" is enabled */
             logcheck = view.document.getElementById("logcheck");
             logcheck.onclick = function() {
+                showlog_ = logcheck.checked;
                 refreshUI();
             }
-            if (logcheck.checked) {
+            logcheck.checked = showlog_;
+            if (showlog_) {
                 for (var i = 0; i < logger_.length; i++) {
                     value = logger_[i];
 
