@@ -35,8 +35,8 @@ UPLOADROOT="$HOME"
 AUTOTESTGIT="https://chromium.googlesource.com/chromiumos/third_party/autotest"
 TESTINGSSHKEYURL="https://chromium.googlesource.com/chromiumos/chromite/+/master/ssh_keys/testing_rsa"
 MIRRORENV=""
-# Maximum test run time (minutes): 12 hours
-MAXTESTRUNTIME="$((12*60))"
+# Maximum test run time (minutes): 24 hours
+MAXTESTRUNTIME="$((24*60))"
 GSAUTOTEST="gs://chromeos-autotest-results"
 # FIXME: Remove this when test is merged
 GSCROUTONTEST="gs://drinkcat-crouton/crouton-test/packages"
