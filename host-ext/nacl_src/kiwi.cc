@@ -482,7 +482,10 @@ public:
             /* We delay sending Super-L, and only "press" it on mouse clicks and
              * letter keys (a-z). This way, Home (Search+Left) appears without
              * modifiers (instead of Super_L+Home) */
-            if (keystr == "OSLeft") {
+            /* FIXME: NumpadDecimal is a dirty hack for broken freon,
+               see http://crbug.com/425156 */
+            if (keysym == kSUPER_L && (keystr == "OSLeft" ||
+                                       keystr == "NumpadDecimal")) {
                 if (down) {
                     search_state_ = kSearchUpFirst;
                 } else {
@@ -713,13 +716,6 @@ private:
     /* Converts "IE"/JavaScript keycode to X11 KeySym.
      * See http://unixpapa.com/js/key.html */
     uint32_t KeyCodeToKeySym(uint32_t keycode, std::string code) {
-        if (code == "ControlLeft") return 0xffe3;
-        if (code == "ControlRight") return 0xffe4;
-        if (code == "AltLeft") return 0xffe9;
-        if (code == "AltRight") return 0xffea;
-        if (code == "ShiftLeft") return 0xffe1;
-        if (code == "ShiftRight") return 0xffe2;
-
         if (keycode >= 65 && keycode <= 90)  /* A to Z */
             return keycode + 32;
         if (keycode >= 48 && keycode <= 57)  /* 0 to 9 */
@@ -734,9 +730,15 @@ private:
         case 9:   return 0xff09;  // tab
         case 12:  return 0xff9d;  // num 5
         case 13:  return 0xff0d;  // enter
-        case 16:  return 0xffe1;  // shift (caught earlier!)
-        case 17:  return 0xffe3;  // control (caught earlier!)
-        case 18:  return 0xffe9;  // alt (caught earlier!)
+        case 16:  // shift
+            if (code == "ShiftRight") return 0xffe2;
+            return 0xffe1;  // (left)
+        case 17:  // control
+            if (code == "ControlRight") return 0xffe4;
+            return 0xffe3;  // (left)
+        case 18:  // alt
+            if (code == "AltRight") return 0xffea;
+            return 0xffe9;  // (left)
         case 19:  return 0xff13;  // pause
         case 20:  return 0;       // caps lock. FIXME: reenable (0xffe5)
         case 27:  return 0xff1b;  // esc
