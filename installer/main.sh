@@ -613,7 +613,7 @@ fi
 # Add the list of targets in file $1 to $TARGETS
 deduptargets() {
     if [ -r "$1" ]; then
-        t="`cat "$1" | tr '\n' ,`"
+        t="`tr '\n' , < "$1"`"
         t="${t%,},"
         while [ -n "$t" ]; do
             TARGET="${t%%,*}"
