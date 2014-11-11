@@ -462,7 +462,8 @@ public:
                 << ": C:" << keystr
                 << "/KC:" << std::hex << keycode
                 << "/KS:" << std::hex << keysym
-                << (keysym == 0 ? " (KEY UNKNOWN!)" : "");
+                << (keysym == 0 ? " (KEY UNKNOWN!)" : "")
+                << " searchstate:" << search_state_;
 
             if (keysym == 0) {
                 return PP_TRUE;
@@ -506,10 +507,13 @@ public:
                 }
             } else {  /* non-letter */
                 /* Release Super_L if needed */
-                if (search_state_ == kSearchDown)
+                if (search_state_ == kSearchDown) {
                     SendKey(kSUPER_L, 0);
-                /* Transition from UpFirst to Up */
-                search_state_ = kSearchUp;
+                    search_state_ = kSearchUp;
+                } else if (search_state_ == kSearchUpFirst) {
+                    /* Switch from UpFirst to Up */
+                    search_state_ = kSearchUp;
+                }
             }
             SendKey(keysym, down ? 1 : 0);
         } else if (event.GetType() == PP_INPUTEVENT_TYPE_MOUSEDOWN ||
