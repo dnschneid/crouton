@@ -107,16 +107,16 @@ function handleMessage(message) {
         type = str.substr(0, i);
         payload = str.substr(i+1);
     } else {
-        type = "log";
+        type = "debug";
         payload = str;
     }
 
     console.log(message.data);
 
-    if (type == "log") {
-        var logEl = document.getElementById('log');
-        if (logEl)
-            logEl.textContent = message.data;
+    if (type == "debug") {
+        var debugEl = document.getElementById('debug');
+        if (debugEl)
+            debugEl.textContent = message.data;
     } else if (type == "status") {
         updateStatus(payload);
     } else if (type == "connected") {

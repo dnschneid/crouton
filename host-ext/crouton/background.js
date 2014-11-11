@@ -105,7 +105,8 @@ function updateWindowList(force) {
 }
 
 /* Called from kiwi (window.js), so we can directly access each window */
-function registerKiwi(display, window) {
+function registerKiwi(displaynum, window) {
+    display = ":" + displaynum
     if (kiwi_win_[display] && kiwi_win_[display].id >= 0) {
         kiwi_win_[display].window = window;
     }
