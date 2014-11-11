@@ -371,11 +371,9 @@ if [ -z "$RESTOREBIN" ]; then
     # Fix NAME if it was not specified.
     CHROOT="$CHROOTS/${NAME:="${RELEASE:-"$DEFAULTRELEASE"}"}"
     CHROOTSRC="$CHROOT"
-    TARGETDEDUPFILE="$CHROOT/.crouton-targets"
-else
-    TARGETDEDUPFILE="`mktemp --tmpdir=/tmp "$APPLICATION-dedup.XXX"`"
-    addtrap "rm -f '$TARGETDEDUPFILE'"
 fi
+TARGETDEDUPFILE="`mktemp --tmpdir=/tmp "$APPLICATION-dedup.XXX"`"
+addtrap "rm -f '$TARGETDEDUPFILE'"
 
 # Confirm we have write access to the directory before starting.
 if [ -z "$RESTOREBIN$DOWNLOADONLY" ]; then
@@ -713,6 +711,9 @@ while [ -n "$t" ]; do
 done
 
 if [ -f "$PREPARE" ]; then
+    # Update .crouton-targets in the unencrypted part of the chroot
+    cp -fT "$TARGETDEDUPFILE" "$CHROOTSRC/.crouton-targets"
+
     chmod 500 "$PREPARE"
 
     # Run the setup script inside the chroot
