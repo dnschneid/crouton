@@ -680,15 +680,7 @@ Please specify targets with -t."
     fi
 else
     # Collect targets over all chroots (ignore the ones that cannot be mounted)
-    for file in "$CHROOTS"/*; do
-        if [ ! -d "$file" ]; then
-            continue
-        fi
-
-        chroot="$CHROOTS/$file"
-        # Use both /etc/crouton/targets (more reliable but not available for
-        # encrypted chroot) and /.crouton-targets (always available)
-        deduptargets "$chroot/etc/crouton/targets"
+    for chroot in "$CHROOTS"/*; do
         deduptargets "$chroot/.crouton-targets"
     done
 fi
