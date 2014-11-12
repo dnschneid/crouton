@@ -39,6 +39,10 @@ fails host edit-chroot -l x$release
 # Check that the list all chroots with details option fails with anything else entered on the command line
 fails host edit-chroot -al $release
 
+# Add cli-extra target, so we can check that startcli gets restored
+crouton -u -n "$release" -t cli-extra
+test -f "$PREFIX/bin/startcli"
+
 # Check that we can restore host-bin files.
 md5sum "$PREFIX/bin"/* > "$BACKUPDIR/csum"
 rm "$PREFIX/bin"/*
@@ -49,6 +53,7 @@ mkdir "$PREFIX/chroots/dummy"
 # Restore binaries
 crouton -b
 md5sum -c "$BACKUPDIR/csum"
+test -f "$PREFIX/bin/startcli"
 rm "$BACKUPDIR/csum"
 host enter-chroot -n "$release" true
 # Verify croutonversion outputs correct information
