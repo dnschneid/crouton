@@ -15,6 +15,8 @@ var title_ = "crouton in a tab"; /* window title */
 var connected_ = false;
 var closing_ = false; /* Disconnected, and waiting for the window to close */
 
+var prevstate_ = "maximized"; /* Previous window state (before full screen) */
+
  /* Rate limit resize events */
 var resizePending_ = false;
 var resizeLimited_ = false;
@@ -136,8 +138,11 @@ function handleMessage(message) {
     } else if (type == "state" && payload == "fullscreen") {
         /* Toggle full screen */
         chrome.windows.getCurrent(function(win) {
-            var newstate = (win.state == "fullscreen") ?
-                               "maximized" : "fullscreen";
+            var newstate = prevstate_;
+            if (win.state != "fullscreen") {
+                prevstate_ = win.state;
+                newstate = "fullscreen";
+            }
             chrome.windows.update(chrome.windows.WINDOW_ID_CURRENT,
                                   {'state': newstate}, function(win) {})
         })
