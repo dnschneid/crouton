@@ -101,7 +101,8 @@ private:
      * The message is flushed when the object gets out of scope. */
     class Message {
     public:
-        Message(KiwiInstance& ki, std::string type, bool dummy): ki_(ki) {
+        Message(pp::Instance* inst, const std::string& type, bool dummy):
+            inst_(inst) {
             if (!dummy) {
                 out_.reset(new std::ostringstream());
                 *out_ << type << ":";
@@ -109,10 +110,10 @@ private:
         }
 
         virtual ~Message() {
-            if (out_) ki_.PostMessage(out_->str());
+            if (out_) inst_->PostMessage(out_->str());
         }
 
-        template<typename T> Message& operator<<(T&& val) {
+        template<typename T> Message& operator<<(const T& val) {
             if (out_) *out_ << val;
             return *this;
         }
@@ -126,37 +127,36 @@ private:
 
     private:
         std::unique_ptr<std::ostringstream> out_;
-        KiwiInstance& ki_;
+        pp::Instance* inst_;
     };
 
     /* Sends a status message to Javascript */
     Message StatusMessage() {
-        return Message(*this, "status", false);
+        return Message(this, "status", false);
     }
 
     /* Sends a logging message to Javascript */
     Message LogMessage(int level) {
         if (level <= debug_) {
-            std::ostringstream status;
             double delta = 1000 *
                 (pp::Module::Get()->core()->GetTime() - lasttime_);
-            Message m(*this, "debug", false);
+            Message m(this, "debug", false);
             m << "(" << level << ") " << (int)delta << " ";
             return m;
         } else {
-            return Message(*this, "debug", true);
+            return Message(this, "debug", true);
         }
     }
 
     /* Sends a resize message to Javascript */
     void ResizeMessage(int width, int height) {
-        Message(*this, "resize", false) << width << "/" << height;
+        Message(this, "resize", false) << width << "/" << height;
     }
 
     /* Sends a control message to Javascript
      * Format: <type>:<str> */
-    void ControlMessage(std::string type, std::string str) {
-        Message(*this, type, false) << str;
+    void ControlMessage(const std::string& type, const std::string& str) {
+        Message(this, type, false) << str;
     }
 
     /** WebSocket interface **/
@@ -195,7 +195,7 @@ private:
     }
 
     /* Closes the WebSocket connection. */
-    void SocketClose(std::string reason) {
+    void SocketClose(const std::string& reason) {
         websocket_.Close(0, pp::Var(reason),
             callback_factory_.NewCallback(&KiwiInstance::OnSocketClosed));
     }
@@ -715,7 +715,7 @@ private:
 
     /* Converts "IE"/JavaScript keycode to X11 KeySym.
      * See http://unixpapa.com/js/key.html */
-    uint32_t KeyCodeToKeySym(uint32_t keycode, std::string code) {
+    uint32_t KeyCodeToKeySym(uint32_t keycode, const std::string& code) {
         if (keycode >= 65 && keycode <= 90)  /* A to Z */
             return keycode + 32;
         if (keycode >= 48 && keycode <= 57)  /* 0 to 9 */
