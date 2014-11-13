@@ -34,7 +34,7 @@ addtrap "rm -rf --one-file-system '$DUMMYBUILDTMP'"
 
 echo "Download Xorg dummy driver..." 1>&2
 
-wget -O "$DUMMYBUILDTMP/dummy.tar.bz2" "$urlbase/xf86-video-dummy-0.3.7.tar.bz2"
+wget -O "$DUMMYBUILDTMP/dummy.tar.gz" "$urlbase/xf86-video-dummy-0.3.7.tar.gz"
 
 install --minimal --asdeps patch gcc libc-dev pkg-config \
     xserver-xorg-dev x11proto-xf86dga-dev
@@ -42,7 +42,7 @@ install --minimal --asdeps patch gcc libc-dev pkg-config \
 (
     cd "$DUMMYBUILDTMP"
     # -m prevents "time stamp is in the future" spam
-    tar --strip-components=1 -xmf dummy.tar.bz2
+    tar --strip-components=1 -xmf dummy.tar.gz
 
     echo "Patching Xorg dummy driver (xrandr 1.2 support)..." 1>&2
     patch -p1 <<EOF
