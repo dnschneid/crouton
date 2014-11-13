@@ -112,6 +112,23 @@ disablehungtask
 # Set ROOTDEVICE
 findrootdevice
 
+updatestatus="`update_engine_client --status 2>/dev/null | \
+               sed -n "s/CURRENT_OP=\(.*\)$/\1/p"`"
+
+if [ "$updatestatus" != "UPDATE_STATUS_IDLE" ]; then
+    if [ "$updatestatus" = "UPDATE_STATUS_UPDATED_NEED_REBOOT" ]; then
+        error 1 "\
+A Chromium OS update is currently pending, please restart your Chromebook,
+then launch this script again."
+    else
+        error 1 "\
+Chromium OS is currently being updated (status: $updatestatus).
+Please wait for the update to complete (it can be monitored with
+'update_engine_client --update'), then restart your Chromebook, and launch this
+script again."
+    fi
+fi
+
 # Restore stateful partition to its original size
 if [ -n "$DELETE" ]; then
     if [ -z "$CROUTONPARTNUMBERSET" ]; then
