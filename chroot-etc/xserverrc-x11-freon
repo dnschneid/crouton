@@ -1,0 +1,21 @@
+#!/bin/sh -e
+# Copyright (c) 2014 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Disable framebuffer compression when displaying natively.
+# TODO: test FBC with SNA enabled on Haswell to regain power savings
+fbc='/sys/module/i915/parameters/i915_enable_fbc'
+if [ -w "$fbc" ]; then
+    echo 0 > "$fbc"
+fi
+
+XMETHOD='x11'
+XARGS='-nolisten tcp'
+XARGS="$XARGS -logfile /tmp/Xorg.1234.log"
+if [ -f /etc/crouton/xserverrc-local ]; then
+    . /etc/crouton/xserverrc-local
+fi
+
+export LD_PRELOAD=/usr/local/lib/crouton_freon.so
+exec /usr/bin/Xorg $XARGS "$@"
