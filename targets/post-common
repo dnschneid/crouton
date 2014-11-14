@@ -37,6 +37,11 @@ fi
 # Add the primary user
 groups='audio,video,sudo,plugdev'
 
+# Make sure the groups actually exist
+for group in `echo "$groups" | tr ',' ' '`; do
+    groupadd -r -f "$group"
+done
+
 username="`awk -F: '$3==1000{print $1; exit}' '/etc/passwd'`"
 if [ -z "$username" ]; then
     while ! echo "$username" | grep -q '^[a-z][-a-z0-9_]*$'; do
