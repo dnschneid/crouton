@@ -30,10 +30,10 @@ function registerWindow(register) {
 function moduleDidLoad() {
     KiwiModule_ = document.getElementById('kiwi');
     updateStatus('Starting...');
-    kiwiResize();
-    KiwiModule_.postMessage('display:' + display_);
     KiwiModule_.postMessage('debug:' + debug_);
     KiwiModule_.postMessage('hidpi:' + hidpi_);
+    /* Sending the display command triggers a connection: send it last. */
+    KiwiModule_.postMessage('display:' + display_);
     KiwiModule_.focus();
 }
 
