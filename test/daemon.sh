@@ -38,8 +38,9 @@ MIRRORENV=""
 # Maximum test run time (minutes): 24 hours
 MAXTESTRUNTIME="$((24*60))"
 GSAUTOTEST="gs://chromeos-autotest-results"
-# FIXME: Remove this when test is merged
-GSCROUTONTEST="gs://drinkcat-crouton/crouton-test/packages"
+# FIXME: Remove this when test is merged (>=R39): a temporary hack fetches
+# the crouton test from gs://drinkcat-crouton/crouton-test/packages
+TESTCSUM="811e9713f6357ee3996cb7cce80a3e2b"
 
 USAGE="$APPLICATION [options] -q QUEUEURL
 
@@ -249,15 +250,6 @@ DUTSSHOPTIONS="-o ConnectTimeout=30 -o IdentityFile=$SSHKEY \
 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
 -o ControlPath=$TMPROOT/ssh/%h \
 -o ControlMaster=auto -o ControlPersist=10m"
-
-# FIXME: Remove this when test is merged
-echo "Building latest test-plaform_Crouton tarball..." 1>&2
-tar cvfj "$TMPROOT/test-platform_Crouton.tar.bz2" \
-    -C "$AUTOTESTROOT/client/site_tests/platform_Crouton" . --exclude='*~'
-( cd "$TMPROOT"; md5sum test-platform_Crouton.tar.bz2 > packages.checksum )
-TESTCSUM="`cat "$TMPROOT/packages.checksum" | cut -d' ' -f 1`"
-gsutil cp "$TMPROOT/test-platform_Crouton.tar.bz2" \
-          "$TMPROOT/packages.checksum" "$GSCROUTONTEST-$TESTCSUM/"
 
 syncstatus
 
