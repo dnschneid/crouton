@@ -162,7 +162,7 @@ if [ -n "$DELETE" ]; then
 WARNING: Removing '$name' partition: ALL DATA ON THAT PARTITION WILL BE LOST.
 
 Type 'delete' if you are sure that you want to do that: "
-    read line
+    read -r line
     if [ "$line" != "delete" ]; then
         error 2 "Aborting..."
     fi
@@ -177,7 +177,7 @@ Using both ChrUbuntu and crouton partition is not recommended, especially if
 your total storage space is only 16GB, as the space for each system (Chromium OS
 stateful partition, crouton and ChrUbuntu) will be very limited.
 Do you still want to continue? [y/N] " 1>&2
-        read response
+        read -r response
         if [ "${response#[Yy]}" = "$response" ]; then
             exit 1
         fi
@@ -199,7 +199,7 @@ Do you still want to continue? [y/N] " 1>&2
 It is recommended that you follow the migration guide to transfer existing
 chroots to the new partition.
 Do you still want to continue? [y/N] " 1>&2
-        read response
+        read -r response
         if [ "${response#[Yy]}" = "$response" ]; then
             exit 1
         fi
@@ -265,7 +265,7 @@ crouton partition (-c)."
     echo "----"
 
     echo -n "Type 'yes' if you are you satisfied with these new sizes: "
-    read line
+    read -r line
     if [ "$line" != "yes" ]; then
         error 2 "Aborting..."
     fi
@@ -319,14 +319,15 @@ fi
         echo "Press enter to reboot..."
         sync
         ( sleep 30; reboot ) &
-        read line
+        read -r line
         settrap ""
         reboot
         exit "$ecode" # unreachable
     }
 
-    addtrap "chvt $LOGVT; echo 'Something went wrong, press enter to reboot.';\
-             sync; (sleep 30; reboot) & read line; echo 'Rebooting...'; reboot"
+    addtrap "chvt $LOGVT; echo 'Something went wrong, press enter to reboot.'; \
+             sync; ( sleep 30; reboot ) & read -r line; \
+             echo 'Rebooting...'; reboot"
 
     # Make sure screen does not blank out (setterm does not work in this
     # context: send control sequence instead)
@@ -423,7 +424,7 @@ fi
         echo "Services were stopped, and stateful partition is unmounted."
         echo "Press enter to switch back to VT2 (this is VT$LOGVT)."
         echo "Then login as root, and type reboot when you are done."
-        read line
+        read -r line
         sync
         chvt 2
         settrap ""
@@ -470,7 +471,7 @@ fi
     echo "Success! Press enter to reboot..."
     sync
     ( sleep 30; reboot ) &
-    read line
+    read -r line
     settrap ""
     reboot
 ) >"/dev/tty$LOGVT" 2>&1 <"/dev/tty$LOGVT" &
