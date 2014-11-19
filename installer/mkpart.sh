@@ -317,15 +317,16 @@ fi
         chvt $LOGVT
         echo "$*" 1>&2
         echo "Press enter to reboot..."
+        sync
+        ( sleep 30; reboot ) &
         read line
         settrap ""
-        sync
         reboot
         exit "$ecode" # unreachable
     }
 
     addtrap "chvt $LOGVT; echo 'Something went wrong, press enter to reboot.';\
-             read line; echo 'Syncing...'; sync; echo 'Rebooting...'; reboot"
+             sync; (sleep 30; reboot) & read line; echo 'Rebooting...'; reboot"
 
     # Make sure screen does not blank out (setterm does not work in this
     # context: send control sequence instead)
@@ -466,10 +467,11 @@ fi
     cgpt show "$ROOTDEVICE" -i 1
     cgpt show "$ROOTDEVICE" -i "$CROUTONPARTNUMBER"
 
-    echo "Success! Press enter to reboot.."
+    echo "Success! Press enter to reboot..."
+    sync
+    ( sleep 30; reboot ) &
     read line
     settrap ""
-    sync
     reboot
 ) >"/dev/tty$LOGVT" 2>&1 <"/dev/tty$LOGVT" &
 
