@@ -162,7 +162,12 @@ if [ -n "$DELETE" ]; then
 WARNING: Removing '$name' partition: ALL DATA ON THAT PARTITION WILL BE LOST.
 
 Type 'delete' if you are sure that you want to do that: "
-    read -r line
+    if [ -t 0 ]; then
+        read -r line
+    else
+        line="$CROUTON_MKPART_DELETE"
+        echo "$line"
+    fi
     if [ "$line" != "delete" ]; then
         error 2 "Aborting..."
     fi
@@ -265,7 +270,12 @@ crouton partition (-c)."
     echo "----"
 
     echo -n "Type 'yes' if you are you satisfied with these new sizes: "
-    read -r line
+    if [ -t 0 ]; then
+        read -r line
+    else
+        line="$CROUTON_MKPART_YES"
+        echo "$line"
+    fi
     if [ "$line" != "yes" ]; then
         error 2 "Aborting..."
     fi
