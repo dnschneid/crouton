@@ -318,7 +318,7 @@ if [ -n "$DELETE" -o -n "$NOCREATE" ]; then
 fi
 
 ( # Fork a subshell, with input/output in VT $LOGVT
-    clear
+    clear || true
 
     # Redefine error function
     error() {
