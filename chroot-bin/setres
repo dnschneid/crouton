@@ -57,22 +57,32 @@ replacemode() {
 
 # Try to change to arbitrary resolution
 mhz="$((r*x*y/1000000))"
-name="Crouton in a tab"
+name="kiwi_${x}x${y}_${r}"
 
-# Tweak the temp mode so xrandr knows the 2 modes are different, and
-# switches away from the temp mode.
-replacemode "$o" "$name (tmp)" $mhz $x $x $x $((x+1)) $y $y $y $y
+# Try to switch mode, if it already exists.
+if xrandr --output "$o" --mode "$name" 2>/dev/null; then
+    echo "${x}x${y}_${r}"
+    exit 0
+fi
 
-# This fails on non-patched xorg-dummy
-if xrandr --output "$o" --mode "$name (tmp)"; then
-    replacemode "$o" "$name" $mhz $x $x $x $x $y $y $y $y
-    xrandr --output "$o" --mode "$name"
-    replacemode "$o" "$name (tmp)"
+# Add the new mode
+xrandr --newmode "$name" $mhz $x $x $x $x $y $y $y $y
+xrandr --addmode "$o" "$name"
+
+# The next line fails on non-patched xorg-dummy
+if xrandr --output "$o" --mode "$name"; then
+    # Success: remove old modes
+    others="`xrandr | sed -n 's/^.*\(kiwi[0-9x_]*\)[^*]*$/\1/p'`"
+    for othername in $others; do
+        xrandr --delmode "$o" "$othername" 2>/dev/null || true
+        xrandr --rmmode "$othername" 2>/dev/null || true
+    done
     echo "${x}x${y}_${r}"
     exit 0
 else
-    # Delete the temp mode
-    replacemode "$o" "$name (tmp)"
+    # Delete the new mode
+    xrandr --delmode "$o" "$name" 2>/dev/null || true
+    xrandr --rmmode "$name" 2>/dev/null || true
 fi
 
 # Setting a custom mode failed, fall back on best match
