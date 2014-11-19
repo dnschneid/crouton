@@ -484,7 +484,8 @@ fi
     read -r line
     settrap ""
     reboot
-) >"/dev/tty$LOGVT" 2>&1 <"/dev/tty$LOGVT" &
+# Tee in /dev/kmsg so that we can read the output in /proc/pstore
+) 2>&1 <"/dev/tty$LOGVT" | tee /dev/kmsg >"/dev/tty$LOGVT" &
 
 wait
 
