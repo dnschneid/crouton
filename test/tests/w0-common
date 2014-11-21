@@ -3,7 +3,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# This test is sourced by other w* test, do not run it on it's own
+# This test is sourced by other w* test, do not run it on its own
 if [ -z "$release" -o -z "$target" ]; then
     exit 0
 fi
@@ -34,20 +34,31 @@ fi
 (
     vtlock
     host "$startcmd" -b -n "$release"
-    # FIXME: Wait for croutoncycle to change?
-    sleep 60
     host enter-chroot -n "$release" sh -exc '
+        timeout=60
+        while [ "$timeout" -gt 0 ]; do
+            timeout="$((timeout - 5))"
+            sleep 5
+            DISPLAY="`croutoncycle display`"
+            if [ "$DISPLAY" != "aura" -a "$DISPLAY" != ":0" ]; then
+                break
+            fi
+        done
         # Test croutoncycle as a bonus
-        export DISPLAY="`croutoncycle display`"
         if [ "$DISPLAY" = ":0" -o "$DISPLAY" = "aura" ]; then
             echo "Invalid display ($DISPLAY)." 1>&2
             exit 1
         fi
+        # Let WM/DE settle, then play xte sequence
+        sleep 30
+        export DISPLAY
         if [ -n "'"$xte"'" ]; then
             echo "'"$xte"'" | tr ";" "\n" | xte
-            sleep 60
         fi
-        # Snapshot!
+        # Let WM/DE settle again
+        sleep 30
+        # Snapshot! We use xwd, as import does not snapshot obscured windows
+        # correctly (dialogs end up as black squares)
         xwd -root | convert -quality 75 xwd:- ~/"screenshot-'"$target"'.jpg"'
 
     mv "$PREFIX/chroots/$release/home/test/screenshot-$target.jpg" \
