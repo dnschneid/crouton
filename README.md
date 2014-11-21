@@ -47,6 +47,9 @@ to the rest of Chromium OS.
 Prerequisites
 -------------
 You need a device running Chromium OS that has been switched to developer mode.
+
+**How to enter developer mode?** Go to  [http://goo.gl/r4Qe4O](http://goo.gl/r4Qe4O) and click on your device model, then you will see the instruction.
+
 Note that developer mode, in its default configuration, is *completely
 insecure*, so don't expect a password in your chroot to keep anyone from your
 data. crouton does support encrypting chroots, but the encryption is only as
