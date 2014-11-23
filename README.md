@@ -213,7 +213,7 @@ inside the chroot (if possible).
 I want to be a Contributor!
 ---------------------------
 That's great!  But before your code can be merged, you'll need to have signed
-the [Individual Contributor License Agreement](https://developers.google.com/open-source/cla/individual#sign-electronically).
+the [Individual Contributor License Agreement](https://cla.developers.google.com/clas/new?kind=KIND_INDIVIDUAL&domain=DOMAIN_GOOGLE).
 Don't worry, it only takes a minute and you'll definitely get to keep your
 firstborn, probably.  If you've already signed it for contributing to Chromium
 or Chromium OS, you're already done.
