@@ -8,9 +8,12 @@
 # Tests numbering is categorical in 10's by the following guide:
 #   0*: meta-tests, e.g. tester
 #   1*: core tests, e.g. basic, background, upgrade
-#   2*: small-target/tech tests, e.g. cli-extra, audio
+#   3*: small-target/tech tests, e.g. cli-extra, audio
 #   5*: DE tests, e.g. xfce, xbmc
 #   9*: misc application tests, e.g. chrome
+# Alphabetic tests are long, and not run by default:
+#   w*: Start all DE/wm, and take snapshots
+#   x*: Install test all targets that do not have tests
 # Numbering within a category is arbitrary and can have overlaps.
 # Tests are always run in alphanumeric order unless specified by parameters.
 
@@ -111,7 +114,30 @@ logto() {
     local AWK='mawk -W interactive'
     # srand() uses system time as seed but returns previous seed. Call it twice.
     ((((ret=0; TRAP=''
-        ( release="$2" . "$1" ) </dev/null 3>&- || ret=$?
+        (
+            PREFIX="`mktemp -d --tmpdir="$PREFIXROOT" "$tname.XXX"`"
+            # Remount noexec/etc to make the environment as harsh as possible
+            mount --bind "$PREFIX" "$PREFIX"
+            mount -i -o remount,nosuid,nodev,noexec "$PREFIX"
+
+            # Get subshell pid
+            pid="`sh -c 'echo $PPID'`"
+
+            # Clean up on exit
+            settrap "
+                set -x
+                echo Running trap...
+                if [ -d '$PREFIX/chroots' ]; then
+                    sh -e '$SCRIPTDIR/host-bin/unmount-chroot' \
+                        -a -f -y -c '$PREFIX/chroots'
+                fi
+                # Kill any leftover subprocess
+                pkill -9 -P '$pid'
+                umount -l '$PREFIX'
+                rm -rf --one-file-system '$PREFIX'
+            "
+            release="$2" . "$1"
+        ) </dev/null 3>&- || ret=$?
         sleep 1
         if [ "$ret" = 0 ]; then
             log "TEST PASSED: $retpreamble $ret"
@@ -210,12 +236,12 @@ bootstrap() {
     echo "$file"
 
     # Use flock so that bootstrap can be called in parallel
-    if ! flock -n 3; then
+    if ! flock -n 4; then
         log "Waiting for bootstrap for $1 to complete..."
-        flock 3
+        flock 4
     elif [ ! -s "$file" ]; then
         crouton -r "$1" -f "$file" -d 1>&2
-    fi 3>>"$file"
+    fi 4>>"$file"
 
     if [ ! -s "$file" ]; then
         log "FAIL due to incomplete bootstrap for $1"
@@ -235,14 +261,14 @@ snapshot() {
     local name="${3:-"$1"}"
 
     # Use flock so that snapshot can be called in parallel
-    if ! flock -n 3; then
+    if ! flock -n 4; then
         log "Waiting for snapshot for $1-$targets to complete..."
-        flock 3
+        flock 4
     elif [ ! -s "$file" ]; then
         crouton -f "`bootstrap "$1"`" -t "$targets" -n "$name" 1>&2
         host edit-chroot -y -b -f "$file" "$name"
         return 0
-    fi 3>>"$file"
+    fi 4>>"$file"
 
     # Restore the snapshot into place
     crouton -f "$file" -n "$name"
@@ -376,6 +402,26 @@ SyntaxError: invalid syntax" 1>&2
         eval "$script"
     done
     return 0
+}
+
+# Ensures only one test can play with graphics at one time
+# Run it without parameters, in a subshell. The lock will be released when
+# the subshell exits
+vtlock() {
+    local vtlockfile='/var/lock/croutonvt'
+    exec 4>>"$vtlockfile"
+    if ! flock -n 4; then
+        log 'Waiting for VT lock...'
+        flock 4
+    fi
+}
+
+# Runs the provided command under vtlock
+vtlockrun() {
+    (
+        vtlock
+        "$@" || return $?
+    )
 }
 
 # Default responses to questions
@@ -526,19 +572,6 @@ while true; do
     tname="${t##*/}.$rel.$try"
     # Run the test
     (
-        PREFIX="`mktemp -d --tmpdir="$PREFIXROOT" "$tname.XXX"`"
-        # Remount PREFIX noexec/etc to make the environment as harsh as possible
-        mount --bind "$PREFIX" "$PREFIX"
-        mount -i -o remount,nosuid,nodev,noexec "$PREFIX"
-        # Clean up on exit
-        settrap "
-            if [ -d '$PREFIX/chroots' ]; then
-                sh -e '$SCRIPTDIR/host-bin/unmount-chroot' \
-                    -a -y -c '$PREFIX/chroots'
-            fi
-            umount -l '$PREFIX'
-            rm -rf --one-file-system '$PREFIX'
-        "
         if ! logto "$TESTDIR/$tname" "$t" "$rel" "$try"; then
             if [ "$((try+1))" -lt "$MAXTRIES" ]; then
                 # Test failed, try again...
