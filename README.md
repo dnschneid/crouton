@@ -48,10 +48,10 @@ Prerequisites
 -------------
 You need a device running Chromium OS that has been switched to developer mode.
 
-For instructions on how to do that, go to [this Chromium OS wiki
-page](http://www.chromium.org/chromium-os/developer-information-for-
-chrome-os-devices), click on your device model and follow the steps in
-the *Entering Developer Mode* section.
+For instructions on how to do that, go to [this Chromium OS wiki page]
+(http://www.chromium.org/chromium-os/developer-information-for-chrome-os-devices),
+click on your device model and follow the steps in the *Entering Developer Mode*
+section.
 
 Note that developer mode, in its default configuration, is *completely
 insecure*, so don't expect a password in your chroot to keep anyone from your
