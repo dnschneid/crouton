@@ -213,7 +213,9 @@ Running another OS in a chroot is a pretty messy technique (although it's hidden
 behind very pretty scripts), and these scripts are relatively new, so problems
 are not surprising. Check the issue tracker and file a bug if your issue isn't
 there. When filing a new bug, include the output of `croutonversion` run from
-inside the chroot (if possible).
+inside the chroot or, if you cannot mount your chroot, include the output
+of `cat
+/etc/lsb-release` in the Crosh shell.
 
 
 I want to be a Contributor!
