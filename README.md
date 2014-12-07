@@ -105,7 +105,8 @@ Examples
   6. Exit the chroot by logging out of Xfce.
 
 ### With encryption!
-  1. Add the `-e` parameter when you run crouton to create an encrypted chroot.
+  1. Add the `-e` parameter when you run crouton to create an encrypted chroot
+     or encrypt a non-encrypted chroot.
   2. You can get some extra protection on your chroot by storing the decryption
      key separately from the place the chroot is stored. Use the `-k` parameter
      to specify a file or directory to store the keys in (such as a USB drive or
@@ -131,7 +132,6 @@ Examples
      to see what those parameters actually do).
   2. Exit the chroot and run `sudo sh ~/Downloads/crouton -u -n chrootname`.
      It will update all installed targets.
-  3. You can use this with `-e` to encrypt a non-encrypted chroot, but make sure
      you don't interrupt the operation.
 
 ### A backup a day keeps the price-gouging data restoration services away
