@@ -190,7 +190,7 @@ Tips
   * Chroots are cheap! Create multiple ones using `-n`, break them, then make
     new, better ones!
   * You can change the distro mirror from the default by using `-m`
-  * Behind a proxy? `-P` lets you specify one.
+  * Want to use a proxy? `-P` lets you specify one (or disable it).
   * A script is installed in your chroot called `brightness`. You can assign
     this to keyboard shortcuts to adjust the brightness of the screen (e.g.
     `brightness up`) or keyboard (e.g. `brightness k down`).
