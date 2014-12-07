@@ -106,8 +106,7 @@ Examples
 
 ### With encryption!
   1. Add the `-e` parameter when you run crouton to create an encrypted chroot
-     or encrypt a non-encrypted chroot, but make sure you don't interrupt the
-     intergration.
+     or encrypt a non-encrypted chroot.
   2. You can get some extra protection on your chroot by storing the decryption
      key separately from the place the chroot is stored. Use the `-k` parameter
      to specify a file or directory to store the keys in (such as a USB drive or
@@ -214,8 +213,7 @@ behind very pretty scripts), and these scripts are relatively new, so problems
 are not surprising. Check the issue tracker and file a bug if your issue isn't
 there. When filing a new bug, include the output of `croutonversion` run from
 inside the chroot or, if you cannot mount your chroot, include the output
-of `cat
-/etc/lsb-release` from Crosh.
+of `cat /etc/lsb-release` from Crosh.
 
 
 I want to be a Contributor!
