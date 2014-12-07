@@ -53,6 +53,9 @@ Options:
                 directory, or an absolute path to move it entirely.
                 DEST can be a directory, in which case it must end in a slash.
                 If multiple chroots are specified, DEST must be a directory.
+                If you are moving a chroot to a SD card/USB drive, make sure the
+                storage is formatted to one of the types that work. See
+                http://goo.gl/ptmfH6
     -r          Restores a chroot from a tarball. The tarball path can be
                 specified with -f or detected from name. If both are specified,
                 restores to that name instead of the one in the tarball.
