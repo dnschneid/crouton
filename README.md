@@ -251,7 +251,8 @@ But how?
 There's a way For Everyone to help!
 
   * Something broken? File a bug! Bonus points if you try to fix it. It helps if
-    you provide the output of `croutonversion` when you submit the bug.
+    you provide the output of `croutonversion`(Or the output of
+    `cat /etc/lsb-release` from Crosh) when you submit the bug.
   * Want to try and break something? Look through [requests for testing](https://github.com/dnschneid/crouton/issues?labels=needstesting&state=open)
     and then do your best to brutally rip the author's work to shreds.
   * Look through [open issues](https://github.com/dnschneid/crouton/issues?state=open)
