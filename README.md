@@ -215,7 +215,7 @@ are not surprising. Check the issue tracker and file a bug if your issue isn't
 there. When filing a new bug, include the output of `croutonversion` run from
 inside the chroot or, if you cannot mount your chroot, include the output
 of `cat
-/etc/lsb-release` in the Crosh shell.
+/etc/lsb-release` from Crosh.
 
 
 I want to be a Contributor!
