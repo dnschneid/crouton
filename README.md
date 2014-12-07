@@ -106,7 +106,8 @@ Examples
 
 ### With encryption!
   1. Add the `-e` parameter when you run crouton to create an encrypted chroot
-     or encrypt a non-encrypted chroot.
+     or encrypt a non-encrypted chroot, but make sure you don't interrupt the
+     intergration.
   2. You can get some extra protection on your chroot by storing the decryption
      key separately from the place the chroot is stored. Use the `-k` parameter
      to specify a file or directory to store the keys in (such as a USB drive or
@@ -132,7 +133,6 @@ Examples
      to see what those parameters actually do).
   2. Exit the chroot and run `sudo sh ~/Downloads/crouton -u -n chrootname`.
      It will update all installed targets.
-     you don't interrupt the operation.
 
 ### A backup a day keeps the price-gouging data restoration services away
   1. `sudo edit-chroot -b chrootname` backs up your chroot to a timestamped
@@ -251,7 +251,7 @@ But how?
 There's a way For Everyone to help!
 
   * Something broken? File a bug! Bonus points if you try to fix it. It helps if
-    you provide the output of `croutonversion`(Or the output of
+    you provide the output of `croutonversion` (or the output of
     `cat /etc/lsb-release` from Crosh) when you submit the bug.
   * Want to try and break something? Look through [requests for testing](https://github.com/dnschneid/crouton/issues?labels=needstesting&state=open)
     and then do your best to brutally rip the author's work to shreds.
