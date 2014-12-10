@@ -1,0 +1,13 @@
+<!-- Copyright (c) 2014 The crouton Authors. All rights reserved.           -->
+<!-- Use of this source code is governed by a BSD-style license that can be -->
+<!-- found in the LICENSE file.                                             -->
+<!--                                                                        -->
+<!-- Keymappings xbmc for ctr-shift-alt F1/F2 to switch between chroots     -->
+<keymap>
+  <global>
+    <keyboard>
+     <f1 mod="ctrl,alt,shift">RunScript(/etc/crouton/xbmc-cycle.py,prev)</f1>
+     <f2 mod="ctrl,alt,shift">RunScript(/etc/crouton/xbmc-cycle.py,next)</f2>
+   </keyboard>
+  </global>
+</keymap>
