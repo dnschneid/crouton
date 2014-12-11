@@ -5,13 +5,12 @@
 #
 # Python script to call croutoncycle. This is needed to let the 
 # hotkeys ctr-shift-alt F1/F2 work when xbmc is in fullscreen.
-import os
+import subprocess
 import sys
-try:
-  arg = str(sys.argv[1])
-except:
-  arg = ""
-if arg in ("prev", "next"):
-  os.system("/usr/local/bin/croutoncycle %s" % arg)
+
+if len(sys.argv) == 2 and sys.argv[1] in ("prev", "next"):
+  exitcode = subprocess.call(["/usr/local/bin/croutoncycle", sys.argv[1]])
 else:
-  print ("Usage: %s prev|next" % str(sys.argv[0]))
+  sys.stderr.write("Usage: %s prev|next\n" % str(sys.argv[0]))
+  exitcode = 2
+sys.exit(exitcode)
