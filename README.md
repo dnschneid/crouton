@@ -165,7 +165,8 @@ Examples
   3. Include the `-r` parameter if you want to specify for which release to
      prepare a bootstrap.
   4. You can then create chroots using the tarball by running
-     `sudo sh ~/Downloads/crouton -f ~/Downloads/mybootstrap.tar.bz2`
+     `sudo sh ~/Downloads/crouton -f ~/Downloads/mybootstrap.tar.bz2`. Make sure 
+      you also specify the target environment with `-t`.
 
 *This is the quickest way to create multiple chroots at once, since you won't
 have to determine and download the bootstrap files every time.*
