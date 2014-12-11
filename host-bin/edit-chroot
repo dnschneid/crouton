@@ -10,6 +10,8 @@ ALLCHROOTS=''
 BACKUP=''
 BINDIR="`dirname "\`readlink -f "$0"\`"`"
 CHROOTS="`readlink -m "$BINDIR/../chroots"`"
+CHROOTSSET=''
+MOUNTPOINT='/var/crouton'
 DELETE=''
 ENCRYPT=''
 KEYFILE=''
@@ -70,7 +72,7 @@ while getopts 'abc:def:k:lm:ry' f; do
     case "$f" in
     a) ALLCHROOTS='y';;
     b) BACKUP='y';;
-    c) CHROOTS="`readlink -m "$OPTARG"`";;
+    c) CHROOTS="`readlink -m "$OPTARG"`"; CHROOTSSET='y';;
     d) DELETE='y';;
     e) ENCRYPT='y';;
     f) TARBALL="$OPTARG";;
@@ -146,6 +148,13 @@ fi
 # We need to run as root
 if [ ! "$USER" = root -a ! "$UID" = 0 ]; then
     error 2 "$APPLICATION must be run as root."
+fi
+
+# Try to mount the crouton partition if it exists, CHROOTS has not been set
+# manually, and this script base directory is /usr/local/bin.
+if [ -z "$CHROOTSSET" -a "$BINDIR" = "/usr/local/bin" ] && \
+        mountcrouton "$MOUNTPOINT"; then
+    CHROOTS="$MOUNTPOINT/chroots"
 fi
 
 # If we're restoring and specified a tarball and no name, detect the name.
