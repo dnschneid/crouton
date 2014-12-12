@@ -12,8 +12,13 @@ HOSTBIN='startnwm'
 install curl build-essential libx11-dev libxinerama-dev
 # Use https://github.com/nodesource/distributions to install a system nodejs
 curl -sL https://deb.nodesource.com/setup | bash -
+# Now install the package
+install nodejs
 # Update the npm version
 npm install -g npm
+# set USERPROFILE rather than HOME to avoid messing with other stuff
+# node-gyp just needs this to proceed, even if it actually cannot write in the path
+export USERPROFILE=/root
 # Install nwm
 npm install -g nwm
 
