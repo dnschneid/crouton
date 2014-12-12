@@ -1,0 +1,22 @@
+#!/bin/sh -e
+# Copyright (c) 2014 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+REQUIRES='gtk-extra'
+DESCRIPTION='Installs X11, node.js and the nwm window manager'
+HOSTBIN='startnwm'
+. "${TARGETSDIR:="$PWD"}/common"
+
+### Append to prepare.sh:
+
+install curl build-essential libx11-dev libxinerama-dev
+# Use https://github.com/nodesource/distributions to install a system nodejs
+curl -sL https://deb.nodesource.com/setup | bash -
+# Update the npm version
+npm install -g npm
+# Install nwm
+npm install -g nwm
+
+TIPS="$TIPS
+You can start nwm via the startnwm host command: sudo startnwm
+"
