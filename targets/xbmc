@@ -23,7 +23,7 @@ echo '#!/bin/sh
 
 keyboardxmldir="$HOME/.xbmc/userdata/keymaps"
 # Do not install if user is root, or $HOME does not exist
-if [ "`id -u`" -ne 0 -a -d "$HOME" -a ! -e "$keyboardxmldir" ]; then
+if [ "`id -u`" -ne 0 -a -d "$HOME" -a ! -e "$keyboardxmldir/keyboard.xml" ]; then
     mkdir -p "$keyboardxmldir"
     ln -sfT /etc/crouton/xbmc-keyboard.xml "$keyboardxmldir/keyboard.xml"
 fi' > "$profiledsh"
