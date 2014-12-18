@@ -53,6 +53,7 @@ elif [ "${DISTROAKA:-"$DISTRO"}" = 'arch' ]; then
     groups="$groups,users,wheel"
     if [ ! -e /etc/sudoers.d/00-wheel ]; then
         echo '%wheel ALL=(ALL) ALL' > /etc/sudoers.d/00-wheel
+        chmod 440 /etc/sudoers.d/00-wheel
     fi
 fi
 
