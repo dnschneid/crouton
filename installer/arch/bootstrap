@@ -21,7 +21,7 @@ fi
 # to list them manually:
 # - bash provides sh
 # - gawk provides awk
-PACKAGES_BOOTSTRAP="bash gawk pacman grep util-linux"
+PACKAGES_BOOTSTRAP="bash gawk grep pacman sed util-linux"
 
 LIST="$tmp/list"
 FETCHDIRDB="$tmp/db"
