@@ -2,7 +2,7 @@
 # Copyright (c) 2014 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-REQUIRES='gtk-extra'
+REQUIRES='x11'
 DESCRIPTION='Installs X11, node.js and the nwm window manager'
 HOSTBIN='startnwm'
 . "${TARGETSDIR:="$PWD"}/common"
