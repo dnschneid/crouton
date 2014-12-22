@@ -224,6 +224,10 @@ else
     if [ "${dest#[1-9]}" = "$dest" ]; then
         dest='1'
     fi
+    # When the destination we are changing to is using fbdev driver in X,
+    # we need first a change to vt 2, else only the session switches
+    # and the display will be stuck on the old vt.
+    sudo -n chvt 2    
     sudo -n chvt "$dest"
 fi
 
