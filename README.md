@@ -105,7 +105,8 @@ Examples
   6. Exit the chroot by logging out of Xfce.
 
 ### With encryption!
-  1. Add the `-e` parameter when you run crouton to create an encrypted chroot.
+  1. Add the `-e` parameter when you run crouton to create an encrypted chroot
+     or encrypt a non-encrypted chroot.
   2. You can get some extra protection on your chroot by storing the decryption
      key separately from the place the chroot is stored. Use the `-k` parameter
      to specify a file or directory to store the keys in (such as a USB drive or
@@ -131,8 +132,6 @@ Examples
      to see what those parameters actually do).
   2. Exit the chroot and run `sudo sh ~/Downloads/crouton -u -n chrootname`.
      It will update all installed targets.
-  3. You can use this with `-e` to encrypt a non-encrypted chroot, but make sure
-     you don't interrupt the operation.
 
 ### A backup a day keeps the price-gouging data restoration services away
   1. `sudo edit-chroot -b chrootname` backs up your chroot to a timestamped
@@ -166,7 +165,8 @@ Examples
   3. Include the `-r` parameter if you want to specify for which release to
      prepare a bootstrap.
   4. You can then create chroots using the tarball by running
-     `sudo sh ~/Downloads/crouton -f ~/Downloads/mybootstrap.tar.bz2`
+     `sudo sh ~/Downloads/crouton -f ~/Downloads/mybootstrap.tar.bz2`. Make sure 
+      you also specify the target environment with `-t`.
 
 *This is the quickest way to create multiple chroots at once, since you won't
 have to determine and download the bootstrap files every time.*
@@ -190,7 +190,7 @@ Tips
   * Chroots are cheap! Create multiple ones using `-n`, break them, then make
     new, better ones!
   * You can change the distro mirror from the default by using `-m`
-  * Behind a proxy? `-P` lets you specify one.
+  * Want to use a proxy? `-P` lets you specify one (or disable it).
   * A script is installed in your chroot called `brightness`. You can assign
     this to keyboard shortcuts to adjust the brightness of the screen (e.g.
     `brightness up`) or keyboard (e.g. `brightness k down`).
@@ -213,7 +213,8 @@ Running another OS in a chroot is a pretty messy technique (although it's hidden
 behind very pretty scripts), and these scripts are relatively new, so problems
 are not surprising. Check the issue tracker and file a bug if your issue isn't
 there. When filing a new bug, include the output of `croutonversion` run from
-inside the chroot (if possible).
+inside the chroot or, if you cannot mount your chroot, include the output
+of `cat /etc/lsb-release` from Crosh.
 
 
 I want to be a Contributor!
@@ -249,7 +250,8 @@ But how?
 There's a way For Everyone to help!
 
   * Something broken? File a bug! Bonus points if you try to fix it. It helps if
-    you provide the output of `croutonversion` when you submit the bug.
+    you provide the output of `croutonversion` (or the output of
+    `cat /etc/lsb-release` from Crosh) when you submit the bug.
   * Want to try and break something? Look through [requests for testing](https://github.com/dnschneid/crouton/issues?labels=needstesting&state=open)
     and then do your best to brutally rip the author's work to shreds.
   * Look through [open issues](https://github.com/dnschneid/crouton/issues?state=open)
