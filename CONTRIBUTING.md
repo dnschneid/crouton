@@ -1,5 +1,6 @@
 ##For users who want to report an issue
-Please read [this wiki page](https://github.com/dnschneid/crouton/wiki/Common-issues-and-reporting)
+Please read [this wiki page]
+(https://github.com/dnschneid/crouton/wiki/Common-issues-and-reporting)
 for instructions on reporting an issue.
 
 ##For contributors
