@@ -2,8 +2,12 @@
 # Copyright (c) 2014 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-if [ -z "$TARGETNOINSTALL" -a "${ARCH#arm}" != "$ARCH" ]; then
-    error 1 'xorg target does not work on ARM.'
+if [ -z "$TARGETNOINSTALL" ]; then
+    if [ -f /sbin/frecon ]; then
+        error 1 'xorg target does not yet work with Freon.'
+    elif [ "${ARCH#arm}" != "$ARCH" ]; then
+        error 1 'xorg target does not work on ARM.'
+    fi
 fi
 REQUIRES='audio'
 PROVIDES='x11'
