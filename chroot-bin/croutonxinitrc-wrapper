@@ -43,8 +43,10 @@ else
 fi
 
 # Run crouton-specific commands:
-xmethod="`readlink -f '/etc/X11/xinit/xserverrc'`"
-xmethod="${xmethod##*-}"
+if [ -z "$XMETHOD" ]; then
+    XMETHOD="`readlink -f '/etc/X11/xinit/xserverrc'`"
+    export XMETHOD="${XMETHOD##*-}"
+fi
 
 # Record the name of the chroot in the root window properties
 if [ -f '/etc/crouton/name' ] && hash xprop 2>/dev/null; then
@@ -52,7 +54,7 @@ if [ -f '/etc/crouton/name' ] && hash xprop 2>/dev/null; then
 fi
 
 # Record the crouton XMETHOD in the root window properties
-xprop -root -f CROUTON_XMETHOD 8s -set CROUTON_XMETHOD "$xmethod"
+xprop -root -f CROUTON_XMETHOD 8s -set CROUTON_XMETHOD "$XMETHOD"
 
 # Launch the powerd poker daemon
 croutonpowerd --daemon &
@@ -63,7 +65,7 @@ if hash croutonclip 2>/dev/null; then
 fi
 
 # Pass through the host cursor and correct mousewheels on xephyr
-if [ "$xmethod" = 'xephyr' ]; then
+if [ "$XMETHOD" = 'xephyr' ]; then
     host-x11 croutoncursor "$DISPLAY" &
     if [ -z "$CROUTON_WHEEL_PARAMS" -a -r "$HOME/.croutonwheel" ]; then
         CROUTON_WHEEL_PARAMS="`head -n1 "$HOME/.croutonwheel"`"
@@ -72,14 +74,14 @@ if [ "$xmethod" = 'xephyr' ]; then
 fi
 
 # xbindkeys and other input-related apps are not needed for kiwi
-if [ "$xmethod" != "xiwi" ]; then
+if [ "$XMETHOD" != "xiwi" ]; then
     # Apply the Chromebook keyboard map if installed.
     if [ -f '/usr/share/X11/xkb/compat/chromebook' ]; then
         setxkbmap -model chromebook
     fi
 
     # Launch key binding daemon
-    XMETHOD="$xmethod" xbindkeys -fg /etc/crouton/xbindkeysrc.scm
+    xbindkeys -fg /etc/crouton/xbindkeysrc.scm
 
     # Launch xbindkeys for the Chromium OS X server if it isn't running
     mkdir -m 775 -p /tmp/crouton-lock
@@ -121,7 +123,7 @@ if [ "$xmethod" != "xiwi" ]; then
 fi
 
 # Crouton-in-a-tab: Start fbserver and launch display
-if [ "$xmethod" = 'xiwi' ]; then
+if [ "$XMETHOD" = 'xiwi' ]; then
     # Set resolution to a default 1024x768, this is important so that the DPI
     # looks reasonable when the WM/DE start.
     setres 1024 768 > /dev/null

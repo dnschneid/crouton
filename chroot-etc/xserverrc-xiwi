@@ -11,7 +11,7 @@ for arg in "$@"; do
     fi
 done
 
-XMETHOD='xiwi'
+export XMETHOD='xiwi'
 XARGS="-nolisten tcp -config xorg-dummy.conf -logfile $logfile"
 if [ -f /etc/crouton/xserverrc-local ]; then
     . /etc/crouton/xserverrc-local
