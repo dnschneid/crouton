@@ -2,7 +2,7 @@
 # Copyright (c) 2014 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-if [ -z "$TARGETNOINSTALL" -a -f /sbin/frecon ]; then
+if [ "${TARGETNOINSTALL:-c}" = 'c' -a -f /sbin/frecon ]; then
     error 1 'xephyr target does not work with Freon. Use xiwi instead.'
 fi
 REQUIRES='audio'
