@@ -5,7 +5,11 @@
 
 # All supported releases should be able to launch an xephyr server
 if [ -z "$release" ]; then
-    echo "all"
+    if [ -f /sbin/frecon ]; then
+        log "xephyr doesn't work with Freon. Skipping test."
+    else
+        echo "all"
+    fi
     exit 0
 fi
 
