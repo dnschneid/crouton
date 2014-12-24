@@ -402,44 +402,35 @@ int write_image(const struct screen* screen) {
     trueorabort(size == screen->width*screen->height*4,
                 "Invalid screen byte count");
 
-    if (screen->shm) {
-        struct cache_entry* entry = find_shm(screen->paddr, screen->sig, size);
+    trueorabort(screen->shm, "Non-SHM rendering is not supported");
 
-        reply->shm = 1;
-        reply->updated = 1;
-        reply->shmfailed = 0;
+    struct cache_entry* entry = find_shm(screen->paddr, screen->sig, size);
 
-        if (entry && entry->map) {
-            if (size == entry->length) {
-                memcpy(entry->map, img->data, size);
-                msync(entry->map, size, MS_SYNC);
-            } else {
-                /* This should never happen (it means the client passed an
-                 * outdated buffer to us). */
-                error("Invalid shm entry length (client bug!).");
-                reply->shmfailed = 1;
-            }
+    reply->shm = 1;
+    reply->updated = 1;
+    reply->shmfailed = 0;
+
+    if (entry && entry->map) {
+        if (size == entry->length) {
+            memcpy(entry->map, img->data, size);
+            msync(entry->map, size, MS_SYNC);
         } else {
-            /* Keep the flow going, even if we cannot find the shm. Next time
-             * the NaCl client reallocates the buffer, we are likely to be able
-             * to find it. */
-            error("Cannot find shm, moving on...");
+            /* This should never happen (it means the client passed an
+             * outdated buffer to us). */
+            error("Invalid shm entry length (client bug!).");
             reply->shmfailed = 1;
         }
-
-        /* Confirm write is done */
-        socket_client_write_frame(reply_raw, sizeof(*reply),
-                                  WS_OPCODE_BINARY, 1);
     } else {
-        trueorabort(0, "Non-SHM path is currently broken!");
-        /* Confirm write is done */
-        reply->shm = 0;
-        reply->updated = 1;
-        socket_client_write_frame(reply_raw, sizeof(*reply),
-                                  WS_OPCODE_BINARY, 0);
-        /* FIXME: This is broken with current API... */
-        socket_client_write_frame(img->data, size, WS_OPCODE_BINARY, 1);
+        /* Keep the flow going, even if we cannot find the shm. Next time
+         * the NaCl client reallocates the buffer, we are likely to be able
+         * to find it. */
+        error("Cannot find shm, moving on...");
+        reply->shmfailed = 1;
     }
+
+    /* Confirm write is done */
+    socket_client_write_frame(reply_raw, sizeof(*reply),
+                              WS_OPCODE_BINARY, 1);
 
     return 0;
 }
