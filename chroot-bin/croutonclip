@@ -10,36 +10,18 @@ VERBOSE=''
 
 . "`dirname "$0"`/../installer/functions"
 
-PIPEDIR='/tmp/crouton-ext'
-PIPEIN="$PIPEDIR/in"
-PIPEOUT="$PIPEDIR/out"
-PIPELOCK="$PIPEDIR/lock"
-
-# Write a command to croutonwebsocket, and read back response
-websocketcommand() {
-    # Check that $PIPEDIR and the FIFO pipes exist
-    if ! [ -d "$PIPEDIR" -a -p "$PIPEIN" -a -p "$PIPEOUT" ]; then
-        echo "EError $PIPEIN or $PIPEOUT are not pipes."
-        exit 0
-    fi
-
-    (
-        flock 5
-        cat > "$PIPEIN"
-        cat "$PIPEOUT"
-    ) 5>"$PIPELOCK"
-}
-
 # rundisplay :X cmd ...
-# Run a command on the specified display (uses host-x11 on :0)
+# Run a command on the specified display
 rundisplay() {
     local disp="$1"
     shift
-    if [ "$disp" = ":0" ]; then
-        host-x11 "$@"
-    else
+    (
+        # If display is :0, setup XAUTHORITY
+        if [ "$disp" = ":0" ]; then
+            eval "`host-x11`" 2>/dev/null
+        fi
         DISPLAY="$disp" "$@"
-    fi
+    )
 }
 
 copyclip() {
@@ -60,7 +42,7 @@ copyclip() {
 
     # Copy clipboard content from the current display
     {
-        if [ "$current" = 'aura' ]; then
+        if [ "$current" = 'cros' ]; then
             echo -n 'R' | websocketcommand
         else
             # Check if display is still running
@@ -81,7 +63,7 @@ copyclip() {
         fi
 
         # Paste clipboard content to the next display
-        if [ "$next" = 'aura' ]; then
+        if [ "$next" = 'cros' ]; then
             STATUS="`(echo -n 'W'; cat) | websocketcommand`"
             if [ "$STATUS" != 'WOK' ]; then
                 # Write failed, skip Chromium OS (do not update $current)
@@ -138,19 +120,16 @@ waitwebsocket() {
 
 # Assume current display is Chromium OS: avoid race as we may not be able to
 # detect the first VT/window change.
-current='aura'
+current='cros'
 
-# Only let one instance *really* run at a time
-PIDFILE='/tmp/crouton-lock/clip'
-
-mkdir -m 775 -p /tmp/crouton-lock
-exec 3>>"$PIDFILE"
+mkdir -m 775 -p "$CROUTONLOCKDIR"
+exec 3>>"$CROUTONLOCKDIR/clip"
 if ! flock -n 3; then
     echo "Another instance of croutonclip running, waiting..."
     flock 3
 fi
 
-addtrap "echo -n > '$PIDFILE' 2>/dev/null"
+addtrap "echo -n > '$CROUTONLOCKDIR/clip' 2>/dev/null"
 
 (
     # This subshell handles USR1 signals from croutoncycle.
@@ -172,7 +151,7 @@ addtrap "echo -n > '$PIDFILE' 2>/dev/null"
     trap "echo 'USR1'" USR1
 
     # Set the PID of this subshell after the trap is in place
-    sh -c 'echo -n "$PPID"' > "$PIDFILE"
+    sh -c 'echo -n "$PPID"' > "$CROUTONLOCKDIR/clip"
 
     # Force an update when started.
     echo "Force"

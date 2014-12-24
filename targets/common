@@ -82,7 +82,8 @@ elif [ -z "$TARGETNOINSTALL" -o -n "$RESTOREHOSTBIN" ]; then
     # Lines with "### append filename" will queue a file to be processed after
     # the current file is done.
     # Lines that start with "compile" will have their source code inserted as a
-    # HERE document.
+    # HERE document. In that case, we also look for local include file, and
+    # insert them as needed.
     t="$TARGET"
     if [ "${t#/}" = "$t" ]; then
         t="$TARGETSDIR/$t"
@@ -103,7 +104,23 @@ elif [ -z "$TARGETNOINSTALL" -o -n "$RESTOREHOSTBIN" ]; then
         }
         src && $NF != substr("\\\\", 1, 1) {
             print $0 " <<EOF"
-            system("cat '\''" src "'\''");
+            while ((getline line < src) > 0) {
+               if (line ~ /^#include \".*\.h\"$/) {
+                   include = line
+                   sub(/^#include \"/, "", include)
+                   sub(/\"$/, "", include)
+                   include = "'"${SRCDIR:-$TARGETSDIR/../src}"'/" include;
+                   print "// BEGIN " include
+                   while ((getline line < include) > 0) {
+                       print line
+                   }
+                   close(include)
+                   print "// END " include
+               } else {
+                   print line
+               }
+            }
+            close(src)
             print "EOF"
             src = "";
             next

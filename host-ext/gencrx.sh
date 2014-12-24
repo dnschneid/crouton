@@ -6,23 +6,32 @@
 # This script generates a crx extension package, and is meant to be used by
 # developers: Users should download the extension from the Web Store.
 #
-# We could leverage on Chrome to build the extension, using something like
-# /opt/google/chrome/chrome --pack-extension=crouton
-# However many versions cannot build the package without crashing:
-#  - 27.0.1453.116 aborts at the end of the process, but the package still
-#    looks fine.
-#  - 28.0.1500.95 aborts before creating the extension.
+# Prerequistes:
+#  - NaCl SDK. Path specified with NACL_SDK_ROOT (e.g. ~/naclsdk/pepper_35)
+#  - zip, openssl
 #
-# This code is loosely based a script found along the CRX file format
+# This code is loosely based on a script found along the CRX file format
 # specification: http://developer.chrome.com/extensions/crx.html
 
+set -e
+
 EXTNAME="crouton"
+CRIAT_PEXE="$EXTNAME/kiwi.pexe"
 
 cd "`dirname "$0"`"
 
 rm -f "$EXTNAME.crx" "$EXTNAME.zip"
 
 trap "rm -f '$EXTNAME.sig' '$EXTNAME.pub'" 0
+
+rm -f "$CRIAT_PEXE"
+# Build NaCl module
+make -C nacl_src clean
+make -C nacl_src
+if [ ! -f "$CRIAT_PEXE" ]; then
+    echo "$CRIAT_PEXE not created as expected" 1>&2
+    exit 1
+fi
 
 # Create zip file
 ( cd $EXTNAME; zip -qr -9 -X "../$EXTNAME.zip" . )
