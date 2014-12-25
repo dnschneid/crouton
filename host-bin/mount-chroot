@@ -141,7 +141,7 @@ for NAME in "$@"; do
         if [ ! -f '/mnt/stateful_partition/etc/devmode.passwd' ]; then
             echo 'You must have a root password in Chromium OS to mount encrypted chroots.' 1>&2
             if [ -z "$CROUTON_PASSPHRASE$CROUTON_NEW_PASSPHRASE" ]; then
-                chromeos-setdevpasswd
+                while ! chromeos-setdevpasswd; do :; done
             fi
         fi
 
