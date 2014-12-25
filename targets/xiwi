@@ -4,7 +4,9 @@
 # found in the LICENSE file.
 REQUIRES='core audio extension'
 PROVIDES='x11'
-DESCRIPTION='X.org X11 backend running unaccelerated in a Chromium OS window.'
+DESCRIPTION='X.org X11 backend running unaccelerated in a Chromium OS window.
+        Please also download the plugin from http://goo.gl/kZbLHk for this
+        target to work.'
 CHROOTBIN='brightness croutoncycle croutonfindnacl croutonpowerd croutonxinitrc-wrapper setres xinit'
 CHROOTETC='xbindkeysrc.scm xorg-dummy.conf xserverrc-xiwi xserverrc-local.example'
 . "${TARGETSDIR:="$PWD"}/common"
