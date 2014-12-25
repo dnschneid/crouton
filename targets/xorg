@@ -12,7 +12,7 @@ fi
 REQUIRES='audio'
 PROVIDES='x11'
 DESCRIPTION='X.Org X11 backend. Enables GPU acceleration on supported platforms.'
-CHROOTBIN='brightness croutoncycle croutonpowerd croutonxinitrc-wrapper setres xinit'
+CHROOTBIN='croutoncycle croutonxinitrc-wrapper setres xinit'
 CHROOTETC='xbindkeysrc.scm xserverrc-x11 xserverrc-local.example'
 . "${TARGETSDIR:="$PWD"}/common"
 
