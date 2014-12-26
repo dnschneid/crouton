@@ -127,6 +127,10 @@ Examples
   2. Add the `extension` or `xiwi` version to your chroot.
   3. Try some copy-pasta, or uninstall all your web browsers from the chroot.
 
+*Installing the extension and its target gives you synchronized clipboards, the
+option of using Chromium OS to handle URLs, and allows chroots to create
+graphical sessions as Chromium OS windows.*
+
 ### I don't always use Linux, but when I do, I use CLI
   1. You can save a chunk of space by ditching X and just installing
      command-line tools using `-t core` or `-t cli-extra`
