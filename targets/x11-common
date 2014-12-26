@@ -8,7 +8,8 @@
 
 ### Append to prepare.sh:
 # Store and apply the X11 method
-ln -sfT "/etc/crouton/xserverrc-$XMETHOD" '/etc/X11/xinit/xserverrc'
+ln -sfT '/etc/crouton/xserverrc' '/etc/X11/xinit/xserverrc'
+echo "$XMETHOD" > '/etc/crouton/xmethod'
 
 # Install utility for croutoncycle
 compile wmtools '-lX11' libx11-dev

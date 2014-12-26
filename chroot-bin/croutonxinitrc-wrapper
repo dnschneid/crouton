@@ -44,8 +44,13 @@ fi
 
 # Run crouton-specific commands:
 if [ -z "$XMETHOD" ]; then
-    XMETHOD="`readlink -f '/etc/X11/xinit/xserverrc'`"
-    export XMETHOD="${XMETHOD##*-}"
+    if [ -f '/etc/crouton/xmethod' ]; then
+        read XMETHOD _ < /etc/crouton/xmethod
+        export XMETHOD
+    else
+        echo 'X11 backend not set.' 1>&2
+        exit 1
+    fi
 fi
 
 # Record the name of the chroot in the root window properties

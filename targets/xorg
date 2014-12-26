@@ -13,11 +13,14 @@ REQUIRES='audio'
 PROVIDES='x11'
 DESCRIPTION='X.Org X11 backend. Enables GPU acceleration on supported platforms.'
 CHROOTBIN='croutoncycle croutonxinitrc-wrapper setres xinit'
-CHROOTETC='xbindkeysrc.scm xserverrc-x11 xserverrc-local.example'
+CHROOTETC='xbindkeysrc.scm xserverrc xserverrc-xorg xserverrc-local.example'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
-XMETHOD="${XMETHOD:-x11}"
+XMETHOD="${XMETHOD:-xorg}"
+
+# Migration from ambiguous XMETHOD
+rm -f '/etc/crouton/xserverrc-x11'
 
 # On precise, install lts-trusty xorg server to support newer hardware if kernel
 # version != 3.4 (lts-trusty mesa requires version >=3.6)
