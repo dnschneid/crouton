@@ -7,4 +7,4 @@ DESCRIPTION='Installs LXDE along with common applications. (Approx. 800MB)'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
-install lubuntu-desktop -- network-manager
+install ubuntu=lubuntu-desktop,task-lxde-desktop -- network-manager

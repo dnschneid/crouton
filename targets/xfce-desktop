@@ -7,4 +7,4 @@ DESCRIPTION='Installs Xfce along with common applications. (Approx. 1200MB)'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
-install xubuntu-desktop -- network-manager xorg
+install ubuntu=xubuntu-desktop,task-xfce-desktop -- network-manager xorg
