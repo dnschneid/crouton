@@ -309,7 +309,7 @@ if [ -z "$DOWNLOADONLY" ]; then
             exit 2
         elif [ ! "${TARGET%common}" = "$TARGET" ] || \
              [ ! -r "$TARGETSDIR/$TARGET" ] || \
-             ! (TARGETNOINSTALL='c'; . "$TARGETSDIR/$TARGET"); then
+             ! (TARGETNOINSTALL="${UPDATE:-c}"; . "$TARGETSDIR/$TARGET"); then
             error 2 "Invalid target \"$TARGET\"."
         fi
     done
