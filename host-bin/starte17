@@ -14,5 +14,6 @@ By default, it will log into the primary user on the first chroot found.
 
 Options are directly passed to enter-chroot; run enter-chroot to list them."
 
+chvt 1 2>/dev/null || true
 exec sh -e "`dirname "\`readlink -f "$0"\`"`/enter-chroot" -t e17 "$@" "" \
     exec xinit /usr/bin/enlightenment_start
