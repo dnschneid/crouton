@@ -33,17 +33,17 @@ Options:
 . "$BINDIR/../installer/functions"
 
 # Process arguments
-while getopts 'c:ek:np' f; do
-    case "$f" in
-    c) CHROOTS="`readlink -m "$OPTARG"`";;
+getopts_string='c:ek:np'
+while getopts_nextarg; do
+    case "$getopts_var" in
+    c) CHROOTS="`readlink -m "$getopts_arg"`";;
     e) ENCRYPT="$((ENCRYPT+1))";;
-    k) KEYFILE="$OPTARG";;
+    k) KEYFILE="$getopts_arg";;
     n) CREATE='y';;
     p) PRINT='y';;
     \?) error 2 "$USAGE";;
     esac
 done
-shift "$((OPTIND-1))"
 
 # Need at least one chroot listed
 if [ $# = 0 ]; then

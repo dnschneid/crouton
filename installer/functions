@@ -68,6 +68,43 @@ undotrap() {
     settrap "$TRAP"
 }
 
+# Works mostly like built-in getopts but silently coalesces positional arguments.
+# Does not take parameters. Set getopts_string prior to calling.
+# Sets getopts_var and getopts_arg.
+# $@ will be left with the positional arguments, so you should NOT shift at all.
+# In bash, enables alias expansion, but that shouldn't impact anything.
+shopt -q -s expand_aliases 2>/dev/null || true
+# Running count of the number of positional arguments
+# We're done processing if all of the remaining arguments are positional.
+getopts_npos=0
+getopts_dashdash=''
+alias getopts_nextarg='getopts_ret=1
+    while [ "$#" -gt "$getopts_npos" ]; do
+        OPTIND=1
+        if [ -z "$getopts_dashdash" ] && getopts "$getopts_string" getopts_var; then
+            shift "$((OPTIND-1))"
+            if [ "$#" -lt "$getopts_npos" ]; then
+                # Bad parameter usage ate a positional argument.
+                # Generate the proper error message by abusing getopts.
+                set -- "-$getopts_var"
+                getopts "$getopts_var:" getopts_var
+                shift
+            fi
+            getopts_arg="$OPTARG"
+            getopts_ret=0
+            break
+        fi
+        if [ "$1" = "--" ]; then
+            # Still need to loop through to fix the ordering
+            getopts_dashdash=y
+        else
+            set -- "$@" "$1"
+            getopts_npos="$((getopts_npos+1))"
+        fi
+        shift
+    done
+    [ "$getopts_ret" = 0 ]'
+
 # Compares $RELEASE to the specified releases, assuming $DISTRODIR/releases is
 # sorted oldest to newest. Every two parameters are considered criteria that are
 # ORed together. The first parameter is the comparator, as provided to "test".
