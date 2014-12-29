@@ -455,6 +455,10 @@ Valid chroots:
     CHROOT="`sh "$HOSTBINDIR/mount-chroot" -k "$KEYFILE" \
              $create $ENCRYPT -p -c "$CHROOTS" -- "$NAME"`"
 
+    # Remove the directory if bootstrapping fails
+    addtrap "[ \"\`ls -A '$CHROOTS/$NAME' 2>/dev/null | wc -l\`\" -le 1 ] \
+                && rm -rf '$CHROOTS/$NAME'"
+
     # Auto-unmount the chroot when the script exits
     addtrap "sh '$HOSTBINDIR/unmount-chroot' -y -c '$CHROOTS' -- '$NAME' 2>/dev/null"
 
