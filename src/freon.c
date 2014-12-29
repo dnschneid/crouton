@@ -60,7 +60,6 @@ static int set_display_lock(unsigned int pid) {
             ERROR("No display lock to release.\n");
             return 0;
         }
-        (void) mkdir(LOCK_FILE_DIR, 0777);
         lockfd = orig_open(DISPLAY_LOCK_FILE, O_CREAT | O_WRONLY, 0666);
         if (lockfd == -1) {
             ERROR("Unable to open display lock file.\n");
