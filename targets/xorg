@@ -22,12 +22,14 @@ XMETHOD="${XMETHOD:-xorg}"
 # Migration from ambiguous XMETHOD
 rm -f '/etc/crouton/xserverrc-x11'
 
+ltspackages=''
 # On precise, install lts-trusty xorg server to support newer hardware if kernel
 # version != 3.4 (lts-trusty mesa requires version >=3.6)
 if release -eq precise && ! uname -r | grep -q "^3.4."; then
     # We still install xorg later to pull in its dependencies
     install --minimal xserver-xorg-lts-trusty libgl1-mesa-glx-lts-trusty \
         xserver-xorg-input-synaptics-lts-trusty
+    ltspackages='-lts-trusty'
 fi
 
 # On saucy onwards, if kernel version is 3.4, manually pin down old mesa
@@ -98,7 +100,8 @@ END
     apt-get -y --force-yes --no-install-recommends dist-upgrade -f
 fi
 
-install xorg xserver-xorg-video-fbdev xserver-xorg-video-intel dmz-cursor-theme
+install xorg dmz-cursor-theme \
+    xserver-xorg-video-fbdev$ltspackages xserver-xorg-video-intel$ltspackages
 # Fix launching X11 from inside crosh (user doesn't own a TTY)
 sed -i 's/allowed_users=.*/allowed_users=anybody/' '/etc/X11/Xwrapper.config'
 
