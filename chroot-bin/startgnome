@@ -5,4 +5,4 @@
 
 # Launches GNOME; automatically falls back to gnome-panel
 
-exec gnome-session-wrapper gnome
+exec crouton-noroot gnome-session-wrapper gnome
