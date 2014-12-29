@@ -98,7 +98,7 @@ END
     apt-get -y --force-yes --no-install-recommends dist-upgrade -f
 fi
 
-install xorg dmz-cursor-theme
+install xorg xserver-xorg-video-fbdev xserver-xorg-video-intel dmz-cursor-theme
 # Fix launching X11 from inside crosh (user doesn't own a TTY)
 sed -i 's/allowed_users=.*/allowed_users=anybody/' '/etc/X11/Xwrapper.config'
 
