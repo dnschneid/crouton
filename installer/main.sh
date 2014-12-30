@@ -446,6 +446,11 @@ Valid chroots:
 `sh "$HOSTBINDIR/edit-chroot" -c "$CHROOTS" -a`"
     fi
 
+    # Chroot must be located on an ext filesystem
+    if df -T "`getmountpoint "$CHROOT"`" | awk '$2~"^ext"{exit 1}'; then
+        error 1 "$CHROOTSRC is not an ext filesystem."
+    fi
+
     # Restore the chroot now
     if [ -n "$RESTORE" ]; then
         sh "$HOSTBINDIR/edit-chroot" -r -f "$TARBALL" -c "$CHROOTS" -- "$NAME"

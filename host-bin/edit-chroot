@@ -65,16 +65,6 @@ Options:
 # Common functions
 . "$BINDIR/../installer/functions"
 
-# Returns the mountpoint a path is on. The path doesn't need to exist.
-# $1: the path to check
-# outputs on stdout
-getmountpoint() {
-    mp="`readlink -m "$1"`"
-    while ! stat -c '%m' "$mp" 2>/dev/null; do
-        mp="${mp%/*}"
-    done
-}
-
 # Process arguments
 while getopts 'abc:def:k:lm:ry' f; do
     case "$f" in
