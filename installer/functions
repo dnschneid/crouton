@@ -80,10 +80,8 @@ getopts_npos=0
 getopts_dashdash=''
 alias getopts_nextarg='getopts_ret=1
     while [ "$#" -gt "$getopts_npos" ]; do
-        OPTIND=1
         if [ -z "$getopts_dashdash" ] && getopts "$getopts_string" getopts_var; then
-            shift "$((OPTIND-1))"
-            if [ "$#" -lt "$getopts_npos" ]; then
+            if [ "$(($#+1-OPTIND))" -lt "$getopts_npos" ]; then
                 # Bad parameter usage ate a positional argument.
                 # Generate the proper error message by abusing getopts.
                 set -- "-$getopts_var"
@@ -92,9 +90,22 @@ alias getopts_nextarg='getopts_ret=1
             fi
             getopts_arg="$OPTARG"
             getopts_ret=0
+            # Avoid -- confusion by shifting if OPTARG is set
+            if [ -n "$OPTARG" ]; then
+                shift "$((OPTIND-1))"
+                OPTIND=1
+            fi
             break
         fi
-        if [ "$1" = "--" ]; then
+        # Do not let getopts consume a --
+        if [ "$OPTIND" -gt 1 ]; then
+            shift "$((OPTIND-2))"
+            if [ "$1" != "--" ]; then
+                shift
+            fi
+        fi
+        OPTIND=1
+        if [ -z "$getopts_dashdash" -a "$1" = "--" ]; then
             # Still need to loop through to fix the ordering
             getopts_dashdash=y
         else
