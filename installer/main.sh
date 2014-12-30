@@ -383,24 +383,18 @@ if [ -z "$RESTOREBIN$DOWNLOADONLY" ]; then
 
     # If no prefix is set, check that /usr/local/chroots ($CHROOTS) is a
     # symbolic link to /mnt/stateful_partition/crouton/chroots ($CHROOTSLINK)
-    if [ -z "$PREFIXSET" -a ! -h "$CHROOTS" ]; then
+    # /mnt/stateful_partition/dev_image is bind-mounted to /usr/local, so mv
+    # does not understand that they are on the same filesystem
+    # Instead, use the direct path, and confirm that they're actually the same
+    # to catch situations where things are bind-mounted over /usr/local
+    truechroots="/mnt/stateful_partition/dev_image/chroots"
+    if [ -z "$PREFIXSET" -a ! -h "$CHROOTS" ] \
+            && [ "$CHROOTS" -ef "$truechroots" ]; then
         # Detect if chroots are left in the old chroots directory, and move them
         # to the new directory.
         if [ -e "$CHROOTS" ] && ! rmdir "$CHROOTS" 2>/dev/null; then
             echo \
 "Migrating data from legacy chroots directory $CHROOTS to $CHROOTSLINK..." 1>&2
-
-            # /mnt/stateful_partition/dev_image is bind-mounted to /usr/local,
-            # so mv does not understand that they are on the same filesystem
-            # Instead, use the direct path.
-            truechroots="/mnt/stateful_partition/dev_image/chroots"
-
-            # Be extra careful and check both files are indeed the same
-            if [ "`stat -c '%i' "$truechroots"`" != \
-                    "`stat -c '%i' "$CHROOTS"`" ]; then
-                error 1 \
-"$truechroots and $CHROOTS are not the same file as expected."
-            fi
 
             # Check that CHROOTSLINK is empty
             if [ -e "$CHROOTSLINK" ] && ! rmdir "$CHROOTSLINK" 2>/dev/null; then
