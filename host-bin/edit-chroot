@@ -165,6 +165,12 @@ if [ -n "$MOVE" ] && \
     error 2 "Chroots can only be moved to ext filesystems."
 fi
 
+# Don't allow restoring to non-ext filesystems
+if [ -n "$RESTORE" ] && \
+        df -T "`getmountpoint "$CHROOTS"`" | awk '$2~"^ext"{exit 1}'; then
+    error 2 "Chroots can only be restored to ext filesystems."
+fi
+
 # Don't allow backing up to tmpfs filesystems
 if [ -n "$BACKUP" ] && ! df -T "`getmountpoint "${TARBALL:-.}"`" \
                             | awk '$2=="tmpfs"{exit 1}'; then
