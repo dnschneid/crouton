@@ -45,7 +45,7 @@ fi
 # Run crouton-specific commands:
 if [ -z "$XMETHOD" ]; then
     if [ -f '/etc/crouton/xmethod' ]; then
-        read XMETHOD _ < /etc/crouton/xmethod
+        read -r XMETHOD _ < /etc/crouton/xmethod
         export XMETHOD
     else
         echo 'X11 backend not set.' 1>&2
