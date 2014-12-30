@@ -383,7 +383,7 @@ for NAME in "$@"; do
             # Search for the alphabetically last tarball with src.
             # Dated tarballs take precedence over undated tarballs.
             for file in "$file."* "$file-"*; do
-                if [ ! -f "$file" ]; then
+                if [ ! -f "$file" -o "${file%part[0-9][0-9]}" != "$file" ]; then
                     continue
                 fi
                 # Confirm it's a tarball
@@ -408,8 +408,22 @@ for NAME in "$@"; do
         fi
         echo -n "  Restoring $src to $CHROOT..." 1>&2
         mkdir -p "$CHROOT"
+        if [ -f "$src.part01" ]; then
+            tarsrc="`mktemp -u --tmpdir=/tmp 'crouton-restore.XXX'`"
+            mkfifo -m 600 "$tarsrc"
+            # Pipe through dd to eat the EOFs
+            cat "$src" "$src.part"* | dd status=none >> "$tarsrc" &
+            catpid="$!"
+            addtrap "rm -f '$tarsrc'; kill '$catpid' 2>/dev/null"
+        else
+            tarsrc="$src"
+            catpid=''
+        fi
         spinner 1 tar --checkpoint=200 --checkpoint-action=exec=echo \
-            --one-file-system -xaf "$src" -C "$CHROOT" --strip-components=1
+            --one-file-system -xaf "$tarsrc" -C "$CHROOT" --strip-components=1
+        if [ -n "$catpid" ]; then
+            wait "$catpid"
+        fi
         # Make sure filesystem is sync'ed
         sync
         echo "Finished restoring $src to $CHROOT" 1>&2
