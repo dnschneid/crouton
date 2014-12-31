@@ -455,8 +455,9 @@ Valid chroots:
     CHROOT="`sh "$HOSTBINDIR/mount-chroot" -k "$KEYFILE" \
              $create $ENCRYPT -p -c "$CHROOTS" -- "$NAME"`"
 
-    # Remove the directory if bootstrapping fails
-    addtrap "[ \"\`ls -A '$CHROOTS/$NAME' 2>/dev/null | wc -l\`\" -le 1 ] \
+    # Remove the directory if bootstrapping fails. Also delete if the only file
+    # there is .ecryptfs (valid chroots have far more than 1 file)
+    addtrap "[ \"\`ls -a '$CHROOTS/$NAME' 2>/dev/null | wc -l\`\" -le 3 ] \
                 && rm -rf '$CHROOTS/$NAME'"
 
     # Auto-unmount the chroot when the script exits
