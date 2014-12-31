@@ -68,18 +68,13 @@ fails host edit-chroot -y -b -f $BACKUPDIR "$release"
 fails host edit-chroot -y -f $BACKUPDIR -b "$release"
 fails ls "$BACKUPDIR"/*
 
-# Backup a chroot (wrong parameter order fails)
-fails host edit-chroot -y -b "$release" -f "$BACKUPDIR/$release.tar"
+# Backup a chroot
 fails ls "$BACKUPDIR"/*
 host edit-chroot -y -f "$BACKUPDIR/$release.tar" -b "$release"
 
-# Move an existing chroot (wrong parameter order fails)
-fails host edit-chroot -y "$release" -m "$release.2"
-host edit-chroot -y -m "$release.2" "$release"
+# Move an existing chroot
+host edit-chroot -y "$release" -m "$release.2"
 host enter-chroot -n "$release.2" true
-
-# Restore the chroot (wrong parameter order fails)
-fails host edit-chroot -y -r "$release" -f "$BACKUPDIR/$release.tar"
 fails host enter-chroot -n "$release" true
 
 # Restore the chroot
@@ -130,7 +125,7 @@ fails host edit-chroot -y -f "$BACKUPDIR" -b \
 fails ls "$BACKUPDIR"/*
 
 # Backup both chroots
-host edit-chroot -y -f "$BACKUPDIR" -b "$release" "$release.2"
+host edit-chroot "$release" -y -f "$BACKUPDIR" -b "$release.2"
 
 # Move them to a new prefix: destination needs to end with a slash
 fails host edit-chroot -y -m "$PREFIX/chroots.2" "$release" "$release.2"
@@ -142,7 +137,7 @@ host enter-chroot -c "$PREFIX/chroots.2" -n "$release" true
 host enter-chroot -c "$PREFIX/chroots.2" -n "$release.2" true
 
 # Delete both chroots
-host delete-chroot -y -c "$PREFIX/chroots.2" "$release" "$release.2"
+host delete-chroot "$release" "$release.2" -y -c "$PREFIX/chroots.2"
 fails host enter-chroot -c "$PREFIX/chroots.2" -n "$release" true
 fails host enter-chroot -c "$PREFIX/chroots.2" -n "$release.2" true
 
