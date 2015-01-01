@@ -5,6 +5,7 @@
 REQUIRES='gtk-extra'
 DESCRIPTION='Installs the Xfce desktop environment. (Approx. 250MB)'
 HOSTBIN='startxfce4'
+CHROOTBIN='crouton-noroot startxfce4'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:

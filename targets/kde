@@ -5,6 +5,7 @@
 REQUIRES='x11'
 DESCRIPTION='Installs a minimal KDE desktop environment. (Approx. 600MB)'
 HOSTBIN='startkde'
+CHROOTBIN='crouton-noroot startkde'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
