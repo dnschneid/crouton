@@ -1,0 +1,13 @@
+#!/bin/sh -e
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+if [ "${TARGETNOINSTALL:-c}" = 'c' ] && release -lt quantal; then
+    error 99 "gnome-desktop target is not available in $RELEASE."
+fi
+REQUIRES='gnome'
+DESCRIPTION='Installs GNOME along with common applications. (Approx. 1100MB)'
+. "${TARGETSDIR:="$PWD"}/common"
+
+### Append to prepare.sh:
+install ubuntu=ubuntu-gnome-desktop,task-gnome-desktop -- network-manager xorg
