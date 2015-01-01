@@ -62,8 +62,27 @@ if [ -z "$TRAP" ]; then
     exit
 fi
 
+# See if we want to just run a script from the bundle
+script="$SCRIPTDIR/installer/main.sh"
+if [ "$1" = '-X' -a -z "$2" ]; then
+    (
+        cd "$SCRIPTDIR"
+        echo "USAGE: ${0##*/} -X DIR/SCRIPT [ARGS]
+Runs a script directly from the bundle. Valid DIR/SCRIPT combos:" 1>&2
+        ls chroot-bin/* host-bin/* 1>&2
+    )
+    exit 2
+elif [ "$1" = '-X' ]; then
+    script="$SCRIPTDIR/$2"
+    if [ ! -f "$script" ]; then
+        echo "Invalid script '$2'" 1>&2
+        exit 2
+    fi
+    shift 2
+fi
+
 # Execute the main script inline. It will use SCRIPTDIR to find what it needs.
-. "$SCRIPTDIR/installer/main.sh"
+. "$script"
 
 exit
 ### end of script; tarball follows
