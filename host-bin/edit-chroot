@@ -69,24 +69,24 @@ Options:
 . "$BINDIR/../installer/functions"
 
 # Process arguments
-while getopts 'abc:def:k:lm:rs:y' f; do
-    case "$f" in
+getopts_string='abc:def:k:lm:rs:y'
+while getopts_nextarg; do
+    case "$getopts_var" in
     a) ALLCHROOTS='y';;
     b) BACKUP='y';;
-    c) CHROOTS="`readlink -m "$OPTARG"`";;
+    c) CHROOTS="`readlink -m "$getopts_arg"`";;
     d) DELETE='y';;
     e) ENCRYPT='y';;
-    f) TARBALL="$OPTARG";;
-    k) KEYFILE="$OPTARG";;
+    f) TARBALL="$getopts_arg";;
+    k) KEYFILE="$getopts_arg";;
     l) LISTDETAILS=$(($LISTDETAILS+1));;
-    m) MOVE="$OPTARG";;
+    m) MOVE="$getopts_arg";;
     r) RESTORE=$(($RESTORE+1));;
     s) SPLIT="$OPTARG";;
     y) YES='a'; YESPARAM='-y';;
     \?) error 2 "$USAGE";;
     esac
 done
-shift "$((OPTIND-1))"
 
 # If the executable name is delete*, assume DELETE.
 if [ ! "${APPLICATION#delete}" = "$APPLICATION" ]; then

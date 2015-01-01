@@ -38,29 +38,24 @@ Options:
     -y          Signal any remaining processes without confirmation.
                 Automatically escalates from SIGTERM to SIGKILL."
 
-# Function to exit with exit code $1, spitting out message $@ to stderr
-error() {
-    local ecode="$1"
-    shift
-    echo "$*" 1>&2
-    exit "$ecode"
-}
+# Common functions
+. "$BINDIR/../installer/functions"
 
 # Process arguments
-while getopts 'ac:fkpt:xy' f; do
-    case "$f" in
+getopts_string='ac:fkpt:xy'
+while getopts_nextarg; do
+    case "$getopts_var" in
     a) ALLCHROOTS='y';;
-    c) CHROOTS="`readlink -m "$OPTARG"`";;
+    c) CHROOTS="`readlink -m "$getopts_arg"`";;
     f) FORCE='y';;
     k) SIGNAL="KILL";;
     p) PRINT='y';;
-    t) TRIES="$OPTARG";;
+    t) TRIES="$getopts_arg";;
     x) EXCLUDEROOT='y';;
     y) YES='a';;
     \?) error 2 "$USAGE";;
     esac
 done
-shift "$((OPTIND-1))"
 
 # Need at least one chroot listed, or -a; not both.
 if [ $# = 0 -a -z "$ALLCHROOTS" ] || [ ! $# = 0 -a -n "$ALLCHROOTS" ]; then
