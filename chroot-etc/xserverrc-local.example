@@ -7,7 +7,7 @@
 # /etc/crouton/xserverrc-local
 #
 # The file is sourced before invoking the X server with the variable
-# XMETHOD set to x11 or xephyr and the variable XARGS containing the
+# XMETHOD set to xephyr, xiwi, or xorg and the variable XARGS containing the
 # command line arguments that will be passed to the server.
 #
 # Uncoment if fonts look too big on machines with 1366x768 11.6" screen
