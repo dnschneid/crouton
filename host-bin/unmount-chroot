@@ -46,7 +46,7 @@ getopts_string='ac:fkpt:xy'
 while getopts_nextarg; do
     case "$getopts_var" in
     a) ALLCHROOTS='y';;
-    c) CHROOTS="`readlink -m "$getopts_arg"`";;
+    c) CHROOTS="`readlink -m -- "$getopts_arg"`";;
     f) FORCE='y';;
     k) SIGNAL="KILL";;
     p) PRINT='y';;

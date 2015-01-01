@@ -36,7 +36,7 @@ Options:
 getopts_string='c:ek:np'
 while getopts_nextarg; do
     case "$getopts_var" in
-    c) CHROOTS="`readlink -m "$getopts_arg"`";;
+    c) CHROOTS="`readlink -m -- "$getopts_arg"`";;
     e) ENCRYPT="$((ENCRYPT+1))";;
     k) KEYFILE="$getopts_arg";;
     n) CREATE='y';;

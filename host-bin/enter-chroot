@@ -65,7 +65,7 @@ while getopts 'bc:k:ln:t:u:x' f; do
     prevoptind="$OPTIND"
     case "$f" in
     b) BACKGROUND='y';;
-    c) CHROOTS="`readlink -m "$OPTARG"`";;
+    c) CHROOTS="`readlink -m -- "$OPTARG"`";;
     k) KEYFILE="$OPTARG";;
     l) LOGIN='y';;
     n) NAME="$OPTARG";;

@@ -74,7 +74,7 @@ while getopts_nextarg; do
     case "$getopts_var" in
     a) ALLCHROOTS='y';;
     b) BACKUP='y';;
-    c) CHROOTS="`readlink -m "$getopts_arg"`";;
+    c) CHROOTS="`readlink -m -- "$getopts_arg"`";;
     d) DELETE='y';;
     e) ENCRYPT='y';;
     f) TARBALL="$getopts_arg";;
@@ -469,8 +469,8 @@ for NAME in "$@"; do
         if [ -d "$newkeyfile" -o ! "${newkeyfile%/}" = "$newkeyfile" ]; then
             newkeyfile="${newkeyfile%/}/$NAME"
         fi
-        oldkeyfile="`readlink -m "$oldkeyfile"`"
-        keyfilecanon="`readlink -m "$newkeyfile"`"
+        oldkeyfile="`readlink -m -- "$oldkeyfile"`"
+        keyfilecanon="`readlink -m -- "$newkeyfile"`"
         if [ ! -f "$oldkeyfile" ]; then
             # If there is no old keyfile, make sure we've requested encryption.
             if [ -z "$ENCRYPT" ]; then

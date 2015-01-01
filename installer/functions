@@ -205,7 +205,7 @@ validate_name() {
 # $1: the path to check
 # outputs on stdout
 getmountpoint() {
-    mp="`readlink -m "$1"`"
+    mp="`readlink -m -- "$1"`"
     while ! stat -c '%m' "$mp" 2>/dev/null; do
         mp="${mp%/*}"
     done

@@ -122,7 +122,7 @@ while getopts 'a:bdef:k:m:M:n:p:P:r:s:t:T:uUV' f; do
     m) MIRROR="$OPTARG";;
     M) MIRROR2="$OPTARG";;
     n) NAME="$OPTARG";;
-    p) PREFIX="`readlink -m "$OPTARG"`"; PREFIXSET='y';;
+    p) PREFIX="`readlink -m -- "$OPTARG"`"; PREFIXSET='y';;
     P) PROXY="$OPTARG";;
     r) RELEASE="$OPTARG";;
     t) TARGETS="$TARGETS${TARGETS:+","}$OPTARG";;
@@ -694,7 +694,7 @@ echo -n '' > "$TARGETDEDUPFILE"
 unset SIMULATE
 TARGETNOINSTALL="$RESTOREHOSTBIN"
 if [ -n "$TARGETFILE" ]; then
-    TARGET="`readlink -f "$TARGETFILE"`"
+    TARGET="`readlink -f -- "$TARGETFILE"`"
     (. "$TARGET") >> "$PREPARE"
 fi
 t="${TARGETS%,},post-common,"
