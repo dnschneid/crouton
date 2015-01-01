@@ -385,10 +385,120 @@ if ! mountpoint -q "$destmedia"; then
     mount --rbind /media "$destmedia"
 fi
 
-# Bind-mount ~/Downloads if we're logged in as a user
-localdownloads='/home/chronos/user/Downloads'
-if [ -z "$NOLOGIN" -a -n "$CHROOTHOME" -a -d "$localdownloads" ]; then
-    bindmount "$localdownloads" "$CHROOTHOME/Downloads" exec
+# Provide a default /etc/crouton/shares file
+shares="`fixabslinks '/etc/crouton/shares'`"
+if [ -e "$shares" -a ! -f "$shares" ]; then
+    echo "Not mounting shares: /etc/crouton/shares is not a file." 1>&2
+elif [ ! -f "$shares" ]; then
+    cat > "$shares" <<EOF
+# Defines directories to map into the chroot from the host.
+# Order is important: be sure to mount directories before you mount
+# subdirectories of those mounts.
+# The only directories that can be mapped from outside of the chroot are
+# subdirectories of the following locations:
+#  downloads: ~/Downloads
+#  shared: /mnt/stateful_partition/crouton/shared
+#  encrypted: ~/crouton/shared
+# Add a line with a single keyword to modify the mount options of all the bind
+# mounts that follow. For example, the following will make all following mounts
+# be bind-mounted with noexec and suid set.
+#  noexec,suid
+# The default bind mount options are "exec".
+
+# Examples:
+#  Share a home directory encrypted by the current user's unsynced profile
+#   encrypted/home -> ~
+#  Share an unencrypted directory between chroots.
+#   shared/home -> ~/Share
+
+# Share the downloads folder of the current user's profile
+downloads -> ~/Downloads
+EOF
+fi
+# Bind-mount the stuff in $CHROOT/etc/crouton/shares, unless NOLOGIN is set
+if [ -z "$NOLOGIN" -a -f "$shares" ]; then
+    mountparams='exec'
+    localdownloads='/home/chronos/user/Downloads'
+    if [ ! -d "$localdownloads" ]; then
+        localdownloads=''
+    fi
+    localencrypted='/home/chronos/user/crouton/shared'
+    if [ ! -d "/home/chronos/user" ]; then
+        localencrypted=''
+    fi
+    localshare='/mnt/stateful_partition/crouton/shared'
+    # Allow line continuation characters (no -r) and strip leading/trailing
+    # whitespace, remove comments, and remove spaces around ->
+    sed 'y/\t/ /; s/^ *//; s/ *$//; s/ *-> */->/; /^#/d;' "$shares" \
+    | while read line; do
+        src="${line%%->*}"
+        # If -> is not present, it's a specification of mountparams
+        if [ "$src" = "$line" ]; then
+            mountparams="${line#[\"\']}"
+            mountparams="${mountparams%[\"\']}"
+            continue
+        fi
+        # Remove quoting from src and ensure ends in /
+        if [ "${src#[\"\']}" != "$src" ]; then
+            src="${src#[\"\']}"
+            src="${src%[\"\']}"
+        fi
+        src="${src%/}/"
+        # Grab dest, remove quote, ensure ends in /
+        dest="${line#*->}"
+        if [ "${dest#[\"\']}" != "$dest" ]; then
+            dest="${dest#[\"\']}"
+            dest="${dest%[\"\']}"
+        fi
+        dest="${dest%/}/"
+        # .. path elements are not allowed
+        if [ "${src%/../*}" != "$src" -o "${dest%/../*}" != "$dest" ]; then
+            echo "Invalid share: $line" 1>&2
+            continue
+        fi
+        # Expand src with a little bit of leniency
+        case "${src%%/*}" in
+            download*)
+                if [ -z "$localdownloads" ]; then
+                    echo "Not mounting share (no Chromium OS user): $line" 1>&2
+                    continue
+                fi
+                src="$localdownloads/${src#*/}";;
+            encrypt*)
+                if [ -z "$localencrypted" ]; then
+                    echo "Not mounting share (no Chromium OS user): $line" 1>&2
+                    continue
+                fi
+                src="$localencrypted/${src#*/}";;
+            share*) src="$localshare/${src#*/}";;
+            *)  echo "Invalid share: $line" 1>&2
+                continue;;
+        esac
+        # Expand dest for homedirs
+        if [ "${dest#[~/]}" = "$dest" ]; then
+            if [ -z "$CHROOTHOME" ]; then
+                echo "Not mounting share (no chroot user): $line" 1>&2
+                continue
+            fi
+            dest="$CHROOTHOME/$dest"
+        elif [ "${dest#~}" != "$dest" ]; then
+            destuser="${dest%%/*}"
+            if [ "$destuser" = '~' ]; then
+                if [ -z "$CHROOTHOME" ]; then
+                    echo "Not mounting share (no chroot user): $line" 1>&2
+                    continue
+                fi
+                dest="$CHROOTHOME/${dest#*/}"
+            else
+                dest="/home/${destuser#~}/${dest#*/}"
+            fi
+        fi
+        # Do the bindmount
+        mkdir -m 700 -p "$src"
+        if ! bindmount "$src" "$dest" "$mountparams"; then
+            echo "Failed to mount share: $line" 1>&2
+        fi
+    done
 fi
 
 # Bind-mount /sys recursively, making it a slave in the chroot
