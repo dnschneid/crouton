@@ -16,6 +16,7 @@ KEYFILE=''
 LISTDETAILS=''
 MOVE=''
 RESTORE=''
+SPLIT=''
 TARBALL=''
 YES=''
 YESPARAM=''
@@ -60,13 +61,15 @@ Options:
                 restores to that name instead of the one in the tarball.
                 Will not overwrite a chroot when restoring unless -r is
                 specified twice.
+    -s SPLIT    Force a backup archive to be split into SPLIT-sized chunks.
+                FAT32 filesystems are split by default to 4GB.
     -y          Do all actions without confirmation."
 
 # Common functions
 . "$BINDIR/../installer/functions"
 
 # Process arguments
-while getopts 'abc:def:k:lm:ry' f; do
+while getopts 'abc:def:k:lm:rs:y' f; do
     case "$f" in
     a) ALLCHROOTS='y';;
     b) BACKUP='y';;
@@ -78,6 +81,7 @@ while getopts 'abc:def:k:lm:ry' f; do
     l) LISTDETAILS=$(($LISTDETAILS+1));;
     m) MOVE="$OPTARG";;
     r) RESTORE=$(($RESTORE+1));;
+    s) SPLIT="$OPTARG";;
     y) YES='a'; YESPARAM='-y';;
     \?) error 2 "$USAGE";;
     esac
@@ -335,15 +339,34 @@ for NAME in "$@"; do
                 dest="$dest.gz"
             fi
         fi
+        # If we're writing to a fat32 filesystem, split the file at 4GB chunks
+        if ! df -T "`getmountpoint "$dest"`" | awk '$2~"^v?fat"{exit 1}'; then
+            SPLIT="${SPLIT:-4GB}"
+        fi
+        if [ -n "$SPLIT" ]; then
+            tardest="`mktemp -u --tmpdir=/tmp 'crouton-backup.XXX'`"
+            mkfifo -m 600 "$tardest"
+            addtrap "rm -f '$tardest'"
+            split -b "$SPLIT" -d "$tardest" "$dest.part" &
+            splitpid="$!"
+        else
+            tardest="$dest"
+            splitpid=''
+        fi
         echo -n "  Backing up $CHROOT to $dest..." 1>&2
-        addtrap "echo 'Deleting partial archive.' 1>&2; rm -f '$dest'"
+        addtrap "echo 'Deleting partial archive.' 1>&2; \
+                 kill '$splitpid' 2>/dev/null; rm -f '$dest' '$dest.part'*"
         ret=0
         spinner 1 tar --checkpoint=100 --checkpoint-action=exec=echo \
             --one-file-system -V "crouton:backup.${date%-*}${date#*-}-$NAME" \
-            -caf "$dest" -C "$CHROOTS" "$NAME" || ret=$?
-        if [ "$ret" != 0 ]; then
+            -caf "$tardest" -C "$CHROOTS" "$NAME" || ret="$?"
+        if [ -n "$SPLIT" ]; then
+            wait "$splitpid" || ret="$?$ret"
+            mv -f "$dest.part00" "$dest" || ret="$?$ret"
+        fi
+        if [ "$ret" -ne 0 ]; then
             echo "Unable to backup $CHROOT." 1>&2
-            exit $ret
+            exit "$ret"
         fi
         # Make sure filesystem is sync'ed
         sync
@@ -360,7 +383,7 @@ for NAME in "$@"; do
             # Search for the alphabetically last tarball with src.
             # Dated tarballs take precedence over undated tarballs.
             for file in "$file."* "$file-"*; do
-                if [ ! -f "$file" ]; then
+                if [ ! -f "$file" -o "${file%part[0-9][0-9]}" != "$file" ]; then
                     continue
                 fi
                 # Confirm it's a tarball
@@ -385,8 +408,22 @@ for NAME in "$@"; do
         fi
         echo -n "  Restoring $src to $CHROOT..." 1>&2
         mkdir -p "$CHROOT"
+        if [ -f "$src.part01" ]; then
+            tarsrc="`mktemp -u --tmpdir=/tmp 'crouton-restore.XXX'`"
+            mkfifo -m 600 "$tarsrc"
+            # Pipe through dd to eat the EOFs
+            cat "$src" "$src.part"* | dd status=none >> "$tarsrc" &
+            catpid="$!"
+            addtrap "rm -f '$tarsrc'; kill '$catpid' 2>/dev/null"
+        else
+            tarsrc="$src"
+            catpid=''
+        fi
         spinner 1 tar --checkpoint=200 --checkpoint-action=exec=echo \
-            --one-file-system -xaf "$src" -C "$CHROOT" --strip-components=1
+            --one-file-system -xaf "$tarsrc" -C "$CHROOT" --strip-components=1
+        if [ -n "$catpid" ]; then
+            wait "$catpid"
+        fi
         # Make sure filesystem is sync'ed
         sync
         echo "Finished restoring $src to $CHROOT" 1>&2
@@ -477,7 +514,8 @@ for NAME in "$@"; do
         # safety. We don't do this when encrypting a chroot (see mount-chroot),
         # because that would require 2x the space on one device. When switching
         # filesystems like this, however, that isn't a concern.
-        if [ ! "`getmountpoint "$target"`" = "`getmountpoint "$CHROOT"`" ]; then
+        if [ ! "`getmountpoint "$target"`" = \
+               "`getmountpoint "$CHROOT"`" ]; then
             echo "Moving $CHROOT across filesystems to $target" 1>&2
             echo 'This will take a while.' 1>&2
             echo "If the operation gets interrupted, you can safely delete $target" 1>&2

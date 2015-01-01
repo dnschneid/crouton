@@ -88,6 +88,16 @@ host enter-chroot -n "$release" true
 # Verify croutonversion outputs correct information
 host edit-chroot -l $release | tee /dev/stderr | passes grep "^release: $release"
 
+# Back up with a split
+host edit-chroot -y -s 50MB -f "$BACKUPDIR/$release.tar" -b "$release"
+test "`ls "$BACKUPDIR"/* | wc -l`" -ge 3
+du -b "$BACKUPDIR"/* | passes awk '$1>50000000{exit 1}'
+
+# Restore the split archive. Fails first due to existence
+fails host edit-chroot -y -f "$BACKUPDIR/$release.tar" -r "$release"
+host edit-chroot -y -f "$BACKUPDIR/$release.tar" -rr "$release"
+host enter-chroot -n "$release" true
+
 # Delete it
 host delete-chroot -y "$release"
 fails host enter-chroot -n "$release" true
