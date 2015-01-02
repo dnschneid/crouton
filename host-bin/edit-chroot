@@ -15,6 +15,7 @@ ENCRYPT=''
 KEYFILE=''
 LISTDETAILS=''
 MOVE=''
+NEEDS_UNMOUNT=''
 RESTORE=''
 SPLIT=''
 TARBALL=''
@@ -73,15 +74,15 @@ getopts_string='abc:def:k:lm:rs:y'
 while getopts_nextarg; do
     case "$getopts_var" in
     a) ALLCHROOTS='y';;
-    b) BACKUP='y';;
+    b) BACKUP='y'; NEEDS_UNMOUNT='y';;
     c) CHROOTS="`readlink -m -- "$getopts_arg"`";;
-    d) DELETE='y';;
-    e) ENCRYPT='y';;
+    d) DELETE='y'; NEEDS_UNMOUNT='y';;
+    e) ENCRYPT='y'; NEEDS_UNMOUNT='y';;
     f) TARBALL="$getopts_arg";;
     k) KEYFILE="$getopts_arg";;
     l) LISTDETAILS=$(($LISTDETAILS+1));;
-    m) MOVE="$getopts_arg";;
-    r) RESTORE=$(($RESTORE+1));;
+    m) MOVE="$getopts_arg"; NEEDS_UNMOUNT='y';;
+    r) RESTORE=$(($RESTORE+1)); NEEDS_UNMOUNT='y';;
     s) SPLIT="$OPTARG";;
     y) YES='a'; YESPARAM='-y';;
     \?) error 2 "$USAGE";;
@@ -316,8 +317,11 @@ for NAME in "$@"; do
             error 2 "$CHROOT already exists! Specify a second -r to overwrite it (dangerous)."
         elif [ -n "$RESTORE" ]; then
             EXISTS='y'
-        else
-            sh -e "$BINDIR/unmount-chroot" $YESPARAM -c "$CHROOTS" -- "$NAME"
+        elif ! sh -e "$BINDIR/unmount-chroot" $YESPARAM \
+                    -c "$CHROOTS" -- "$NAME"; then
+            if [ -n "$NEEDS_UNMOUNT" ]; then
+                exit 1
+            fi
         fi
     elif [ -n "$RESTORE" ]; then
         EXISTS=''
