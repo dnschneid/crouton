@@ -4,11 +4,7 @@
 # found in the LICENSE file.
 
 . "`dirname "$0"`/../parts/common"
-from parts/installer import installscript, release
-import trap, output
-import getopts
-from parts/os import disablehungtask
-import path
+from output import error
 import websocket
 
 USAGE="${0##*/} next|prev|cros|list|#

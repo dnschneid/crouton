@@ -23,12 +23,8 @@ DAEMONSLEEP='15'
 
 # Common functions
 . "`dirname "$0"`/../parts/common"
-from parts/installer import installscript, release
-import trap, output
-import getopts
-from parts/os import disablehungtask
-import path
-import websocket
+from output import error
+import trap
 
 # Check if we need to pass through to another command
 EXEC="${0##*/}"

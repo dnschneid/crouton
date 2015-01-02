@@ -4,12 +4,7 @@
 # found in the LICENSE file.
 
 . "`dirname "$0"`/../parts/common"
-from parts/installer import installscript, release
-import trap, output
-import getopts
-from parts/os import disablehungtask
-import path
-import websocket
+from output import error, unbuffered_awk
 
 # Default button numbers
 u=4
@@ -44,12 +39,11 @@ while getopts 'a:b:c:d:rx' opt; do
         d) yc="$OPTARG";;
         r) z=$u; u=$d; d=$z; z=$l; l=$r; r=$z;;
         x) x='0';;
-        \?) echo "$USAGE" 1>&2; exit 1;;
+        \?) error 2 "$USAGE";;
     esac
 done
 if [ $# -ge "$OPTIND" ]; then
-    echo "$USAGE" 1>&2
-    exit 1;
+    error 2 "$USAGE"
 fi
 
 # Operate on the Chromium OS X11 server

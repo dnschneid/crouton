@@ -9,12 +9,7 @@
 VERBOSE=''
 
 . "`dirname "$0"`/../parts/common"
-from parts/installer import installscript, release
-import trap, output
-import getopts
-from parts/os import disablehungtask
-import path
-import websocket
+import trap, websocket
 
 # rundisplay :X cmd ...
 # Run a command on the specified display

@@ -8,11 +8,7 @@ Open an URL in Chromium OS (requires crouton extension).
 Switches back to Chromium OS unless -n is specified."
 
 . "`dirname "$0"`/../parts/common"
-from parts/installer import installscript, release
-import trap, output
-import getopts
-from parts/os import disablehungtask
-import path
+from output import error
 import websocket
 
 noswitch=''

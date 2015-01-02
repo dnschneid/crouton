@@ -3,7 +3,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# Traps handling code
+# Traps handling code. Should be imported as a whole.
 
 # Setup trap ($1) in case of interrupt or error.
 # Traps explicitly do not exit on command error.

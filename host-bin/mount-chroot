@@ -31,12 +31,9 @@ Options:
 
 # Common functions
 . "$BINDIR/../parts/common"
-from parts/installer import installscript, release
-import trap, output
-import getopts
-from parts/os import disablehungtask
-import path
-import websocket
+from output import error, stdout_to_tty
+from path import validate_name
+import getopts, trap
 
 # Process arguments
 getopts_string='c:ek:np'

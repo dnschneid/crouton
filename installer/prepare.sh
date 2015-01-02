@@ -23,12 +23,9 @@ export PATH='/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin'
 
 # Common functions
 . "$BINDIR/../parts/common"
-from parts/installer import installscript, release
-import trap, output
-import getopts
-from parts/os import disablehungtask
-import path
-import websocket
+from installer import release
+from output import stdout_to_tty
+import trap
 
 # Takes in a list of crouton-style package names, and outputs the list, filtered
 # for the current distro.

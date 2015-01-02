@@ -40,12 +40,8 @@ Options:
 
 # Common functions
 . "$BINDIR/../parts/common"
-from parts/installer import installscript, release
-import trap, output
+from output import error
 import getopts
-from parts/os import disablehungtask
-import path
-import websocket
 
 # Process arguments
 getopts_string='ac:fkpt:xy'

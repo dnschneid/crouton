@@ -109,12 +109,9 @@ secure as the passphrases you assign to them."
 
 # Common functions
 . "$SCRIPTDIR/parts/common"
-from parts/installer import installscript, release
-import trap, output
-import getopts
-from parts/os import disablehungtask
-import path
-import websocket
+from output import error
+from os import disablehungtask
+import installer, path, trap
 
 # Process arguments
 while getopts 'a:bdef:k:m:M:n:p:P:r:s:t:T:uUV' f; do
@@ -649,7 +646,7 @@ if [ -z "$RESTOREBIN" ] && [ -z "$RESTORE" -o -n "$UPDATE" ]; then
 
     # Create the setup script inside the chroot
     echo 'Preparing chroot environment...' 1>&2
-    VAREXPAND="s/releases=.*\$/releases=\"\
+    VAREXPAND="s/local releases=.*\$/local releases=\"\
 `sed 's/$/\\\\/' "$DISTRODIR/releases"`
 \"/;"
     VAREXPAND="${VAREXPAND}s #ARCH# $ARCH ;s #DISTRO# $DISTRO ;"

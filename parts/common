@@ -19,9 +19,14 @@ SCRIPTDIR="${SCRIPTDIR:-"`dirname "$0"`/.."}"
 #   from scriptfile import functionA[[,] functionB]*
 #   from scriptfile print functionA[[,] functionB]*
 #   from scriptfile run function [parameterA [...]]
-# scriptfile should be tarball-relative, i.e., host-bin/mount-chroot
+# scriptfile should be either tarball-relative, i.e., host-bin/mount-chroot, or
+# parts-relative i.e., output
 from() {
-    local scriptpath="$SCRIPTDIR/$1" scriptfile="$1" action="$2" name script ret
+    local scriptpath scriptfile="$1" action="$2" name script ret
+    if [ "${scriptfile%/*}" = "$scriptfile" ]; then
+        scriptfile="parts/$scriptfile"
+    fi
+    scriptpath="$SCRIPTDIR/$scriptfile"
     if [ -z "$3" ]; then
         echo "    $*
 SyntaxError: invalid syntax" 1>&2
