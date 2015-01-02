@@ -63,7 +63,6 @@ if [ -z "$TRAP" ]; then
 fi
 
 # See if we want to just run a script from the bundle
-script="$SCRIPTDIR/installer/main.sh"
 if [ "$1" = '-X' -a -z "$2" ]; then
     (
         cd "$SCRIPTDIR"
@@ -79,10 +78,20 @@ elif [ "$1" = '-X' ]; then
         exit 2
     fi
     shift 2
+    # If this script was called with '-x' or '-v', pass that on
+    SETOPTIONS="-e"
+    if set -o | grep -q '^xtrace.*on$'; then
+        SETOPTIONS="$SETOPTIONS -x"
+    fi
+    if set -o | grep -q '^verbose.*on$'; then
+        SETOPTIONS="$SETOPTIONS -v"
+    fi
+    sh $SETOPTIONS "$script" "$@"
+    exit "$?"
 fi
 
 # Execute the main script inline. It will use SCRIPTDIR to find what it needs.
-. "$script"
+. "$SCRIPTDIR/installer/main.sh"
 
 exit
 ### end of script; tarball follows
