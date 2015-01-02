@@ -686,6 +686,21 @@ else
 fi
 
 echo -n '' > "$TARGETDEDUPFILE"
+# Check if a target has defined PROVIDES, if we are not restoring host-bin.
+if [ ! -n "$RESTOREHOSTBIN" ]; then
+    # Create temporary file to list PROVIDES=TARGET.
+    PROVIDESFILE="`mktemp --tmpdir=/tmp "$APPLICATION-provides.XXX"`"
+    addtrap "rm -f '$PROVIDESFILE'"
+    t="${TARGETS%,},"
+    while [ -n "$t" ]; do
+        TARGET="${t%%,*}"
+        t="${t#*,}"
+        if [ -n "$TARGET" ]; then
+            (TARGETNOINSTALL="p"; . "$TARGETSDIR/$TARGET")
+        fi
+    done
+fi
+
 # Run each target, appending stdout to the prepare script.
 unset SIMULATE
 TARGETNOINSTALL="$RESTOREHOSTBIN"
