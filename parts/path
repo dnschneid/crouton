@@ -1,0 +1,25 @@
+#!/bin/sh -e
+# Copyright (c) 2014 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Path processing functions
+
+# Validate a chroot name: It cannot contain any /, and cannot be ".", ".." nor
+# an empty string.
+validate_name() {
+    if [ "${1%/*}" != "$1" -o "$1" = "." -o "$1" = ".." -o -z "$1" ]; then
+        return 1
+    fi
+    return 0
+}
+
+# Returns the mountpoint a path is on. The path doesn't need to exist.
+# $1: the path to check
+# outputs on stdout
+getmountpoint() {
+    local mp="`readlink -m -- "$1"`"
+    while ! stat -c '%m' "${mp:-/}" 2>/dev/null; do
+        mp="${mp%/*}"
+    done
+}

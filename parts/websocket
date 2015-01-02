@@ -1,0 +1,26 @@
+#!/bin/sh -e
+# Copyright (c) 2014 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Must be fully imported.
+
+# Websocket interface
+PIPEDIR='/tmp/crouton-ext'
+CRIATDISPLAY="$PIPEDIR/kiwi-display"
+CROUTONLOCKDIR='/tmp/crouton-lock'
+
+# Write a command to croutonwebsocket, and read back response
+websocketcommand() {
+    # Check that $PIPEDIR and the FIFO pipes exist
+    if ! [ -d "$PIPEDIR" -a -p "$PIPEDIR/in" -a -p "$PIPEDIR/out" ]; then
+        echo "EError $PIPEDIR/in or $PIPEDIR/out are not pipes."
+        exit 0
+    fi
+
+    if ! timeout 3 \
+           sh -c "flock 5; cat > '$PIPEDIR/in';
+                  cat '$PIPEDIR/out'" 5>"$PIPEDIR/lock"; then
+        echo "EError timeout"
+    fi
+}
