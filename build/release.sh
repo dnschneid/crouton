@@ -17,7 +17,8 @@ dir="`readlink -f "$0"`"
 cd "${dir%/*}/.."
 
 # Import common functions
-. installer/functions 
+. parts/common
+from output import error
 
 if [ "$1" = '-f' ]; then
     FORCE=y

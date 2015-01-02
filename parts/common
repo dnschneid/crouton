@@ -11,6 +11,8 @@
 # liable to make your functions break in mysterious ways, depending on whether
 # the function has been inlined or not.
 
+SCRIPTDIR="${SCRIPTDIR:-"`dirname "$0"`/.."}"
+
 # Sources a function from a script, and saves, prints, or runs it.
 # Note that the function may need global variables defined when run.
 # Usage:
@@ -46,7 +48,7 @@ SyntaxError: invalid syntax" 1>&2
         elif [ "$action" = 'print' ]; then
             echo "$script"
         elif [ "$action" = 'run' ]; then
-            local ret=0
+            ret=0
             (eval "$script"; "$@") || ret="$?"
             return "$ret"
         else

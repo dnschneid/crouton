@@ -60,7 +60,13 @@ Options:
                    Default: $UPLOADROOT"
 
 # Common functions
-. "$SCRIPTDIR/installer/functions"
+. "$SCRIPTDIR/parts/common"
+from parts/installer import installscript, release
+import trap, output
+import getopts
+from parts/os import disablehungtask
+import path
+import websocket
 
 # Process arguments
 while getopts 'e:l:q:r:s:u:' f; do

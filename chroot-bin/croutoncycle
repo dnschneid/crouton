@@ -3,7 +3,13 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-. "`dirname "$0"`/../installer/functions"
+. "`dirname "$0"`/../parts/common"
+from parts/installer import installscript, release
+import trap, output
+import getopts
+from parts/os import disablehungtask
+import path
+import websocket
 
 USAGE="${0##*/} next|prev|cros|list|#
 Cycles through running graphical chroots.

@@ -69,7 +69,13 @@ Options:
     -y          Do all actions without confirmation."
 
 # Common functions
-. "$BINDIR/../installer/functions"
+. "$BINDIR/../parts/common"
+from parts/installer import installscript, release
+import trap, output
+import getopts
+from parts/os import disablehungtask
+import path
+import websocket
 
 # Process arguments
 getopts_string='abc:def:k:lm:rs:y'

@@ -11,8 +11,9 @@ SCRIPTS := \
 	$(wildcard chroot-bin/*) \
 	$(wildcard chroot-etc/*) \
 	$(wildcard host-bin/*) \
-	$(wildcard installer/*.sh) installer/functions \
+	$(wildcard installer/*.sh) \
 	$(wildcard installer/*/*) \
+	$(wildcard parts/*) \
 	$(wildcard src/*) \
 	$(wildcard targets/*)
 EXTSOURCES = $(wildcard host-ext/crouton/*)

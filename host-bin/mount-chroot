@@ -30,7 +30,13 @@ Options:
     -p          Prints out the path to the mounted directory on stdout."
 
 # Common functions
-. "$BINDIR/../installer/functions"
+. "$BINDIR/../parts/common"
+from parts/installer import installscript, release
+import trap, output
+import getopts
+from parts/os import disablehungtask
+import path
+import websocket
 
 # Process arguments
 getopts_string='c:ek:np'

@@ -62,7 +62,13 @@ Options:
     -T MAXTRIES  Number of times to repeat a failed test (default: $MAXTRIES)"
 
 # Common functions
-. "$SCRIPTDIR/installer/functions"
+. "$SCRIPTDIR/parts/common"
+from parts/installer import installscript, release
+import trap, output
+import getopts
+from parts/os import disablehungtask
+import path
+import websocket
 
 # Process arguments
 while getopts 'j:l:r:R:T:' f; do
@@ -367,40 +373,6 @@ fails() {
         log "FAIL: '$*' succeeded"
         return 1
     fi
-    return 0
-}
-
-# Sources a function from a script for unit testing.
-# Note that the function may need global variables defined when run.
-# Usage:
-#   from scriptfile import functionA[[,] functionB]*
-# scriptfile should be tarball-relative, i.e., host-bin/mount-chroot
-from() {
-    local scriptpath="$SCRIPTDIR/$1" scriptfile="$1" name script
-    if [ "$2" != 'import' -o -z "$3" ]; then
-        echo "    $*
-SyntaxError: invalid syntax" 1>&2
-        return 2
-    fi
-    if [ ! -f "$scriptpath" ]; then
-        echo "ImportError: No module named $scriptfile" 1>&2
-        return 2
-    fi
-    shift 2
-    for name in "$@"; do
-        name="${name%,}"
-        script="`awk '
-            /^'"$name"'[(][)] {$/ {x=1}
-            x;
-            x && /^}$/ {exit}
-        ' "$scriptpath"`"
-        if [ -z "$script" ]; then
-            echo "ImportError: cannot import name $name" 1>&2
-            return 2
-        fi
-        log "Importing $name from $scriptfile"
-        eval "$script"
-    done
     return 0
 }
 

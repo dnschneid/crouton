@@ -38,7 +38,13 @@ Options:
                 Specify -x a second time to run the $SETUPSCRIPT script."
 
 # Common functions
-. "$BINDIR/../installer/functions"
+. "$BINDIR/../parts/common"
+from parts/installer import installscript, release
+import trap, output
+import getopts
+from parts/os import disablehungtask
+import path
+import websocket
 
 # Safely launch a command ($*) via /bin/sh within the chroot as the root user.
 chrootcmd() {

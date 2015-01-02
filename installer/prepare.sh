@@ -22,7 +22,13 @@ fi
 export PATH='/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin'
 
 # Common functions
-. "`dirname "$0"`/../installer/functions"
+. "$BINDIR/../parts/common"
+from parts/installer import installscript, release
+import trap, output
+import getopts
+from parts/os import disablehungtask
+import path
+import websocket
 
 # Takes in a list of crouton-style package names, and outputs the list, filtered
 # for the current distro.

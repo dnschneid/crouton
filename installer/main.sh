@@ -108,7 +108,13 @@ secure as the passphrases you assign to them."
 #               for future updates.
 
 # Common functions
-. "$SCRIPTDIR/installer/functions"
+. "$SCRIPTDIR/parts/common"
+from parts/installer import installscript, release
+import trap, output
+import getopts
+from parts/os import disablehungtask
+import path
+import websocket
 
 # Process arguments
 while getopts 'a:bdef:k:m:M:n:p:P:r:s:t:T:uUV' f; do
