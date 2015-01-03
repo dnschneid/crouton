@@ -6,10 +6,10 @@
 . "`dirname "$0"`/../installer/functions"
 
 # Default button numbers
-u=5
-d=4
-l=7
-r=6
+u=4
+d=5
+l=6
+r=7
 # Do horizontal scrolling by default
 x=1
 
@@ -24,8 +24,8 @@ if [ -L /etc/crouton/cmt ]; then
   yc='0.05'
 
   # make Australian Scrolling compatible with Chrome/Chromium sub-pixel scrolling
-  u=4
-  d=5
+  l=7
+  r=6
 else
   # Set the default scaling and constant values
   xs='0.2'
