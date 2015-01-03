@@ -21,8 +21,10 @@ ln -sf croutonpowerd /usr/local/bin/xscreensaver-command
 
 # Install xbindkeys and xautomation for key shortcuts and kbd for chvt
 install --minimal xbindkeys xautomation kbd
-# Make chvt SUID root so we don't need to run croutoncycle as root
-chmod u+s /bin/chvt
+# Allow users to run sudo chvt without password, so we don't need to run
+# croutoncycle as root
+echo '%sudo ALL = NOPASSWD:/bin/chvt' > /etc/sudoers.d/chvt
+chmod 440 /etc/sudoers.d/chvt
 
 # Add a blank Xauthority to all users' home directories
 touch /etc/skel/.Xauthority

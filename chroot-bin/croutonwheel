@@ -14,7 +14,7 @@ r=6
 x=1
 
 if [ -L /etc/crouton/cmt ]; then
-  # enable xinput Australian Scrolling
+  # Enable xinput Australian Scrolling
   xinput --set-prop --type=int --format=8 "Atmel maXTouch Touchpad" "Australian Scrolling" 1
 
   # Set the default scaling and constant values (tuned for cmt)
@@ -22,6 +22,10 @@ if [ -L /etc/crouton/cmt ]; then
   xc='0.01'
   ys='0.3'
   yc='0.05'
+
+  # make Australian Scrolling compatible with Chrome/Chromium sub-pixel scrolling
+  u=4
+  d=5
 else
   # Set the default scaling and constant values
   xs='0.2'
@@ -64,8 +68,8 @@ if [ ! -L /etc/crouton/cmt ]; then
 fi
 
 # Only let one instance *really* run at a time
-mkdir -m 775 -p /tmp/crouton-lock
-exec 3>/tmp/crouton-lock/wheel
+mkdir -m 775 -p "$CROUTONLOCKDIR"
+exec 3>"$CROUTONLOCKDIR/wheel"
 flock 3
 
 # Monitor xinput2 events, reacting only to scroll events (axes 2 and 3).

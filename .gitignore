@@ -1,6 +1,7 @@
 *.tar.*
 .*.swp
 .*.tmp
+nacl_sdk/
 /crouton*
 /tests/run
 /releases/

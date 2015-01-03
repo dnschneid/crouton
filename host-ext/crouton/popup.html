@@ -18,10 +18,9 @@
         outline: 0;
       }
 
-      #scrolllogger {
-        width: 400px;
-        height: 200px;
-        overflow-y: auto;
+      #windowlist {
+        border: 0px;
+        border-spacing: 0;
       }
 
       #logger {
@@ -33,7 +32,19 @@
         font-family: "monospace";
         font-size: 12px;
         vertical-align: top;
-        padding: 2px 15px;
+      }
+
+      td.display {
+        padding: 2px 5px;
+        font-size: 20px;
+        color:#666666;
+      }
+
+      td.name {
+        padding: 2px 5px;
+        font-size: 20px;
+        color:#000080;
+        cursor:pointer;
       }
 
       td.time {
@@ -46,21 +57,32 @@
         color: #000000;
       }
 
+      td.value {
+        padding: 2px 15px;
+      }
       td.value.debug { color: #808080; }
       td.value.info { color: #008000; }
       td.value.error { color: #800000; }
+
+      input:disabled+label { color:#cccccc; }
     </style>
     <script src="popup.js" type="text/javascript"></script>
   </head>
   <body>
-    <div style="float: right;"><a href="#" id="help">Help?</a></div>
+    <div style="float: right;"><a href="#" id="help">Help?</a>
+      <br/><a href="#" id="enable">.</a></div>
     <h1 style="display:inline">crouton integration</h1>
     <hr/>
     <div id="info">Loading...</div>
+    <div id="switcher"><table id="windowlist"><tr><td /></tr></table></div>
     <div id="scrolllogger"><table id="logger"><tr><td /></tr></table></div>
-    <div style="float: left;"><a href="#" id="enable">.</a></div>
-    <div style="float: right;"><input type="checkbox" id="debugcheck" />
-      <label for="debugcheck">Enable debugging</label></div>
-    <div style="clear: both;"></div>
+    <div style="float:right">
+      <input type="checkbox" id="hidpicheck" />
+        <label for="hidpicheck">HiDPI</label>
+      <input type="checkbox" id="logcheck" />
+        <label for="logcheck">Show log</label>
+      <input type="checkbox" id="debugcheck" />
+        <label for="debugcheck">Enable debugging</label>
+    </div>
   </body>
 </html>

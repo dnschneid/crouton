@@ -4,7 +4,7 @@
 # found in the LICENSE file.
 REQUIRES=''
 DESCRIPTION='Performs core system configuration. Most users would want this.'
-CHROOTBIN='croutonversion host-dbus host-x11'
+CHROOTBIN='brightness croutonpowerd croutonversion host-dbus host-x11'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
@@ -108,7 +108,7 @@ fi
 fixkeyboardmode
 
 # Install critical packages
-install --minimal sudo wget ca-certificates
+install --minimal sudo wget ca-certificates apt-transport-https
 
 # Generate and set default locale
 if [ ! -f '/etc/default/locale' ] && hash locale-gen 2>/dev/null; then

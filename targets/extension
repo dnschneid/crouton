@@ -8,7 +8,7 @@ CHROOTBIN='croutonclip croutonurlhandler'
 EXTENSION='gcpneefbbnfalgjniomfjknbcgkbijom'
 
 # Check if the extension is installed and add a mark to the preparation script
-if [ "$TARGETS" != 'help' -a "$TARGETS" != 'check' ]; then
+if [ -z "$TARGETNOINSTALL" ]; then
     if [ -d "/home/chronos/user/Extensions/$EXTENSION" ]; then
         echo 'EXTENSION_INSTALLED=y'
     else

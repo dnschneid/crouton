@@ -22,7 +22,8 @@ for arg in "$@"; do
     fi
 done
 
-disp=0
+# Never use display :0 (confusing if aura does not use X11)
+disp=1
 while [ -f "/tmp/.X$disp-lock" ]; do
     disp=$((disp+1))
 done

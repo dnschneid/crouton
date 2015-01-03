@@ -1,0 +1,52 @@
+#!/bin/sh -e
+# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# All supported releases should be able to launch an xorg server
+if [ -z "$release" ]; then
+    if [ -f /sbin/frecon ]; then
+        log "xorg is not available on Freon. Skipping test."
+    elif uname -m | grep -q 'arm'; then
+        log "xorg is not available on ARM. Skipping test."
+    else
+        echo "all"
+    fi
+    exit 0
+fi
+
+snapshot "$release" audio
+crouton -U -n "$release" -t xorg
+
+echo '
+    install mesa-utils
+    mkdir -p /home/tmp
+    chmod 777 /home/tmp
+    cat > /home/tmp/xinitrc <<END
+#!/bin/sh
+set -x
+glxinfo 2>&1 | tee /home/tmp/glxinfo.out
+xdriinfo 2>&1 | tee /home/tmp/xdriinfo.out
+exec /usr/bin/xterm -e true
+END
+' | crouton -T -U -n "$release"
+
+vtlockrun exitswithin 0 60 host \
+    enter-chroot -n "$release" exec xinit "/home/tmp/xinitrc"
+host enter-chroot -n "$release" sh -c '
+    echo "====GLX info"
+    echo -n "release:"
+    croutonversion -r
+    echo -n "uname:"
+    uname -a
+    echo -n "vendor:"
+    cat /sys/class/graphics/fb0/device/vendor
+    echo -n "device:"
+    cat /sys/class/graphics/fb0/device/device
+    echo -n "xdriinfo:"
+    cat /home/tmp/xdriinfo.out
+    echo "==glxinfo"
+    cat /home/tmp/glxinfo.out
+    echo "====/GLX info"
+' | log
+host delete-chroot -y "$release"

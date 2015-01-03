@@ -1,0 +1,17 @@
+#!/bin/sh -e
+# Copyright (c) 2014 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+if [ -z "$release" ]; then
+    echo "all"
+    exit 0
+fi
+
+target="e17"
+startcmd="starte17"
+# FIXME: Unfortunately, e17 cannot be configured with the keyboard only...
+xte=""
+
+# Run common file
+. "$SCRIPTDIR/test/tests/w0-common"

@@ -1,0 +1,70 @@
+#!/bin/sh -e
+# Copyright (c) 2014 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# This test is sourced by other w* test, do not run it on its own
+if [ -z "$release" -o -z "$target" ]; then
+    exit 0
+fi
+
+if [ -z "$startcmd" ]; then
+    error 2 "startcmd not defined"
+fi
+
+# Start with a x11 snapshot
+snapshot "$release" x11
+
+# Install snapshot tools + xte
+echo 'install --minimal x11-apps imagemagick xautomation' | \
+    crouton -T -U -n "$release"
+
+ret=0
+crouton -u -n "$release" -t "$target" || ret=$?
+if [ "$ret" -ne 0 ]; then
+    if [ "$ret" -eq 99 ]; then
+        log "Target $target failed on $release, as expected (unsupported combination)."
+        exit 0
+    else
+        log "Target $target failed on $release."
+        exit "$ret"
+    fi
+fi
+
+(
+    vtlock
+    host "$startcmd" -b -n "$release"
+    host enter-chroot -n "$release" sh -exc '
+        timeout=60
+        while [ "$timeout" -gt 0 ]; do
+            timeout="$((timeout - 5))"
+            sleep 5
+            DISPLAY="`croutoncycle display`"
+            if [ "$DISPLAY" != "aura" -a "$DISPLAY" != ":0" ]; then
+                break
+            fi
+        done
+        # Test croutoncycle as a bonus
+        if [ "$DISPLAY" = ":0" -o "$DISPLAY" = "aura" ]; then
+            echo "Invalid display ($DISPLAY)." 1>&2
+            exit 1
+        fi
+        # Let WM/DE settle, then play xte sequence
+        sleep 30
+        export DISPLAY
+        if [ -n "'"$xte"'" ]; then
+            echo "'"$xte"'" | tr ";" "\n" | xte
+        fi
+        # Let WM/DE settle again
+        sleep 30
+        # Snapshot! We use xwd, as import does not snapshot obscured windows
+        # correctly (dialogs end up as black squares)
+        xwd -root | convert -quality 75 xwd:- ~/"screenshot-'"$target"'.jpg"'
+
+    mv "$PREFIX/chroots/$release/home/test/screenshot-$target.jpg" \
+        "$file-snapshot.jpg"
+
+    host unmount-chroot -f -y "$release"
+)
+
+host delete-chroot -y "$release"

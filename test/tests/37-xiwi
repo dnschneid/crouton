@@ -1,0 +1,22 @@
+#!/bin/sh -e
+# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# All supported releases should be able to launch an xiwi server
+if [ -z "$release" ]; then
+    echo "all"
+    exit 0
+fi
+
+# FIXME: This test is incomplete, as it is not able to connect to the
+# extension, so xinit parameter is never run. However, this tests target
+# installation, and verifies that there is no critical X failures (e.g.
+# X server cannot start).
+
+snapshot "$release" audio
+crouton -U -n "$release" -t xiwi
+# FIXME: When x11test is merged, this should be run under vtlock
+exitswithin 0 60 host \
+    enter-chroot -n "$release" exec xinit /usr/bin/xterm -e true
+host delete-chroot -y "$release"

@@ -2,14 +2,17 @@
 # Copyright (c) 2014 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-if [ "$TARGETS" != 'help' -a "$TARGETS" != 'check' \
-        -a "${ARCH#arm}" != "$ARCH" ]; then
-    error 1 'xorg target does not work on ARM.'
+if [ "${TARGETNOINSTALL:-c}" = 'c' ]; then
+    if [ -f /sbin/frecon ]; then
+        error 1 'xorg target does not yet work with Freon.'
+    elif [ "${ARCH#arm}" != "$ARCH" ]; then
+        error 1 'xorg target does not work on ARM.'
+    fi
 fi
-REQUIRES='core audio'
+REQUIRES='audio'
 PROVIDES='x11'
 DESCRIPTION='X.Org X11 backend. Enables GPU acceleration on supported platforms.'
-CHROOTBIN='brightness croutoncycle croutonpowerd croutonxinitrc-wrapper setres xinit'
+CHROOTBIN='croutoncycle croutonxinitrc-wrapper setres xinit'
 CHROOTETC='xbindkeysrc.scm xserverrc-x11 xserverrc-local.example'
 . "${TARGETSDIR:="$PWD"}/common"
 

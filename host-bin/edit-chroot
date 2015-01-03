@@ -53,6 +53,8 @@ Options:
                 directory, or an absolute path to move it entirely.
                 DEST can be a directory, in which case it must end in a slash.
                 If multiple chroots are specified, DEST must be a directory.
+                If you are moving a chroot to a SD card/USB drive, make sure the
+                storage is formatted to ext2/3/4.
     -r          Restores a chroot from a tarball. The tarball path can be
                 specified with -f or detected from name. If both are specified,
                 restores to that name instead of the one in the tarball.
@@ -92,28 +94,13 @@ if [ -z "$ALLCHROOTS$BACKUP$DELETE$ENCRYPT$KEYFILE$LISTDETAILS$MOVE$RESTORE" ]; 
     error 2 "$USAGE"
 fi
 
-# Need at least one chroot listed, or -a; not both.
-if [ $# = 0 -a -z "$ALLCHROOTS" ] || [ ! $# = 0 -a -n "$ALLCHROOTS" ]; then
+# Need at least one chroot listed if not using -r with -f or -a.
+if [ $# = 0 ] && ! [ -n "$RESTORE" -a -n "$TARBALL" -o -n "$ALLCHROOTS" ]; then
     error 2 "$USAGE"
 fi
 
-# If we specified -a option, bring in all chroots.
-if [ -n "$ALLCHROOTS" ]; then
-    if [ ! -d "$CHROOTS" ]; then
-        error 1 "$CHROOTS not found."
-    fi
-    for crname in "$CHROOTS"/*; do
-        if [ -d "$crname" ]; then
-            set -- "$@" "${crname##*/}"
-        fi
-    done
-    if [ $# = 0 ]; then
-        error 1 "No chroots found in $CHROOTS"
-    fi
-fi
-
-# Need at least one chroot listed if not using -r with -f.
-if [ $# = 0 ] && ! [ -n "$RESTORE" -a -n "$TARBALL" ]; then
+# Cannot specify a chroot and -a.
+if [ $# -gt 0 -a -n "$ALLCHROOTS" ]; then
     error 2 "$USAGE"
 fi
 
@@ -130,6 +117,21 @@ fi
 # Cannot specify delete with anything else.
 if [ -n "$DELETE" -a -n "$BACKUP$ENCRYPT$KEYFILE$MOVE$RESTORE" ]; then
     error 2 "$USAGE"
+fi
+
+# If we specified -a option, bring in all chroots.
+if [ -n "$ALLCHROOTS" ]; then
+    if [ ! -d "$CHROOTS" ]; then
+        error 1 "$CHROOTS not found."
+    fi
+    for crname in "$CHROOTS"/*; do
+        if [ -d "$crname" ]; then
+            set -- "$@" "${crname##*/}"
+        fi
+    done
+    if [ $# = 0 ]; then
+        error 1 "No chroots found in $CHROOTS"
+    fi
 fi
 
 # If multiple chroots are listed, KEYFILE and MOVE must be empty or directories.
@@ -309,7 +311,7 @@ for NAME in "$@"; do
                 YES="$CROUTON_EDIT_RESPONSE"
                 echo "$YES" 1>&2
             else
-                read YES
+                read -r YES
             fi
             if [ "${YES#[AaYy]}" = "$YES" ]; then
                  error 2 "Aborting deletion of $CHROOT"
@@ -486,7 +488,7 @@ for NAME in "$@"; do
                     YES="$CROUTON_EDIT_RESPONSE"
                     echo "$YES" 1>&2
                 else
-                    read YES
+                    read -r YES
                 fi
                 if [ "${YES#[AaYy]}" = "$YES" ]; then
                      error 2 "Aborting move of $CHROOT"

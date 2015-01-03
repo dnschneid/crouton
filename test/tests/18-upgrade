@@ -12,8 +12,8 @@
 # DEV: one additional release, for which upgrading is not recommended yet
 # PROMPT: choose normal or lts upgrade
 
-UPGRADEPATHS='\
-precise;trusty;;lts'
+UPGRADEPATHS="\
+precise;trusty;;lts"
 
 #FIXME: add trusty;;utopic;normal then this is fixed:
 # https://bugs.launchpad.net/ubuntu/+source/update-manager-core/+bug/1382707
@@ -22,7 +22,7 @@ if [ -z "$release" ]; then
     # Only test upgrade if no release was set explicitly
     if [ -z "$SUPPORTED_RELEASES_SET" ]; then
         # Output all releases that are first in the upgrade paths
-        echo "$UPGRADEPATHS" | while read line; do
+        echo "$UPGRADEPATHS" | while read -r line; do
             echo "${line%%;*}"
         done
     fi
@@ -61,7 +61,7 @@ versioninfo() {
 }
 
 # Test upgrade paths starting with the selected release
-echo "$UPGRADEPATHS" | grep "^$release;" | while read line; do
+echo "$UPGRADEPATHS" | grep "^$release;" | while read -r line; do
     FIRST="${line%%;*}"
     line="${line#$FIRST;}"
     NEXT="${line%%;*}"

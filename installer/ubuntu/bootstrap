@@ -34,6 +34,7 @@ fi
 # Patch debootstrap so that it retries downloading packages
 echo 'Patching debootstrap...' 1>&2
 if awk '
+    t == 3 && /warning RETRY/ { print "sleep 1"; t=4 }
     t == 2 && /-z \"\$checksum\"/ { sub(/\$checksum/, "$checksum$failed"); t=3 }
     t == 1 { if (/if \[/) { sub(/if \[/, "elif ["); t=2 } else { exit 1 } }
     /if ! just_get \"\$from\" \"\$dest2\"; then continue 2; fi/ {
@@ -42,7 +43,7 @@ if awk '
         t=1
     }
     1
-    END { if (t != 3) exit 1 }
+    END { if (t != 4) exit 1 }
         ' "$tmp/functions" > "$tmp/functions.new"; then
     mv -f "$tmp/functions.new" "$tmp/functions"
 else

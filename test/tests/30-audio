@@ -4,14 +4,12 @@
 # found in the LICENSE file.
 
 # All supported releases should be able to create an audio chroot and play sound
-
 if [ -z "$release" ]; then
     echo "all"
     exit 0
 fi
 
-snapshot "$release" core
-crouton -u -n "$release" -t audio
+snapshot "$release" audio
 
 # We pass -fdat to aplay/arecord, which means 48kHz, 16-bit, stereo.
 # dd writes/reads 8 blocks of 48000 bytes: 2 seconds worth of sound.

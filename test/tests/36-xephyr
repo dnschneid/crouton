@@ -1,0 +1,20 @@
+#!/bin/sh -e
+# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# All supported releases should be able to launch an xephyr server
+if [ -z "$release" ]; then
+    if [ -f /sbin/frecon ]; then
+        log "xephyr doesn't work with Freon. Skipping test."
+    else
+        echo "all"
+    fi
+    exit 0
+fi
+
+snapshot "$release" audio
+crouton -U -n "$release" -t xephyr
+vtlockrun exitswithin 0 60 host \
+    enter-chroot -n "$release" exec xinit /usr/bin/xterm -e true
+host delete-chroot -y "$release"

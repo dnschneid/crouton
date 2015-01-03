@@ -5,10 +5,30 @@
 REQUIRES='x11'
 DESCRIPTION='Installs the XBMC media player. (Approx. 140MB)'
 HOSTBIN='startxbmc'
+CHROOTETC='xbmc-keyboard.xml xbmc-cycle.py'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
 install xbmc
+
+# Configure keymaps xbmc for the hotkeys ctr-shift-alt F1/F2 to
+# cycle through chroots/chromeos. We use ~/.xbmc/userdata/keymaps/keyboard.xml
+# for this purpose, but the main user may not have been created yet, so we 
+# add a script in /etc/profile.d to link ~/.xbmc/userdata/keymaps/keyboard.xml
+# to /etc/crouton/xbmc-keyboard.xml
+
+profiledsh='/etc/profile.d/crouton-xbmc-keymaps.sh'
+# Make sure symbolic link is setup on login
+echo '#!/bin/sh
+
+keyboardxmldir="$HOME/.xbmc/userdata/keymaps"
+# Do not install if user is root, or $HOME does not exist
+if [ "`id -u`" -ne 0 -a -d "$HOME" -a ! -e "$keyboardxmldir/keyboard.xml" ]; then
+    mkdir -p "$keyboardxmldir"
+    ln -sfT /etc/crouton/xbmc-keyboard.xml "$keyboardxmldir/keyboard.xml"
+fi' > "$profiledsh"
+
+chmod 755 "$profiledsh"
 
 TIPS="$TIPS
 You can start XBMC via the startxbmc host command: sudo startxbmc

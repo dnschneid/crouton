@@ -35,9 +35,12 @@ UPLOADROOT="$HOME"
 AUTOTESTGIT="https://chromium.googlesource.com/chromiumos/third_party/autotest"
 TESTINGSSHKEYURL="https://chromium.googlesource.com/chromiumos/chromite/+/master/ssh_keys/testing_rsa"
 MIRRORENV=""
+# Maximum test run time (minutes): 24 hours
+MAXTESTRUNTIME="$((24*60))"
 GSAUTOTEST="gs://chromeos-autotest-results"
-# FIXME: Remove this when test is merged
-GSCROUTONTEST="gs://drinkcat-crouton/crouton-test/packages"
+# FIXME: Remove this when test is merged (>=R39): a temporary hack fetches
+# the crouton test from gs://drinkcat-crouton/crouton-test/packages
+TESTCSUM="811e9713f6357ee3996cb7cce80a3e2b"
 
 USAGE="$APPLICATION [options] -q QUEUEURL
 
@@ -94,9 +97,7 @@ findboard() {
 echo
 echo "HWID=`crossystem hwid`"
 cat /etc/lsb-release
-' | ssh "root@${host}.cros" -o IdentityFile="$SSHKEY" \
-            -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-            -o ConnectTimeout=30 > "$hostinfonew"; then
+' | ssh "root@${host}.cros" $DUTSSHOPTIONS > "$hostinfonew"; then
         mv "$hostinfonew" "$hostinfo"
     fi
 
@@ -157,7 +158,7 @@ syncstatus() {
                 cd $STATUSROOT
                 mkdir -p "archive"
                 find -maxdepth 1 -type d -mtime +"$ARCHIVEMAXAGE" \
-                     -regex '\./[-0-9]*_[-0-9]*_.*' | while read dir; do
+                     -regex '\./[-0-9]*_[-0-9]*_.*' | while read -r dir; do
                     dest="archive/${dir##*/}.tar.bz2"
                     rm -f "$dest"
                     tar -caf "$dest" "${dir#./}"
@@ -241,25 +242,25 @@ SSHKEY="$LOCALROOT/testing_rsa"
 wget "$TESTINGSSHKEYURL?format=TEXT" -O- | base64 -d > "$SSHKEY"
 chmod 0600 "$SSHKEY"
 
-# FIXME: Remove this when test is merged
-echo "Building latest test-plaform_Crouton tarball..." 1>&2
-tar cvfj "$TMPROOT/test-platform_Crouton.tar.bz2" \
-    -C "$AUTOTESTROOT/client/site_tests/platform_Crouton" . --exclude='*~'
-( cd "$TMPROOT"; md5sum test-platform_Crouton.tar.bz2 > packages.checksum )
-TESTCSUM="`cat "$TMPROOT/packages.checksum" | cut -d' ' -f 1`"
-gsutil cp "$TMPROOT/test-platform_Crouton.tar.bz2" \
-          "$TMPROOT/packages.checksum" "$GSCROUTONTEST-$TESTCSUM/"
+# ssh control directory
+mkdir -p "$TMPROOT/ssh"
+
+# ssh options for the DUTs
+DUTSSHOPTIONS="-o ConnectTimeout=30 -o IdentityFile=$SSHKEY \
+-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+-o ControlPath=$TMPROOT/ssh/%h \
+-o ControlMaster=auto -o ControlPersist=10m"
 
 syncstatus
 
 while sleep "$POLLINTERVAL"; do
-    read lastline last < "$LASTFILE"
+    read -r lastline last < "$LASTFILE"
     # Grab the queue, skip to the next interesting line, convert field
     # boundaries into pipe characters, and then parse the result.
     # Any line still containing a double-quote after parsing is ignored
     (wget -qO- "$QUEUEURL" && echo) | tail -n"+$lastline" \
             | sed 's/^"//; s/","/|/g; s/"$//; s/.*".*//' | {
-        while IFS='|' read date repo branch params run _; do
+        while IFS='|' read -r date repo branch params run _; do
             if [ -z "$date" ]; then
                 continue
             fi
@@ -385,6 +386,7 @@ while sleep "$POLLINTERVAL"; do
                         atest job create -m "$host" -w cautotest \
                             -f "$curtesthostroot/control" \
                             -d "cros-version:${board}-release/$release" \
+                            -B always --max_runtime="$MAXTESTRUNTIME" \
                             "$tname-$hostfull"
                     ) > "$curtesthostroot/atest" 2>&1 || ret=$?
 
@@ -417,7 +419,6 @@ while sleep "$POLLINTERVAL"; do
             # If jobid file exists, test is running, or results have not been
             # fetched yet
             if [ -f "$curtesthostroot/jobid" ]; then
-                mkdir -p "$curtesthostresult"
                 jobid="`cat "$curtesthostroot/jobid"`"
                 host="`cat "$curtesthostroot/host" || true`"
                 newstatusfile="$curtesthostroot/newstatus"
@@ -436,15 +437,23 @@ while sleep "$POLLINTERVAL"; do
                     rm -f "$newstatusfile"
                 fi
 
-                # If status is Running, rsync from the host
+                # If status is Running, rsync from the host. Move the current
+                # results dir away, then use rsync --link-dest, so that partial
+                # files are used, but old files deleted
                 if [ "$status" = "Running" -a -n "$host" ]; then
+                    rm -rf "$curtesthostresult.old"
+                    mkdir -p "$curtesthostresult"
+                    mv -T "$curtesthostresult" "$curtesthostresult.old"
+                    mkdir -p "$curtesthostresult"
                     for path in "status.log" "debug/" \
                         "platform_Crouton/debug/platform_Crouton." \
                         "platform_Crouton/results/"; do
-                        rsync -aP \
-               "${host}.cros:/usr/local/autotest/results/default/${path}*" \
+                        rsync -e "ssh $DUTSSHOPTIONS" -aP \
+                                         --link-dest="$curtesthostresult.old/" \
+              "root@${host}.cros:/usr/local/autotest/results/default/${path}*" \
                             "$curtesthostresult/" || true
                     done
+                    rm -rf "$curtesthostresult.old"
                     curtestupdated=y
                 fi
 
@@ -473,6 +482,9 @@ while sleep "$POLLINTERVAL"; do
                         fi
                         status2="NO_DATA"
                     else
+                        # Ensure results are fully re-fetched
+                        rm -rf "$curtesthostresult" "$curtesthostresult.old"
+                        mkdir -p "$curtesthostresult"
                         for path in "status.log" "debug/" \
                                 "platform_Crouton/debug/platform_Crouton." \
                                 "platform_Crouton/results/"; do
@@ -506,13 +518,13 @@ while sleep "$POLLINTERVAL"; do
                                    data["Status2"] }
                     ' "$dir/status"
                 fi
-            done > newstatus
-            if ! diff -q newstatus status >/dev/null 2>&1; then
-                mv newstatus status
+            done > "$TMPROOT/newstatus"
+            if ! diff -q "$TMPROOT/newstatus" status >/dev/null 2>&1; then
+                mv "$TMPROOT/newstatus" status
                 forceupdate=y
                 curtestupdated=y
             else
-                rm -f newstatus
+                rm -f "$TMPROOT/newstatus"
             fi
 
             if [ -n "$curtestupdated" ]; then

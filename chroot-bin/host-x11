@@ -6,9 +6,20 @@
 # Either runs the specified command with the environment set to use the host's
 # X11 server, or prints out the environment changes required.
 
-export DISPLAY=':0' XAUTHORITY='/var/host/Xauthority'
-if [ "$#" = 0 ]; then
-    echo "export DISPLAY='$DISPLAY' XAUTHORITY='$XAUTHORITY'"
+# If tty0 does not exit, no Chromium OS X11 server exist
+if [ ! -f "/sys/class/tty/tty0/active" ]; then
+    err="No Chromium OS X server is available."
+    if [ "$#" = 0 ]; then
+        echo "echo '$err' 1>&2"
+    else
+        echo "$err" 1>&2
+        exit 1
+    fi
 else
-    exec "$@"
+    export DISPLAY=':0' XAUTHORITY='/var/host/Xauthority'
+    if [ "$#" = 0 ]; then
+        echo "export DISPLAY='$DISPLAY' XAUTHORITY='$XAUTHORITY'"
+    else
+        exec "$@"
+    fi
 fi

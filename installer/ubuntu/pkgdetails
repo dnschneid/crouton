@@ -244,7 +244,7 @@ dotranslatewgetpercent() {
     if hash stdbuf 2>/dev/null; then
         stdbuf -oL tr -sc '[:digit:]%' '
 ' | {
-            while read input; do
+            while read -r input; do
                 val="${input%"%"}"
                 if [ "$input" = "$val" ]; then
                     continue
