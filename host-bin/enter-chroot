@@ -39,9 +39,7 @@ Options:
 
 # Common functions
 . "$BINDIR/../parts/common"
-from output import error
-from os import disablehungtask
-import trap
+import os, output, trap
 
 # Safely launch a command ($*) via /bin/sh within the chroot as the root user.
 chrootcmd() {

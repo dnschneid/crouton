@@ -61,8 +61,7 @@ Options:
 
 # Common functions
 . "$SCRIPTDIR/parts/common"
-from output import error
-import trap
+import output, trap
 
 # Process arguments
 while getopts 'e:l:q:r:s:u:' f; do

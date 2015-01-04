@@ -109,9 +109,7 @@ secure as the passphrases you assign to them."
 
 # Common functions
 . "$SCRIPTDIR/parts/common"
-from output import error
-from os import disablehungtask
-import installer, path, trap
+import installer, os, output, path, trap
 
 # Process arguments
 while getopts 'a:bdef:k:m:M:n:p:P:r:s:t:T:uUV' f; do

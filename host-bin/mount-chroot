@@ -31,9 +31,7 @@ Options:
 
 # Common functions
 . "$BINDIR/../parts/common"
-from output import error, stdout_to_tty
-from path import validate_name
-import getopts, trap
+import getopts, output, path, trap
 
 # Process arguments
 getopts_string='c:ek:np'

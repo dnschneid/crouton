@@ -18,7 +18,7 @@ cd "${dir%/*}/.."
 
 # Import common functions
 . ./parts/common
-from output import error
+import output
 
 if [ "$1" = '-f' ]; then
     FORCE=y

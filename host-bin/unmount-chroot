@@ -40,8 +40,7 @@ Options:
 
 # Common functions
 . "$BINDIR/../parts/common"
-from output import error
-import getopts
+import getopts, output
 
 # Process arguments
 getopts_string='ac:fkpt:xy'

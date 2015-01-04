@@ -70,9 +70,7 @@ Options:
 
 # Common functions
 . "$BINDIR/../parts/common"
-from output import error
-from os import disablehungtask
-import getopts, path, trap
+import getopts, os, output, path, trap
 
 # Process arguments
 getopts_string='abc:def:k:lm:rs:y'

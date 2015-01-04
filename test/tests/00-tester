@@ -25,15 +25,6 @@ exitswithin 0 1 true
 exitswithin 1 1 false
 runslongerthan 1 sleep 2
 
-# Test "from" function importer by faking it out
-: '
-fromtester() {
-    return 0
-}
-'
-passes from 'test/tests/00-tester' import fromtester
-passes fromtester
-
 log 'BEGIN INTENTIONALLY FAILING TESTS'
 ! test 1 -eq 0
 ! passes false
@@ -43,6 +34,4 @@ log 'BEGIN INTENTIONALLY FAILING TESTS'
 ! exitswithin 0 1 sleep 2
 ! runslongerthan 1 false
 ! runslongerthan 1 true
-fails from sys import posix
-fails from 'test/tests/00-tester' import python
 log 'END INTENTIONALLY FAILING TESTS'

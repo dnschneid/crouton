@@ -23,9 +23,7 @@ export PATH='/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin'
 
 # Common functions
 . "$BINDIR/../parts/common"
-from installer import release
-from output import stdout_to_tty
-import trap
+import installer, output, trap
 
 # Takes in a list of crouton-style package names, and outputs the list, filtered
 # for the current distro.

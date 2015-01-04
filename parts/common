@@ -3,70 +3,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# This file contains the mechanism to pull in common functions from scripts in
-# the parts directory. These functions are inlined during installation.
-
-# Be EXTREMELY careful when using \'s in part functions (i.e., don't use them).
-# dash is very obtuse about how and when it expands \'s, and using them is
-# liable to make your functions break in mysterious ways, depending on whether
-# the function has been inlined or not.
+# Contains the mechanism to pull in scripts in the parts directory.
+# These scripts are inlined during installation.
 
 SCRIPTDIR="${SCRIPTDIR:-"`dirname "$0"`/.."}"
 
-# Sources a function from a script, and saves, prints, or runs it.
-# Note that the function may need global variables defined when run.
-# Usage:
-#   from scriptfile import functionA[[,] functionB]*
-#   from scriptfile print functionA[[,] functionB]*
-#   from scriptfile run function [parameterA [...]]
-# scriptfile should be either tarball-relative, i.e., host-bin/mount-chroot, or
-# parts-relative i.e., output
-from() {
-    local scriptpath scriptfile="$1" action="$2" name script ret
-    if [ "${scriptfile%/*}" = "$scriptfile" ]; then
-        scriptfile="parts/$scriptfile"
-    fi
-    scriptpath="$SCRIPTDIR/$scriptfile"
-    if [ -z "$3" ]; then
-        echo "    $*
-SyntaxError: invalid syntax" 1>&2
-        return 2
-    fi
-    if [ ! -f "$scriptpath" ]; then
-        echo "ImportError: No module named $scriptfile" 1>&2
-        return 2
-    fi
-    shift 2
-    for name in "$@"; do
-        name="${name%,}"
-        script="`awk '
-            /^'"$name"'[(][)] {$/ {x=1}
-            x;
-            x && /^}$/ {exit}
-        ' "$scriptpath"`"
-        if [ -z "$script" ]; then
-            echo "ImportError: cannot import name $name" 1>&2
-            return 2
-        fi
-        if [ "$action" = 'import' ]; then
-            eval "$script"
-        elif [ "$action" = 'print' ]; then
-            echo "$script"
-        elif [ "$action" = 'run' ]; then
-            ret=0
-            (eval "$script"; "$@") || ret="$?"
-            return "$ret"
-        else
-            echo "    from '$scriptfile' $action $*
-SyntaxError: invalid syntax" 1>&2
-            return 2
-        fi
-    done
-    return 0
-}
-
 # Imports an entire parts file into a script.
-# Some parts files need to be fully imported to set globals.
 # An import command should be the only thing on the line for proper processing.
 # Usage:
 #   import scriptfile[[,] scriptfile2]*

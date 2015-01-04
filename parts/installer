@@ -5,9 +5,8 @@
 
 # Functions for installing things
 
-# Installs a script to a destination, expanding any import* or from* calls into
-# static insertions. If the file is a symlink, copies the symlink without
-# modification.
+# Installs a script to a destination, expanding any import calls into static
+# insertions. If the file is a symlink, copies the symlink without modification.
 # $1: the source script to process
 # $2: the destination file or directory
 # $3: optional additional commands to pass to sed (passed to -e)
@@ -21,60 +20,20 @@ installscript() {
         cp -fPT "$src" "$dst"
         return
     fi
-    # Process the input in two stages.
-    # awk generates commands to shell by prefixing the string with a character
-    #   n: print text with newline
-    #   e: print text without newline
-    #   f: process from command
-    #   i: process import command
-    awk '
-    !x && match($0, "/parts/common$") {
-        x = 1
+    awk -F '[, ]' '
+    !ok && match($0, "^\. .*/parts/common") {
+        ok = 1
         next
     }
-    !x { print }
-    x {
-        if (match($0, "from [a-z-_/]+ import|print|run ([a-zA-Z_]+[, ])+")) {
-            print "e" substr($0, 1, RSTART-1)
-            print "f" substr($0, RSTART, RLENGTH)
-            print "n" substr($0, RSTART+RLENGTH)
-        } else if (match($0, "^ *import ([a-z-_]+[, ])+$")) {
-            print "i" $0
-        } else {
-            print "n" $0
+    ok && /^ *import ([-a-z_]+[, ]*)+$/ {
+        for (x=2; x<=NF; x++) {
+            if ($x) {
+                system("'"awk '/^$/{ok=1} ok' '$SCRIPTDIR/parts/\" \$x \"'"'");
+            }
         }
-    }' "$src" | (OLDIFS="$IFS"; IFS=''; while read -r line; do
-        case "$line" in
-            e*) echo -n "${line#e}";;
-            n*) echo -n "${line#n}
-";;
-            i*) IFS=' ,'
-                for file in ${line#*import}; do
-                    file="$SCRIPTDIR/parts/$file"
-                    if [ -f "$file" ]; then
-                        cat "$file"
-                    fi
-                done
-                IFS='';;
-            f*) echo -n "${line#*from}" | {
-                    IFS=' ,'
-                    read file cmd func params
-                    IFS="$OLDIFS"
-                    if [ "$cmd" = 'import' ]; then
-                        from "$file" print $func $params
-                    elif [ "$cmd" = 'run' ]; then
-                        echo -n "("
-                        from "$file" print $func
-                        echo "$func $params)"
-                    else
-                        # This should not be hit unless in dead imported code...
-                        echo ':'
-                    fi
-                    IFS=''
-                };;
-            *) error 3 "installscript is broken :(";;
-        esac
-    done) | sed -e "${3:-;}" > "$dst"
+        next
+    }
+    1' "$src" | sed -e "${3:-;}" > "$dst"
 }
 
 # Compares $RELEASE to the specified releases, assuming $DISTRODIR/releases is

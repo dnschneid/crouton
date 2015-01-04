@@ -4,7 +4,7 @@
 # found in the LICENSE file.
 
 . "`dirname "$0"`/../parts/common"
-from output import error, unbuffered_awk
+import output
 
 # Default button numbers
 u=4

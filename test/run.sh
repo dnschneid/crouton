@@ -63,9 +63,7 @@ Options:
 
 # Common functions
 . "$SCRIPTDIR/parts/common"
-from installer import release
-from output import error
-import trap
+import installer, output, trap
 
 # Process arguments
 while getopts 'j:l:r:R:T:' f; do
