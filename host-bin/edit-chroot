@@ -449,12 +449,13 @@ for NAME in "$@"; do
                     break
                 fi
             done
+            # Don't let tar get tripped up by cat's incomplete writes
+            tarparam="$tarparam -B"
             tarsrc="`mktemp -d --tmpdir=/tmp 'crouton-restore.XXX'`"
             addtrap "rm -rf '$tarsrc'"
             tarsrc="$tarsrc/pipe"
             mkfifo -m 600 "$tarsrc"
-            # Pipe through dd to eat the EOFs
-            cat "$src" "$src.part"* | dd status=none >> "$tarsrc" &
+            cat "$src" "$src.part"* >> "$tarsrc" &
             catpid="$!"
             addtrap "kill '$catpid' 2>/dev/null"
         else
