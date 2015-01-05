@@ -206,7 +206,7 @@ validate_name() {
 # outputs on stdout
 getmountpoint() {
     mp="`readlink -m -- "$1"`"
-    while ! stat -c '%m' "$mp" 2>/dev/null; do
+    while ! stat -c '%m' "${mp:-/}" 2>/dev/null; do
         mp="${mp%/*}"
     done
 }

@@ -550,8 +550,7 @@ for NAME in "$@"; do
         # safety. We don't do this when encrypting a chroot (see mount-chroot),
         # because that would require 2x the space on one device. When switching
         # filesystems like this, however, that isn't a concern.
-        if [ ! "`getmountpoint "$target"`" = \
-               "`getmountpoint "$CHROOT"`" ]; then
+        if [ "`getmountpoint "$target"`" != "`getmountpoint "$CHROOT"`" ]; then
             echo "Moving $CHROOT across filesystems to $target" 1>&2
             echo 'This will take a while.' 1>&2
             echo "If the operation gets interrupted, you can safely delete $target" 1>&2
