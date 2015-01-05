@@ -370,7 +370,7 @@ for NAME in "$@"; do
         if [ -n "$SPLIT" ]; then
             tardest="`mktemp -d --tmpdir=/tmp 'crouton-backup.XXX'`"
             addtrap "rm -rf '$tardest'"
-            tardest="$tardest/pipe"
+            tardest="$tardest/pipe.${dest##*/}"
             mkfifo -m 600 "$tardest"
             split -b "$SPLIT" -d "$tardest" "$dest.part" &
             splitpid="$!"
@@ -434,6 +434,14 @@ for NAME in "$@"; do
         echo -n "  Restoring $src to $CHROOT..." 1>&2
         mkdir -p "$CHROOT"
         if [ -f "$src.part01" ]; then
+            # Detect the type of compression before sending it through a fifo
+            for tarparam in -z -j -J -Z --no-auto-compress fail; do
+                if [ "$tarparam" = 'fail' ]; then
+                    error 2 "Unable to detect compression method of $src"
+                elif tar $tarparam --test-label -f "$src" >/dev/null 2>&1; then
+                    break
+                fi
+            done
             tarsrc="`mktemp -d --tmpdir=/tmp 'crouton-restore.XXX'`"
             addtrap "rm -rf '$tarsrc'"
             tarsrc="$tarsrc/pipe"
@@ -444,10 +452,11 @@ for NAME in "$@"; do
             addtrap "kill '$catpid' 2>/dev/null"
         else
             tarsrc="$src"
+            tarparam='-a'
             catpid=''
         fi
-        spinner 1 tar --checkpoint=200 --checkpoint-action=exec=echo \
-            --one-file-system -xaf "$tarsrc" -C "$CHROOT" --strip-components=1
+        spinner 1 tar --checkpoint=200 --checkpoint-action=exec=echo $tarparam \
+            --one-file-system -xf "$tarsrc" -C "$CHROOT" --strip-components=1
         if [ -n "$catpid" ]; then
             wait "$catpid"
         fi
