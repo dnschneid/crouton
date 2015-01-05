@@ -365,7 +365,7 @@ for NAME in "$@"; do
         fi
         # If we're writing to a fat32 filesystem, split the file at 4GB chunks
         if ! df -T "`getmountpoint "$dest"`" | awk '$2~"^v?fat"{exit 1}'; then
-            SPLIT="${SPLIT:-4GB}"
+            SPLIT="${SPLIT:-4294967295}"
         fi
         if [ -n "$SPLIT" ]; then
             tardest="`mktemp -d --tmpdir=/tmp 'crouton-backup.XXX'`"
