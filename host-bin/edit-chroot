@@ -368,9 +368,10 @@ for NAME in "$@"; do
             SPLIT="${SPLIT:-4GB}"
         fi
         if [ -n "$SPLIT" ]; then
-            tardest="`mktemp -u --tmpdir=/tmp 'crouton-backup.XXX'`"
+            tardest="`mktemp -d --tmpdir=/tmp 'crouton-backup.XXX'`"
+            addtrap "rm -rf '$tardest'"
+            tardest="$tardest/pipe"
             mkfifo -m 600 "$tardest"
-            addtrap "rm -f '$tardest'"
             split -b "$SPLIT" -d "$tardest" "$dest.part" &
             splitpid="$!"
         else
@@ -433,12 +434,14 @@ for NAME in "$@"; do
         echo -n "  Restoring $src to $CHROOT..." 1>&2
         mkdir -p "$CHROOT"
         if [ -f "$src.part01" ]; then
-            tarsrc="`mktemp -u --tmpdir=/tmp 'crouton-restore.XXX'`"
+            tarsrc="`mktemp -d --tmpdir=/tmp 'crouton-restore.XXX'`"
+            addtrap "rm -rf '$tarsrc'"
+            tarsrc="$tarsrc/pipe"
             mkfifo -m 600 "$tarsrc"
             # Pipe through dd to eat the EOFs
             cat "$src" "$src.part"* | dd status=none >> "$tarsrc" &
             catpid="$!"
-            addtrap "rm -f '$tarsrc'; kill '$catpid' 2>/dev/null"
+            addtrap "kill '$catpid' 2>/dev/null"
         else
             tarsrc="$src"
             catpid=''
