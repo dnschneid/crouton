@@ -372,7 +372,7 @@ for NAME in "$@"; do
             addtrap "rm -rf '$tardest'"
             tardest="$tardest/pipe.${dest##*/}"
             mkfifo -m 600 "$tardest"
-            split -b "$SPLIT" -d "$tardest" "$dest.part" &
+            split -b "$SPLIT" -a 5 -d "$tardest" "$dest.part" &
             splitpid="$!"
         else
             tardest="$dest"
@@ -386,8 +386,8 @@ for NAME in "$@"; do
             --one-file-system -V "crouton:backup.${date%-*}${date#*-}-$NAME" \
             -caf "$tardest" -C "$CHROOTS" "$NAME" || ret="$?"
         if [ -n "$SPLIT" ]; then
-            wait "$splitpid" || ret="$?$ret"
-            mv -f "$dest.part00" "$dest" || ret="$?$ret"
+            wait "$splitpid" || ret="$?"
+            mv -f "$dest.part00000" "$dest" || ret="$?"
         fi
         if [ "$ret" -ne 0 ]; then
             echo "Unable to backup $CHROOT." 1>&2
@@ -408,7 +408,8 @@ for NAME in "$@"; do
             # Search for the alphabetically last tarball with src.
             # Dated tarballs take precedence over undated tarballs.
             for file in "$file."* "$file-"*; do
-                if [ ! -f "$file" -o "${file%part[0-9][0-9]}" != "$file" ]; then
+                if [ "${file%part[0-9][0-9][0-9][0-9][0-9]}" != "$file" \
+                        -o ! -f "$file" ]; then
                     continue
                 fi
                 # Confirm it's a tarball
