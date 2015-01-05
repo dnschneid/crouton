@@ -63,18 +63,17 @@ if [ -z "$TRAP" ]; then
 fi
 
 # See if we want to just run a script from the bundle
-if [ "$1" = '-X' -a -z "$2" ]; then
-    (
+if [ "$1" = '-X' ]; then
+    script="$SCRIPTDIR/$2"
+    if [ ! -f "$script" ]; then
         cd "$SCRIPTDIR"
         echo "USAGE: ${0##*/} -X DIR/SCRIPT [ARGS]
 Runs a script directly from the bundle. Valid DIR/SCRIPT combos:" 1>&2
         ls chroot-bin/* host-bin/* 1>&2
-    )
-    exit 2
-elif [ "$1" = '-X' ]; then
-    script="$SCRIPTDIR/$2"
-    if [ ! -f "$script" ]; then
-        echo "Invalid script '$2'" 1>&2
+        if [ -n "$2" ]; then
+            echo 1>&2
+            echo "Invalid script '$2'" 1>&2
+        fi
         exit 2
     fi
     shift 2
