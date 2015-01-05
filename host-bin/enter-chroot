@@ -399,6 +399,7 @@ elif [ ! -f "$shares" ]; then
 #  downloads: ~/Downloads
 #  shared: /mnt/stateful_partition/crouton/shared
 #  encrypted: ~/crouton/shared
+# Inside the chroot, any absolute or user-relative path (~/x or ~user/x) is OK.
 # Syntax is as follows:
 #  HOSTDIR CHROOTDIR [OPTIONS]
 # Directory names can have spaces (if quoted), but no quote characters or
@@ -451,14 +452,14 @@ if [ -z "$NOLOGIN" -a -f "$shares" ]; then
             if (match(dest, PARAMMATCH "|$)")) {
                 opts = strip(substr(dest, RLENGTH+1))
                 dest = strip(substr(dest, 1, RLENGTH))
-                if (length(src) && length(dest) && !match(opts, "[^a-z,]")) {
+                if (src && dest ~ "^[/~]" && opts ~ "^[a-z,]*$") {
                     # Ensure that they end in slashes
-                    if (substr(src, length(src)) != "/")
+                    if (src !~ "/$")
                         src = src "/"
-                    if (substr(dest, length(dest)) != "/")
+                    if (dest !~ "/$")
                         dest = dest "/"
                     # .. path elements are not allowed
-                    if (!index(src, "/../") && !index(dest, "/../")) {
+                    if (src !~ "/../" && dest !~ "/../") {
                         print src
                         print dest
                         print opts
@@ -494,13 +495,7 @@ if [ -z "$NOLOGIN" -a -f "$shares" ]; then
                 continue;;
         esac
         # Expand dest for homedirs
-        if [ "${dest#[~/]}" = "$dest" ]; then
-            if [ -z "$CHROOTHOME" ]; then
-                echo "Not mounting share (no chroot user):$line" 1>&2
-                continue
-            fi
-            dest="$CHROOTHOME/$dest"
-        elif [ "${dest#~}" != "$dest" ]; then
+        if [ "${dest#~}" != "$dest" ]; then
             destuser="${dest%%/*}"
             if [ "$destuser" = '~' ]; then
                 if [ -z "$CHROOTHOME" ]; then
