@@ -86,7 +86,7 @@ host edit-chroot -l $release | tee /dev/stderr | passes grep "^release: $release
 # Back up with a compressed split
 host edit-chroot -y -s 50 -f "$BACKUPDIR/$release.tar.gz" -b "$release"
 test "`ls "$BACKUPDIR"/* | wc -l`" -ge 3
-du -b "$BACKUPDIR"/* | passes awk '$1>50000000{exit 1}'
+du -b "$BACKUPDIR"/* | passes awk '$1>50*1024*1024{exit 1}'
 # Ensure it's compressed
 test "`hexdump -v -n2 -e'"%02x"' "$BACKUPDIR/$release.tar.gz"`" = "8b1f"
 
