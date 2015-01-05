@@ -298,12 +298,12 @@ no   -- You don't want to decide one way or another quite yet.
              -not -wholename './.crouton-targets' \
              -exec mkdir -p "$tmp/{}" ';' \
              -exec rmdir "$tmp/{}" ';' \
-             '(' -prune , -exec mv -f '{}' "$tmp/{}" ';' ')' 1>&2
+             '(' -prune , -exec mv -fT '{}' "$tmp/{}" ';' ')' 1>&2
         for tmp in ECRYPTFS_MOVE_STAGING_*; do
             (
                 cd "$tmp"
                 find '!' '(' -type d -exec test -d "$CHROOT/{}" ';' ')' \
-                     '(' -prune , -exec mv -f '{}' "$CHROOT/{}" ';' ')' \
+                     '(' -prune , -exec mv -fT '{}' "$CHROOT/{}" ';' ')' \
                      -exec echo -n . ';' 1>&2
                 find -depth -type d -not -wholename . \
                      -exec test -d "$CHROOT/{}" ';' \
