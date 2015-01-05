@@ -83,7 +83,7 @@ while getopts_nextarg; do
     l) LISTDETAILS=$(($LISTDETAILS+1));;
     m) MOVE="$getopts_arg"; NEEDS_UNMOUNT='y';;
     r) RESTORE=$(($RESTORE+1)); NEEDS_UNMOUNT='y';;
-    s) SPLIT="$OPTARG";;
+    s) SPLIT="$getopts_arg";;
     y) YES='a'; YESPARAM='-y';;
     \?) error 2 "$USAGE";;
     esac
