@@ -63,7 +63,8 @@ Options:
                 Will not overwrite a chroot when restoring unless -r is
                 specified twice.
     -s SPLIT    Force a backup archive to be split into SPLIT-sized chunks.
-                SPLIT is specified in megabytes (1048576 bytes).
+                SPLIT is specified in megabytes (1048576 bytes), and cannot be
+                smaller than 10.
                 FAT32 filesystems are split by default to fit within 4GB.
     -y          Do all actions without confirmation."
 
@@ -126,7 +127,7 @@ if [ -n "$DELETE" -a -n "$BACKUP$ENCRYPT$KEYFILE$MOVE$RESTORE" ]; then
 fi
 
 # Make sure SPLIT is reasonable
-if [ -n "$SPLIT" ] && [ ! "$SPLIT" -gt 0 -o -z "$BACKUP" ]; then
+if [ -n "$SPLIT" ] && [ "$SPLIT" -lt 10 -o -z "$BACKUP" ]; then
     error 2 "$USAGE"
 fi
 
@@ -378,7 +379,7 @@ for NAME in "$@"; do
             addtrap "rm -rf '$tardest'"
             tardest="$tardest/pipe.${dest##*/}"
             mkfifo -m 600 "$tardest"
-            split -b "$((SPLIT*1048576))" -a 5 -d "$tardest" "$dest.part" &
+            split -b "${SPLIT}m" -a 4 "$tardest" "$dest.part-" &
             splitpid="$!"
         else
             tardest="$dest"
@@ -386,14 +387,14 @@ for NAME in "$@"; do
         fi
         echo -n "  Backing up $CHROOT to $dest..." 1>&2
         addtrap "echo 'Deleting partial archive.' 1>&2; \
-                 kill '$splitpid' 2>/dev/null; rm -f '$dest' '$dest.part'*"
+                 kill '$splitpid' 2>/dev/null; rm -f '$dest' '$dest.part-'*"
         ret=0
         spinner 1 tar --checkpoint=100 --checkpoint-action=exec=echo \
             --one-file-system -V "crouton:backup.${date%-*}${date#*-}-$NAME" \
             -caf "$tardest" -C "$CHROOTS" "$NAME" || ret="$?"
         if [ -n "$SPLIT" ]; then
             wait "$splitpid" || ret="$?"
-            mv -f "$dest.part00000" "$dest" || ret="$?"
+            mv -f "$dest.part-aaaa" "$dest" || ret="$?"
         fi
         if [ "$ret" -ne 0 ]; then
             echo "Unable to backup $CHROOT." 1>&2
@@ -414,7 +415,7 @@ for NAME in "$@"; do
             # Search for the alphabetically last tarball with src.
             # Dated tarballs take precedence over undated tarballs.
             for file in "$file."* "$file-"*; do
-                if [ "${file%part[0-9][0-9][0-9][0-9][0-9]}" != "$file" \
+                if [ "${file%.part-[a-z][a-z][a-z][a-z]}" != "$file" \
                         -o ! -f "$file" ]; then
                     continue
                 fi
