@@ -154,8 +154,8 @@ elif [ $# -gt 1 -a -f "$TARBALL" ]; then
     error 2 "Multiple chroots specified, but $TARBALL is not a directory."
 fi
 
-# Don't allow moving to non-ext filesystems
-if [ -n "$MOVE" ] && \
+# Don't allow moving to non-ext filesystems (but don't check if just renaming)
+if [ -n "$MOVE" -a "${MOVE#*/}" = "$MOVE" ] && \
         df -T "`getmountpoint "$MOVE"`" | awk '$2~"^ext"{exit 1}'; then
     error 2 "Chroots can only be moved to ext filesystems."
 fi
