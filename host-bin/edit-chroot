@@ -63,7 +63,8 @@ Options:
                 Will not overwrite a chroot when restoring unless -r is
                 specified twice.
     -s SPLIT    Force a backup archive to be split into SPLIT-sized chunks.
-                FAT32 filesystems are split by default to 4GB.
+                SPLIT is specified in megabytes (1048576 bytes).
+                FAT32 filesystems are split by default to fit within 4GB.
     -y          Do all actions without confirmation."
 
 # Common functions
@@ -121,6 +122,11 @@ fi
 
 # Cannot specify delete with anything else.
 if [ -n "$DELETE" -a -n "$BACKUP$ENCRYPT$KEYFILE$MOVE$RESTORE" ]; then
+    error 2 "$USAGE"
+fi
+
+# Make sure SPLIT is reasonable
+if [ -n "$SPLIT" ] && [ ! "$SPLIT" -gt 0 -o -z "$BACKUP" ]; then
     error 2 "$USAGE"
 fi
 
@@ -365,14 +371,14 @@ for NAME in "$@"; do
         fi
         # If we're writing to a fat32 filesystem, split the file at 4GB chunks
         if ! df -T "`getmountpoint "$dest"`" | awk '$2~"^v?fat"{exit 1}'; then
-            SPLIT="${SPLIT:-4294967295}"
+            SPLIT="${SPLIT:-4095}"
         fi
         if [ -n "$SPLIT" ]; then
             tardest="`mktemp -d --tmpdir=/tmp 'crouton-backup.XXX'`"
             addtrap "rm -rf '$tardest'"
             tardest="$tardest/pipe.${dest##*/}"
             mkfifo -m 600 "$tardest"
-            split -b "$SPLIT" -a 5 -d "$tardest" "$dest.part" &
+            split -b "$((SPLIT*1048576))" -a 5 -d "$tardest" "$dest.part" &
             splitpid="$!"
         else
             tardest="$dest"
