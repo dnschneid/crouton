@@ -52,83 +52,80 @@ mkdir -p "$FETCHDIRDB" "$FETCHDIRPKG" "$BOOTSTRAPCHROOT"
 
 echo "Fetching repository packages list..." 1>&2
 # Fetch Arch package database
-for REPO in $REPOS; do
-    echo "Fetching $REPO..." 1>&2
-    MIRRORBASE="`echo "$MIRROR" | sed -e "s/\\$repo/$REPO/" \
+for repo in $REPOS; do
+    echo "Fetching $repo..." 1>&2
+    mirrorbase="`echo "$MIRROR" | sed -e "s/\\$repo/$repo/" \
                                       -e "s/\\$arch/$ARCH/"`"
-    curlretry -o "$FETCHDIRDB/$REPO.db" "$MIRRORBASE/$REPO.db" 1>&2
-    # Create package list in this format: $REPO:package-version
-    tar tf "$FETCHDIRDB/$REPO.db" \
-        | sed -n 's|^\(.*\)/$|'"$REPO:"'\1|p' >> "$LIST"
+    curlretry -o "$FETCHDIRDB/$repo.db" "$mirrorbase/$repo.db" 1>&2
+    # Create package list in this format: $repo:package-version
+    tar tf "$FETCHDIRDB/$repo.db" \
+        | sed -n 's|^\(.*\)/$|'"$repo"':\1|p' >> "$LIST"
 done
 
 # Get the value of a field in the Arch package database
-# getvaluedb repo pkgver [desc|depends] field
+# getdbfield repo pkgver [desc|depends] field
 getdbfield() {
-    REPO="$FETCHDIRDB/$1.db"
-    FILE="$2/$3"
-    FIELD="$4"
+    local repo="$FETCHDIRDB/$1.db"
+    local file="$2/$3"
+    local field="$4"
     # Extract the relevant file
-    tar xf "$REPO" -O "$FILE" | awk '
+    tar xf "$repo" -O "$file" | awk '
         /^$/ { m = 0 }
         m { print }
-        /^%'"$FIELD"'%$/ { m = 1 }
+        /^%'"$field"'%$/ { m = 1 }
     '
 }
 
 echo "Downloading and extracting packages..." 1>&2
-missing="$PACKAGES_BOOTSTRAP"
-installed=""
+# Final space critical for element extraction
+missing="$PACKAGES_BOOTSTRAP "
+installed=" "
 bootstrappkg=""
 
 # Install packages, taking care of dependencies:
-# - Install all packages in $missing that have not been installed already.
-# - Record all dependencies in $nextmissing
-# - Set missing=nextmissing
-# - Loop until $missing is empty
+# - Remove first package in $missing.
+# - If package has not been installed already, install it, and record all
+#   dependencies in $missing.
+# - Loop until $missing is empty.
 
 while [ -n "$missing" ]; do
-    nextmissing=""
-    for PACKAGE in $missing; do
-        # Do not install if already installed
-        for IPKG in $installed; do
-            if [ "$IPKG" = "$PACKAGE" ]; then
-                continue 2
-            fi
-        done
+    package="${missing%% *}"
+    missing="${missing#$package }"
 
-        echo "Downloading and installing $PACKAGE..." 1>&2
-        PKG="`grep ":$PACKAGE-[0-9]" "$LIST" | head -n 1`"
-        if [ -z "$PKG" ]; then
-            echo "Cannot find package $PACKAGE..." 1>&2
-            exit 1
-        fi
-        REPO="`echo "$PKG" | cut -f 1 -d:`"
-        PKGVER="`echo "$PKG" | cut -f 2 -d:`"
-        FILE="`getdbfield "$REPO" "$PKGVER" "desc" "FILENAME"`"
-        MIRRORBASE="`echo "$MIRROR" | sed -e "s/\\$repo/$REPO/" \
-                                          -e "s/\\$arch/$ARCH/"`"
-        curlretry -o "$FETCHDIRPKG/$FILE" "$MIRRORBASE/$FILE" 1>&2
-        tar --warning=no-unknown-keyword -xkf "$FETCHDIRPKG/$FILE" \
-            --exclude ".PKGINFO" --exclude ".MTREE" \
-            --exclude ".INSTALL" --exclude ".Changelog" \
-            -C "$BOOTSTRAPCHROOT"
+    # Do not install if already installed
+    if [ "${installed#*" $package "}" != "$installed" ]; then
+        continue
+    fi
 
-        # Get list of dependencies (ignore versions)
-        ndep="`getdbfield "$REPO" "$PKGVER" "depends" "DEPENDS" \
-                     | sed -n -e 's/^\([^<>=]*\).*$/\1/p' | tr '\n' ' '`"
+    echo "Downloading and installing $package..." 1>&2
+    pkg="`grep -m 1 ":$package-[0-9]" "$LIST"`"
+    if [ -z "$pkg" ]; then
+        echo "Cannot find package $package..." 1>&2
+        exit 1
+    fi
+    repo="${pkg%:*}"
+    pkgver="${pkg#*:}"
+    file="`getdbfield "$repo" "$pkgver" "desc" "FILENAME"`"
+    mirrorbase="`echo "$MIRROR" | sed -e "s/\\$repo/$repo/" \
+                                      -e "s/\\$arch/$ARCH/"`"
+    curlretry -o "$FETCHDIRPKG/$file" "$mirrorbase/$file" 1>&2
+    tar --warning=no-unknown-keyword -xkf "$FETCHDIRPKG/$file" \
+        --exclude=".PKGINFO" --exclude=".MTREE" \
+        --exclude=".INSTALL" --exclude=".Changelog" \
+        -C "$BOOTSTRAPCHROOT"
 
-        # Some packages provide virtual packages (e.g. bash provides sh):
-        # Add those to the installed list
-        nprovides="`getdbfield "$REPO" "$PKGVER" "depends" "PROVIDES" \
+    # Get list of dependencies (ignore versions)
+    ndep="`getdbfield "$repo" "$pkgver" "depends" "DEPENDS" \
+                     | sed -n 's/^\([^<>=]*\).*$/\1/p' | tr '\n' ' '`"
+
+    # Some packages provide virtual packages (e.g. bash provides sh):
+    # Add those to the installed list
+    nprovides="`getdbfield "$repo" "$pkgver" "depends" "PROVIDES" \
                           | tr '\n' ' '`"
 
-        bootstrappkg="$bootstrappkg $PACKAGE"
-        installed="$installed $nprovides $PACKAGE"
-        nextmissing="$nextmissing $ndep"
-    done
-
-    missing="$nextmissing"
+    bootstrappkg="$bootstrappkg $package"
+    installed="$installed $nprovides $package "
+    missing="$missing $ndep"
 done
 
 # Move databases to bootstrap fs
@@ -139,10 +136,6 @@ mkdir -p "$BOOTSTRAPCHROOT/var/cache/pacman/pkg"
 mv "$FETCHDIRPKG"/* "$BOOTSTRAPCHROOT/var/cache/pacman/pkg"
 
 echo "arch" > "$BOOTSTRAPCHROOT/etc/hostname"
-# This is only necessary for reinstall after bootstrapping: signature check
-# is eventually enabled again.
-sed -i 's/^[ \t]*SigLevel[ \t].*/SigLevel = Never/' \
-    "$BOOTSTRAPCHROOT/etc/pacman.conf"
 sed -i 's/^[ \t]*Architecture[ \t].*/Architecture = '"$ARCH"'/' \
     "$BOOTSTRAPCHROOT/etc/pacman.conf"
 

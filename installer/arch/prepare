@@ -162,6 +162,17 @@ if [ -r "$bootstrappkglist" ]; then
         echo "Server = http://www.example.com/" > "/etc/pacman.d/mirrorlist"
     fi
 
+    # Initialize pacman keyring (i686/x86_64 only)
+    if [ "${ARCH#arm}" = "$ARCH" ]; then
+        cat 1>&2 <<END
+Initializing pacman keyring...
+If this gets stuck, generate entropy by moving the mouse around (e.g. do some
+random browsing).
+END
+        pacman-key --init
+        pacman-key --populate archlinux
+    fi
+
     # Force overwritting packages files in the bootstrap, without any sort
     # of dependency checking: this makes sure package content are properly
     # recorded
@@ -176,17 +187,6 @@ if [ -r "$bootstrappkglist" ]; then
     if [ -f /etc/resolv.conf.pacorig ]; then
         rm -f /etc/resolv.conf
         mv -f /etc/resolv.conf.pacorig /etc/resolv.conf
-    fi
-
-    # Initialize pacman keyring (i686/x86_64 only)
-    if [ "${ARCH#arm}" = "$ARCH" ]; then
-        cat 1>&2 <<END
-Initializing pacman keyring...
-If this gets stuck, generate entropy by moving the mouse around (e.g. do some
-random browsing).
-END
-        pacman-key --init
-        pacman-key --populate archlinux
     fi
 
     # Now install a proper set of base packages
