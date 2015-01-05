@@ -142,12 +142,14 @@ static int popen2(char* cmd, char *const argv[],
     pid_t pid = 0;
     int stdin_fd[2];
     int stdout_fd[2];
-    int ret = -1;
 
     if (pipe(stdin_fd) < 0 || pipe(stdout_fd) < 0) {
         syserror("Failed to create pipe.");
         return -1;
     }
+
+    log(3, "pipes: in %d/%d; out %d/%d",
+           stdin_fd[0], stdin_fd[1], stdout_fd[0], stdout_fd[1]);
 
     pid = fork();
 
@@ -173,32 +175,31 @@ static int popen2(char* cmd, char *const argv[],
 
     /* Parent */
 
-    /* Write input, and read output, while waiting for process termination.
-     * This could be done without polling, by reacting on SIGCHLD, but this is
-     * good enough for our purpose, and slightly simpler. */
+    /* Close uneeded halves (those are used by the child) */
+    close(stdin_fd[0]);
+    close(stdout_fd[1]);
+
+    /* Write input, and read output. We rely on POLLHUP getting set on stdout
+     * when the process exits (this assumes the process does not do anything
+     * strange like closing stdout and staying alive). */
     struct pollfd fds[2];
     fds[0].events = POLLIN;
     fds[0].fd = stdout_fd[0];
     fds[1].events = POLLOUT;
     fds[1].fd = stdin_fd[1];
 
-    pid_t wait_pid;
-    int status = 0;
-    int readlen = 0;
+    int readlen = 0; /* Also acts as return value */
     int writelen = 0;
     while (1) {
-        /* Get child status */
-        wait_pid = waitpid(pid, &status, WNOHANG);
-        /* Check if there is data to read, no matter the process status. */
-        /* Timeout after 10ms, or immediately if the process exited already */
-        int polln = poll(fds, 2, (wait_pid == pid) ? 0 : 10);
+        int polln = poll(fds, 2, -1);
 
         if (polln < 0) {
             syserror("poll error.");
-            goto error;
+            readlen = -1;
+            break;
         }
 
-        log(3, "poll=%d (%d)", polln, (wait_pid == pid));
+        log(3, "poll=%d", polln);
 
         /* We can write something to stdin */
         if (fds[1].revents & POLLOUT) {
@@ -206,7 +207,8 @@ static int popen2(char* cmd, char *const argv[],
                 int n = write(stdin_fd[1], input + writelen, inlen - writelen);
                 if (n < 0) {
                     error("write error.");
-                    goto error;
+                    readlen = -1;
+                    break;
                 }
                 log(3, "write n=%d/%d", n, inlen);
                 writelen += n;
@@ -218,7 +220,13 @@ static int popen2(char* cmd, char *const argv[],
                 stdin_fd[1] = -1;
                 fds[1].fd = -1;
             }
-            polln--;
+            fds[1].revents &= ~POLLOUT;
+        }
+
+        if (fds[1].revents != 0) {
+            error("Unknown poll event on stdout (%d).", fds[1].revents);
+            readlen = -1;
+            break;
         }
 
         /* We can read something from stdout */
@@ -226,7 +234,8 @@ static int popen2(char* cmd, char *const argv[],
             int n = read(stdout_fd[0], output + readlen, outlen - readlen);
             if (n < 0) {
                 error("read error.");
-                goto error;
+                readlen = -1;
+                break;
             }
             log(3, "read n=%d", n);
             readlen += n;
@@ -237,50 +246,53 @@ static int popen2(char* cmd, char *const argv[],
 
             if (readlen >= outlen) {
                 error("Output too long.");
-                ret = readlen;
-                goto error;
+                break;
             }
-            polln--;
+            fds[0].revents &= ~POLLIN;
         }
 
-        if (polln != 0) {
-            error("Unknown poll event (%d).", fds[0].revents);
-            goto error;
-        }
-
-        if (wait_pid == -1) {
-            error("waitpid error.");
-            goto error;
-        } else if (wait_pid == pid) {
-            log(3, "child exited!");
-            if (WIFEXITED(status)) {
-                if (WEXITSTATUS(status) != 0) {
-                    error("child exited with status %d", WEXITSTATUS(status));
-                    ret = -WEXITSTATUS(status);
-                    goto error;
-                }
-            } else {
-                error("child process did not exit: %d", status);
-                ret = -1;
-                goto error;
-            }
+        /* stdout has hung up (process terminated) */
+        if (fds[0].revents == POLLHUP) {
+            log(3, "pollhup");
+            break;
+        } else if (fds[0].revents != 0) {
+            error("Unknown poll event on stdin (%d).", fds[0].revents);
+            readlen = -1;
             break;
         }
     }
 
     if (stdin_fd[1] >= 0)
         close(stdin_fd[1]);
-    close(stdout_fd[0]);
-    return readlen;
-
-error:
-    if (stdin_fd[1] >= 0)
-        close(stdin_fd[1]);
     /* Closing the stdout pipe forces the child process to exit */
     close(stdout_fd[0]);
-    /* Try to wait 10ms for the process to exit, then bail out. */
-    waitpid(pid, NULL, 10);
-    return ret;
+
+    /* Get child status (no timeout: we assume the child behaves well) */
+    int status = 0;
+    pid_t wait_pid = waitpid(pid, &status, 0);
+
+    if (wait_pid != pid) {
+        syserror("waitpid error.");
+        return -1;
+    }
+
+    if (WIFEXITED(status)) {
+        log(3, "child exited!");
+        if (WEXITSTATUS(status) != 0) {
+            error("child exited with status %d", WEXITSTATUS(status));
+            return -WEXITSTATUS(status);
+        }
+    } else {
+        error("child process did not exit: %d", status);
+        return -1;
+    }
+
+    if (writelen != inlen) {
+        error("Incomplete write.");
+        return -1;
+    }
+
+    return readlen;
 }
 
 /**/
