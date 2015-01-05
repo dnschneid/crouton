@@ -399,25 +399,28 @@ elif [ ! -f "$shares" ]; then
 #  downloads: ~/Downloads
 #  shared: /mnt/stateful_partition/crouton/shared
 #  encrypted: ~/crouton/shared
-# Add a line with a single keyword to modify the mount options of all the bind
-# mounts that follow. For example, the following will make all following mounts
-# be bind-mounted with noexec and suid set.
-#  noexec,suid
-# The default bind mount options are "exec".
+# Syntax is as follows:
+#  HOSTDIR CHROOTDIR [OPTIONS]
+# Directory names can have spaces (if quoted), but no quote characters or
+# relative path elements (..'s).
+# Options can be any options to mount. If unspecified, "exec" is assumed.
 
 # Examples:
 #  Share a home directory encrypted by the current user's unsynced profile
-#   encrypted/home -> ~
+#   encrypted/home ~
 #  Share an unencrypted directory between chroots.
-#   shared/home -> ~/Share
+#   shared/home ~/Share
+#  Absolute directories on the chroot side work too
+#   shared/bin /usr/local/bin exec,suid
+#  Share a noexec path that has spaces, and a specific user home directory
+#   "encrypted/stupid example" "~omg/Why are you even doing this?" noexec
 
 # Share the downloads folder of the current user's profile
-downloads -> ~/Downloads
+downloads ~/Downloads
 EOF
 fi
 # Bind-mount the stuff in $CHROOT/etc/crouton/shares, unless NOLOGIN is set
 if [ -z "$NOLOGIN" -a -f "$shares" ]; then
-    mountparams='exec'
     localdownloads='/home/chronos/user/Downloads'
     if [ ! -d "$localdownloads" ]; then
         localdownloads=''
@@ -427,57 +430,73 @@ if [ -z "$NOLOGIN" -a -f "$shares" ]; then
         localencrypted=''
     fi
     localshare='/mnt/stateful_partition/crouton/shared'
-    # Allow line continuation characters (no -r) and strip leading/trailing
-    # whitespace, remove comments, and remove spaces around ->
-    sed 'y/\t/ /; s/^ *//; s/ *$//; s/ *-> */->/; /^#/d;' "$shares" \
-    | while read line; do
-        src="${line%%->*}"
-        # If -> is not present, it's a specification of mountparams
-        if [ "$src" = "$line" ]; then
-            mountparams="${line#[\"\']}"
-            mountparams="${mountparams%[\"\']}"
-            continue
-        fi
-        # Remove quoting from src and ensure ends in /
-        if [ "${src#[\"\']}" != "$src" ]; then
-            src="${src#[\"\']}"
-            src="${src%[\"\']}"
-        fi
-        src="${src%/}/"
-        # Grab dest, remove quote, ensure ends in /
-        dest="${line#*->}"
-        if [ "${dest#[\"\']}" != "$dest" ]; then
-            dest="${dest#[\"\']}"
-            dest="${dest%[\"\']}"
-        fi
-        dest="${dest%/}/"
-        # .. path elements are not allowed
-        if [ "${src%/../*}" != "$src" -o "${dest%/../*}" != "$dest" ]; then
-            echo "Invalid share: $line" 1>&2
-            continue
-        fi
-        # Expand src with a little bit of leniency
+    # Parse file and split into three lines: src, dest, options
+    awk '
+        BEGIN {
+            PARAMMATCH = "^[ \t]*(\"[^\"]+\"|[^ \t\"]+)([ \t]"
+        }
+        function strip(s) {
+            if (index(s, "\"")) {
+                sub("[ \t]*\"", "", s)
+                sub("\"[ \t]*", "", s)
+            } else {
+                gsub("[ \t]", "", s)
+            }
+            return s
+        }
+        $1 ~ /^#/ { next }
+        match($0, PARAMMATCH ")") {
+            dest = substr($0, RLENGTH+1)
+            src = strip(substr($0, 1, RLENGTH))
+            if (match(dest, PARAMMATCH "|$)")) {
+                opts = strip(substr(dest, RLENGTH+1))
+                dest = strip(substr(dest, 1, RLENGTH))
+                if (length(src) && length(dest) && !match(opts, "[^a-z,]")) {
+                    # Ensure that they end in slashes
+                    if (substr(src, length(src)) != "/")
+                        src = src "/"
+                    if (substr(dest, length(dest)) != "/")
+                        dest = dest "/"
+                    # .. path elements are not allowed
+                    if (!index(src, "/../") && !index(dest, "/../")) {
+                        print src
+                        print dest
+                        print opts
+                        next
+                    }
+                }
+            }
+        }
+        /./ {
+            print "Invalid syntax in /etc/crouton/shares on line " NR ":\n  " \
+                  $0 > "/dev/stderr"
+        }
+    ' "$shares" | while read -r src && read -r dest && read -r opts; do
+        line="\n  \"$src\" \"$dest\" $opts"
+        # Expand src
         case "${src%%/*}" in
-            download*)
+            download|downloads)
                 if [ -z "$localdownloads" ]; then
-                    echo "Not mounting share (no Chromium OS user): $line" 1>&2
+                    echo "Not mounting share (no Chromium OS user):$line" 1>&2
                     continue
                 fi
                 src="$localdownloads/${src#*/}";;
-            encrypt*)
+            encrypt|encrypted)
                 if [ -z "$localencrypted" ]; then
-                    echo "Not mounting share (no Chromium OS user): $line" 1>&2
+                    echo "Not mounting share (no Chromium OS user):$line" 1>&2
                     continue
                 fi
                 src="$localencrypted/${src#*/}";;
-            share*) src="$localshare/${src#*/}";;
-            *)  echo "Invalid share: $line" 1>&2
+            share|shares|shared)
+                src="$localshare/${src#*/}";;
+            *)
+                echo "Invalid share:$line" 1>&2
                 continue;;
         esac
         # Expand dest for homedirs
         if [ "${dest#[~/]}" = "$dest" ]; then
             if [ -z "$CHROOTHOME" ]; then
-                echo "Not mounting share (no chroot user): $line" 1>&2
+                echo "Not mounting share (no chroot user):$line" 1>&2
                 continue
             fi
             dest="$CHROOTHOME/$dest"
@@ -485,7 +504,7 @@ if [ -z "$NOLOGIN" -a -f "$shares" ]; then
             destuser="${dest%%/*}"
             if [ "$destuser" = '~' ]; then
                 if [ -z "$CHROOTHOME" ]; then
-                    echo "Not mounting share (no chroot user): $line" 1>&2
+                    echo "Not mounting share (no chroot user):$line" 1>&2
                     continue
                 fi
                 dest="$CHROOTHOME/${dest#*/}"
@@ -495,8 +514,8 @@ if [ -z "$NOLOGIN" -a -f "$shares" ]; then
         fi
         # Do the bindmount
         mkdir -m 700 -p "$src"
-        if ! bindmount "$src" "$dest" "$mountparams"; then
-            echo "Failed to mount share: $line" 1>&2
+        if ! bindmount "$src" "$dest" "${opts:-exec}"; then
+            echo "Failed to mount share:$line" 1>&2
         fi
     done
 fi
