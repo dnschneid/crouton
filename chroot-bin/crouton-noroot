@@ -4,7 +4,7 @@
 # found in the LICENSE file.
 
 # Wrapper for scripts that shouldn't be launched as root.
-# Symlink to automatically launch that application.
+# Symlink to launch the application with the same name in /usr/bin/
 # Launch directly with a parameter to launch that executable
 # Launch directly with a blank or - first parameter and a word to just check and
 # exit with an exit code, printing out the second parameter as the app name.
