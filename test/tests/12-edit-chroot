@@ -104,7 +104,7 @@ fails host enter-chroot -n "$release" true
 crouton -f "$BACKUPDIR/$release.tar.gz" -n "$release"
 host enter-chroot -n "$release" true
 host edit-chroot -l $release | tee /dev/stderr | passes grep "^release: $release"
-rm "$BACKUPDIR/$release.tar.gz*"
+rm "$BACKUPDIR/$release.tar.gz"*
 
 # Backup a chroot with automatic naming
 host edit-chroot -y -f "$BACKUPDIR" -b "$release"
