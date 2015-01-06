@@ -441,7 +441,7 @@ for NAME in "$@"; do
         fi
         echo -n "  Restoring $src to $CHROOT..." 1>&2
         mkdir -p "$CHROOT"
-        if [ -f "$src.part01" ]; then
+        if [ -f "$src.part-aaab" ]; then
             # Detect the type of compression before sending it through a fifo
             for tarparam in -z -j -J -Z --no-auto-compress fail; do
                 if [ "$tarparam" = 'fail' ]; then
