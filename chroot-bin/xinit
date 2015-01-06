@@ -28,4 +28,7 @@ while [ -f "/tmp/.X$disp-lock" ]; do
     disp=$((disp+1))
 done
 
+# If possible, switch to VT1 to avoid strangeness when launching from VT2
+chvt 1 2>/dev/null || true
+
 exec /usr/bin/xinit /usr/local/bin/croutonxinitrc-wrapper "$@" $dash $xserverrc ":$disp"

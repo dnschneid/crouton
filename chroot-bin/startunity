@@ -9,4 +9,4 @@
 export UBUNTU_MENUPROXY=1
 export GTK_MODULES="unity-gtk-module"
 
-exec gnome-session-wrapper ubuntu
+exec crouton-noroot gnome-session-wrapper ubuntu

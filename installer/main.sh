@@ -122,7 +122,7 @@ while getopts 'a:bdef:k:m:M:n:p:P:r:s:t:T:uUV' f; do
     m) MIRROR="$OPTARG";;
     M) MIRROR2="$OPTARG";;
     n) NAME="$OPTARG";;
-    p) PREFIX="`readlink -m "$OPTARG"`"; PREFIXSET='y';;
+    p) PREFIX="`readlink -m -- "$OPTARG"`"; PREFIXSET='y';;
     P) PROXY="$OPTARG";;
     r) RELEASE="$OPTARG";;
     t) TARGETS="$TARGETS${TARGETS:+","}$OPTARG";;
@@ -383,24 +383,18 @@ if [ -z "$RESTOREBIN$DOWNLOADONLY" ]; then
 
     # If no prefix is set, check that /usr/local/chroots ($CHROOTS) is a
     # symbolic link to /mnt/stateful_partition/crouton/chroots ($CHROOTSLINK)
-    if [ -z "$PREFIXSET" -a ! -h "$CHROOTS" ]; then
+    # /mnt/stateful_partition/dev_image is bind-mounted to /usr/local, so mv
+    # does not understand that they are on the same filesystem
+    # Instead, use the direct path, and confirm that they're actually the same
+    # to catch situations where things are bind-mounted over /usr/local
+    truechroots="/mnt/stateful_partition/dev_image/chroots"
+    if [ -z "$PREFIXSET" -a ! -h "$CHROOTS" ] \
+            && [ "$CHROOTS" -ef "$truechroots" ]; then
         # Detect if chroots are left in the old chroots directory, and move them
         # to the new directory.
         if [ -e "$CHROOTS" ] && ! rmdir "$CHROOTS" 2>/dev/null; then
             echo \
 "Migrating data from legacy chroots directory $CHROOTS to $CHROOTSLINK..." 1>&2
-
-            # /mnt/stateful_partition/dev_image is bind-mounted to /usr/local,
-            # so mv does not understand that they are on the same filesystem
-            # Instead, use the direct path.
-            truechroots="/mnt/stateful_partition/dev_image/chroots"
-
-            # Be extra careful and check both files are indeed the same
-            if [ "`stat -c '%i' "$truechroots"`" != \
-                    "`stat -c '%i' "$CHROOTS"`" ]; then
-                error 1 \
-"$truechroots and $CHROOTS are not the same file as expected."
-            fi
 
             # Check that CHROOTSLINK is empty
             if [ -e "$CHROOTSLINK" ] && ! rmdir "$CHROOTSLINK" 2>/dev/null; then
@@ -446,6 +440,11 @@ Valid chroots:
 `sh "$HOSTBINDIR/edit-chroot" -c "$CHROOTS" -a`"
     fi
 
+    # Chroot must be located on an ext filesystem
+    if df -T "`getmountpoint "$CHROOT"`" | awk '$2~"^ext"{exit 1}'; then
+        error 1 "$CHROOTSRC is not an ext filesystem."
+    fi
+
     # Restore the chroot now
     if [ -n "$RESTORE" ]; then
         sh "$HOSTBINDIR/edit-chroot" -r -f "$TARBALL" -c "$CHROOTS" -- "$NAME"
@@ -454,6 +453,11 @@ Valid chroots:
     # Mount the chroot and update CHROOT path
     CHROOT="`sh "$HOSTBINDIR/mount-chroot" -k "$KEYFILE" \
              $create $ENCRYPT -p -c "$CHROOTS" -- "$NAME"`"
+
+    # Remove the directory if bootstrapping fails. Also delete if the only file
+    # there is .ecryptfs (valid chroots have far more than 1 file)
+    addtrap "[ \"\`ls -a '$CHROOTS/$NAME' 2>/dev/null | wc -l\`\" -le 3 ] \
+                && rm -rf '$CHROOTS/$NAME'"
 
     # Auto-unmount the chroot when the script exits
     addtrap "sh '$HOSTBINDIR/unmount-chroot' -y -c '$CHROOTS' -- '$NAME' 2>/dev/null"
@@ -690,7 +694,7 @@ echo -n '' > "$TARGETDEDUPFILE"
 unset SIMULATE
 TARGETNOINSTALL="$RESTOREHOSTBIN"
 if [ -n "$TARGETFILE" ]; then
-    TARGET="`readlink -f "$TARGETFILE"`"
+    TARGET="`readlink -f -- "$TARGETFILE"`"
     (. "$TARGET") >> "$PREPARE"
 fi
 t="${TARGETS%,},post-common,"

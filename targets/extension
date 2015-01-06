@@ -23,8 +23,14 @@ install x11-utils xclip
 
 compile websocket ''
 
-# XMETHOD is defined in x11 (or xephyr), which this package depends on
-if [ "$XMETHOD" = 'x11' ]; then
+# vtmonitor is needed for supporting xorg.
+# There are three ways xorg might be installed relative to extension: via a
+# dependency before extension, via explicit selection before extension, and via
+# explicit selection after extension.
+# The first is handled by checking XMETHOD, as the first X11 backend brought in
+# (explicit or otherwise) sets XMETHOD permanently.  The latter two are handled
+# by greping the explicit targets file for xorg.
+if [ "$XMETHOD" = 'xorg' ] || grep -q xorg /etc/crouton/targets; then
     compile vtmonitor ''
 fi
 

@@ -12,7 +12,7 @@ fi
 REQUIRES='gtk-extra'
 DESCRIPTION='Installs the Unity desktop environment. (Approx. 700MB)'
 HOSTBIN='startunity'
-CHROOTBIN='startunity gnome-session-wrapper crouton-unity-autostart'
+CHROOTBIN='crouton-noroot startunity gnome-session-wrapper crouton-unity-autostart'
 CHROOTETC='unity-autostart.desktop unity-profiled'
 . "${TARGETSDIR:="$PWD"}/common"
 

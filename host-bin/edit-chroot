@@ -15,7 +15,9 @@ ENCRYPT=''
 KEYFILE=''
 LISTDETAILS=''
 MOVE=''
+NEEDS_UNMOUNT=''
 RESTORE=''
+SPLIT=''
 TARBALL=''
 YES=''
 YESPARAM=''
@@ -60,29 +62,34 @@ Options:
                 restores to that name instead of the one in the tarball.
                 Will not overwrite a chroot when restoring unless -r is
                 specified twice.
+    -s SPLIT    Force a backup archive to be split into SPLIT-sized chunks.
+                SPLIT is specified in megabytes (1048576 bytes), and cannot be
+                smaller than 10.
+                FAT32 filesystems are split by default to fit within 4GB.
     -y          Do all actions without confirmation."
 
 # Common functions
 . "$BINDIR/../installer/functions"
 
 # Process arguments
-while getopts 'abc:def:k:lm:ry' f; do
-    case "$f" in
+getopts_string='abc:def:k:lm:rs:y'
+while getopts_nextarg; do
+    case "$getopts_var" in
     a) ALLCHROOTS='y';;
-    b) BACKUP='y';;
-    c) CHROOTS="`readlink -m "$OPTARG"`";;
-    d) DELETE='y';;
-    e) ENCRYPT='y';;
-    f) TARBALL="$OPTARG";;
-    k) KEYFILE="$OPTARG";;
+    b) BACKUP='y'; NEEDS_UNMOUNT='y';;
+    c) CHROOTS="`readlink -m -- "$getopts_arg"`";;
+    d) DELETE='y'; NEEDS_UNMOUNT='y';;
+    e) ENCRYPT='y'; NEEDS_UNMOUNT='y';;
+    f) TARBALL="$getopts_arg";;
+    k) KEYFILE="$getopts_arg";;
     l) LISTDETAILS=$(($LISTDETAILS+1));;
-    m) MOVE="$OPTARG";;
-    r) RESTORE=$(($RESTORE+1));;
+    m) MOVE="$getopts_arg"; NEEDS_UNMOUNT='y';;
+    r) RESTORE=$(($RESTORE+1)); NEEDS_UNMOUNT='y';;
+    s) SPLIT="$getopts_arg";;
     y) YES='a'; YESPARAM='-y';;
     \?) error 2 "$USAGE";;
     esac
 done
-shift "$((OPTIND-1))"
 
 # If the executable name is delete*, assume DELETE.
 if [ ! "${APPLICATION#delete}" = "$APPLICATION" ]; then
@@ -119,6 +126,11 @@ if [ -n "$DELETE" -a -n "$BACKUP$ENCRYPT$KEYFILE$MOVE$RESTORE" ]; then
     error 2 "$USAGE"
 fi
 
+# Make sure SPLIT is reasonable
+if [ -n "$SPLIT" ] && [ "$SPLIT" -lt 10 -o -z "$BACKUP" ]; then
+    error 2 "$USAGE"
+fi
+
 # If we specified -a option, bring in all chroots.
 if [ -n "$ALLCHROOTS" ]; then
     if [ ! -d "$CHROOTS" ]; then
@@ -134,6 +146,12 @@ if [ -n "$ALLCHROOTS" ]; then
     fi
 fi
 
+# If TARBALL is unspecified and we're in /, put the tarball in ~/Downloads
+if [ -n "$BACKUP$RESTORE" -a -z "$TARBALL" -a "$PWD" = '/' \
+        -a -d '/home/chronos/user/Downloads' ]; then
+    TARBALL="/home/chronos/user/Downloads/"
+fi
+
 # If multiple chroots are listed, KEYFILE and MOVE must be empty or directories.
 if [ $# -gt 1 -a -f "$KEYFILE" -a ! "$KEYFILE" = '-' ]; then
     error 2 "Multiple chroots specified, but $KEYFILE is not a directory."
@@ -143,9 +161,39 @@ elif [ $# -gt 1 -a -f "$TARBALL" ]; then
     error 2 "Multiple chroots specified, but $TARBALL is not a directory."
 fi
 
+# Don't allow moving to non-ext filesystems (but don't check if just renaming)
+if [ -n "$MOVE" -a "${MOVE#*/}" = "$MOVE" ] && \
+        df -T "`getmountpoint "$MOVE"`" | awk '$2~"^ext"{exit 1}'; then
+    error 2 "Chroots can only be moved to ext filesystems."
+fi
+
+# Don't allow restoring to non-ext filesystems
+if [ -n "$RESTORE" ] && \
+        df -T "`getmountpoint "$CHROOTS"`" | awk '$2~"^ext"{exit 1}'; then
+    error 2 "Chroots can only be restored to ext filesystems."
+fi
+
+# Don't allow backing up to tmpfs filesystems
+if [ -n "$BACKUP" ] && ! df -T "`getmountpoint "${TARBALL:-.}"`" \
+                            | awk '$2=="tmpfs"{exit 1}'; then
+    error 2 "Chroots cannot be backed up to temporary filesystems."
+fi
+
 # We need to run as root
 if [ ! "$USER" = root -a ! "$UID" = 0 ]; then
     error 2 "$APPLICATION must be run as root."
+fi
+
+# Strongly advise against moving a keyfile to a tmpfs path
+if [ "${KEYFILE:--}" != '-' ] && \
+        ! df -T "`getmountpoint "$KEYFILE"`" | awk '$2=="tmpfs"{exit 1}'; then
+    echo -n '\
+Moving a keyfile to a temporary filesystem is a really good way to permanently
+lose access to your chroot. If you still want to do this, wait for 15 seconds.
+Otherwise: HIT CTRL-C RIGHT NOW > ' 1>&2
+    sleep 15
+    echo \
+'...okay. Be sure to put the keyfile somewhere safe before you reboot.' 1>&2
 fi
 
 # If we're restoring and specified a tarball and no name, detect the name.
@@ -203,27 +251,11 @@ if [ -n "$TARBALL" ] && \
     mkdir -p "$TARBALL"
 fi
 
-# If TARBALL is unspecified and we're in /, put the tarball in ~/Downloads
-if [ -n "$BACKUP$RESTORE" -a -z "$TARBALL" -a "$PWD" = '/' \
-        -a -d '/home/chronos/user/Downloads' ]; then
-    TARBALL="/home/chronos/user/Downloads/"
-fi
-
 # Avoid kernel panics due to slow I/O
 disablehungtask
 
 # Make sure we always exit with echo on the tty.
 addtrap "stty echo 2>/dev/null"
-
-# Returns the mountpoint a path is on. The path doesn't need to exist.
-# $1: the path to check
-# outputs on stdout
-getmountpoint() {
-    mp="`readlink -m "$1"`"
-    while ! stat -c '%m' "$mp" 2>/dev/null; do
-        mp="${mp%/*}"
-    done
-}
 
 # Prints out a fancy spinner that updates every time a line is fed in, unless
 # the output is not to a tty, in which case it just prints a new line.
@@ -292,8 +324,11 @@ for NAME in "$@"; do
             error 2 "$CHROOT already exists! Specify a second -r to overwrite it (dangerous)."
         elif [ -n "$RESTORE" ]; then
             EXISTS='y'
-        else
-            sh -e "$BINDIR/unmount-chroot" $YESPARAM -c "$CHROOTS" -- "$NAME"
+        elif ! sh -e "$BINDIR/unmount-chroot" $YESPARAM \
+                    -c "$CHROOTS" -- "$NAME"; then
+            if [ -n "$NEEDS_UNMOUNT" ]; then
+                exit 1
+            fi
         fi
     elif [ -n "$RESTORE" ]; then
         EXISTS=''
@@ -335,15 +370,35 @@ for NAME in "$@"; do
                 dest="$dest.gz"
             fi
         fi
+        # If we're writing to a fat32 filesystem, split the file at 4GB chunks
+        if ! df -T "`getmountpoint "$dest"`" | awk '$2~"^v?fat"{exit 1}'; then
+            SPLIT="${SPLIT:-4095}"
+        fi
+        if [ -n "$SPLIT" ]; then
+            tardest="`mktemp -d --tmpdir=/tmp 'crouton-backup.XXX'`"
+            addtrap "rm -rf '$tardest'"
+            tardest="$tardest/pipe.${dest##*/}"
+            mkfifo -m 600 "$tardest"
+            split -b "${SPLIT}m" -a 4 "$tardest" "$dest.part-" &
+            splitpid="$!"
+        else
+            tardest="$dest"
+            splitpid=''
+        fi
         echo -n "  Backing up $CHROOT to $dest..." 1>&2
-        addtrap "echo 'Deleting partial archive.' 1>&2; rm -f '$dest'"
+        addtrap "echo 'Deleting partial archive.' 1>&2; \
+                 kill '$splitpid' 2>/dev/null; rm -f '$dest' '$dest.part-'*"
         ret=0
         spinner 1 tar --checkpoint=100 --checkpoint-action=exec=echo \
             --one-file-system -V "crouton:backup.${date%-*}${date#*-}-$NAME" \
-            -caf "$dest" -C "$CHROOTS" "$NAME" || ret=$?
-        if [ "$ret" != 0 ]; then
+            -caf "$tardest" -C "$CHROOTS" "$NAME" || ret="$?"
+        if [ -n "$SPLIT" ]; then
+            wait "$splitpid" || ret="$?"
+            mv -f "$dest.part-aaaa" "$dest" || ret="$?"
+        fi
+        if [ "$ret" -ne 0 ]; then
             echo "Unable to backup $CHROOT." 1>&2
-            exit $ret
+            exit "$ret"
         fi
         # Make sure filesystem is sync'ed
         sync
@@ -360,7 +415,8 @@ for NAME in "$@"; do
             # Search for the alphabetically last tarball with src.
             # Dated tarballs take precedence over undated tarballs.
             for file in "$file."* "$file-"*; do
-                if [ ! -f "$file" ]; then
+                if [ "${file%.part-[a-z][a-z][a-z][a-z]}" != "$file" \
+                        -o ! -f "$file" ]; then
                     continue
                 fi
                 # Confirm it's a tarball
@@ -385,8 +441,34 @@ for NAME in "$@"; do
         fi
         echo -n "  Restoring $src to $CHROOT..." 1>&2
         mkdir -p "$CHROOT"
-        spinner 1 tar --checkpoint=200 --checkpoint-action=exec=echo \
-            --one-file-system -xaf "$src" -C "$CHROOT" --strip-components=1
+        if [ -f "$src.part-aaab" ]; then
+            # Detect the type of compression before sending it through a fifo
+            for tarparam in -z -j -J -Z --no-auto-compress fail; do
+                if [ "$tarparam" = 'fail' ]; then
+                    error 2 "Unable to detect compression method of $src"
+                elif tar $tarparam --test-label -f "$src" >/dev/null 2>&1; then
+                    break
+                fi
+            done
+            # Don't let tar get tripped up by cat's incomplete writes
+            tarparam="$tarparam -B"
+            tarsrc="`mktemp -d --tmpdir=/tmp 'crouton-restore.XXX'`"
+            addtrap "rm -rf '$tarsrc'"
+            tarsrc="$tarsrc/pipe"
+            mkfifo -m 600 "$tarsrc"
+            cat "$src" "$src.part"* >> "$tarsrc" &
+            catpid="$!"
+            addtrap "kill '$catpid' 2>/dev/null"
+        else
+            tarsrc="$src"
+            tarparam='-a'
+            catpid=''
+        fi
+        spinner 1 tar --checkpoint=200 --checkpoint-action=exec=echo $tarparam \
+            --one-file-system -xf "$tarsrc" -C "$CHROOT" --strip-components=1
+        if [ -n "$catpid" ]; then
+            wait "$catpid"
+        fi
         # Make sure filesystem is sync'ed
         sync
         echo "Finished restoring $src to $CHROOT" 1>&2
@@ -412,8 +494,8 @@ for NAME in "$@"; do
         if [ -d "$newkeyfile" -o ! "${newkeyfile%/}" = "$newkeyfile" ]; then
             newkeyfile="${newkeyfile%/}/$NAME"
         fi
-        oldkeyfile="`readlink -m "$oldkeyfile"`"
-        keyfilecanon="`readlink -m "$newkeyfile"`"
+        oldkeyfile="`readlink -m -- "$oldkeyfile"`"
+        keyfilecanon="`readlink -m -- "$newkeyfile"`"
         if [ ! -f "$oldkeyfile" ]; then
             # If there is no old keyfile, make sure we've requested encryption.
             if [ -z "$ENCRYPT" ]; then
@@ -477,7 +559,7 @@ for NAME in "$@"; do
         # safety. We don't do this when encrypting a chroot (see mount-chroot),
         # because that would require 2x the space on one device. When switching
         # filesystems like this, however, that isn't a concern.
-        if [ ! "`getmountpoint "$target"`" = "`getmountpoint "$CHROOT"`" ]; then
+        if [ "`getmountpoint "$target"`" != "`getmountpoint "$CHROOT"`" ]; then
             echo "Moving $CHROOT across filesystems to $target" 1>&2
             echo 'This will take a while.' 1>&2
             echo "If the operation gets interrupted, you can safely delete $target" 1>&2

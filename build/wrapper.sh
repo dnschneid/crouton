@@ -62,6 +62,33 @@ if [ -z "$TRAP" ]; then
     exit
 fi
 
+# See if we want to just run a script from the bundle
+if [ "$1" = '-X' ]; then
+    script="$SCRIPTDIR/$2"
+    if [ ! -f "$script" ]; then
+        cd "$SCRIPTDIR"
+        echo "USAGE: ${0##*/} -X DIR/SCRIPT [ARGS]
+Runs a script directly from the bundle. Valid DIR/SCRIPT combos:" 1>&2
+        ls chroot-bin/* host-bin/* 1>&2
+        if [ -n "$2" ]; then
+            echo 1>&2
+            echo "Invalid script '$2'" 1>&2
+        fi
+        exit 2
+    fi
+    shift 2
+    # If this script was called with '-x' or '-v', pass that on
+    SETOPTIONS="-e"
+    if set -o | grep -q '^xtrace.*on$'; then
+        SETOPTIONS="$SETOPTIONS -x"
+    fi
+    if set -o | grep -q '^verbose.*on$'; then
+        SETOPTIONS="$SETOPTIONS -v"
+    fi
+    sh $SETOPTIONS "$script" "$@"
+    exit "$?"
+fi
+
 # Execute the main script inline. It will use SCRIPTDIR to find what it needs.
 . "$SCRIPTDIR/installer/main.sh"
 

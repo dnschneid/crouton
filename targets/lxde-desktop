@@ -1,0 +1,10 @@
+#!/bin/sh -e
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+REQUIRES='lxde'
+DESCRIPTION='Installs LXDE along with common applications. (Approx. 800MB)'
+. "${TARGETSDIR:="$PWD"}/common"
+
+### Append to prepare.sh:
+install ubuntu=lubuntu-desktop,task-lxde-desktop -- network-manager

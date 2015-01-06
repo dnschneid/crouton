@@ -51,7 +51,7 @@ for pid in $PIDS; do
 
     # Iterate over mappings, and check signature
     for fd in "/proc/$pid/fd"/*; do
-        link="`readlink "$fd"`"
+        link="`readlink -- "$fd"`"
         link="${link% (deleted)}"
         if [ "$link" = "$file" ]; then
             # Check if signature matches

@@ -33,17 +33,17 @@ Options:
 . "$BINDIR/../installer/functions"
 
 # Process arguments
-while getopts 'c:ek:np' f; do
-    case "$f" in
-    c) CHROOTS="`readlink -m "$OPTARG"`";;
+getopts_string='c:ek:np'
+while getopts_nextarg; do
+    case "$getopts_var" in
+    c) CHROOTS="`readlink -m -- "$getopts_arg"`";;
     e) ENCRYPT="$((ENCRYPT+1))";;
-    k) KEYFILE="$OPTARG";;
+    k) KEYFILE="$getopts_arg";;
     n) CREATE='y';;
     p) PRINT='y';;
     \?) error 2 "$USAGE";;
     esac
 done
-shift "$((OPTIND-1))"
 
 # Need at least one chroot listed
 if [ $# = 0 ]; then
@@ -59,29 +59,30 @@ fi
 addtrap "stty echo 2>/dev/null"
 
 # Function to prompt the user for a passphrase. Sets $passphrase.
-promptNewPassphrase() {
-    echo -n "Choose an encryption passphrase for $NAME: " 1>&2
+promptNewPassphrase() { (
+    stdout_to_tty
+    echo -n "Choose an encryption passphrase for $NAME: "
     [ -t 0 ] && stty -echo
     while [ -z "$passphrase" ]; do
         read -r passphrase
         if [ -z "$passphrase" ]; then
-            echo 1>&2
-            echo -n 'You must specify a passphrase: ' 1>&2
+            echo
+            echo -n 'You must specify a passphrase: '
             continue
         fi
         echo 1>&2
-        echo -n 'Please confirm your passphrase: ' 1>&2
+        echo -n 'Please confirm your passphrase: '
         read -r confirmation
         if [ ! "$confirmation" = "$passphrase" ]; then
             passphrase=''
-            echo 1>&2
-            echo -n 'Passphrases do not match; try again: ' 1>&2
+            echo
+            echo -n 'Passphrases do not match; try again: '
         fi
         confirmation=''
     done
     [ -t 0 ] && stty echo
-    echo 1>&2
-}
+    echo
+) }
 
 # Mount each chroot
 for NAME in "$@"; do
@@ -139,7 +140,8 @@ for NAME in "$@"; do
         # Ensure that there's a root password set before decrypting the chroot,
         # unless the passphrase was specified via env, which isn't secure anyway
         if [ ! -f '/mnt/stateful_partition/etc/devmode.passwd' ]; then
-            echo 'You must have a root password in Chromium OS to mount encrypted chroots.' 1>&2
+            stdout_to_tty \
+'You must have a root password in Chromium OS to mount encrypted chroots.'
             if [ -z "$CROUTON_PASSPHRASE$CROUTON_NEW_PASSPHRASE" ]; then
                 while ! chromeos-setdevpasswd; do :; done
             fi
@@ -296,12 +298,12 @@ no   -- You don't want to decide one way or another quite yet.
              -not -wholename './.crouton-targets' \
              -exec mkdir -p "$tmp/{}" ';' \
              -exec rmdir "$tmp/{}" ';' \
-             '(' -prune , -exec mv -f '{}' "$tmp/{}" ';' ')' 1>&2
+             '(' -prune , -exec mv -fT '{}' "$tmp/{}" ';' ')' 1>&2
         for tmp in ECRYPTFS_MOVE_STAGING_*; do
             (
                 cd "$tmp"
                 find '!' '(' -type d -exec test -d "$CHROOT/{}" ';' ')' \
-                     '(' -prune , -exec mv -f '{}' "$CHROOT/{}" ';' ')' \
+                     '(' -prune , -exec mv -fT '{}' "$CHROOT/{}" ';' ')' \
                      -exec echo -n . ';' 1>&2
                 find -depth -type d -not -wholename . \
                      -exec test -d "$CHROOT/{}" ';' \
