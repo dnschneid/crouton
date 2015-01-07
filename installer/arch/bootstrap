@@ -136,6 +136,10 @@ mkdir -p "$BOOTSTRAPCHROOT/var/cache/pacman/pkg"
 mv "$FETCHDIRPKG"/* "$BOOTSTRAPCHROOT/var/cache/pacman/pkg"
 
 echo "arch" > "$BOOTSTRAPCHROOT/etc/hostname"
+
+# Make sure package architecture is set manually.
+# Using the default Auto here detects the chroot from uname -m, breaking i686
+# chroots on x86-64.
 sed -i 's/^[ \t]*Architecture[ \t].*/Architecture = '"$ARCH"'/' \
     "$BOOTSTRAPCHROOT/etc/pacman.conf"
 

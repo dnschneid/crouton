@@ -20,7 +20,7 @@ fi
 # ArchLinux only ships an empty /etc/arch-release
 osrelease="${2%/}/etc/os-release"
 if [ -f "$osrelease" ]; then
-    rel="`sed -n -e 's/^ID=//p' "$osrelease"`"
+    rel="`sed -n 's/^ID=//p' "$osrelease"`"
 
     if [ "$rel" = 'archarm' ]; then
         rel="alarm"

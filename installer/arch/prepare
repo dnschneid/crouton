@@ -21,7 +21,6 @@ aurcompile() {
     # Expand base-devel so that install can replace packages with their
     # multilib versions
     install --asdeps `pacman -Sg base-devel | cut -d' ' -f 2`
-    install wget ca-certificates
 
     if ! id aur > /dev/null 2>&1; then
         useradd aur -r -s /bin/false
@@ -31,31 +30,26 @@ aurcompile() {
     echo "aur ALL = NOPASSWD:/usr/bin/pacman" > "$SUDOERSFILE"
     addtrap "rm -f '$SUDOERSFILE'"
 
-    su aur -s /bin/sh -c "
+    su aur -s /bin/sh -c '
         set -e
-        PACKAGE='$package'"'
+        PACKAGE="'"$package"'"
         PACKAGE2="${PACKAGE%"${PACKAGE#??}"}"
         TMPDIR="`mktemp -d --tmpdir=/tmp crouton-aur.XXX`"
-        TRAP="rm -rf '"'"'$TMPDIR'"'"'"
+        TRAP="rm -rf '\''$TMPDIR'\''"
         trap "$TRAP" INT HUP TERM 0
         cd "$TMPDIR"
         wget "https://aur.archlinux.org/packages/$PACKAGE2/$PACKAGE/$PACKAGE.tar.gz"
-        tar vxf "$PACKAGE.tar.gz"
+        tar xf "$PACKAGE.tar.gz"
         cd "$PACKAGE"
-        pkgver=`sed -n '"'"'s/^pkgver=//p'"'"' PKGBUILD`
-        pkgrel=`sed -n '"'"'s/^pkgrel=//p'"'"' PKGBUILD`
-        # FIXME: Temporary fix for mawk (the AUR PKGBUILD currently works, but
-        # will break again on the next upstream update)
-        if [ "$PACKAGE" = "mawk" ]; then
-            sed -i PKGBUILD -e '\''s|source=.*|\
-source=("ftp://invisible-island.net/mawk/$pkgname-${pkgver//_/-}.tgz")|'\''
-        fi
+        pkgver="`sed -n "s/^pkgver=//p" PKGBUILD`"
+        pkgrel="`sed -n "s/^pkgrel=//p" PKGBUILD`"
         if pacman -Q "$PACKAGE" 2>/dev/null | \
                     grep "^$PACKAGE $pkgver-$pkgrel\$"; then
             echo "Package $PACKAGE already up to date ($pkgver-$pkgrel)."
         else
             makepkg -A -s -i '"$*"' --noconfirm
-        fi'
+        fi
+    '
 
     rm -f "$SUDOERSFILE"
     undotrap
@@ -79,7 +73,7 @@ install_dist() {
     fi
     while [ "$#" != 0 ]; do
         if [ "$1" = "--minimal" ]; then
-            true # Ignore: irrelevant for arch
+            : # Ignore: irrelevant for arch
         elif [ "$1" = "--asdeps" ]; then
             params="--asdeps"
         else
@@ -92,10 +86,9 @@ install_dist() {
             shift
             break
         fi
-        aurstrip=${1#aur:}
+        aurstrip="${1#aur:}"
         if [ "$aurstrip" = "$1" ]; then
-            if [ -n "$multilib" ] && \
-	       [ "$1" = "gcc" ]; then
+            if [ -n "$multilib" -a "$1" = "gcc" ]; then
                 pkgs="$pkgs $1-multilib"
             else
                 pkgs="$pkgs $1"
@@ -139,16 +132,11 @@ list_uninstalled_dist() {
     fi
     shift
     for pkg in "$@"; do
-        if ! pacman -Q "$pkg" 2>/dev/null >/dev/null; then
+        if ! pacman -Q "$pkg" >/dev/null 2>&1; then
             echo -n "$pkg "
         fi
     done
 }
-
-# Make sure package architecture is set manually.
-# Using the default Auto here detects the chroot from uname -m, breaking i686
-# chroots on x86-64.
-sed -i 's/^[ \t]*Architecture[ \t].*/Architecture = '"$ARCH"'/' /etc/pacman.conf
 
 # Run boostrap second stage if it hasn't already happened
 bootstrappkglist="/crouton-bootstrap-pkg"
@@ -159,7 +147,7 @@ if [ -r "$bootstrappkglist" ]; then
     # exact same packages as during the bootstrap creation, to make sure we
     # do not leave any cruft behind).
     if [ -n "$MIRROR" -a "$MIRROR" != 'unspecified' ]; then
-        echo "Server = http://www.example.com/" > "/etc/pacman.d/mirrorlist"
+        echo "Server = https://192.0.2.1/" > "/etc/pacman.d/mirrorlist"
     fi
 
     # Initialize pacman keyring (i686/x86_64 only)
