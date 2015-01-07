@@ -94,6 +94,7 @@ done
 # If the executable name is delete*, assume DELETE.
 if [ ! "${APPLICATION#delete}" = "$APPLICATION" ]; then
     DELETE='y'
+    NEEDS_UNMOUNT='y'
 fi
 
 # At least one command must be specified
