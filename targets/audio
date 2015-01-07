@@ -165,23 +165,6 @@ build_cras() {
                                 pkg-config --variable=libdir alsa`/alsa-lib"
     fi
 
-    # SBC is not available in older Debian/Ubuntu: fetch it manually
-    if release -le quantal; then
-        install_mirror_package 'libsbc1' \
-                            'pool/main/s/sbc' '1\.1-.*' $cras_arch
-        install_mirror_package --asdeps 'libsbc-dev' \
-                            'pool/main/s/sbc' '1\.1-.*' $cras_arch
-    elif release -le wheezy -eq kali; then
-        # wheezy provides a backport for libsbc1
-        install_mirror_package 'libsbc1' \
-                            'pool/main/s/sbc' '.*~bpo7.*' $cras_arch
-        install_mirror_package --asdeps 'libsbc-dev' \
-                            'pool/main/s/sbc' '.*~bpo7.*' $cras_arch
-    else
-        install --minimal libsbc1$pkgsuffix
-        install --minimal --asdeps libsbc-dev$pkgsuffix
-    fi
-
     # Start subshell for compilation
     (
         cd "$CRASBUILDTMP"
@@ -350,6 +333,25 @@ quit:
 END
         fi
 
+        # Remove SBC dependency
+        sed -e 's/#include <sbc.*//' -i common/cras_sbc_codec.h
+        cat > common/cras_sbc_codec.c <<END
+#include <stdint.h>
+#include <stdlib.h>
+#include "cras_audio_codec.h"
+
+struct cras_audio_codec *cras_sbc_codec_create(uint8_t freq,
+		   uint8_t mode, uint8_t subbands, uint8_t alloc,
+		   uint8_t blocks, uint8_t bitpool) {
+    abort();
+}
+void cras_sbc_codec_destroy(struct cras_audio_codec *codec) {
+    abort();
+}
+END
+        # Drop SBC constants
+        sed -e 's/SBC_[A-Z0-9_]*/0/g' -i tests/cras_test_client.c
+
         # Directory to install CRAS library/binaries
         CRASLIBDIR="/usr/local$archextrapath/lib"
         CRASBINDIR="/usr/local$archextrapath/bin"
@@ -357,13 +359,6 @@ END
         echo "Compiling CRAS (${cras_arch:-native})..." 1>&2
         # Convert Makefile.am to a shell script, and run it.
         {
-            echo '
-                SBC_LIBS="'"`PKG_CONFIG_PATH="$pkgconfigpath" \
-                                                pkg-config --libs sbc`"'"
-                SBC_CFLAGS="'"`PKG_CONFIG_PATH="$pkgconfigpath" \
-                                                pkg-config --cflags sbc`"'"
-            '
-
             convert_automake
 
             echo '
