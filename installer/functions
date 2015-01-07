@@ -211,25 +211,6 @@ getmountpoint() {
     done
 }
 
-# Redirects stdout to stderr or /dev/tty, or prints parameters onto tty if stdin
-# is a tty but stderr is not
-stdout_to_tty() {
-    # If we have a tty input but the output is redirected, output prompt to tty
-    if [ -t 0 -a ! -t 2 ]; then
-        if [ $# = 0 ]; then
-            exec 1>/dev/tty
-        else
-            echo "$*" 1>/dev/tty
-        fi
-    else
-        if [ $# = 0 ]; then
-            exec 1>&2
-        else
-            echo "$*" 1>&2
-        fi
-    fi
-}
-
 # Websocket interface
 PIPEDIR='/tmp/crouton-ext'
 CRIATDISPLAY="$PIPEDIR/kiwi-display"

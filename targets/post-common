@@ -34,20 +34,17 @@ if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
     apt-get clean
 fi
 
-# From here on out is interactive stuff, so ensure we're printing to the user
-stdout_to_tty
-
 # Add the primary user
 groups='audio,video,sudo,plugdev'
 if ! grep -q ':1000:' /etc/passwd; then
     while ! echo "$username" | grep -q '^[a-z][-a-z0-9_]*$'; do
         if [ -n "$username" ]; then
-            echo 'Username must be lowercase letters, numbers, or dashes.'
+            echo 'Username must be lowercase letters, numbers, or dashes.' 1>&2
         fi
-        echo -n 'Please specify a username for the primary user: '
+        echo -n 'Please specify a username for the primary user: ' 1>&2
         if [ -n "$USERNAME" ]; then
             username="$USERNAME"
-            echo "$username"
+            echo "$username" 1>&2
         else
             read -r username junk
         fi
@@ -63,7 +60,7 @@ if ! grep -q ':1000:' /etc/passwd; then
     done
     if [ "$tries" = 3 ]; then
         echo \
-"Password left unset. To set a password, inside the chroot run: passwd $username"
+"Password left unset. To set a password, inside the chroot run: passwd $username" 1>&2
     fi
 else
     username="`awk -F: '$3==1000{print $1; exit}' '/etc/passwd'`"
@@ -73,7 +70,7 @@ fi
 if [ -n "$TIPS" ]; then
     echo "
 Here's some tips:
-$TIPS"
+$TIPS" 1>&2
 fi
 
 rm -f "$0"
