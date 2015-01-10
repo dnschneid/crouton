@@ -12,7 +12,7 @@
 #include <stdint.h>
 
 /* WebSocket constants */
-#define VERSION "VF1"
+#define VERSION "VF2"
 #define PORT_BASE 30010
 
 /* Request for a frame */
@@ -61,6 +61,14 @@ struct  __attribute__((__packed__)) resolution {
 
 /* Press a key */
 struct  __attribute__((__packed__)) key {
+    char type;  /* 'K' */
+    uint8_t down:1;  /* 1: down, 0: up */
+    uint8_t keycode;  /* X11 KeyCode (8-255) */
+};
+
+/* Press a key (compatibility with VF1) */
+/* TODO: Remove support for VF1. */
+struct  __attribute__((__packed__)) key_vf1 {
     char type;  /* 'K' */
     uint8_t down:1;  /* 1: down, 0: up */
     uint32_t keysym;  /* X11 KeySym */

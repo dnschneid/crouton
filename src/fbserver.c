@@ -545,17 +545,12 @@ int main(int argc, char** argv) {
                 if (!check_size(length, sizeof(struct key), "key"))
                     break;
                 struct key* k = (struct key*)buffer;
-                KeyCode kc = XKeysymToKeycode(dpy, k->keysym);
-                log(2, "Key: ks=%04x kc=%04x\n", k->keysym, kc);
-                if (kc != 0) {
-                    XTestFakeKeyEvent(dpy, kc, k->down, CurrentTime);
-                    if (k->down) {
-                        kb_add(KEYBOARD, kc);
-                    } else {
-                        kb_remove(KEYBOARD, kc);
-                    }
+                log(2, "Key: kc=%04x\n", k->keycode);
+                XTestFakeKeyEvent(dpy, k->keycode, k->down, CurrentTime);
+                if (k->down) {
+                    kb_add(KEYBOARD, k->keycode);
                 } else {
-                    error("Invalid keysym %04x.", k->keysym);
+                    kb_remove(KEYBOARD, k->keycode);
                 }
                 break;
             }
