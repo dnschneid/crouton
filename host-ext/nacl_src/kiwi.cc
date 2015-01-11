@@ -29,6 +29,8 @@
 /* Protocol data structures */
 #include "../../src/fbserver-proto.h"
 
+#include "keycode_converter.h"
+
 class KiwiInstance : public pp::Instance {
 public:
     explicit KiwiInstance(PP_Instance instance): pp::Instance(instance) {}
@@ -468,7 +470,18 @@ public:
             std::string keystr = key_event.GetCode().AsString();
             bool down = event.GetType() == PP_INPUTEVENT_TYPE_KEYDOWN;
 
-            uint8_t keycode = KeyStrToKeyCode(keystr);
+            if (jskeycode == 183) {  /* Fullscreen => toggle fullscreen */
+                if (!down)
+                    ControlMessage("state", "fullscreen");
+                return PP_TRUE;
+            } else if (jskeycode == 182) {  /* Page flipper => minimize window */
+                if (!down)
+                    ControlMessage("state", "hide");
+                return PP_TRUE;
+            }
+
+            /* TODO: Reverse Search key translation when appropriate */
+            uint8_t keycode = KeyCodeConverter::GetCode(keystr, false);
             /* TODO: Remove VF1 compatibility */
             uint32_t keysym = 0;
             if (server_version_ == "VF1")
@@ -478,21 +491,11 @@ public:
                 << "Key " << (down ? "DOWN" : "UP")
                 << ": C:" << keystr
                 << ", JSKC:" << std::hex << jskeycode
-                << " => KC:" << std::hex << keycode
+                << " => KC:" << (int)keycode
                 << (keycode == 0 ? " (KEY UNKNOWN!)" : "")
                 << " searchstate:" << search_state_;
 
             if (keycode == 0 && keysym == 0) {
-                return PP_TRUE;
-            }
-
-            if (jskeycode == 183) {  /* Fullscreen => toggle fullscreen */
-                if (!down)
-                    ControlMessage("state", "fullscreen");
-                return PP_TRUE;
-            } else if (jskeycode == 182) {  /* Page flipper => minimize window */
-                if (!down)
-                    ControlMessage("state", "hide");
                 return PP_TRUE;
             }
 
@@ -730,10 +733,6 @@ private:
         }
     }
 
-    uint8_t KeyStrToKeyCode(const std::string& code) {
-        return 1;
-    }
-
     /* Converts "IE"/JavaScript keycode to X11 KeySym.
      * See http://unixpapa.com/js/key.html
      * TODO: Drop support for VF1 */
@@ -847,7 +846,7 @@ private:
         if (server_version_ == "VF1")
             SendKeySym(0xffeb, down);
         else
-            SendKeyCode(kSUPER_L, down);
+            SendKeyCode(KeyCodeConverter::GetCode("OSLeft", false), down);
     }
 
     /* Sends a keysym (VF1) */
@@ -1003,9 +1002,6 @@ private:
 
 private:
     /* Constants */
-    /* SuperL keycode (search key) */
-    const uint8_t kSUPER_L = 123; /* FIXME */
-
     const int kFullFPS = 30;   /* Maximum fps */
     const int kBlurFPS = 5;    /* fps when window is possibly hidden */
     const int kHiddenFPS = 0;  /* fps when window is hidden */
