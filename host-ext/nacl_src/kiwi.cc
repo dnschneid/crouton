@@ -29,6 +29,8 @@
 /* Protocol data structures */
 #include "../../src/fbserver-proto.h"
 
+#include "keycode_converter.h"
+
 class KiwiInstance : public pp::Instance {
 public:
     explicit KiwiInstance(PP_Instance instance): pp::Instance(instance) {}
@@ -229,10 +231,22 @@ private:
             LogMessage(-1) << "Got a version while connected?!?";
             return false;
         }
-        if (strcmp(data, VERSION)) {
-            LogMessage(-1) << "Invalid version received (" << data << ").";
-            return false;
+
+        server_version_ = data;
+
+        if (server_version_ != VERSION) {
+            /* TODO: Remove VF1 compatiblity */
+            if (server_version_ == "VF1") {
+                LogMessage(-1) << "Outdated server version ("
+                               <<  server_version_ << ").";
+                /* FIXME: Clearly inform the user that the chroot is outdated. */
+            } else {
+                LogMessage(-1) << "Invalid version received ("
+                               << server_version_ << ").";
+                return false;
+            }
         }
+
         connected_ = true;
         SocketSend(pp::Var("VOK"), false);
         ControlMessage("connected", "Version received");
@@ -452,73 +466,79 @@ public:
             event.GetType() == PP_INPUTEVENT_TYPE_KEYUP) {
             pp::KeyboardInputEvent key_event(event);
 
-            uint32_t keycode = key_event.GetKeyCode();
+            uint32_t jskeycode = key_event.GetKeyCode();
             std::string keystr = key_event.GetCode().AsString();
-            uint32_t keysym = KeyCodeToKeySym(keycode, keystr);
             bool down = event.GetType() == PP_INPUTEVENT_TYPE_KEYDOWN;
 
-            LogMessage(keysym == 0 ? 0 : 1)
-                << "Key " << (down ? "DOWN" : "UP")
-                << ": C:" << keystr
-                << "/KC:" << std::hex << keycode
-                << "/KS:" << std::hex << keysym
-                << (keysym == 0 ? " (KEY UNKNOWN!)" : "")
-                << " searchstate:" << search_state_;
-
-            if (keysym == 0) {
-                return PP_TRUE;
-            }
-
-            if (keycode == 183) {  /* Fullscreen => toggle fullscreen */
+            if (jskeycode == 183) {  /* Fullscreen => toggle fullscreen */
                 if (!down)
                     ControlMessage("state", "fullscreen");
                 return PP_TRUE;
-            } else if (keycode == 182) {  /* Page flipper => minimize window */
+            } else if (jskeycode == 182) {  /* Page flipper => minimize window */
                 if (!down)
                     ControlMessage("state", "hide");
+                return PP_TRUE;
+            }
+
+            /* TODO: Reverse Search key translation when appropriate */
+            uint8_t keycode = KeyCodeConverter::GetCode(keystr, false);
+            /* TODO: Remove VF1 compatibility */
+            uint32_t keysym = 0;
+            if (server_version_ == "VF1")
+                keysym = KeyCodeToKeySym(jskeycode, keystr);
+
+            LogMessage(keycode == 0 ? 0 : 1)
+                << "Key " << (down ? "DOWN" : "UP")
+                << ": C:" << keystr
+                << ", JSKC:" << std::hex << jskeycode
+                << " => KC:" << (int)keycode
+                << (keycode == 0 ? " (KEY UNKNOWN!)" : "")
+                << " searchstate:" << search_state_;
+
+            if (keycode == 0 && keysym == 0) {
                 return PP_TRUE;
             }
 
             /* We delay sending Super-L, and only "press" it on mouse clicks and
              * letter keys (a-z). This way, Home (Search+Left) appears without
              * modifiers (instead of Super_L+Home) */
-            /* FIXME: NumpadDecimal is a dirty hack for broken freon,
-               see http://crbug.com/425156 */
-            if (keysym == kSUPER_L && (keystr == "OSLeft" ||
-                                       keystr == "NumpadDecimal")) {
+            if (keystr == "OSLeft") {
                 if (down) {
                     search_state_ = kSearchUpFirst;
                 } else {
                     if (search_state_ == kSearchUpFirst) {
                         /* No other key was pressed: press+release */
-                        SendKey(kSUPER_L, 1);
-                        SendKey(kSUPER_L, 0);
+                        SendSearchKey(1);
+                        SendSearchKey(0);
                     } else if (search_state_ == kSearchDown) {
-                        SendKey(kSUPER_L, 0);
+                        SendSearchKey(0);
                     }
                     search_state_ = kSearchInactive;
                 }
                 return PP_TRUE;  /* Ignore key */
             }
 
-            if (keycode >= 65 && keycode <= 90) {  /* letter */
+            if (jskeycode >= 65 && jskeycode <= 90) {  /* letter */
                 /* Search is active, send Super_L if needed */
                 if (down && (search_state_ == kSearchUpFirst ||
                              search_state_ == kSearchUp)) {
-                    SendKey(kSUPER_L, 1);
+                    SendSearchKey(1);
                     search_state_ = kSearchDown;
                 }
             } else {  /* non-letter */
                 /* Release Super_L if needed */
                 if (search_state_ == kSearchDown) {
-                    SendKey(kSUPER_L, 0);
+                    SendSearchKey(0);
                     search_state_ = kSearchUp;
                 } else if (search_state_ == kSearchUpFirst) {
                     /* Switch from UpFirst to Up */
                     search_state_ = kSearchUp;
                 }
             }
-            SendKey(keysym, down ? 1 : 0);
+            if (server_version_ == "VF1")
+                SendKeySym(keysym, down ? 1 : 0);
+            else
+                SendKeyCode(keycode, down ? 1 : 0);
         } else if (event.GetType() == PP_INPUTEVENT_TYPE_MOUSEDOWN ||
                    event.GetType() == PP_INPUTEVENT_TYPE_MOUSEUP   ||
                    event.GetType() == PP_INPUTEVENT_TYPE_MOUSEMOVE) {
@@ -714,7 +734,8 @@ private:
     }
 
     /* Converts "IE"/JavaScript keycode to X11 KeySym.
-     * See http://unixpapa.com/js/key.html */
+     * See http://unixpapa.com/js/key.html
+     * TODO: Drop support for VF1 */
     uint32_t KeyCodeToKeySym(uint32_t keycode, const std::string& code) {
         if (keycode >= 65 && keycode <= 90)  /* A to Z */
             return keycode + 32;
@@ -754,7 +775,7 @@ private:
         case 42:  return 0xff61;  // print screen
         case 45:  return 0xff63;  // insert
         case 46:  return 0xffff;  // delete
-        case 91:  return kSUPER_L; // super
+        case 91:  return 0xffeb;  // super
         case 106: return 0xffaa;  // num multiply
         case 107: return 0xffab;  // num plus
         case 109: return 0xffad;  // num minus
@@ -804,7 +825,7 @@ private:
 
         if (down && (search_state_ == kSearchUpFirst ||
                      search_state_ == kSearchUp)) {
-            SendKey(kSUPER_L, 1);
+            SendSearchKey(1);
             search_state_ = kSearchDown;
         }
 
@@ -820,14 +841,38 @@ private:
         SetTargetFPS(kFullFPS);
     }
 
-    /* Sends a key press */
-    void SendKey(uint32_t keysym, int down) {
+    void SendSearchKey(int down) {
+        /* TODO: Drop support for VF1 */
+        if (server_version_ == "VF1")
+            SendKeySym(0xffeb, down);
+        else
+            SendKeyCode(KeyCodeConverter::GetCode("OSLeft", false), down);
+    }
+
+    /* Sends a keysym (VF1) */
+    /* TODO: Drop support for VF1 */
+    void SendKeySym(uint32_t keysym, int down) {
+        struct key_vf1* k;
+        pp::VarArrayBuffer array_buffer(sizeof(*k));
+        k = static_cast<struct key_vf1*>(array_buffer.Map());
+        k->type = 'K';
+        k->down = down;
+        k->keysym = keysym;
+        array_buffer.Unmap();
+        SocketSend(array_buffer, true);
+
+        /* That means we have focus */
+        SetTargetFPS(kFullFPS);
+    }
+
+    /* Sends a keycode */
+    void SendKeyCode(uint8_t keycode, int down) {
         struct key* k;
         pp::VarArrayBuffer array_buffer(sizeof(*k));
         k = static_cast<struct key*>(array_buffer.Map());
         k->type = 'K';
         k->down = down;
-        k->keysym = keysym;
+        k->keycode = keycode;
         array_buffer.Unmap();
         SocketSend(array_buffer, true);
 
@@ -957,9 +1002,6 @@ private:
 
 private:
     /* Constants */
-    /* SuperL keycode (search key) */
-    const uint32_t kSUPER_L = 0xffeb;
-
     const int kFullFPS = 30;   /* Maximum fps */
     const int kBlurFPS = 5;    /* fps when window is possibly hidden */
     const int kHiddenFPS = 0;  /* fps when window is hidden */
@@ -978,6 +1020,7 @@ private:
 
     pp::WebSocket websocket_{this};
     bool connected_ = false;
+    std::string server_version_ = "";
     bool screen_flying_ = false;
     pp::Var receive_var_;
     int target_fps_ = kFullFPS;
