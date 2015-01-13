@@ -32,6 +32,14 @@ if [ "$TARGETS" = 'help' ]; then
     if [ -n "$REQUIRES" ]; then
         echo "	Requires: $REQUIRES"
     fi
+elif [ "$TARGETNOINSTALL" = "p" ]; then
+    # This will check the provides from /etc/crouton/targets and targets
+    # specified with -t. If there are duplicates we will respect the
+    # order of the targets specified. This means on an update targets
+    # specified with -t will have higher priority then already installed targets.
+    for t in $PROVIDES; do
+        echo "$t=$TARGET" >> "${PROVIDESFILE:-/dev/null}"
+    done
 elif [ -z "$TARGETNOINSTALL" -o -n "$RESTOREHOSTBIN" ]; then
     # Avoid double-adding targets
     if grep -q "^$TARGET\$" "${TARGETDEDUPFILE:-/dev/null}"; then
@@ -45,6 +53,9 @@ elif [ -z "$TARGETNOINSTALL" -o -n "$RESTOREHOSTBIN" ]; then
     done
     # Source the prerequisites
     for t in $REQUIRES; do
+        # If it is already provided change it to the target what provides it.
+        provider="`awk -F= '/'"$t"'=/{print $2; exit}' "${PROVIDESFILE:-/dev/null}"`"
+        t="${provider:-"$t"}"
         (TARGET="$t" PROVIDES='' HOSTBIN='' CHROOTBIN='' CHROOTETC=''
          . "$TARGETSDIR/$t")
     done
