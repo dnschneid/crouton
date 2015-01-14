@@ -49,9 +49,8 @@
         background-color: rgba(128, 128, 0, 1);
       }
       .close {
-        float: right;
         background-color: rgba(0,0,0,0);
-        color: rgba(255,255,255,1);
+        color: rgba(255,255,0,1);
         font-size: 12pt;
         padding-bottom: 1px;
         padding-top: 2px;
@@ -64,6 +63,9 @@
       }
       .close:active {
         background-color: rgba(0,0,0,0.5);
+      }
+      .close:hover {
+        color: rgba(255,0,0,1);
       }
       #error {
         background-color: rgba(128, 0, 0, 1);
@@ -88,8 +90,9 @@
       </div>
       <div id="info">
         <div id="status">Initializing...</div>
-        <div id="warning">WARNING: <span class="text"></span>
-          <button class="close">&#10005;</button>
+        <div id="warning">
+          <button class="close" title="Dismiss">&#9746;</button>
+          WARNING: <span class="text"></span>
         </div>
         <div id="error">ERROR: <span class="text"></span></div>
       </div>
