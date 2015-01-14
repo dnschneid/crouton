@@ -8,6 +8,11 @@ var RESIZE_RATE_LIMIT = 300; /* No more than 1 resize query every x ms */
 
 var KiwiModule_ = null; /* NaCl module */
 var listener_ = null; /* listener div element */
+var infodiv_ = null; /* info div (contains status, warning(s), error(s)) */
+var statusdiv_ = null; /* status div */
+var warningdiv_ = null; /* warning div */
+var errordiv_ = null; /* error div */
+
 var debug_ = 0; /* Debuging level, passed to NaCl module */
 var hidpi_ = 0; /* HiDPI mode */
 var display_ = null; /* Display number to use */
@@ -29,7 +34,7 @@ function registerWindow(register) {
 /* NaCl module loaded */
 function moduleDidLoad() {
     KiwiModule_ = document.getElementById('kiwi');
-    updateStatus('Starting...');
+    setStatus('Starting...');
     KiwiModule_.postMessage('debug:' + debug_);
     KiwiModule_.postMessage('hidpi:' + hidpi_);
     /* Sending the display command triggers a connection: send it last. */
@@ -41,7 +46,7 @@ function moduleDidLoad() {
 function handleProgress(event) {
     /* We could compute a percentage, but loading gets stuck at 89% (while
      * translating?), so it's not very useful... */
-    updateStatus('Loading...');
+    setStatus('Loading...');
 }
 
 /* NaCl module failed to load */
@@ -49,16 +54,16 @@ function handleError(event) {
     // We can't use common.naclModule yet because the module has not been
     // loaded.
     KiwiModule_ = document.getElementById('kiwi');
-    updateStatus('ERROR: ' + KiwiModule_.lastError);
+    showError(KiwiModule_.lastError);
     registerWindow(false);
 }
 
 /* NaCl module crashed */
 function handleCrash(event) {
     if (KiwiModule_.exitStatus == -1) {
-        updateStatus('NaCl module crashed.');
+        showError('NaCl module crashed.');
     } else {
-        updateStatus('NaCl module exited: ' + KiwiModule_.exitStatus);
+        showError('NaCl module exited: ' + KiwiModule_.exitStatus);
     }
     registerWindow(false);
 }
@@ -92,12 +97,37 @@ function setTitle(title) {
     document.title = "crouton in a tab: " + title + " (" + display_ + ")";
 }
 
-function updateStatus(message) {
-    var status = document.getElementById('status');
-    if (status) {
-        status.textContent = message;
-        status.style.display = connected_ ? 'none' : 'block';
+/* Set status message */
+function setStatus(message) {
+    if (message) {
+        statusdiv_.textContent = message;
+        statusdiv_.style.display = 'block';
+    } else {
+        statusdiv_.style.display = 'none';
     }
+}
+
+/* Set warning message */
+function showWarning(message) {
+    var div = addInfoLine(warningdiv_, message);
+    var warningclose = div.getElementsByClassName("close")[0];
+    warningclose.onclick = function() { infodiv_.removeChild(div); };
+}
+
+/* Set error message */
+function showError(message) {
+    setStatus(null);
+    addInfoLine(errordiv_, message);
+}
+
+/* Adds warning/error line to info div. Returns duplicated element */
+function addInfoLine(div, message) {
+    var newdiv = div.cloneNode(true);
+    var divtext = newdiv.getElementsByClassName("text")[0];
+    divtext.textContent = message;
+    /* Insert all warnings/errors before the status line. */
+    infodiv_.insertBefore(newdiv, statusdiv_);
+    return newdiv;
 }
 
 /* This function is called when a message is received from the NaCl module. */
@@ -120,19 +150,19 @@ function handleMessage(message) {
         if (debugEl)
             debugEl.textContent = message.data;
     } else if (type == "status") {
-        updateStatus(payload);
+        setStatus(payload);
     } else if (type == "connected") {
         connected_ = true;
-        updateStatus("Connected");
+        setStatus(null);
     } else if (type == "disconnected") {
         connected_ = false;
         if (debug_ < 1) {
             closing_ = true;
-            updateStatus("Disconnected, closing window in " +
+            setStatus("Disconnected, closing window in " +
                          CLOSE_TIMEOUT + " seconds.");
             setTimeout(function() { window.close() }, CLOSE_TIMEOUT*1000);
         } else {
-            updateStatus("Disconnected, please close the window.");
+            setStatus("Disconnected, please close the window.");
         }
         registerWindow(false);
     } else if (type == "state" && payload == "fullscreen") {
@@ -240,6 +270,17 @@ document.addEventListener('DOMContentLoaded', function() {
     window.addEventListener('focus', handleFocusBlur);
     window.addEventListener('blur', handleFocusBlur);
     document.addEventListener('visibilitychange', handleFocusBlur);
+
+    infodiv_ = document.getElementById('info');
+    statusdiv_ = document.getElementById('status');
+    warningdiv_ = document.getElementById('warning');
+    errordiv_ = document.getElementById('error');
+
+    infodiv_.removeChild(warningdiv_);
+    infodiv_.removeChild(errordiv_);
+
+    warningdiv_.style.display = 'block';
+    errordiv_.style.display = 'block';
 
     /* Parse arguments */
     var args = location.search.substring(1).split('&');
