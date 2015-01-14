@@ -19,6 +19,7 @@ var display_ = null; /* Display number to use */
 var title_ = "crouton in a tab"; /* window title */
 var connected_ = false;
 var closing_ = false; /* Disconnected, and waiting for the window to close */
+var error_ = false; /* An error has occured */
 
 var prevstate_ = "maximized"; /* Previous window state (before full screen) */
 
@@ -116,6 +117,7 @@ function showWarning(message) {
 
 /* Set error message */
 function showError(message) {
+    error_ = true;
     setStatus(null);
     addInfoLine(errordiv_, message);
 }
@@ -151,12 +153,16 @@ function handleMessage(message) {
             debugEl.textContent = message.data;
     } else if (type == "status") {
         setStatus(payload);
+    } else if (type == "warning") {
+        showWarning(payload);
+    } else if (type == "error") {
+        showError(payload);
     } else if (type == "connected") {
         connected_ = true;
         setStatus(null);
     } else if (type == "disconnected") {
         connected_ = false;
-        if (debug_ < 1) {
+        if (debug_ < 1 && !error_) {
             closing_ = true;
             setStatus("Disconnected, closing window in " +
                          CLOSE_TIMEOUT + " seconds.");

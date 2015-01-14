@@ -137,6 +137,17 @@ private:
         return Message(this, "status", false);
     }
 
+    /* Sends a warning message to Javascript */
+    Message WarningMessage() {
+        return Message(this, "warning", false);
+    }
+
+    /* Sends an error message to Javascript: all errors are fatal and a
+     * disconnect message will be sent soon after. */
+    Message ErrorMessage() {
+        return Message(this, "error", false);
+    }
+
     /* Sends a logging message to Javascript */
     Message LogMessage(int level) {
         if (level <= debug_) {
@@ -167,7 +178,7 @@ private:
      * Parameter is ignored: used for callbacks */
     void SocketConnect(int32_t /*result*/ = 0) {
         if (display_ < 0) {
-            LogMessage(-1) << "SocketConnect: No display defined yet.";
+            ErrorMessage() << "SocketConnect: No display defined yet.";
             return;
         }
 
@@ -220,7 +231,7 @@ private:
         if (length == target)
             return true;
 
-        LogMessage(-1) << "Invalid " << type << " request (" << length
+        ErrorMessage() << "Invalid " << type << " request (" << length
                        << " != " << target << ").";
         return false;
     }
@@ -228,7 +239,7 @@ private:
     /* Receives and handles a version request */
     bool SocketParseVersion(const char* data, int datalen) {
         if (connected_) {
-            LogMessage(-1) << "Got a version while connected?!?";
+            ErrorMessage() << "Received a version while already connected.";
             return false;
         }
 
@@ -237,12 +248,13 @@ private:
         if (server_version_ != VERSION) {
             /* TODO: Remove VF1 compatiblity */
             if (server_version_ == "VF1") {
-                LogMessage(-1) << "Outdated server version ("
-                               <<  server_version_ << ").";
-                /* FIXME: Clearly inform the user that the chroot is outdated. */
+                WarningMessage() << "Outdated server version ("
+                                 << server_version_ << "), expecting " << VERSION
+                                 << ". Please update your chroot.";
             } else {
-                LogMessage(-1) << "Invalid version received ("
-                               << server_version_ << ").";
+                ErrorMessage() << "Invalid server version ("
+                               << server_version_ << "), expecting " << VERSION
+                               << ". Please update your chroot.";
                 return false;
             }
         }
@@ -302,7 +314,7 @@ private:
     /* Receives and handles a cursor_reply request */
     bool SocketParseCursor(const char* data, int datalen) {
         if (datalen < sizeof(struct cursor_reply)) {
-            LogMessage(-1) << "Invalid cursor_reply packet (" << datalen
+            ErrorMessage() << "Invalid cursor_reply packet (" << datalen
                            << " < " << sizeof(struct cursor_reply) << ").";
             return false;
         }
@@ -365,6 +377,7 @@ private:
             /* Not fatal: just wait for next call */
             return;
         } else if (result != PP_OK) {
+            /* FIXME: Receive error is "normal" when fbserver exits. */
             LogMessage(-1) << "Receive error.";
             SocketClose("Receive error.");
             return;
@@ -410,12 +423,12 @@ private:
                 if (SocketParseResolution(data, datalen)) return;
                 break;
             default:
-                LogMessage(-1) << "Invalid request. First char: "
+                ErrorMessage() << "Invalid request. First char: "
                                << (int)data[0];
                 /* Fall-through: disconnect. */
             }
         } else {
-            LogMessage(-1) << "Got some packet before version...";
+            ErrorMessage() << "Got some packet before version...";
         }
 
         SocketClose("Invalid payload.");
