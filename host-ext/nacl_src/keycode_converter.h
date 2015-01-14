@@ -15,7 +15,7 @@ public:
     KeyCode(uint8_t base, uint8_t search):
         base_(base), search_(search) {}
 
-    KeyCode(uint8_t base): KeyCode(base, base) {}
+    explicit KeyCode(uint8_t base): KeyCode(base, base) {}
 
     uint8_t GetCode(const bool search_on) const {
         if (search_on)
