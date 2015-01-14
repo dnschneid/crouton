@@ -184,19 +184,27 @@ private:
 
         std::ostringstream url;
         url << "ws://localhost:" << (PORT_BASE + display_) << "/";
-        websocket_.Connect(pp::Var(url.str()), NULL, 0,
-                           callback_factory_.NewCallback(
-                               &KiwiInstance::OnSocketConnectCompletion));
+        websocket_.reset(new pp::WebSocket(this));
+        websocket_->Connect(pp::Var(url.str()), NULL, 0,
+                            callback_factory_.NewCallback(
+                                &KiwiInstance::OnSocketConnectCompletion));
         StatusMessage() << "Connecting...";
     }
 
     /* Called when WebSocket is connected (or failed to connect) */
     void OnSocketConnectCompletion(int32_t result) {
         if (result != PP_OK) {
-            StatusMessage() << "Connection failed ("
-                            << result << "), retrying...";
-            pp::Module::Get()->core()->CallOnMainThread(1000,
-                callback_factory_.NewCallback(&KiwiInstance::SocketConnect));
+            retry_++;
+            if (retry_ < kMaxRetry) {
+                StatusMessage() << "Connection failed with code " << result
+                                << ", " << retry_ << " attempt(s). Retrying...";
+                pp::Module::Get()->core()->CallOnMainThread(1000,
+                   callback_factory_.NewCallback(&KiwiInstance::SocketConnect));
+            } else {
+                ErrorMessage() << "Connection failed (code: " << result << ").";
+                ControlMessage("disconnected", "Connection failed");
+            }
+
             return;
         }
 
@@ -209,7 +217,7 @@ private:
 
     /* Closes the WebSocket connection. */
     void SocketClose(const std::string& reason) {
-        websocket_.Close(0, pp::Var(reason),
+        websocket_->Close(0, pp::Var(reason),
             callback_factory_.NewCallback(&KiwiInstance::OnSocketClosed));
     }
 
@@ -437,7 +445,7 @@ private:
     /* Asks to receive the next WebSocket frame
      * Parameter is ignored: used for callbacks */
     void SocketReceive(int32_t /*result*/ = 0) {
-        websocket_.ReceiveMessage(&receive_var_, callback_factory_.NewCallback(
+        websocket_->ReceiveMessage(&receive_var_, callback_factory_.NewCallback(
                 &KiwiInstance::OnSocketReceiveCompletion));
     }
 
@@ -457,11 +465,11 @@ private:
             mm->x = mouse_pos_.x();
             mm->y = mouse_pos_.y();
             array_buffer.Unmap();
-            websocket_.SendMessage(array_buffer);
+            websocket_->SendMessage(array_buffer);
             pending_mouse_move_ = false;
         }
 
-        websocket_.SendMessage(var);
+        websocket_->SendMessage(var);
     }
 
     /** UI functions **/
@@ -1019,6 +1027,8 @@ private:
     const int kBlurFPS = 5;    /* fps when window is possibly hidden */
     const int kHiddenFPS = 0;  /* fps when window is hidden */
 
+    const int kMaxRetry = 3;  /* Maximum number of connection attempts */
+
     /* Class members */
     pp::CompletionCallbackFactory<KiwiInstance> callback_factory_{this};
     pp::Graphics2D context_;
@@ -1031,7 +1041,8 @@ private:
     pp::ImageData image_data_;
     int k_ = 0;
 
-    pp::WebSocket websocket_{this};
+    std::unique_ptr<pp::WebSocket> websocket_;
+    int retry_ = 0;
     bool connected_ = false;
     std::string server_version_ = "";
     bool screen_flying_ = false;
