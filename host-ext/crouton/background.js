@@ -45,6 +45,9 @@ var kiwi_win_ = {}; /* Map of kiwi windows. Key is display, value is object
                         (.id, .window: window element) */
 var focus_win_ = -1; /* Focused kiwi window. -1 if no kiwi window focused. */
 
+var notifications_ = {}; /* Map of notification id to function to be called when
+                            the notification is clicked. */
+
 /* Set the current status string.
  * active is a boolean, true if the WebSocket connection is established. */
 function setStatus(status, active) {
@@ -277,6 +280,10 @@ function clipboardStart() {
 
     clipboardholder_ = document.getElementById("clipboardholder");
 
+    /* Notification event handlers */
+    chrome.notifications.onClosed.addListener(notificationClosed);
+    chrome.notifications.onClicked.addListener(notificationClicked);
+
     websocketConnect();
 }
 
@@ -403,6 +410,53 @@ function websocketMessage(evt) {
             websocket_.send("EError: URL must be absolute");
         }
 
+        break;
+    case 'N': /* Raise a notification */
+        /* Payload in JSON format, compatible with chrome.extensions specifications */
+        try {
+            var data = JSON.parse(payload);
+
+            if (!data.type)
+                data.type = "basic";
+            if (!data.iconUrl)
+                data.iconUrl = "icon-128.png";
+
+            /* Strip off crouton fields */
+            var id = "";
+            var display = null;
+
+            if (data.crouton_id) {
+                id = data.crouton_id;
+            }
+            delete data.crouton_id;
+
+            /* Set context message with chroot name/display */
+            delete data.contextMessage;
+            if (data.crouton_display) {
+                display = data.crouton_display;
+                var win = windows_.filter(function(x) {
+                                              return x.display == display })[0];
+                var name = win ? (win.name + " (" + display + ")") : display;
+                data.contextMessage = "Switch to " + name;
+            }
+            delete data.crouton_display;
+
+            chrome.notifications.create(id, data,
+                function(id) {
+                    printLog("Raised notification " + id, LogLevel.DEBUG);
+                    notifications_[id] = function() {
+                        if (display)
+                            websocket_.send("C" + display);
+                        /* Remove the notification. */
+                        chrome.notifications.clear(id, function(_) {});
+                    }
+                });
+            websocket_.send("NOK");
+        } catch(e) {
+            printLog("Notification parsing error: " + e +
+                     " (payload: '" + payload + "').", LogLevel.ERROR);
+            websocket_.send("EError: invalid payload.");
+        }
         break;
     case 'C': /* Returned data from a croutoncycle command */
         /* Non-zero length has a window list; otherwise it's a cycle signal */
@@ -563,6 +617,21 @@ function windowRemoved(windowid) {
     }
 }
 
+/* Called when a notification is clicked */
+function notificationClicked(id) {
+    printLog("Notification " + id + " clicked.", LogLevel.DEBUG);
+    if (notifications_[id]) {
+        notifications_[id]();
+    }
+}
+
+/* Called when a notification is closed */
+function notificationClosed(id, byUser) {
+    printLog("Notification " + id + " closed (byUser: " + byUser + ").",
+             LogLevel.DEBUG);
+    delete notifications_[id];
+}
+
 function padstr0(i) {
     var s = i + "";
     if (s.length < 2)
@@ -578,8 +647,8 @@ function printLog(str, level) {
               padstr0(date.getMinutes()) + ":" +
               padstr0(date.getSeconds());
 
-    if (str.length > 80)
-        str = str.substring(0, 77) + "...";
+    if (str.length > 200)
+        str = str.substring(0, 197) + "...";
     console.log(datestr + ": " + str);
 
     /* Add messages to logger */
