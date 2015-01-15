@@ -5,8 +5,8 @@
 if [ "${TARGETNOINSTALL:-c}" = 'c' ]; then
     if [ -f /sbin/frecon ]; then
         error 1 'xorg target does not yet work with Freon.'
-    elif [ "${ARCH#arm}" != "$ARCH" ]; then
-        error 1 'xorg target does not work on ARM.'
+    elif grep -q 'SAMSUNG EXYNOS' /proc/cpuinfo; then
+        error 1 'xorg target does not work on Samsung ARM devices.'
     fi
 fi
 REQUIRES='audio'
@@ -23,13 +23,14 @@ XMETHOD="${XMETHOD:-xorg}"
 rm -f '/etc/crouton/xserverrc-x11'
 
 ltspackages=''
-# On precise, install lts-trusty xorg server to support newer hardware if kernel
-# version != 3.4 (lts-trusty mesa requires version >=3.6)
-if release -eq precise && ! uname -r | grep -q "^3.4."; then
+# On non-ARM precise, install lts-trusty xorg server to support newer hardware
+# if kernel version != 3.4 (lts-trusty mesa requires version >=3.6)
+if [ "${ARCH#arm}" = "$ARCH" ] && release -eq precise \
+        && ! uname -r | grep -q "^3.4."; then
     # We still install xorg later to pull in its dependencies
-    install --minimal xserver-xorg-lts-trusty libgl1-mesa-glx-lts-trusty \
-        xserver-xorg-input-synaptics-lts-trusty
     ltspackages='-lts-trusty'
+    install --minimal "xserver-xorg$ltspackages" "libgl1-mesa-glx$ltspackages" \
+        "xserver-xorg-input-synaptics$ltspackages"
 fi
 
 # On saucy onwards, if kernel version is 3.4, manually pin down old mesa
@@ -100,8 +101,11 @@ END
     apt-get -y --force-yes --no-install-recommends dist-upgrade -f
 fi
 
-install xorg dmz-cursor-theme \
-    xserver-xorg-video-fbdev$ltspackages xserver-xorg-video-intel$ltspackages
+install xorg dmz-cursor-theme xserver-xorg-video-fbdev$ltspackages
+if [ "${ARCH#arm}" = "$ARCH" ]; then
+    install xserver-xorg-video-intel$ltspackages
+fi
+
 # Fix launching X11 from inside crosh (user doesn't own a TTY)
 sed -i 's/allowed_users=.*/allowed_users=anybody/' '/etc/X11/Xwrapper.config'
 
