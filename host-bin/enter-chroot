@@ -352,7 +352,6 @@ tmpfsmount /var/run 'noexec,nosuid,mode=0755,size=10%'
 tmpfsmount /var/run/lock 'noexec,nosuid,nodev,size=5120k'
 bindmount /var/run/dbus /var/host/dbus
 bindmount /var/run/shill /var/host/shill
-bindmount /var/run/cras /var/host/cras
 bindmount /var/lib/timezone /var/host/timezone
 for m in /lib/modules/*; do
     if [ -d "$m" ]; then
@@ -373,8 +372,14 @@ else
     ln -sfT /dev/.udev "`fixabslinks '/var/run'`/udev"
 fi
 
-# Add a /var/host/cras symlink for CRAS clients
-ln -sfT /var/host/cras "`fixabslinks '/var/run'`/cras"
+if [ -d /var/run/cras ]; then
+    bindmount /var/run/cras /var/host/cras
+    # Add a /var/host/cras symlink for CRAS clients
+    ln -sfT /var/host/cras "$(fixabslinks '/var/run')/cras"
+else
+    echo "\
+WARNING: CRAS control directory not found, audio forwarding will not work." 1>&2
+fi
 
 # Bind-mount /media, specifically the removable directory
 destmedia="`fixabslinks '/var/host/media'`"
