@@ -131,6 +131,9 @@ fi
 if [ "$XMETHOD" = 'xiwi' ]; then
     # The extension sends evdev key codes: fix the keyboard mapping rules
     setxkbmap -rules evdev
+    # Reapply xkb map: This fixes autorepeat mask in "xset q"
+    xkbcomp "$DISPLAY" - | xkbcomp - "$DISPLAY" 2>/dev/null
+
     # Set resolution to a default 1024x768, this is important so that the DPI
     # looks reasonable when the WM/DE start.
     setres 1024 768 > /dev/null
