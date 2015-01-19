@@ -8,6 +8,7 @@
 PKGEXT='tar.xz'
 DISTROAKA='arch'
 
+# FIXME: Remove after rebase on #1353 (drop sbc dependency)
 # aurcompile <package> <extra makepkg options>: compile package from AUR.
 # This should not be a permanent solution, as AUR packages cannot be trusted,
 # and may break. Ideally, we would like packages to be pushed to [community].
@@ -86,6 +87,7 @@ install_dist() {
             shift
             break
         fi
+        # FIXME: Remove aur after rebase
         aurstrip="${1#aur:}"
         if [ "$aurstrip" = "$1" ]; then
             if [ -n "$multilib" -a "$1" = "gcc" ]; then
