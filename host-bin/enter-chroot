@@ -378,7 +378,7 @@ if [ -d /var/run/cras ]; then
     ln -sfT /var/host/cras "$(fixabslinks '/var/run')/cras"
 else
     echo "\
-WARNING: CRAS control directory not found, audio forwarding will not work." 1>&2
+WARNING: CRAS not running in Chromium OS. Audio forwarding will not work." 1>&2
 fi
 
 # Bind-mount /media, specifically the removable directory
