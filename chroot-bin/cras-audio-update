@@ -43,8 +43,9 @@ if [ -z "$FORCE" ]; then
     localver="${localver##*-}"
 
     if [ -z "$hostver" ]; then
-        # Builds <6276 (<R39) do no support --version option. For these, keep
-        # the status quo and don't do auto-updates.
+        # Old builds (<6276, <R39) do no support --version option. Also, on
+        # broken builds without CRAS, /var/host/cras-version is empty. For
+        # these, don't do auto-updates.
         if [ -z "$QUIET" ]; then
             echo "\
 Chromium OS does not provide CRAS version information. Not updating."
