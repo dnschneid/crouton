@@ -23,6 +23,11 @@ fi
 # - gawk provides awk
 PACKAGES_BOOTSTRAP="bash gawk grep pacman sed util-linux"
 
+# On Arch Linux ARM, manually add keyring to bootstrap image
+if [ "$ARCH" = 'armv7h' ]; then
+    PACKAGES_BOOTSTRAP="$PACKAGES_BOOTSTRAP archlinuxarm-keyring"
+fi
+
 LIST="$tmp/list"
 FETCHDIRDB="$tmp/db"
 FETCHDIRPKG="$tmp/packages"

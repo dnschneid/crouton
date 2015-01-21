@@ -152,15 +152,38 @@ if [ -r "$bootstrappkglist" ]; then
         echo "Server = https://192.0.2.1/" > "/etc/pacman.d/mirrorlist"
     fi
 
-    # Initialize pacman keyring (i686/x86_64 only)
+    echo "\
+Initializing pacman keyring (move the mouse to generate entropy)..." 1>&2
+    pacman-key --init
+
     if [ "${ARCH#arm}" = "$ARCH" ]; then
-        cat 1>&2 <<END
-Initializing pacman keyring...
-If this gets stuck, generate entropy by moving the mouse around (e.g. do some
-random browsing).
-END
-        pacman-key --init
         pacman-key --populate archlinux
+    else
+        # archlinuxarm-keyring has been installed as part of bootstrap
+        pacman-key --populate archlinuxarm
+
+        if awk '
+            t == 3 && /^SigLevel[ \t]*=/ {
+                print "#" $0; next; # Replace all occurences
+            }
+            t == 2 && /^#[ \t]*LocalFileSigLevel[ \t]*=[ \t]*Optional[ \t]*$/ {
+                sub(/^\#/, ""); t=3
+            }
+            t == 1 &&
+          /^#[ \t]*SigLevel[ \t]*=[ \t]*Required[ \t]*DatabaseOptional[ \t]*$/ {
+                sub(/^\#/, ""); t=2
+            }
+            match($0, /^[ \t]*\[(.*)\][ \t]*$/, m) {
+                if (m[1] == "options") { t=1 }
+                else if (t != 3) { exit 1 }
+            }
+            1
+            END { if (t != 3) exit 1 }
+        ' /etc/pacman.conf > /etc/pacman.conf.new; then
+            mv -f /etc/pacman.conf.new /etc/pacman.conf
+        else
+            error 2 "Unable to activate Arch Linux ARM signature checking"
+        fi
     fi
 
     # Force overwritting packages files in the bootstrap, without any sort
@@ -169,13 +192,13 @@ END
     pacman -S --nodeps --nodeps --asdeps --noconfirm --force \
         `cat "$bootstrappkglist"`
 
-    # Reset architecture
-    sed -i 's/^[ \t]*Architecture[ \t].*/Architecture = '"$ARCH"'/' \
-        /etc/pacman.conf
+    # Restore the original pacman configuration
+    if [ -f /etc/pacman.conf.pacorig ]; then
+        mv -f /etc/pacman.conf.pacorig /etc/pacman.conf
+    fi
 
     # Restore the original /etc/resolv.conf
     if [ -f /etc/resolv.conf.pacorig ]; then
-        rm -f /etc/resolv.conf
         mv -f /etc/resolv.conf.pacorig /etc/resolv.conf
     fi
 
@@ -197,8 +220,8 @@ END
     # Synchronize
     pacman -Sy
 
-    # Build a reasonable set of base packages, using pacman's output as reference,
-    # then remove packages in PACKAGES_TARGET_IGNORE.
+    # Build a reasonable set of base packages, using pacman's output as
+    # reference, then remove packages in PACKAGES_TARGET_IGNORE.
     allbasepkg="`pacman -Sg base | cut -d' ' -f 2`"
 
     basepkg=""
