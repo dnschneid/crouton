@@ -12,7 +12,7 @@ CHROOTBIN='croutonversion host-dbus host-x11'
 # Make sure that useradd does not automatically add users or groups with
 # UID/GID 1000, so that it is guaranteed to be available when post-common
 # adds the main user
-sed -i -e 's/^\([GU]ID_MIN[ \t]*\)1000$/\11001/' /etc/login.defs
+sed -i -e '/^[GU]ID_MIN[ \t]/s/1000/1001/' /etc/login.defs
 
 echo 'Preparing environment...' 1>&2
 if [ ! "$VERSION" = '#VERSION#' ]; then
@@ -122,7 +122,7 @@ elif [ "${DISTROAKA:-"$DISTRO"}" = 'arch' ]; then
     pacman -Syu --noconfirm || ret=$?
     if [ "$ret" != 0 ]; then
         cat 1>&2 <<END
-Cannot upgrade the system automatically, you may want to run the installer
+Cannot upgrade the system automatically. You may want to run the installer
 command again, to make sure this is not a transient error. If there is no
 obvious network error, you should look on http://www.archlinux.org for
 upgrades requiring manual intervention, then enter the chroot as root with:

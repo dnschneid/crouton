@@ -28,7 +28,6 @@ elif release -gt quantal; then
 fi
 
 # xserver-xephyr won't auto replace the manually-downloaded version.
-# FIXME: What is the purpose of dmz-cursor-theme and libgl1-mesa-dri?
 install --minimal \
     arch=xorg-server-xephyr,xserver-xephyr arch=,xinit \
     arch=,dmz-cursor-theme \

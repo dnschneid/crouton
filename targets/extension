@@ -37,15 +37,18 @@ if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
         fi
     done
 elif [ "${DISTROAKA:-"$DISTRO"}" = 'arch' ]; then
+    # FIXME: This might also be useful under Debian/Ubuntu
     install arch=desktop-file-utils,
 
-    cat > '/usr/local/share/applications/crouton.desktop' <<END
+    mkdir -p /usr/local/share/applications/
+
+    cat > /usr/local/share/applications/crouton.desktop <<END
 [Desktop Entry]
 Encoding=UTF-8
 Type=Application
-Name=Crouton URL handler
+Name=crouton
 GenericName=Web Browser
-Comment=Open URL in Chromium OS via crouton extension
+Comment=Open URL in Chromium OS via the crouton extension
 Exec=/usr/local/bin/croutonurlhandler %U
 Icon=crouton
 Terminal=false

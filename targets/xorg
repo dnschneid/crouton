@@ -96,10 +96,8 @@ install xorg arch=,dmz-cursor-theme arch=ttf-dejavu
 if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
     # Fix launching X11 from inside crosh (user doesn't own a TTY)
     sed -i 's/allowed_users=.*/allowed_users=anybody/' /etc/X11/Xwrapper.config
-fi
-
-# Xorg 1.16 wants to run as normal user, which breaks crouton
-if [ "${DISTROAKA:-"$DISTRO"}" = 'arch' ]; then
+elif [ "${DISTROAKA:-"$DISTRO"}" = 'arch' ]; then
+    # Xorg 1.16 wants to run as normal user, which breaks crouton
     cat >/etc/X11/Xwrapper.config <<EOF
 allowed_users=anybody
 needs_root_rights=yes

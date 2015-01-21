@@ -12,31 +12,39 @@ fi
 
 snapshot "$release" core
 
-# FIXME: We are lacking a test for arch non-multilib here...
-# Arch: Enable multilib repository
-if [ "`uname -m`" = "x86_64" ]; then
+test_audio() {
+    # We pass -fdat to aplay/arecord, which means 48kHz, 16-bit, stereo.
+    # dd writes/reads 8 blocks of 48000 bytes: 2 seconds worth of sound.
+    exitswithin 0 30 host enter-chroot -n "$release" sh -exc '
+        cras_test_client --dump_server_info
+        dd if=/dev/zero bs=48000 count=8 | aplay -fdat -v
+        arecord -fdat -v | dd of=/dev/null bs=48000 count=8 iflag=fullblock
+    '
+}
+
+if [ "`uname -m`" = "x86_64" -a "$release" = "arch" ]; then
+    # Arch: First test without multilib enabled
+    crouton -u -n "$release" -t audio
+
+    test_audio
+
+    # Enable multilib repository
     echo '
-        if  [ "${DISTROAKA:-"$DISTRO"}" = "arch" ]; then
-            # Enable multilib
-            cat >> /etc/pacman.conf << END
+        # Enable multilib
+        cat >> /etc/pacman.conf << END
 [multilib]
 Include = /etc/pacman.d/mirrorlist
 END
-            pacman --noconfirm -Sy
-            yes | pacman -S gcc-libs-multilib
-        fi
+        pacman --noconfirm -Sy
+        yes | pacman -S gcc-libs-multilib
     ' | crouton -T -U -n "$release"
+
+    # Now test with multilib
 fi
 
 crouton -u -n "$release" -t audio
 
-# We pass -fdat to aplay/arecord, which means 48kHz, 16-bit, stereo.
-# dd writes/reads 8 blocks of 48000 bytes: 2 seconds worth of sound.
-exitswithin 0 30 host enter-chroot -n "$release" sh -exc '
-    cras_test_client --dump_server_info
-    dd if=/dev/zero bs=48000 count=8 | aplay -fdat -v
-    arecord -fdat -v | dd of=/dev/null bs=48000 count=8 iflag=fullblock
-'
+test_audio
 
 # On x86_64 systems, test x86 client
 if [ "`uname -m`" = "x86_64" ]; then

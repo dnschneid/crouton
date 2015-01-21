@@ -206,9 +206,10 @@ Initializing pacman keyring (move the mouse to generate entropy)..." 1>&2
 
     # Packages that are in base, but that we do not want to install in the
     # chroot (nothing prevents the user from installing them later on)
+    # Final space critical for matching
     PACKAGES_TARGET_IGNORE="cronie device-mapper dhcpcd heirloom-mailx \
-    jfsutils logrotate lvm2 mdadm netctl pciutils reiserfsprogs \
-    systemd-sysvcompat xfsprogs"
+        jfsutils logrotate lvm2 mdadm netctl pciutils reiserfsprogs \
+        systemd-sysvcompat xfsprogs "
 
     # Only erase mirror if specified (in case pacman fails later on)
     if [ -n "$MIRROR" -a "$MIRROR" != 'unspecified' ]; then
@@ -225,17 +226,14 @@ Initializing pacman keyring (move the mouse to generate entropy)..." 1>&2
     allbasepkg="`pacman -Sg base | cut -d' ' -f 2`"
 
     basepkg=""
-    for PACKAGE in $allbasepkg; do
-        inst='y'
-        for IPKG in $PACKAGES_TARGET_IGNORE; do
-            if [ "$IPKG" = "$PACKAGE" ]; then
-                inst=
-            fi
-        done
-
-        if [ -n "$inst" ]; then
-            basepkg="$basepkg $PACKAGE"
+    for package in $allbasepkg; do
+        # Do not install if blacklisted
+        if [ "${PACKAGES_TARGET_IGNORE#*" $package "}" != \
+                                          "$PACKAGES_TARGET_IGNORE" ]; then
+            continue
         fi
+
+        basepkg="$basepkg $package"
     done
 
     echo "Installing these base packages:"
