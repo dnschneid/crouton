@@ -70,7 +70,8 @@ public:
                 if (pos2 != std::string::npos) {
                     int width = stoi(message.substr(pos+1, pos2-pos-1));
                     int height = stoi(message.substr(pos2+1));
-                    ChangeResolution(width*scale_, height*scale_);
+                    ChangeResolution(width*scale_*view_css_scale_ + 0.5,
+                                     height*scale_*view_css_scale_ + 0.5);
                 }
             } else if (type == "display") {
                 int display = stoi(message.substr(pos+1));
@@ -161,9 +162,10 @@ private:
         }
     }
 
-    /* Sends a resize message to Javascript */
-    void ResizeMessage(int width, int height) {
-        Message(this, "resize", false) << width << "/" << height;
+    /* Sends a resize message to Javascript, divide width & height by scale */
+    void ResizeMessage(int width, int height, float scale) {
+        Message(this, "resize", false) << (int)(width/scale + 0.5) << "/"
+                                       << (int)(height/scale + 0.5);
     }
 
     /* Sends a control message to Javascript
@@ -370,7 +372,7 @@ private:
             return false;
         struct resolution* r = (struct resolution*)data;
         /* Tell Javascript so that it can center us on the page */
-        ResizeMessage(r->width/scale_, r->height/scale_);
+        ResizeMessage(r->width, r->height, scale_*view_css_scale_);
         force_refresh_ = true;
         return true;
     }
@@ -476,7 +478,8 @@ private:
 public:
     /* Called when the NaCl module view changes (size, visibility) */
     virtual void DidChangeView(const pp::View& view) {
-        view_scale_ = view.GetDeviceScale();
+        view_device_scale_ = view.GetDeviceScale();
+        view_css_scale_ = view.GetCSSScale();
         view_rect_ = view.GetRect();
         InitContext();
     }
@@ -715,13 +718,15 @@ private:
         if (view_rect_.width() <= 0 || view_rect_.height() <= 0)
             return;
 
-        scale_ = hidpi_ ? view_scale_ : 1.0f;
+        scale_ = hidpi_ ? view_device_scale_ : 1.0f;
         pp::Size new_size = pp::Size(view_rect_.width()  * scale_,
         			     view_rect_.height() * scale_);
 
         LogMessage(0) << "InitContext "
                       << new_size.width() << "x" << new_size.height()
-                      << "s" << scale_;
+                      << "s" << scale_
+                      << " (device scale: " << view_device_scale_
+                      << ", zoom level: " << view_css_scale_ << ")";
 
         const bool kIsAlwaysOpaque = true;
         context_ = pp::Graphics2D(this, new_size, kIsAlwaysOpaque);
@@ -750,7 +755,7 @@ private:
             array_buffer.Unmap();
             SocketSend(array_buffer, false);
         } else {  /* Just assume we can take up the space */
-            ResizeMessage(width/scale_, height/scale_);
+            ResizeMessage(width, height, scale_*view_css_scale_);
         }
     }
 
@@ -1034,7 +1039,8 @@ private:
     pp::Graphics2D context_;
     pp::Graphics2D flush_context_;
     pp::Rect view_rect_;
-    float view_scale_ = 1.0f;
+    float view_device_scale_ = 1.0f;
+    float view_css_scale_ = 1.0f;
     pp::Size size_;
     float scale_ = 1.0f;
 
