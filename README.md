@@ -220,7 +220,7 @@ Tips
     power management when the command exits.
   * Have a Pixel or two or 4.352 million? `-t touch` improves touch support.
   * Want to share some files and/or folders between ChromeOS and your chroot?
-    Then use the `/etc/crouton/shares` file, read all about it in the wiki: Sharing files and folders. 
+    Check out the `/etc/crouton/shares` file, or read all about it in the wiki. 
   * Want more tips? Check the [wiki](https://github.com/dnschneid/crouton/wiki).
 
 
