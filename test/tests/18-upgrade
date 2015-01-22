@@ -33,7 +33,7 @@ fi
 # packages from the mirror, or install alternative packages.
 
 TARGETS="core,audio,touch,x11"
-PACKAGES="libsbc1 touchegg"
+PACKAGES="touchegg"
 
 # upgrade [-d] release
 # -d: upgrade to a development release
