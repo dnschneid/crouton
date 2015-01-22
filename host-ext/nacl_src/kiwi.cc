@@ -137,6 +137,17 @@ private:
         return Message(this, "status", false);
     }
 
+    /* Sends a warning message to Javascript */
+    Message WarningMessage() {
+        return Message(this, "warning", false);
+    }
+
+    /* Sends an error message to Javascript: all errors are fatal and a
+     * disconnect message will be sent soon after. */
+    Message ErrorMessage() {
+        return Message(this, "error", false);
+    }
+
     /* Sends a logging message to Javascript */
     Message LogMessage(int level) {
         if (level <= debug_) {
@@ -167,25 +178,33 @@ private:
      * Parameter is ignored: used for callbacks */
     void SocketConnect(int32_t /*result*/ = 0) {
         if (display_ < 0) {
-            LogMessage(-1) << "SocketConnect: No display defined yet.";
+            ErrorMessage() << "SocketConnect: No display defined yet.";
             return;
         }
 
         std::ostringstream url;
         url << "ws://localhost:" << (PORT_BASE + display_) << "/";
-        websocket_.Connect(pp::Var(url.str()), NULL, 0,
-                           callback_factory_.NewCallback(
-                               &KiwiInstance::OnSocketConnectCompletion));
+        websocket_.reset(new pp::WebSocket(this));
+        websocket_->Connect(pp::Var(url.str()), NULL, 0,
+                            callback_factory_.NewCallback(
+                                &KiwiInstance::OnSocketConnectCompletion));
         StatusMessage() << "Connecting...";
     }
 
     /* Called when WebSocket is connected (or failed to connect) */
     void OnSocketConnectCompletion(int32_t result) {
         if (result != PP_OK) {
-            StatusMessage() << "Connection failed ("
-                            << result << "), retrying...";
-            pp::Module::Get()->core()->CallOnMainThread(1000,
-                callback_factory_.NewCallback(&KiwiInstance::SocketConnect));
+            retry_++;
+            if (retry_ < kMaxRetry) {
+                StatusMessage() << "Connection failed with code " << result
+                                << ", " << retry_ << " attempt(s). Retrying...";
+                pp::Module::Get()->core()->CallOnMainThread(1000,
+                   callback_factory_.NewCallback(&KiwiInstance::SocketConnect));
+            } else {
+                ErrorMessage() << "Connection failed (code: " << result << ").";
+                ControlMessage("disconnected", "Connection failed");
+            }
+
             return;
         }
 
@@ -198,7 +217,7 @@ private:
 
     /* Closes the WebSocket connection. */
     void SocketClose(const std::string& reason) {
-        websocket_.Close(0, pp::Var(reason),
+        websocket_->Close(0, pp::Var(reason),
             callback_factory_.NewCallback(&KiwiInstance::OnSocketClosed));
     }
 
@@ -220,7 +239,7 @@ private:
         if (length == target)
             return true;
 
-        LogMessage(-1) << "Invalid " << type << " request (" << length
+        ErrorMessage() << "Invalid " << type << " request (" << length
                        << " != " << target << ").";
         return false;
     }
@@ -228,7 +247,7 @@ private:
     /* Receives and handles a version request */
     bool SocketParseVersion(const char* data, int datalen) {
         if (connected_) {
-            LogMessage(-1) << "Got a version while connected?!?";
+            ErrorMessage() << "Received a version while already connected.";
             return false;
         }
 
@@ -237,12 +256,13 @@ private:
         if (server_version_ != VERSION) {
             /* TODO: Remove VF1 compatiblity */
             if (server_version_ == "VF1") {
-                LogMessage(-1) << "Outdated server version ("
-                               <<  server_version_ << ").";
-                /* FIXME: Clearly inform the user that the chroot is outdated. */
+                WarningMessage() << "Outdated server version ("
+                                 << server_version_ << "), expecting " << VERSION
+                                 << ". Please update your chroot.";
             } else {
-                LogMessage(-1) << "Invalid version received ("
-                               << server_version_ << ").";
+                ErrorMessage() << "Invalid server version ("
+                               << server_version_ << "), expecting " << VERSION
+                               << ". Please update your chroot.";
                 return false;
             }
         }
@@ -302,7 +322,7 @@ private:
     /* Receives and handles a cursor_reply request */
     bool SocketParseCursor(const char* data, int datalen) {
         if (datalen < sizeof(struct cursor_reply)) {
-            LogMessage(-1) << "Invalid cursor_reply packet (" << datalen
+            ErrorMessage() << "Invalid cursor_reply packet (" << datalen
                            << " < " << sizeof(struct cursor_reply) << ").";
             return false;
         }
@@ -365,6 +385,7 @@ private:
             /* Not fatal: just wait for next call */
             return;
         } else if (result != PP_OK) {
+            /* FIXME: Receive error is "normal" when fbserver exits. */
             LogMessage(-1) << "Receive error.";
             SocketClose("Receive error.");
             return;
@@ -410,12 +431,12 @@ private:
                 if (SocketParseResolution(data, datalen)) return;
                 break;
             default:
-                LogMessage(-1) << "Invalid request. First char: "
+                ErrorMessage() << "Invalid request. First char: "
                                << (int)data[0];
                 /* Fall-through: disconnect. */
             }
         } else {
-            LogMessage(-1) << "Got some packet before version...";
+            ErrorMessage() << "Got some packet before version...";
         }
 
         SocketClose("Invalid payload.");
@@ -424,7 +445,7 @@ private:
     /* Asks to receive the next WebSocket frame
      * Parameter is ignored: used for callbacks */
     void SocketReceive(int32_t /*result*/ = 0) {
-        websocket_.ReceiveMessage(&receive_var_, callback_factory_.NewCallback(
+        websocket_->ReceiveMessage(&receive_var_, callback_factory_.NewCallback(
                 &KiwiInstance::OnSocketReceiveCompletion));
     }
 
@@ -444,11 +465,11 @@ private:
             mm->x = mouse_pos_.x();
             mm->y = mouse_pos_.y();
             array_buffer.Unmap();
-            websocket_.SendMessage(array_buffer);
+            websocket_->SendMessage(array_buffer);
             pending_mouse_move_ = false;
         }
 
-        websocket_.SendMessage(var);
+        websocket_->SendMessage(var);
     }
 
     /** UI functions **/
@@ -1006,6 +1027,8 @@ private:
     const int kBlurFPS = 5;    /* fps when window is possibly hidden */
     const int kHiddenFPS = 0;  /* fps when window is hidden */
 
+    const int kMaxRetry = 3;  /* Maximum number of connection attempts */
+
     /* Class members */
     pp::CompletionCallbackFactory<KiwiInstance> callback_factory_{this};
     pp::Graphics2D context_;
@@ -1018,7 +1041,8 @@ private:
     pp::ImageData image_data_;
     int k_ = 0;
 
-    pp::WebSocket websocket_{this};
+    std::unique_ptr<pp::WebSocket> websocket_;
+    int retry_ = 0;
     bool connected_ = false;
     std::string server_version_ = "";
     bool screen_flying_ = false;
