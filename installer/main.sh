@@ -661,7 +661,7 @@ if [ -z "$RESTOREBIN" ] && [ -z "$RESTORE" -o -n "$UPDATE" ]; then
     installscript "$INSTALLERDIR/prepare.sh" \
                   "$CHROOT$PREPAREDIR/prepare.sh" "$VAREXPAND"
     # Append the distro-specific prepare.sh
-    cat "$DISTRODIR/prepare" > "$CHROOT$PREPAREDIR/distroprepare"
+    cp -fT "$DISTRODIR/prepare" "$CHROOT$PREPAREDIR/distroprepare"
 
     echo ". '$PREPAREDIR/prepare.sh'" > "$PREPARE"
     echo ". '$PREPAREDIR/distroprepare'" >> "$PREPARE"

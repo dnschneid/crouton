@@ -12,8 +12,8 @@ QUIET=
 
 USAGE="$APPLICATION [-a] [-f]
 
-Update CRAS ALSA plugin in the chroot, so that it is in sync with the version
-provided by Chromium OS.
+Update Chromium OS audio plugin in the chroot, so that it is in sync with the
+version provided by Chromium OS.
 
 Options:
     -a          Ask before updating.
@@ -55,16 +55,16 @@ Chromium OS does not provide CRAS version information. Not updating."
 
     if [ "$hostver" = "$localver" ]; then
         if [ -z "$QUIET" ]; then
-            echo "CRAS ALSA plugin is up to date."
+            echo "Chromium OS audio plugin is up to date."
         fi
         exit 0
     else
         if [ -z "$ASK" ]; then
             echo "\
-CRAS ALSA plugin is out of date." 1>&2
+Chromium OS audio plugin is out of date." 1>&2
         else
             echo -n "\
-CRAS ALSA plugin is out of date, would you like to update it? [Y/n] " 1>&2
+Chromium OS audio plugin is out of date. Would you like to update it? [Y/n] " 1>&2
             response='n'
             if [ -t 0 ]; then
                 read -r response
@@ -77,7 +77,7 @@ CRAS ALSA plugin is out of date, would you like to update it? [Y/n] " 1>&2
     fi
 fi
 
-echo "Updating CRAS ALSA plugin..." 1>&2
+echo "Updating Chromium OS audio plugin..." 1>&2
 
 # Run the installer
 ret=
@@ -92,7 +92,7 @@ PREPAREDIR="/etc/crouton/prepare"
 
 if [ -n "$ret" ]; then
     echo "\
-Failed to update CRAS.
+Failed to update Chromium OS audio plugin.
 Please download a fresh crouton installer and update your chroot." 1>&2
     exit "$ret"
 fi
@@ -100,15 +100,15 @@ fi
 echo "Testing audio..." 1>&2
 cras_test_client --dump_server_info > /dev/null || ret=$?
 timeout 2 sh -ec 'dd if=/dev/zero bs=48000 count=1 2>/dev/null \
-                     | aplay -fdat -Dcras' || ret=$?
+                     | aplay -q -fdat -Dcras' || ret=$?
 
 if [ -n "$ret" ]; then
     echo "\
-CRAS was updated successfully, but audio could not be played.
-Please download a fresh crouton installer and update your chroot." 1>&2
+Chromium OS audio plugin was updated successfully, but audio could not be
+played. Please download a fresh crouton installer and update your chroot." 1>&2
     exit "$ret"
 fi
 
-echo "CRAS ALSA plugin was updated successfully!" 1>&2
+echo "Chromium OS audio plugin was updated successfully!" 1>&2
 
 exit 0

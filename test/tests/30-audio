@@ -57,8 +57,11 @@ fails host enter-chroot -n "$release" cras_test_client --dump_server_info
 host enter-chroot -n "$release" -u 0 cras-audio-update
 
 if [ -z "`cras_test_client --version`" ]; then
-    # This version of Chromium OS does not support audio auto-update:
-    # force update.
+    # This version of Chromium OS does not support audio auto-update, so audio
+    # should still be broken.
+    fails host enter-chroot -n "$release" cras_test_client --dump_server_info
+
+    # Force update
     host enter-chroot -n "$release" -u 0 cras-audio-update -f
 fi
 
