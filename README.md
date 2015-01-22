@@ -219,6 +219,8 @@ Tips
     `croutonpowerd -i command and arguments` will automatically stop inhibiting
     power management when the command exits.
   * Have a Pixel or two or 4.352 million? `-t touch` improves touch support.
+  * Want to share some files and/or folders between ChromeOS and your chroot?
+    Then read all about it in the [wiki](https://github.com/dnschneid/crouton/wiki/Sharing-files-and-folders). 
   * Want more tips? Check the [wiki](https://github.com/dnschneid/crouton/wiki).
 
 
