@@ -29,7 +29,8 @@ Example JSON data:
   "type": "basic",
   "title": "Primary Title",
   "message": "Primary message to display",
-  "crouton_display": ":1"
+  "crouton_display": ":1",
+  "iconUrl": "data:image/png;base64,<base64 encoded png data>"
 }'
 
 . "$(dirname "$0")/../installer/functions"
