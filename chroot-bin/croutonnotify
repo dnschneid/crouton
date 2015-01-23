@@ -4,7 +4,7 @@
 # found in the LICENSE file.
 
 USAGE="${0##*/} -j
-${0##*/} -t title [-m message] [-d display] [-i id]
+${0##*/} -t title [-m message] [-d] [-i id]
 Raises a notification in Chromium OS (requires crouton extension).
 
 When -j is specified, reads JSON data from stdin, in the format required
@@ -18,8 +18,8 @@ Options:
     -j       Read JSON data from stdin (see example below)
     -t       Title to display (chrome.notifications field: \"title\")
     -m       Message to display (chrome.notifications field: \"message\")
-    -d       Display to switch to when the notification is clicked (croutoncycle
-             parameter). Default: Do not switch display.
+    -d       Switch to display in environment variable DISPLAY ($DISPLAY) when
+             the notification is clicked. Default: Do not switch display.
     -i       ID to pass to chrome.notifications.create: only the last
              notification with a given ID is shown.
              Default: Display a new notification.
@@ -34,16 +34,16 @@ Example JSON data:
 
 . "$(dirname "$0")/../installer/functions"
 
-DISPLAY=""
+SWITCHDISPLAY=""
 MESSAGE=""
 TITLE=""
 ID=""
 JSON=""
 
 # Process arguments
-while getopts 'd:i:jm:t:' f; do
+while getopts 'di:jm:t:' f; do
     case "$f" in
-    d) DISPLAY="$OPTARG";;
+    d) SWITCHDISPLAY="$DISPLAY";;
     i) ID="$OPTARG";;
     j) JSON="y";;
     m) MESSAGE="$OPTARG";;
@@ -55,7 +55,7 @@ done
 # No extra parameters, -j precludes other parameters, and at least title
 # must be specified (or -j)
 if [ "$#" != "$((OPTIND-1))" ] ||
-        [ "$JSON" = 'y' -a -n "$DISPLAY$ID$MESSAGE$TITLE" ] ||
+        [ "$JSON" = 'y' -a -n "$SWITCHDISPLAY$ID$MESSAGE$TITLE" ] ||
         [ -z "$JSON$TITLE" ]; then
     error 2 "$USAGE"
 fi
@@ -66,7 +66,7 @@ if [ -z "$JSON" ]; then
         "type": "'"basic"'",
         "title": "'"$TITLE"'",
         "message": "'"$MESSAGE"'",
-        "crouton_display": "'"$DISPLAY"'",
+        "crouton_display": "'"$SWITCHDISPLAY"'",
         "crouton_id": "'"$ID"'"
     }'
 fi
