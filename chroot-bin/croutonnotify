@@ -60,14 +60,19 @@ if [ "$#" != "$((OPTIND-1))" ] ||
     error 2 "$USAGE"
 fi
 
+# Escape json string (backslash and double quotes)
+json_escape() {
+    echo -n "$1" | sed -e 's/\\/\\u005C/g;s/"/\\u0022/g'
+}
+
 JSONDATA=""
 if [ -z "$JSON" ]; then
     JSONDATA='{
-        "type": "'"basic"'",
-        "title": "'"$TITLE"'",
-        "message": "'"$MESSAGE"'",
-        "crouton_display": "'"$SWITCHDISPLAY"'",
-        "crouton_id": "'"$ID"'"
+        "type": "basic",
+        "title": "'"$(json_escape "$TITLE")"'",
+        "message": "'"$(json_escape "$MESSAGE")"'",
+        "crouton_display": "'"$(json_escape "$SWITCHDISPLAY")"'",
+        "crouton_id": "'"$(json_escape "$ID")"'"
     }'
 fi
 
