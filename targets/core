@@ -137,7 +137,7 @@ fi
 fixkeyboardmode
 
 # Install critical packages
-install --minimal sudo wget ca-certificates apt-transport-https
+install --minimal sudo wget ca-certificates arch=,apt-transport-https
 
 # Generate and set default locale
 if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
