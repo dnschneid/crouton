@@ -17,11 +17,12 @@ if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
     apt-mark unhold xserver-xorg-video-dummy || true 2>/dev/null
 fi
 
-install xorg xserver-xorg-video-dummy
+install xorg arch=xf86-video-dummy,xserver-xorg-video-dummy
 
 # Compile croutonfbserver
 compile fbserver '-lX11 -lXfixes -lXdamage -lXext -lXtst' \
-    libx11-dev libxfixes-dev libxdamage-dev libxext-dev libxtst-dev
+        arch=,libx11-dev arch=,libxfixes-dev arch=,libxdamage-dev \
+        arch=,libxext-dev arch=,libxtst-dev
 
 ln -sf /etc/crouton/xorg-dummy.conf /etc/X11/
 
@@ -36,8 +37,8 @@ echo "Download Xorg dummy driver..." 1>&2
 
 wget -O "$DUMMYBUILDTMP/dummy.tar.gz" "$urlbase/xf86-video-dummy-0.3.7.tar.gz"
 
-install --minimal --asdeps patch gcc libc-dev pkg-config \
-    xserver-xorg-dev x11proto-xf86dga-dev
+install --minimal --asdeps patch gcc arch=,libc-dev pkg-config \
+    arch=,xserver-xorg-dev arch=,x11proto-xf86dga-dev
 
 (
     cd "$DUMMYBUILDTMP"
@@ -381,6 +382,14 @@ EOF
 if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
     # Hold xserver-xorg-video-dummy to make sure the driver does not get erased
     apt-mark hold xserver-xorg-video-dummy
+elif [ "${DISTROAKA:-"$DISTRO"}" = 'arch' ]; then
+    # FIXME: Add a hold/unhold function
+    # Make sure xf86-video-dummy does not get updated
+    if ! grep -q '^IgnorePkg.*=.*\bxf86-video-dummy\b' /etc/pacman.conf; then
+        sed -i \
+            -e 's/^\#* *IgnorePkg.*=\(.*\)/IgnorePkg = xf86-video-dummy \1/' \
+             /etc/pacman.conf
+    fi
 fi
 
 TIPS="$TIPS"'
