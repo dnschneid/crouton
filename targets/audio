@@ -116,90 +116,6 @@ if tail -n 1 "$log" | grep -q "^Error"; then
     fi
 fi
 
-# Patch CRAS so that x86 client can connect to x86_64 server (multilib)
-# Assume current directory is "$CRASBUILDTMP"/cras/src
-patch_cras_x86_x86_64() {
-    echo "Patching CRAS (x86 client with x86_64 server)..." 1>&2
-
-    common="common/cras_shm.h common/cras_messages.h common/cras_iodev_info.h \
-            common/cras_types.h common/cras_audio_format.c"
-    cras_audio_format_h=""
-
-    # Newer versions (>=5062) contain an additional header file
-    if [ -e "common/cras_audio_format.h" ]; then
-        cras_audio_format_h="common/cras_audio_format.h"
-    fi
-
-    # Replace size_t/long by fixed-size integers corresponding to their
-    # respective sizes on x86_64, aligned on 8-byte boundaries
-    sed -i -e 's/uint64_t[ \t]/aligned_uint64_t /g
-               s/size_t[ \t]/aligned_uint64_t /g
-               s/long[ \t]/aligned_int64_t /g' $common $cras_audio_format_h
-
-    # Hack to make sure sizeof(struct cras_server/client_message) is a
-    # multiple of 8
-    sed -i -e \
-        's/\(enum CRAS_CLIENT_MESSAGE_ID\) id;/\1 __attribute__((aligned(8))) id;/
-         s/\(enum CRAS_SERVER_MESSAGE_ID\) id;/\1 __attribute__((aligned(8))) id;/' \
-        common/cras_messages.h
-
-    # Disable syslog to remove warnings about printf formats
-    sed -i -e '/#include <syslog.h>/a \
-#define syslog(...) do \{\} while(0)' \
-        common/cras_fmt_conv.c libcras/cras_client.c
-
-    # Replace timespec/timeval
-    sed -i -e 's/struct timespec[ \t]/struct cras_timespec /g
-               s/clock_gettime(/cras_clock_gettime(/' \
-        $common $cras_audio_format_h common/cras_util.h \
-        libcras/cras_client.h libcras/cras_client.c \
-        alsa_plugin/pcm_cras.c tests/cras_test_client.c
-    sed -i -e \
-        's/struct timeval/struct { aligned_int64_t tv_sec; aligned_int64_t tv_usec; }/' \
-        common/cras_iodev_info.h
-
-    # Include compat file (it will get included multiple times, but this is
-    # harmless compared to the complexity of a sed script that replaces the
-    # first match only)
-    sed -i -e '/#include.*/i \
-#include "cras_x86_64_compat.h"' common/cras_iodev_info.h $cras_audio_format_h
-
-    # Create a new header file with x86_64 compatibility types: aligned integers
-    # and timespec wrapper.
-    cat > common/cras_x86_64_compat.h <<END
-#ifndef CRAS_X86_64_COMPAT_H_
-#define CRAS_X86_64_COMPAT_H_
-
-#include <stdint.h>
-#include <time.h>
-
-typedef uint64_t __attribute__((aligned(8))) aligned_uint64_t;
-typedef int64_t  __attribute__((aligned(8))) aligned_int64_t;
-
-struct cras_timespec {
-       aligned_int64_t tv_sec;
-       aligned_int64_t tv_nsec;
-};
-
-static inline int cras_clock_gettime(clockid_t clk_id, struct cras_timespec *ctp) {
-    struct timespec tp;
-    int ret = clock_gettime(clk_id, &tp);
-    ctp->tv_sec = tp.tv_sec;
-    ctp->tv_nsec = tp.tv_nsec;
-    return ret;
-}
-#endif
-END
-
-    # Restore uncorrectly replaced timespecs, add 2 necessary casts
-    sed -i -e 's/struct cras_timespec sleep_ts;/struct timespec sleep_ts;/
-               s/struct cras_timespec wait_time;/struct timespec wait_time;/
-               s/\(.*\)cras_clock_gettime\(.*&wait_time);.*\)/\1clock_gettime\2/
-               s/nodes\[i\].priority/(size_t)nodes[i].priority/
-               s/clients\[i\].id/(size_t)clients[i].id/' \
-                   tests/cras_test_client.c
-}
-
 # Build CRAS ALSA plugin for the given architecture ($1)
 # A blank parameter means we are building for the native architecture.
 build_cras() {
@@ -251,25 +167,6 @@ build_cras() {
                                 pkg-config --variable=libdir alsa`/alsa-lib"
     fi
 
-    # SBC is not available in older Debian/Ubuntu: fetch it manually
-    if release -le quantal; then
-        install_mirror_package 'libsbc1' \
-                            'pool/main/s/sbc' '1\.1-.*' $cras_arch
-        install_mirror_package --asdeps 'libsbc-dev' \
-                            'pool/main/s/sbc' '1\.1-.*' $cras_arch
-    elif release -le wheezy -eq kali; then
-        # wheezy provides a backport for libsbc1
-        install_mirror_package 'libsbc1' \
-                            'pool/main/s/sbc' '.*~bpo7.*' $cras_arch
-        install_mirror_package --asdeps 'libsbc-dev' \
-                            'pool/main/s/sbc' '.*~bpo7.*' $cras_arch
-    elif [ "${DISTROAKA:-"$DISTRO"}" = 'arch' ] && [ -n "$cras_arch" ]; then
-        install --minimal aur:lib32-sbc
-    else
-        install --minimal arch=sbc,libsbc1$pkgaffix
-        install --minimal --asdeps arch=,libsbc-dev$pkgaffix
-    fi
-
     # Start subshell for compilation
     (
         cd "$CRASBUILDTMP"
@@ -286,86 +183,6 @@ build_cras() {
         echo '#define VCSID "crouton-'"$ADHD_HEAD"'"' > common/cras_version.h
 
         install --minimal --asdeps patch
-
-        # Fix delay function in CRAS ALSA plugin, see http://crbug.com/331637
-        # Applied upstream in version 5215
-        # FIXME: Remove this when 5215 has trickled down to stable
-        if [ "$CROS_VER_1" -lt 5215 ]; then
-            echo "Patching CRAS (delay function bug)..." 1>&2
-            patch -p3 <<END
-diff --git a/cras/src/alsa_plugin/pcm_cras.c b/cras/src/alsa_plugin/pcm_cras.c
-index 09ca39d..33c496b 100644
---- a/cras/src/alsa_plugin/pcm_cras.c
-+++ b/cras/src/alsa_plugin/pcm_cras.c
-@@ -321,17 +321,31 @@ static int snd_pcm_cras_delay(snd_pcm_ioplug_t *io, snd_pcm_sframes_t *delayp)
- 	 * the difference between appl_ptr and the old hw_ptr.
- 	 */
- 	if (io->stream == SND_PCM_STREAM_PLAYBACK) {
--		cras_client_calc_playback_latency(&pcm_cras->playback_sample_time,
--						  &latency);
-+		/* Do not compute latency if playback_sample_time is not set */
-+		if (pcm_cras->playback_sample_time.tv_sec == 0 &&
-+			    pcm_cras->playback_sample_time.tv_nsec == 0) {
-+			latency.tv_sec = latency.tv_nsec = 0;
-+		} else {
-+			cras_client_calc_playback_latency(&pcm_cras->playback_sample_time,
-+					&latency);
-+		}
-+
- 		*delayp = limit + io->appl_ptr - pcm_cras->playback_sample_index +
- 				latency.tv_sec * io->rate +
--				latency.tv_nsec / (1000000000L / io->rate);
-+				latency.tv_nsec / (1000000000L / (long)io->rate);
- 	} else {
--		cras_client_calc_capture_latency(&pcm_cras->capture_sample_time,
--						 &latency);
-+		/* Do not compute latency if capture_sample_time is not set */
-+		if (pcm_cras->capture_sample_time.tv_sec == 0 &&
-+			    pcm_cras->capture_sample_time.tv_nsec == 0) {
-+			latency.tv_sec = latency.tv_nsec = 0;
-+		} else {
-+			cras_client_calc_capture_latency(&pcm_cras->capture_sample_time,
-+					&latency);
-+		}
-+
- 		*delayp = limit + pcm_cras->capture_sample_index - io->appl_ptr +
- 				latency.tv_sec * io->rate +
--				latency.tv_nsec / (1000000000L / io->rate);
-+				latency.tv_nsec / (1000000000L / (long)io->rate);
- 	}
- 
- 	/* Both appl and hw pointers wrap at the pcm boundary. */
-END
-        fi
-
-        # Fix cras_test_client hanging on exit, see http://crbug.com/347997
-        # Introduced in upstream build 5339, fixed in 5579
-        # FIXME: Remove this when R34/5500 is not an active release anymore
-        if [ "$CROS_VER_1" -ge 5339 -a "$CROS_VER_1" -lt 5579 ]; then
-            echo "Patching CRAS (cras_test_client bug)..." 1>&2
-            patch -p3 <<END
-diff --git a/cras/src/libcras/cras_client.c b/cras/src/libcras/cras_client.c
-index 37fc2ad..8d26703 100644
---- a/cras/src/libcras/cras_client.c
-+++ b/cras/src/libcras/cras_client.c
-@@ -1510,6 +1510,7 @@ void cras_client_destroy(struct cras_client *client)
- {
- 	if (client == NULL)
- 		return;
-+	cras_client_stop(client);
- 	if (client->server_state)
- 		shmdt(client->server_state);
- 	if (client->server_fd >= 0)
-END
-        fi
-
-        # CRAS needs to be patched so that x86 client can access x86_64 server
-        # Applied upstream in build 5652, see http://crbug.com/309961
-        # FIXME: Remove this when 5652 has trickled down to stable
-        if [ "$CROS_VER_1" -lt 5652 ] && [ "`uname -m`" = "x86_64" ] &&
-           [ "$ARCH" = "i386" -o "$cras_arch" = "i386" ]; then
-            patch_cras_x86_x86_64
-        fi
 
         # Fix volume control, see crbug.com/415661
         # Applied upstream in build 6283
@@ -518,6 +335,25 @@ quit:
 END
         fi
 
+        # Remove SBC dependency
+        sed -e 's/#include <sbc.*//' -i common/cras_sbc_codec.h
+        cat > common/cras_sbc_codec.c <<END
+#include <stdint.h>
+#include <stdlib.h>
+#include "cras_audio_codec.h"
+
+struct cras_audio_codec *cras_sbc_codec_create(uint8_t freq,
+		   uint8_t mode, uint8_t subbands, uint8_t alloc,
+		   uint8_t blocks, uint8_t bitpool) {
+    abort();
+}
+void cras_sbc_codec_destroy(struct cras_audio_codec *codec) {
+    abort();
+}
+END
+        # Drop SBC constants
+        sed -e 's/SBC_[A-Z0-9_]*/0/g' -i tests/cras_test_client.c
+
         # Directory to install CRAS library/binaries
         if [ -n "$cras_arch" ]; then
             CRASLIBDIR="/usr/local/$cras_arch-linux-gnu/lib"
@@ -530,112 +366,9 @@ END
         echo "Compiling CRAS (${cras_arch:-native})..." 1>&2
         # Convert Makefile.am to a shell script, and run it.
         {
+            convert_automake
+
             echo '
-                top_srcdir=".."
-                top_builddir=".."
-                SBC_LIBS="'"`PKG_CONFIG_PATH="$pkgconfigpath" \
-                                                pkg-config --libs sbc`"'"
-                SBC_CFLAGS="'"`PKG_CONFIG_PATH="$pkgconfigpath" \
-                                                pkg-config --cflags sbc`"'"
-            '
-            sed -e '
-                # Concatenate lines ending in \
-                : start; /\\$/{N; b start}
-                s/ *\\\n[ \t]*/ /g
-                # Convert automake to shell
-                s/^[^ ]*:/#\0/
-                s/^\t/#\0/
-                s/ *= */=/
-                s/\([^ ]*\) *+= */\1=${\1}\ /
-                s/ /\\ /g
-                y/()/{}/
-            ' 'Makefile.am'
-            echo '
-                # buildsources: Build all source files for target
-                #  $1: target
-                #  $2: additional gcc flags
-                # Prints a list of .o files
-                buildsources() {
-                    local target="$1"
-                    local extragccflags="$2"
-
-                    eval local sources=\"\$${target}_SOURCES\"
-                    eval local cppflags=\"\$${target}_CPPFLAGS\"
-
-                    for dep in $sources; do
-                        if [ "${dep%.c}" != "$dep" ]; then
-                            ofile="${dep%.c}.o"
-                            gcc -c "$dep" -o "$ofile" '"$archgccflags"' \
-                                $cppflags $extragccflags 1>&2 || return $?
-                            echo -n "$ofile "
-                        fi
-                    done
-                }
-
-                # fixlibadd:
-                # Fix list of libraries ($1): replace lib<x>.la by -l<x>
-                fixlibadd() {
-                    for libdep in $*; do
-                        if [ "${libdep%.la}" != "$libdep" ]; then
-                            libdep="${libdep%.la}"
-                            libdep="-l${libdep#lib}"
-                        fi
-                        echo -n "$libdep "
-                    done
-                }
-
-                # buildlib: Build a library
-                #  $1: library name
-                #  $2: additional linker flags
-                buildlib() {
-                    local lib="$1"
-                    local extraflags="$2"
-                    local ofiles
-                    # local eats the return status: separate the 2 statements
-                    ofiles="`buildsources "${lib}_la" "-fPIC -DPIC"`"
-
-                    eval local libadd=\"\$${lib}_la_LIBADD\"
-                    eval local ldflags=\"\$${lib}_la_LDFLAGS\"
-
-                    libadd="`fixlibadd $libadd`"
-
-                    # Detect library version (e.g. 0.0.0)
-                    local fullver="`echo -n "$ldflags" | \
-                      sed -n '\''y/:/./; \
-                                 s/.*-version-info \([0-9.]*\)$/\\1/p'\''`"
-                    local shortver=""
-                    # Get "short" library version (e.g. 0)
-                    if [ -n "$fullver" ]; then
-                        shortver=".${fullver%%.*}"
-                        fullver=".$fullver"
-                    fi
-                    local fullso="$lib.so$fullver"
-                    local shortso="$lib.so$shortver"
-                    gcc -shared -fPIC -DPIC $ofiles $libadd -o "$fullso" \
-                        '"$archgccflags"' $extraflags -Wl,-soname,"$shortso"
-                    if [ -n "$fullver" ]; then
-                        ln -sf "$fullso" "$shortso"
-                        # Needed at link-time only
-                        ln -sf "$shortso" "$lib.so"
-                    fi
-                }
-
-                # buildexe: Build an executable file
-                #  $1: executable file name
-                #  $2: additional linker flags
-                buildexe() {
-                    local exe="$1"
-                    local extraflags="$2"
-                    local ofiles="`buildsources "$exe" ""`"
-
-                    eval local ldadd=\"\$${exe}_LDADD\"
-                    eval local ldflags=\"\$${exe}_LDFLAGS\"
-
-                    ldadd="`fixlibadd $ldadd`"
-
-                    gcc $ofiles $ldadd -o "$exe" '"$archgccflags"' $extraflags
-                }
-
                 buildlib libcras
 
                 # Pass -rpath=$CRASLIBDIR to linker, so we do not need to add

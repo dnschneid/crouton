@@ -68,18 +68,13 @@ fails host edit-chroot -y -b -f $BACKUPDIR "$release"
 fails host edit-chroot -y -f $BACKUPDIR -b "$release"
 fails ls "$BACKUPDIR"/*
 
-# Backup a chroot (wrong parameter order fails)
-fails host edit-chroot -y -b "$release" -f "$BACKUPDIR/$release.tar"
+# Backup a chroot
 fails ls "$BACKUPDIR"/*
 host edit-chroot -y -f "$BACKUPDIR/$release.tar" -b "$release"
 
-# Move an existing chroot (wrong parameter order fails)
-fails host edit-chroot -y "$release" -m "$release.2"
-host edit-chroot -y -m "$release.2" "$release"
+# Move an existing chroot
+host edit-chroot -y "$release" -m "$release.2"
 host enter-chroot -n "$release.2" true
-
-# Restore the chroot (wrong parameter order fails)
-fails host edit-chroot -y -r "$release" -f "$BACKUPDIR/$release.tar"
 fails host enter-chroot -n "$release" true
 
 # Restore the chroot
@@ -87,16 +82,29 @@ host edit-chroot -y -f "$BACKUPDIR/$release.tar" -r "$release"
 host enter-chroot -n "$release" true
 # Verify croutonversion outputs correct information
 host edit-chroot -l $release | tee /dev/stderr | passes grep "^release: $release"
+rm "$BACKUPDIR/$release.tar"
+
+# Back up with a compressed split
+host edit-chroot -y -s 50 -f "$BACKUPDIR/$release.tar.gz" -b "$release"
+test "`ls "$BACKUPDIR/$release.tar.gz"* | wc -l`" -ge 2
+du -b "$BACKUPDIR/$release.tar.gz"* | passes awk '$1>50*1024*1024{exit 1}'
+# Ensure it's compressed
+test "`hexdump -v -n2 -e'"%02x"' "$BACKUPDIR/$release.tar.gz"`" = "8b1f"
+
+# Restore the split archive. Fails first due to existence
+fails host edit-chroot -y -f "$BACKUPDIR/$release.tar.gz" -r "$release"
+host edit-chroot -y -f "$BACKUPDIR/$release.tar.gz" -rr "$release"
+host enter-chroot -n "$release" true
 
 # Delete it
 host delete-chroot -y "$release"
 fails host enter-chroot -n "$release" true
 
 # Restore the chroot using the crouton installer (without update)
-crouton -f "$BACKUPDIR/$release.tar" -n "$release"
+crouton -f "$BACKUPDIR/$release.tar.gz" -n "$release"
 host enter-chroot -n "$release" true
 host edit-chroot -l $release | tee /dev/stderr | passes grep "^release: $release"
-rm "$BACKUPDIR/$release.tar"
+rm "$BACKUPDIR/$release.tar.gz"*
 
 # Backup a chroot with automatic naming
 host edit-chroot -y -f "$BACKUPDIR" -b "$release"
@@ -130,7 +138,7 @@ fails host edit-chroot -y -f "$BACKUPDIR" -b \
 fails ls "$BACKUPDIR"/*
 
 # Backup both chroots
-host edit-chroot -y -f "$BACKUPDIR" -b "$release" "$release.2"
+host edit-chroot "$release" -y -f "$BACKUPDIR" -b "$release.2"
 
 # Move them to a new prefix: destination needs to end with a slash
 fails host edit-chroot -y -m "$PREFIX/chroots.2" "$release" "$release.2"
@@ -142,7 +150,7 @@ host enter-chroot -c "$PREFIX/chroots.2" -n "$release" true
 host enter-chroot -c "$PREFIX/chroots.2" -n "$release.2" true
 
 # Delete both chroots
-host delete-chroot -y -c "$PREFIX/chroots.2" "$release" "$release.2"
+host delete-chroot "$release" "$release.2" -y -c "$PREFIX/chroots.2"
 fails host enter-chroot -c "$PREFIX/chroots.2" -n "$release" true
 fails host enter-chroot -c "$PREFIX/chroots.2" -n "$release.2" true
 

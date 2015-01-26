@@ -7,25 +7,7 @@ USAGE="${0##*/} [-n] URL
 Open an URL in Chromium OS (requires crouton extension).
 Switches back to Chromium OS unless -n is specified."
 
-PIPEDIR='/tmp/crouton-ext'
-PIPEIN="$PIPEDIR/in"
-PIPEOUT="$PIPEDIR/out"
-PIPELOCK="$PIPEDIR/lock"
-
-# Write a command to croutonwebsocket, and read back response
-websocketcommand() {
-    # Check that $PIPEDIR and the FIFO pipes exist
-    if ! [ -d "$PIPEDIR" -a -p "$PIPEIN" -a -p "$PIPEOUT" ]; then
-        echo "EError $PIPEIN or $PIPEOUT are not pipes."
-        exit 0
-    fi
-
-    (
-        flock 5
-        cat > "$PIPEIN"
-        cat "$PIPEOUT"
-    ) 5>"$PIPELOCK"
-}
+. "`dirname "$0"`/../installer/functions"
 
 noswitch=''
 if [ "$1" = '-n' ]; then
@@ -34,14 +16,13 @@ if [ "$1" = '-n' ]; then
 fi
 
 if [ -z "$*" ]; then
-    echo "$USAGE" 1>&2; exit 2;
+    error 2 "$USAGE"
 fi
 
 STATUS="`echo -n U"$*" | websocketcommand`"
 
 if [ ! "$STATUS" = 'UOK' ]; then
-    echo "${STATUS#?}" 1>&2
-    exit 1
+    error 1 "${STATUS#?}"
 fi
 
 if [ -z "$noswitch" ]; then

@@ -2,11 +2,14 @@
 # Copyright (c) 2014 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-REQUIRES='core audio'
+if [ "${TARGETNOINSTALL:-c}" = 'c' -a -f /sbin/frecon ]; then
+    error 1 'xephyr target does not work with Freon. Use xiwi instead.'
+fi
+REQUIRES='audio'
 PROVIDES='x11'
 DESCRIPTION='Nested X11 backend. Improves compatibility but lacks GPU accel.'
-CHROOTBIN='brightness croutoncycle croutonpowerd croutonwheel croutonxinitrc-wrapper xinit'
-CHROOTETC='xbindkeysrc.scm xserverrc-xephyr xserverrc-local.example'
+CHROOTBIN='croutoncycle croutonwheel croutonxinitrc-wrapper xinit'
+CHROOTETC='xbindkeysrc.scm xserverrc xserverrc-xephyr xserverrc-local.example'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:

@@ -5,6 +5,7 @@
 REQUIRES='gtk-extra'
 DESCRIPTION='Installs the LXDE desktop environment. (Approx. 200MB)'
 HOSTBIN='startlxde'
+CHROOTBIN='crouton-noroot startlxde'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:

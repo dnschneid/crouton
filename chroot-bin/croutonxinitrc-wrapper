@@ -11,6 +11,7 @@
 cmd=''
 extraargs=''
 binary=''
+ret=0
 
 # This part is a translation of what is found in xorg's xinit.c
 
@@ -42,11 +43,23 @@ else
 fi
 
 # Run crouton-specific commands:
+if [ -z "$XMETHOD" ]; then
+    if [ -f '/etc/crouton/xmethod' ]; then
+        read -r XMETHOD _ < /etc/crouton/xmethod
+        export XMETHOD
+    else
+        echo 'X11 backend not set.' 1>&2
+        exit 1
+    fi
+fi
 
 # Record the name of the chroot in the root window properties
 if [ -f '/etc/crouton/name' ] && hash xprop 2>/dev/null; then
     xprop -root -f CROUTON_NAME 8s -set CROUTON_NAME "`cat '/etc/crouton/name'`"
 fi
+
+# Record the crouton XMETHOD in the root window properties
+xprop -root -f CROUTON_XMETHOD 8s -set CROUTON_XMETHOD "$XMETHOD"
 
 # Launch the powerd poker daemon
 croutonpowerd --daemon &
@@ -56,29 +69,8 @@ if hash croutonclip 2>/dev/null; then
     croutonclip &
 fi
 
-# Apply the Chromebook keyboard map if installed.
-if [ -f '/usr/share/X11/xkb/compat/chromebook' ]; then
-    setxkbmap -model chromebook
-fi
-
-# Launch key binding daemon
-xmethod="`readlink -f '/etc/X11/xinit/xserverrc'`"
-xmethod="${xmethod##*-}"
-
-XMETHOD="$xmethod" xbindkeys -fg /etc/crouton/xbindkeysrc.scm
-
-# Launch xbindkeys for the Chromium OS X server if it isn't running
-mkdir -m 775 -p /tmp/crouton-lock
-{
-    # Only let one instance *really* run at a time
-    flock 3
-    XMETHOD='' host-x11 xbindkeys -n -fg /etc/crouton/xbindkeysrc.scm &
-    trap "kill '$!' 2>/dev/null" HUP INT TERM
-    wait "$!" || true
-} 3>/tmp/crouton-lock/xbindkeys &
-
 # Pass through the host cursor and correct mousewheels on xephyr
-if [ "$xmethod" = 'xephyr' ]; then
+if [ "$XMETHOD" = 'xephyr' ]; then
     host-x11 croutoncursor "$DISPLAY" &
     if [ -z "$CROUTON_WHEEL_PARAMS" -a -r "$HOME/.croutonwheel" ]; then
         CROUTON_WHEEL_PARAMS="`head -n1 "$HOME/.croutonwheel"`"
@@ -86,50 +78,103 @@ if [ "$xmethod" = 'xephyr' ]; then
     croutonwheel $CROUTON_WHEEL_PARAMS &
 fi
 
-# Launch touchegg if it is requested.
-toucheggconf='/etc/touchegg.conf'
-if [ -f "$toucheggconf" ]; then
-    mkdir -p "$HOME/.config/touchegg"
-    ln -sf "$toucheggconf" "$HOME/.config/touchegg/"
-    touchegg 2>/dev/null &
-fi
+# xbindkeys and other input-related apps are not needed for kiwi
+if [ "$XMETHOD" != "xiwi" ]; then
+    # Apply the Chromebook keyboard map if installed.
+    if [ -f '/usr/share/X11/xkb/compat/chromebook' ]; then
+        setxkbmap -model chromebook
+    fi
 
-# Configure trackpad settings if needed
-if synclient >/dev/null 2>&1; then
-    case "`awk -F= '/_RELEASE_BOARD=/{print $2}' '/var/host/lsb-release'`" in
-        butterfly*|falco*)
-            SYNCLIENT="FingerLow=1 FingerHigh=5 $SYNCLIENT";;
-        parrot*|peppy*|wolf*)
-            SYNCLIENT="FingerLow=5 FingerHigh=10 $SYNCLIENT";;
-    esac
-    if [ -n "$SYNCLIENT" ]; then
-        synclient $SYNCLIENT
+    # Launch key binding daemon
+    xbindkeys -fg /etc/crouton/xbindkeysrc.scm
+
+    # Launch xbindkeys for the Chromium OS X server if it isn't running
+    mkdir -m 775 -p /tmp/crouton-lock
+    {
+        # Only let one instance *really* run at a time
+        flock 3
+        XMETHOD='' host-x11 xbindkeys -n -fg /etc/crouton/xbindkeysrc.scm &
+        trap "kill '$!' 2>/dev/null" HUP INT TERM
+        wait "$!" || true
+    } 3>/tmp/crouton-lock/xbindkeys &
+
+    # Launch touchegg if it is requested.
+    toucheggconf='/etc/touchegg.conf'
+    if [ -f "$toucheggconf" ]; then
+        mkdir -p "$HOME/.config/touchegg"
+        ln -sf "$toucheggconf" "$HOME/.config/touchegg/"
+        touchegg 2>/dev/null &
+    fi
+
+    # Configure trackpad settings if needed
+    if synclient >/dev/null 2>&1; then
+        case "`awk -F= '/_RELEASE_BOARD=/{print $2}' '/var/host/lsb-release'`" in
+            butterfly*|falco*)
+                SYNCLIENT="FingerLow=1 FingerHigh=5 $SYNCLIENT";;
+            parrot*|peppy*|wolf*)
+                SYNCLIENT="FingerLow=5 FingerHigh=10 $SYNCLIENT";;
+        esac
+        if [ -n "$SYNCLIENT" ]; then
+            synclient $SYNCLIENT
+        fi
+    fi
+
+    # Make sure tap-to-click is enabled
+    if hash xinput 2>/dev/null; then
+        for id in `host-x11 xinput --list --id-only`; do
+            host-x11 xinput set-prop "$id" 'Tap Paused' 0 2>/dev/null || true
+        done
     fi
 fi
 
-# Make sure tap-to-click is enabled
-if hash xinput 2>/dev/null; then
-    for id in `host-x11 xinput --list --id-only`; do
-        host-x11 xinput set-prop "$id" 'Tap Paused' 0 2>/dev/null || true
+# Crouton-in-a-tab: Start fbserver and launch display
+if [ "$XMETHOD" = 'xiwi' ]; then
+    # The extension sends evdev key codes: fix the keyboard mapping rules
+    setxkbmap -rules evdev
+    # Reapply xkb map: This fixes autorepeat mask in "xset q"
+    xkbcomp "$DISPLAY" - | xkbcomp - "$DISPLAY" 2>/dev/null
+
+    # Set resolution to a default 1024x768, this is important so that the DPI
+    # looks reasonable when the WM/DE start.
+    setres 1024 768 > /dev/null
+    croutonfbserver "$DISPLAY" &
+
+    try=1
+    while ! croutoncycle force "$DISPLAY"; do
+        echo "Cannot connect to extension, retrying..."
+        if [ "$try" -ge 10 ]; then
+            echo "\
+Unable to start display, make sure the crouton extension is installed
+and enabled, and up to date. (download from http://goo.gl/OVQOEt)" 1>&2
+            ret=1
+            break
+        fi
+        sleep 1
+        try="$((try+1))"
     done
+    if [ "$ret" -eq 0 ]; then
+        echo "Connected to extension, launched crouton in a tab window." 1>&2
+    fi
 fi
 
-# Shell is the leader of a process group, so signals sent to this process are
-# propagated to its children. We ignore signals in this process, but the child
-# handles them and exits. We use a no-op handler, as "" causes the signal to be
-# ignored in children as well (see NOTES in "man 2 sigaction" for details).
-# This process then runs exit commands, and terminates.
-trap "true" HUP INT TERM
+# Only run if no error occured before (e.g. cannot connect to extension)
+if [ "$ret" -eq 0 ]; then
+    # Shell is the leader of a process group, so signals sent to this process
+    # are propagated to its children. We ignore signals in this process, but the
+    # child handles them and exits. We use a no-op handler, as "" causes the
+    # signal to be ignored in children as well (see NOTES in "man 2 sigaction"
+    # for details). This process then runs exit commands, and terminates.
+    trap "true" HUP INT TERM
 
-# Run the client itself if it is executable, otherwise run it in a shell.
-ret=0
-if [ -n "$binary" -o -x "$cmd" ]; then
-    "$cmd" $extraargs "$@" || ret=$?
-else
-    /bin/sh "$cmd" $extraargs "$@" || ret=$?
+    # Run the client itself if it is executable, otherwise run it in a shell.
+    if [ -n "$binary" -o -x "$cmd" ]; then
+        "$cmd" $extraargs "$@" || ret=$?
+    else
+        /bin/sh "$cmd" $extraargs "$@" || ret=$?
+    fi
+
+    trap - HUP INT TERM
 fi
-
-trap - HUP INT TERM
 
 # Run crouton-specific commands before the server exits:
 

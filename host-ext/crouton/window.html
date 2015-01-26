@@ -1,0 +1,107 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<!-- Copyright (c) 2014 The crouton Authors. All rights reserved.
+     Use of this source code is governed by a BSD-style license that can be
+     found in the LICENSE file. -->
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="-1">
+    <title>Crouton in a tab</title>
+    <script type="text/javascript" src="window.js"></script>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        background-color: rgba(0, 0, 0, 1);
+      }
+      #content {
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+      }
+      #debug {
+        color: rgba(255, 255, 255, 1);
+      }
+      #header {
+        height: 15px;
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+      }
+      #info {
+        position: absolute;
+        width: 100%;
+        margin-top: 100px;
+        font-size: 12pt;
+        text-align: center;
+        color: rgba(255, 255, 255, 1);
+      }
+      #status {
+        background-color: rgba(0, 0, 0, 1);
+      }
+      #warning {
+        background-color: rgba(128, 128, 0, 1);
+      }
+      .close {
+        background-color: rgba(0, 0, 0, 0);
+        color: rgba(255, 255, 0, 1);
+        font-size: 12pt;
+        padding-bottom: 1px;
+        padding-top: 2px;
+        padding-left: 4px;
+        padding-right: 4px;
+        border-width: 0px;
+      }
+      .close:focus {
+        outline: none;
+      }
+      .close:active {
+        background-color: rgba(0, 0, 0, 0.5);
+      }
+      .close:hover {
+        color: rgba(255, 0, 0, 1);
+      }
+      #error {
+        background-color: rgba(128, 0, 0, 1);
+      }
+      #warning, #error {
+        display: none;
+      }
+      #listener {
+        width: 100%;
+        height: 100%;
+      }
+      #kiwi {
+        margin-left: 0px;
+        margin-top: 0px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="content">
+      <div id="header">
+        <div id="debug">Initializing...</div>
+      </div>
+      <div id="info">
+        <div id="status">Initializing...</div>
+        <div id="warning">
+          <button class="close" title="Dismiss">&#9746;</button>
+          WARNING: <span class="text"></span>
+        </div>
+        <div id="error">ERROR: <span class="text"></span></div>
+      </div>
+      <div id="listener">
+        <embed id="kiwi"
+               width="100%" height="100%"
+               src="kiwi.nmf"
+               type="application/x-pnacl" />
+      </div>
+    </div>
+  </body>
+</html>

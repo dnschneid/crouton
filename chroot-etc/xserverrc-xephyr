@@ -5,7 +5,7 @@
 
 export DISPLAY=':0' XAUTHORITY='/var/host/Xauthority'
 
-XMETHOD='xephyr'
+export XMETHOD='xephyr'
 XARGS='-fullscreen -host-cursor -nolisten tcp'
 if [ -f /etc/crouton/xserverrc-local ]; then
     . /etc/crouton/xserverrc-local

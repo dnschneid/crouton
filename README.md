@@ -47,10 +47,20 @@ to the rest of Chromium OS.
 Prerequisites
 -------------
 You need a device running Chromium OS that has been switched to developer mode.
+
+For instructions on how to do that, go to [this Chromium OS wiki page]
+(http://www.chromium.org/chromium-os/developer-information-for-chrome-os-devices),
+click on your device model and follow the steps in the *Entering Developer Mode*
+section.
+
 Note that developer mode, in its default configuration, is *completely
 insecure*, so don't expect a password in your chroot to keep anyone from your
 data. crouton does support encrypting chroots, but the encryption is only as
 strong as the quality of your passphrase. Consider this your warning.
+
+It's also highly recommended that you install the [crouton extension]
+(https://goo.gl/OVQOEt), which, when combined with the `extension` or `xiwi`
+targets, provides much improved integration with Chromium OS.
 
 That's it! Surprised?
 
@@ -99,7 +109,8 @@ Examples
   6. Exit the chroot by logging out of Xfce.
 
 ### With encryption!
-  1. Add the `-e` parameter when you run crouton to create an encrypted chroot.
+  1. Add the `-e` parameter when you run crouton to create an encrypted chroot
+     or encrypt a non-encrypted chroot.
   2. You can get some extra protection on your chroot by storing the decryption
      key separately from the place the chroot is stored. Use the `-k` parameter
      to specify a file or directory to store the keys in (such as a USB drive or
@@ -111,6 +122,15 @@ Examples
   2. Run `sh ~/Downloads/crouton -r list` to list the recognized releases and
      which distros they belong to.
 
+### Wasteful rendundancies are wasteful: one clipboard, one browser, one window
+  1. Install the [crouton extension](https://goo.gl/OVQOEt) into Chromium OS.
+  2. Add the `extension` or `xiwi` version to your chroot.
+  3. Try some copy-pasta, or uninstall all your web browsers from the chroot.
+
+*Installing the extension and its target gives you synchronized clipboards, the
+option of using Chromium OS to handle URLs, and allows chroots to create
+graphical sessions as Chromium OS windows.*
+
 ### I don't always use Linux, but when I do, I use CLI
   1. You can save a chunk of space by ditching X and just installing
      command-line tools using `-t core` or `-t cli-extra`
@@ -118,6 +138,8 @@ Examples
      `sudo enter-chroot`
   3. Use the [Crosh Window](https://goo.gl/eczLT) extension to keep Chromium OS
      from eating standard keyboard shortcuts.
+  4. If you installed cli-extra, `startcli` will launch a new VT right into the
+     chroot.
 
 ### A new version of crouton came out; my chroot is therefore obsolete and sad
   1. Check for updates, download the latest version, and see what's new by
@@ -125,8 +147,6 @@ Examples
      to see what those parameters actually do).
   2. Exit the chroot and run `sudo sh ~/Downloads/crouton -u -n chrootname`.
      It will update all installed targets.
-  3. You can use this with `-e` to encrypt a non-encrypted chroot, but make sure
-     you don't interrupt the operation.
 
 ### A backup a day keeps the price-gouging data restoration services away
   1. `sudo edit-chroot -b chrootname` backs up your chroot to a timestamped
@@ -160,7 +180,8 @@ Examples
   3. Include the `-r` parameter if you want to specify for which release to
      prepare a bootstrap.
   4. You can then create chroots using the tarball by running
-     `sudo sh ~/Downloads/crouton -f ~/Downloads/mybootstrap.tar.bz2`
+     `sudo sh ~/Downloads/crouton -f ~/Downloads/mybootstrap.tar.bz2`. Make sure 
+      you also specify the target environment with `-t`.
 
 *This is the quickest way to create multiple chroots at once, since you won't
 have to determine and download the bootstrap files every time.*
@@ -184,7 +205,7 @@ Tips
   * Chroots are cheap! Create multiple ones using `-n`, break them, then make
     new, better ones!
   * You can change the distro mirror from the default by using `-m`
-  * Behind a proxy? `-P` lets you specify one.
+  * Want to use a proxy? `-P` lets you specify one (or disable it).
   * A script is installed in your chroot called `brightness`. You can assign
     this to keyboard shortcuts to adjust the brightness of the screen (e.g.
     `brightness up`) or keyboard (e.g. `brightness k down`).
@@ -198,6 +219,8 @@ Tips
     `croutonpowerd -i command and arguments` will automatically stop inhibiting
     power management when the command exits.
   * Have a Pixel or two or 4.352 million? `-t touch` improves touch support.
+  * Want to share some files and/or folders between ChromeOS and your chroot?  
+    Check out the `/etc/crouton/shares` file, or read all about it in the wiki. 
   * Want more tips? Check the [wiki](https://github.com/dnschneid/crouton/wiki).
 
 
@@ -207,13 +230,14 @@ Running another OS in a chroot is a pretty messy technique (although it's hidden
 behind very pretty scripts), and these scripts are relatively new, so problems
 are not surprising. Check the issue tracker and file a bug if your issue isn't
 there. When filing a new bug, include the output of `croutonversion` run from
-inside the chroot (if possible).
+inside the chroot or, if you cannot mount your chroot, include the output
+of `cat /etc/lsb-release` from Crosh.
 
 
 I want to be a Contributor!
 ---------------------------
 That's great!  But before your code can be merged, you'll need to have signed
-the [Individual Contributor License Agreement](https://developers.google.com/open-source/cla/individual#sign-electronically).
+the [Individual Contributor License Agreement](https://cla.developers.google.com/clas/new?kind=KIND_INDIVIDUAL&domain=DOMAIN_GOOGLE).
 Don't worry, it only takes a minute and you'll definitely get to keep your
 firstborn, probably.  If you've already signed it for contributing to Chromium
 or Chromium OS, you're already done.
@@ -243,7 +267,8 @@ But how?
 There's a way For Everyone to help!
 
   * Something broken? File a bug! Bonus points if you try to fix it. It helps if
-    you provide the output of `croutonversion` when you submit the bug.
+    you provide the output of `croutonversion` (or the output of
+    `cat /etc/lsb-release` from Crosh) when you submit the bug.
   * Want to try and break something? Look through [requests for testing](https://github.com/dnschneid/crouton/issues?labels=needstesting&state=open)
     and then do your best to brutally rip the author's work to shreds.
   * Look through [open issues](https://github.com/dnschneid/crouton/issues?state=open)

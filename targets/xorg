@@ -2,25 +2,34 @@
 # Copyright (c) 2014 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-if [ -z "$TARGETNOINSTALL" -a "${ARCH#arm}" != "$ARCH" ]; then
-    error 1 'xorg target does not work on ARM.'
+if [ "${TARGETNOINSTALL:-c}" = 'c' ]; then
+    if [ -f /sbin/frecon ]; then
+        error 1 'xorg target does not yet work with Freon.'
+    elif [ "${ARCH#arm}" != "$ARCH" ]; then
+        error 1 'xorg target does not work on ARM.'
+    fi
 fi
-REQUIRES='core audio'
+REQUIRES='audio'
 PROVIDES='x11'
 DESCRIPTION='X.Org X11 backend. Enables GPU acceleration on supported platforms.'
-CHROOTBIN='brightness croutoncycle croutonpowerd croutonxinitrc-wrapper setres xinit'
-CHROOTETC='xbindkeysrc.scm xserverrc-x11 xserverrc-local.example'
+CHROOTBIN='croutoncycle croutonxinitrc-wrapper setres xinit'
+CHROOTETC='xbindkeysrc.scm xserverrc xserverrc-xorg xserverrc-local.example'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
-XMETHOD="${XMETHOD:-x11}"
+XMETHOD="${XMETHOD:-xorg}"
 
+# Migration from ambiguous XMETHOD
+rm -f '/etc/crouton/xserverrc-x11'
+
+ltspackages=''
 # On precise, install lts-trusty xorg server to support newer hardware if kernel
 # version != 3.4 (lts-trusty mesa requires version >=3.6)
 if release -eq precise && ! uname -r | grep -q "^3.4."; then
     # We still install xorg later to pull in its dependencies
     install --minimal xserver-xorg-lts-trusty libgl1-mesa-glx-lts-trusty \
         xserver-xorg-input-synaptics-lts-trusty
+    ltspackages='-lts-trusty'
 fi
 
 # On saucy onwards, if kernel version is 3.4, manually pin down old mesa
@@ -91,7 +100,9 @@ END
     apt-get -y --force-yes --no-install-recommends dist-upgrade -f
 fi
 
-install xorg arch=,dmz-cursor-theme arch=ttf-dejavu
+install xorg arch=,dmz-cursor-theme arch=ttf-dejavu \
+        arch=,xserver-xorg-video-fbdev$ltspackages \
+        arch=,xserver-xorg-video-intel$ltspackages
 
 if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
     # Fix launching X11 from inside crosh (user doesn't own a TTY)

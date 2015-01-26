@@ -5,7 +5,7 @@
 REQUIRES='gtk-extra'
 DESCRIPTION='Installs the GNOME desktop environment. (Approx. 400MB)'
 HOSTBIN='startgnome'
-CHROOTBIN='startgnome gnome-session-wrapper'
+CHROOTBIN='crouton-noroot startgnome gnome-session-wrapper'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:

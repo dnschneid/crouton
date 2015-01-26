@@ -3,6 +3,16 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+# Changes the resolution of the current display.
+# If XMETHOD is xiwi, tries to create a new exact resolution, and change mode
+# to that. If that fails (e.g. non-patched xorg-dummy), take the closest,
+# smaller, available resolution in xrandr, and if no smaller resolution is
+# available, pick the closest one.
+# If XMETHOD is anything else, set a resolution from cvt output.
+# In all cases, outputs the applied resolution.
+
+set -e
+
 if [ "$#" -lt 2 -o "$#" -gt 4 ]; then
     echo "USAGE: ${0##*/} x y [r [output]]" 1>&2
     exit 2
@@ -14,12 +24,67 @@ o="${4}"
 if [ -z "$o" ]; then
     o="`xrandr -q | awk 'x{print $1;exit}/^Screen 0/{x=1}'`"
 fi
-cvt "$x" "$y" "$r" | {
-    read -r _
-    read -r _ mode data
-    mode="${mode#\"}"
-    mode="${mode%\"}"
-    xrandr --newmode "$mode" $data 2>/dev/null || true
-    xrandr --addmode "$o" "$mode"
-    xrandr --output "$o" --mode "$mode"
+
+xmethod="`xprop -root 'CROUTON_XMETHOD' | sed -n 's/^.*\"\(.*\)\"/\1/p'`"
+
+if [ "$xmethod" != "xiwi" ]; then
+    cvt "$x" "$y" "$r" | {
+        read -r _
+        read -r _ mode data
+        mode="${mode#\"}"
+        mode="${mode%\"}"
+        xrandr --newmode "$mode" $data 2>/dev/null || true
+        xrandr --addmode "$o" "$mode"
+        xrandr --output "$o" --mode "$mode"
+        echo "$mode"
+    }
+    exit 0
+fi
+
+# Replace mode $2 in output $1, with new data $3..$#
+# Deletes the mode if $3 is not provided
+replacemode() {
+    local o="$1"
+    local mode="$2"
+    shift 2
+    xrandr --delmode "$o" "$mode" 2>/dev/null || true
+    xrandr --rmmode "$mode" 2>/dev/null || true
+    if [ "$#" -gt 0 ]; then
+        xrandr --newmode "$mode" "$@"
+        xrandr --addmode "$o" "$mode"
+    fi
 }
+
+# Try to change to arbitrary resolution
+mhz="$((r*x*y/1000000))"
+name="kiwi_${x}x${y}_${r}"
+
+# Try to switch mode, if it already exists.
+if xrandr --output "$o" --mode "$name" 2>/dev/null; then
+    echo "${x}x${y}_${r}"
+    exit 0
+fi
+
+# Add the new mode
+xrandr --newmode "$name" $mhz $x $x $x $x $y $y $y $y
+xrandr --addmode "$o" "$name"
+
+# The next line fails on non-patched xorg-dummy
+if xrandr --output "$o" --mode "$name"; then
+    # Success: remove old modes
+    others="`xrandr | sed -n 's/^.*\(kiwi[0-9x_]*\)[^*]*$/\1/p'`"
+    for othername in $others; do
+        xrandr --delmode "$o" "$othername" 2>/dev/null || true
+        xrandr --rmmode "$othername" 2>/dev/null || true
+    done
+    echo "${x}x${y}_${r}"
+    exit 0
+else
+    # Delete the new mode
+    xrandr --delmode "$o" "$name" 2>/dev/null || true
+    xrandr --rmmode "$name" 2>/dev/null || true
+fi
+
+# Probably xorg-dummy got overwritten. Recommend an update.
+echo "Failed to set custom resolution. Update your chroot and try again." 1>&2
+exit 1

@@ -193,6 +193,121 @@ compile() {
 }
 
 
+# Convert an automake Makefile.am into a shell script, and provide useful
+# functions to compile libraries and executables.
+# Needs to be run in the same directory as the Makefile.am file.
+# This outputs the converted Makefile.am to stdout, which is meant to be
+# piped to sh -s (see audio and xiat for examples)
+convert_automake() {
+    echo '
+        top_srcdir=".."
+        top_builddir=".."
+    '
+    sed -e '
+        # Concatenate lines ending in \
+        : start; /\\$/{N; b start}
+        s/ *\\\n[ \t]*/ /g
+        # Convert automake to shell
+        s/^[^ ]*:/#\0/
+        s/^\t/#\0/
+        s/\t/ /g
+        s/ *= */=/
+        s/\([^ ]*\) *+= */\1=${\1}\ /
+        s/ /\\ /g
+        y/()/{}/
+        s/if\\ \(.*\)/if [ -n "${\1}" ]; then/
+        s/endif/fi/
+    ' 'Makefile.am'
+    echo '
+        # buildsources: Build all source files for target
+        #  $1: target
+        #  $2: additional gcc flags
+        # Prints a list of .o files
+        buildsources() {
+            local target="$1"
+            local extragccflags="$2"
+
+            eval local sources=\"\$${target}_SOURCES\"
+            eval local cppflags=\"\$${target}_CPPFLAGS\"
+            local cflags="$cppflags ${CFLAGS} ${AM_CFLAGS}"
+
+            for dep in $sources; do
+                if [ "${dep%.c}" != "$dep" ]; then
+                    ofile="${dep%.c}.o"
+                    gcc -c "$dep" -o "$ofile" '"$archgccflags"' \
+                        $cflags $extragccflags 1>&2 || return $?
+                    echo -n "$ofile "
+                fi
+            done
+        }
+
+        # fixlibadd:
+        # Fix list of libraries ($1): replace lib<x>.la by -l<x>
+        fixlibadd() {
+            for libdep in $*; do
+                if [ "${libdep%.la}" != "$libdep" ]; then
+                    libdep="${libdep%.la}"
+                    libdep="-l${libdep#lib}"
+                fi
+                echo -n "$libdep "
+            done
+        }
+
+        # buildlib: Build a library
+        #  $1: library name
+        #  $2: additional linker flags
+        buildlib() {
+            local lib="$1"
+            local extraflags="$2"
+            local ofiles
+            # local eats the return status: separate the 2 statements
+            ofiles="`buildsources "${lib}_la" "-fPIC -DPIC"`"
+
+            eval local libadd=\"\$${lib}_la_LIBADD\"
+            eval local ldflags=\"\$${lib}_la_LDFLAGS\"
+
+            libadd="`fixlibadd $libadd`"
+
+            # Detect library version (e.g. 0.0.0)
+            local fullver="`echo -n "$ldflags" | \
+                      sed -n '\''y/:/./; \
+                                 s/.*-version-info \([0-9.]*\)$/\\1/p'\''`"
+            local shortver=""
+            # Get "short" library version (e.g. 0)
+            if [ -n "$fullver" ]; then
+                shortver=".${fullver%%.*}"
+                fullver=".$fullver"
+            fi
+            local fullso="$lib.so$fullver"
+            local shortso="$lib.so$shortver"
+            gcc -shared -fPIC -DPIC $ofiles $libadd -o "$fullso" \
+                '"$archgccflags"' $extraflags -Wl,-soname,"$shortso"
+            if [ -n "$fullver" ]; then
+                ln -sf "$fullso" "$shortso"
+                # Needed at link-time only
+                ln -sf "$shortso" "$lib.so"
+            fi
+        }
+
+        # buildexe: Build an executable file
+        #  $1: executable file name
+        #  $2: additional linker flags
+        buildexe() {
+            local exe="$1"
+            local extraflags="$2"
+            local ofiles="`buildsources "$exe" ""`"
+
+            eval local ldadd=\"\$${exe}_LDADD\"
+            eval local ldflags=\"\$${exe}_LDFLAGS\"
+
+            ldadd="`fixlibadd $ldadd`"
+
+            gcc $ofiles $ldadd -o "$exe" '"$archgccflags"' $extraflags
+        }
+    '
+}
+
+
 # The rest is dictated first by the distro-specific prepare.sh, and then by the
 # selected targets.
 

@@ -9,7 +9,7 @@
 # This command expects CHANNEL to be set with the requested Google Chrome
 # channel: stable, beta, or unstable.
 
-if [ -z "$TARGETNOINSTALL" ]; then
+if [ "${TARGETNOINSTALL:-c}" = 'c' ]; then
     if [ "${ARCH#arm}" != "$ARCH" ]; then
         echo 'Google Chrome does not yet have an ARM build. Installing Chromium instead.' 1>&2
         TARGET=chromium
@@ -21,7 +21,7 @@ Chromium by specifying the chromium target, or install Google Chrome manually
 or via AUR."
     fi
 fi
-if [ -z "$TARGETNOINSTALL" -a "$TARGET" != 'chrome' ]; then
+if [ "${TARGETNOINSTALL:-c}" = 'c' -a "$TARGET" != 'chrome' ]; then
     # Avoid installing multiple chrome targets
     if grep -q "^chrome\$" "${TARGETDEDUPFILE:-/dev/null}"; then
         exit

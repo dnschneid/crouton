@@ -1,0 +1,18 @@
+#!/bin/sh -e
+# Copyright (c) 2014 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+if [ -z "$release" ]; then
+    echo "all"
+    exit 0
+fi
+
+target="xfce"
+startcmd="startxfce4"
+# This magic sequence presses "Use default configuration"
+xte="keydown Alt_L;key Tab;key Tab;keyup Alt_L;key Left;key Left;\
+keydown Return;sleep 1;keyup Return"
+
+# Run common file
+. "$SCRIPTDIR/test/tests/w0-common"

@@ -10,7 +10,7 @@ if [ -w "$fbc" ]; then
     echo 0 > "$fbc"
 fi
 
-XMETHOD='x11'
+export XMETHOD='xorg'
 XARGS='-nolisten tcp'
 if [ -f /etc/crouton/xserverrc-local ]; then
     . /etc/crouton/xserverrc-local

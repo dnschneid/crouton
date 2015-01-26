@@ -1,0 +1,20 @@
+#!/bin/sh -e
+# Copyright (c) 2014 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+logfile="/tmp/Xorg.crouton.$$.log"
+for arg in "$@"; do
+    disp="`echo "$arg" | sed -n 's/^\:\([0-9]*\)$/\1/p'`"
+    if [ -n "$disp" ]; then
+        logfile="/tmp/Xorg.crouton.$disp.log"
+    fi
+done
+
+export XMETHOD='xiwi'
+XARGS="-nolisten tcp -config xorg-dummy.conf -logfile $logfile"
+if [ -f /etc/crouton/xserverrc-local ]; then
+    . /etc/crouton/xserverrc-local
+fi
+
+exec /usr/bin/Xorg $XARGS "$@"
