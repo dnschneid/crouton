@@ -19,7 +19,7 @@ snapshot "$release" audio
 crouton -U -n "$release" -t xorg
 
 echo '
-    install mesa-utils
+    install arch=mesa-demos,mesa-utils
     mkdir -p /home/tmp
     chmod 777 /home/tmp
     cat > /home/tmp/xinitrc <<END
