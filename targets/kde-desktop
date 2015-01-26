@@ -7,4 +7,4 @@ DESCRIPTION='Installs KDE along with common applications. (Approx. 1000MB)'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
-install ubuntu=kubuntu-desktop,task-kde-desktop -- network-manager
+install arch=kde-meta,ubuntu=kubuntu-desktop,task-kde-desktop -- network-manager
