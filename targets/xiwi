@@ -38,7 +38,7 @@ echo "Download Xorg dummy driver..." 1>&2
 wget -O "$DUMMYBUILDTMP/dummy.tar.gz" "$urlbase/xf86-video-dummy-0.3.7.tar.gz"
 
 install --minimal --asdeps patch gcc arch=,libc-dev pkg-config \
-    arch=,xserver-xorg-dev arch=,x11proto-xf86dga-dev
+    arch=xorg-server-devel,xserver-xorg-dev arch=,x11proto-xf86dga-dev
 
 (
     cd "$DUMMYBUILDTMP"
