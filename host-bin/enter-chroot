@@ -14,6 +14,7 @@ LOGIN=''
 NAME=''
 TARGET=''
 USERNAME='1000'
+TMPXMETHOD=''
 NOLOGIN=''
 SETUPSCRIPT='/prepare.sh'
 
@@ -33,6 +34,7 @@ Options:
     -n NAME     Name of the chroot to enter. Default: first one found in CHROOTS
     -t TARGET   Only enter the chroot if it contains the specified TARGET.
     -u USERNAME Username (or UID) to log into. Default: 1000 (the primary user)
+    -X XMETHOD  For this session, override the the auto-detected XMETHOD
     -x          Does not log in, but directly executes the command instead.
                 Note that the environment will be empty (sans TERM).
                 Specify -x a second time to run the $SETUPSCRIPT script."
@@ -71,6 +73,7 @@ while getopts 'bc:k:ln:t:u:x' f; do
     n) NAME="$OPTARG";;
     t) TARGET="$OPTARG";;
     u) USERNAME="$OPTARG";;
+    X) TMPXMETHOD="$OPTARG";;
     x) NOLOGIN="$((NOLOGIN+1))"
        [ "$NOLOGIN" -gt 2 ] && NOLOGIN=2;;
     \?) error 2 "$USAGE";;
@@ -676,6 +679,12 @@ else
     else
         # Escape out the command
         cmd="export SHELL='$CHROOTSHELL';"
+        if [ -n "$TMPXMETHOD" ]; then
+-            case "$TMPXMETHOD" in
+-                xiwi|xorg|xephyr) cmd="$cmd export XMETHOD='$TMPXMETHOD';" ;;
+-                *) echo "WARNING: XMETHOD '$TMPXMETHOD' invalid so not set." ;;
+-            esac 
+-        fi
         for param in "$@"; do
             cmd="$cmd'`echo -n "$param" | sed "s/'/'\\\\\\''/g"`' "
         done
