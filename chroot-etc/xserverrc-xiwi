@@ -17,4 +17,12 @@ if [ -f /etc/crouton/xserverrc-local ]; then
     . /etc/crouton/xserverrc-local
 fi
 
-exec /usr/bin/Xorg $XARGS "$@"
+# On Arch, Xorg is setuid, and Xorg.bin is non-setuid, while on Ubuntu/Debian,
+# X is setuid, and Xorg is non-setuid (Xorg.bin does not exist). So prefer
+# Xorg.bin, then fall back on Xorg.
+XBIN="/usr/bin/Xorg.bin"
+if [ ! -x "$XBIN" ]; then
+    XBIN="/usr/bin/Xorg"
+fi
+
+exec "$XBIN" $XARGS "$@"
