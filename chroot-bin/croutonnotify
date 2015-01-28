@@ -4,7 +4,7 @@
 # found in the LICENSE file.
 
 USAGE="${0##*/} -j
-${0##*/} -t title [-m message] [-d] [-i id]
+${0##*/} -t title [-m message] [-d] [-i icon] [-I id]
 Raises a notification in Chromium OS (requires crouton extension).
 
 When -j is specified, reads JSON data from stdin, in the format required
@@ -20,7 +20,9 @@ Options:
     -m       Message to display (chrome.notifications field: \"message\")
     -d       Switch to display in environment variable DISPLAY ($DISPLAY) when
              the notification is clicked. Default: Do not switch display.
-    -i       ID to pass to chrome.notifications.create: only the last
+    -i       Small icon to display on the left of the notification
+             (chrome.notifications field: \"iconUrl\")
+    -I       ID to pass to chrome.notifications.create: only the last
              notification with a given ID is shown.
              Default: Display a new notification.
 
@@ -39,13 +41,15 @@ SWITCHDISPLAY=""
 MESSAGE=""
 TITLE=""
 ID=""
+ICON=""
 JSON=""
 
 # Process arguments
-while getopts 'di:jm:t:' f; do
+while getopts 'di:I:jm:t:' f; do
     case "$f" in
     d) SWITCHDISPLAY="$DISPLAY";;
-    i) ID="$OPTARG";;
+    i) ICON="$OPTARG";;
+    I) ID="$OPTARG";;
     j) JSON="y";;
     m) MESSAGE="$OPTARG";;
     t) TITLE="$OPTARG";;
@@ -56,9 +60,13 @@ done
 # No extra parameters, -j precludes other parameters, and at least title
 # must be specified (or -j)
 if [ "$#" != "$((OPTIND-1))" ] ||
-        [ "$JSON" = 'y' -a -n "$SWITCHDISPLAY$ID$MESSAGE$TITLE" ] ||
+        [ "$JSON" = 'y' -a -n "$SWITCHDISPLAY$ICON$ID$MESSAGE$TITLE" ] ||
         [ -z "$JSON$TITLE" ]; then
     error 2 "$USAGE"
+fi
+
+if [ -n "$ICON" ] && [ ! -r "$ICON" -o ! -f "$ICON" ]; then
+    error 2 "Cannot open $ICON."
 fi
 
 # Escape json string (backslash and double quotes)
@@ -66,20 +74,23 @@ json_escape() {
     echo -n "$1" | sed -e 's/\\/\\u005C/g;s/"/\\u0022/g'
 }
 
-JSONDATA=""
-if [ -z "$JSON" ]; then
-    JSONDATA='{
-        "type": "basic",
-        "title": "'"$(json_escape "$TITLE")"'",
-        "message": "'"$(json_escape "$MESSAGE")"'",
-        "crouton_display": "'"$(json_escape "$SWITCHDISPLAY")"'",
-        "crouton_id": "'"$(json_escape "$ID")"'"
-    }'
-fi
-
 STATUS="$({
-    echo -n "N$JSONDATA"
-    if [ "$JSON" = 'y' ]; then
+    echo -n "N"
+    if [ -z "$JSON" ]; then
+        echo -n '{
+            "type": "basic",
+            "title": "'"$(json_escape "$TITLE")"'",
+            "message": "'"$(json_escape "$MESSAGE")"'",
+            "crouton_display": "'"$(json_escape "$SWITCHDISPLAY")"'",
+            "crouton_id": "'"$(json_escape "$ID")"'"'
+        if [ -n "$ICON" ]; then
+            ext="${ICON##*.}"
+            echo -n ', "iconUrl": "data:image/'"${ext:-png}"';base64,'
+            base64 -w 0 "$ICON"
+            echo -n '"'
+        fi
+        echo -n '}'
+    else
         cat
     fi
 } | websocketcommand)"
