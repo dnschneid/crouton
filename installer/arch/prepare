@@ -8,56 +8,6 @@
 PKGEXT='tar.xz'
 DISTROAKA='arch'
 
-# FIXME: Remove after rebase on #1353 (drop sbc dependency)
-# aurcompile <package> <extra makepkg options>: compile package from AUR.
-# This should not be a permanent solution, as AUR packages cannot be trusted,
-# and may break. Ideally, we would like packages to be pushed to [community].
-# We create the user 'aur' to compile the package, giving it sudo access, so
-# that dependencies and the package itself can be installed automatically.
-aurcompile() {
-    local package="$1"
-    shift
-    echo "Compiling $package from AUR..." 1>&2
-    # Make sure base-devel and wget are installed
-    # Expand base-devel so that install can replace packages with their
-    # multilib versions
-    install --asdeps `pacman -Sg base-devel | cut -d' ' -f 2`
-
-    if ! id aur > /dev/null 2>&1; then
-        useradd aur -r -s /bin/false
-    fi
-
-    SUDOERSFILE="/etc/sudoers.d/99-aur-pacman"
-    echo "aur ALL = NOPASSWD:/usr/bin/pacman" > "$SUDOERSFILE"
-    addtrap "rm -f '$SUDOERSFILE'"
-
-    su aur -s /bin/sh -c '
-        set -e
-        PACKAGE="'"$package"'"
-        PACKAGE2="${PACKAGE%"${PACKAGE#??}"}"
-        TMPDIR="`mktemp -d --tmpdir=/tmp crouton-aur.XXX`"
-        TRAP="rm -rf '\''$TMPDIR'\''"
-        trap "$TRAP" INT HUP TERM 0
-        cd "$TMPDIR"
-        wget "https://aur.archlinux.org/packages/$PACKAGE2/$PACKAGE/$PACKAGE.tar.gz"
-        tar xf "$PACKAGE.tar.gz"
-        cd "$PACKAGE"
-        pkgver="`sed -n "s/^pkgver=//p" PKGBUILD`"
-        pkgrel="`sed -n "s/^pkgrel=//p" PKGBUILD`"
-        if pacman -Q "$PACKAGE" 2>/dev/null | \
-                    grep "^$PACKAGE $pkgver-$pkgrel\$"; then
-            echo "Package $PACKAGE already up to date ($pkgver-$pkgrel)."
-        else
-            makepkg -A -s -i '"$*"' --noconfirm
-        fi
-    '
-
-    rm -f "$SUDOERSFILE"
-    undotrap
-
-    return 0
-}
-
 # Detect if multilib repositories are installed
 arch_multilib() {
     pacman -Sl multilib >/dev/null 2>&1
@@ -68,7 +18,7 @@ arch_multilib() {
 # We also replace gcc by its multilib version, if the multilib repository is
 # enabled.
 install_dist() {
-    local pkgs='' aurpkgs='' params='' multilib=''
+    local pkgs='' params='' multilib=''
     if arch_multilib; then
         multilib='y'
     fi
@@ -87,27 +37,15 @@ install_dist() {
             shift
             break
         fi
-        # FIXME: Remove aur after rebase
-        aurstrip="${1#aur:}"
-        if [ "$aurstrip" = "$1" ]; then
-            if [ -n "$multilib" -a "$1" = "gcc" ]; then
-                pkgs="$pkgs $1-multilib"
-            else
-                pkgs="$pkgs $1"
-            fi
+        if [ -n "$multilib" -a "$1" = "gcc" ]; then
+            pkgs="$pkgs $1-multilib"
         else
-            aurpkgs="$aurpkgs $aurstrip"
+            pkgs="$pkgs $1"
         fi
         shift
     done
     if [ -n "$pkgs" ]; then
         pacman -S --noconfirm --needed $params $pkgs
-    fi
-
-    if [ -n "$aurpkgs" ]; then
-        for aurpkg in $aurpkgs; do
-            aurcompile $aurpkg $params
-        done
     fi
 }
 
