@@ -59,7 +59,7 @@ chrootcmd() {
 
 # Process arguments
 prevoptind=1
-while getopts 'bc:k:ln:t:u:x' f; do
+while getopts 'bc:k:ln:t:u:X:x' f; do
     # Disallow empty string as option argument
     if [ "$((OPTIND-prevoptind))" = 2 -a -z "$OPTARG" ]; then
         error 2 "$USAGE"
