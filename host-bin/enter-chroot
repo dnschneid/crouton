@@ -136,6 +136,13 @@ elif [ -n "$TARGET" ]; then
     fi
 fi
 
+# Check to ensure that the XMETHOD requested has been installed
+if [ -n "$TMPXMETHOD" ]; then
+    if ! grep -q "^$TMPXMETHOD$" "$CHROOTS/$NAME/.crouton-targets" 2>/dev/null; then
+        error 1 "$CHROOTS/$NAME does not contain XMETHOD '$TMPXMETHOD'"
+    fi
+fi
+
 # Avoid kernel panics due to slow I/O
 disablehungtask
 
@@ -680,11 +687,8 @@ else
         # Escape out the command
         cmd="export SHELL='$CHROOTSHELL';"
         if [ -n "$TMPXMETHOD" ]; then
--            case "$TMPXMETHOD" in
--                xiwi|xorg|xephyr) cmd="$cmd export XMETHOD='$TMPXMETHOD';" ;;
--                *) echo "WARNING: XMETHOD '$TMPXMETHOD' invalid so not set." ;;
--            esac 
--        fi
+            cmd="$cmd export XMETHOD='$TMPXMETHOD';"
+        fi
         for param in "$@"; do
             cmd="$cmd'`echo -n "$param" | sed "s/'/'\\\\\\''/g"`' "
         done
