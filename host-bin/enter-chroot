@@ -34,7 +34,7 @@ Options:
     -n NAME     Name of the chroot to enter. Default: first one found in CHROOTS
     -t TARGET   Only enter the chroot if it contains the specified TARGET.
     -u USERNAME Username (or UID) to log into. Default: 1000 (the primary user)
-    -X XMETHOD  For this session, override the the auto-detected XMETHOD
+    -X XMETHOD  Override the auto-detected XMETHOD for this session.
     -x          Does not log in, but directly executes the command instead.
                 Note that the environment will be empty (sans TERM).
                 Specify -x a second time to run the $SETUPSCRIPT script."
