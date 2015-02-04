@@ -125,7 +125,7 @@ Examples
 ### Wasteful rendundancies are wasteful: one clipboard, one browser, one window
   1. Install the [crouton extension](https://goo.gl/OVQOEt) into Chromium OS.
   2. Add the `extension` or `xiwi` version to your chroot.
-  3. Try some copy-pasta, or uninstall all your web browsers from the chroot.
+  3. Try some copy-paste, or uninstall all your web browsers from the chroot.
 
 *Installing the extension and its target gives you synchronized clipboards, the
 option of using Chromium OS to handle URLs, and allows chroots to create
