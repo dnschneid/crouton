@@ -71,7 +71,8 @@ fi
 
 # Escape json string (backslash and double quotes)
 json_escape() {
-    echo -n "$1" | sed -e 's/\\/\\u005C/g;s/"/\\u0022/g'
+    echo -n "$1" | sed -e 's/\\/\\u005C/g;s/"/\\u0022/g;2~1s/^/\\u000A/;' \
+                 | tr -d '\n'
 }
 
 STATUS="$({
@@ -85,9 +86,12 @@ STATUS="$({
             "crouton_id": "'"$(json_escape "$ID")"'"'
         if [ -n "$ICON" ]; then
             ext="${ICON##*.}"
+            if grep -Iq '<svg' "$ICON"; then
+                ext='svg+xml'
+            fi
             echo -n ', "iconUrl": "data:image/'"${ext:-png}"';base64,'
             base64 -w 0 "$ICON"
-            echo -n '"'
+            echo '"'
         fi
         echo -n '}'
     else
