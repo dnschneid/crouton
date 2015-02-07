@@ -14,6 +14,7 @@ LOGIN=''
 NAME=''
 TARGET=''
 USERNAME='1000'
+TMPXMETHOD=''
 NOLOGIN=''
 SETUPSCRIPT='/prepare.sh'
 
@@ -33,6 +34,7 @@ Options:
     -n NAME     Name of the chroot to enter. Default: first one found in CHROOTS
     -t TARGET   Only enter the chroot if it contains the specified TARGET.
     -u USERNAME Username (or UID) to log into. Default: 1000 (the primary user)
+    -X XMETHOD  Override the auto-detected XMETHOD for this session.
     -x          Does not log in, but directly executes the command instead.
                 Note that the environment will be empty (sans TERM).
                 Specify -x a second time to run the $SETUPSCRIPT script."
@@ -57,7 +59,7 @@ chrootcmd() {
 
 # Process arguments
 prevoptind=1
-while getopts 'bc:k:ln:t:u:x' f; do
+while getopts 'bc:k:ln:t:u:X:x' f; do
     # Disallow empty string as option argument
     if [ "$((OPTIND-prevoptind))" = 2 -a -z "$OPTARG" ]; then
         error 2 "$USAGE"
@@ -71,6 +73,7 @@ while getopts 'bc:k:ln:t:u:x' f; do
     n) NAME="$OPTARG";;
     t) TARGET="$OPTARG";;
     u) USERNAME="$OPTARG";;
+    X) TMPXMETHOD="$OPTARG";;
     x) NOLOGIN="$((NOLOGIN+1))"
        [ "$NOLOGIN" -gt 2 ] && NOLOGIN=2;;
     \?) error 2 "$USAGE";;
@@ -130,6 +133,13 @@ if [ -z "$NAME" ]; then
 elif [ -n "$TARGET" ]; then
     if ! grep -q "^$TARGET$" "$CHROOTS/$NAME/.crouton-targets" 2>/dev/null; then
         error 1 "$CHROOTS/$NAME does not contain target '$TARGET'"
+    fi
+fi
+
+# Check to ensure that the XMETHOD requested has been installed
+if [ -n "$TMPXMETHOD" ]; then
+    if ! grep -q "^$TMPXMETHOD$" "$CHROOTS/$NAME/.crouton-targets" 2>/dev/null; then
+        error 1 "$CHROOTS/$NAME does not contain XMETHOD '$TMPXMETHOD'"
     fi
 fi
 
@@ -676,6 +686,9 @@ else
     else
         # Escape out the command
         cmd="export SHELL='$CHROOTSHELL';"
+        if [ -n "$TMPXMETHOD" ]; then
+            cmd="$cmd export XMETHOD='$TMPXMETHOD';"
+        fi
         for param in "$@"; do
             cmd="$cmd'`echo -n "$param" | sed "s/'/'\\\\\\''/g"`' "
         done
