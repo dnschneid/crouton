@@ -5,9 +5,7 @@
 
 # All supported releases should be able to launch an xorg server
 if [ -z "$release" ]; then
-    if [ -f /sbin/frecon ]; then
-        log "xorg is not available on Freon. Skipping test."
-    elif uname -m | grep -q 'arm'; then
+    if uname -m | grep -q 'arm'; then
         log "xorg is not available on ARM. Skipping test."
     else
         echo "all"

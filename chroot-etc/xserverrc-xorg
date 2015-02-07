@@ -16,4 +16,13 @@ if [ -f /etc/crouton/xserverrc-local ]; then
     . /etc/crouton/xserverrc-local
 fi
 
-exec /usr/bin/X $XARGS "$@"
+X=/usr/bin/X
+
+# Freon needs the preload hack for X to coexist
+if [ ! -f "/sys/class/tty/tty0/active" ]; then
+    X=/usr/bin/Xorg
+    XARGS="-logfile /tmp/Xorg.$$.log $XARGS"
+    export LD_PRELOAD="/usr/local/lib/croutonfreon.so:$LD_PRELOAD"
+fi
+
+exec "$X" $XARGS "$@"
