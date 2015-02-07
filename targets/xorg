@@ -22,6 +22,11 @@ XMETHOD="${XMETHOD:-xorg}"
 # Migration from ambiguous XMETHOD
 rm -f '/etc/crouton/xserverrc-x11'
 
+# On Freon, we need crazy xorg hacks
+if [ ! -f "/sys/class/tty/tty0/active" ]; then
+    compile freon '-ldl' so
+fi
+
 ltspackages=''
 # On non-ARM precise, install lts-trusty xorg server to support newer hardware
 # if kernel version != 3.4 (lts-trusty mesa requires version >=3.6)
