@@ -39,7 +39,7 @@ case "$1" in
 [Pp]*) cmd='p';;
 [Nn]*) cmd='n';;
 [Ss]*) cmd='s' disp="${1#s}";;
-:*) cmd=":$((${1#:}))";;
+:*) cmd="${1%%.*}"; cmd=":$((${cmd#:}))";;
 [0-9]*) cmd="$(($1))";;
 *) error 2 "$USAGE";;
 esac
