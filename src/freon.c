@@ -1,4 +1,4 @@
-/* Copyright (c) 2014 The crouton Authors. All rights reserved.
+/* Copyright (c) 2015 The crouton Authors. All rights reserved.
  * Use of this source code is governed by a BSD-style license that can be
  * found in the LICENSE file.
  *
@@ -18,6 +18,11 @@
 #include <stdlib.h>
 #include <linux/input.h>
 #include <linux/vt.h>
+
+#define FREON_DBUS_METHOD_CALL(function) \
+    system("host-dbus dbus-send --system --dest=org.chromium.LibCrosService " \
+           "--type=method_call --print-reply /org/chromium/LibCrosService " \
+           "org.chromium.LibCrosServiceInterface." #function)
 
 static int tty0fd = -1;
 static int tty7fd = -1;
@@ -63,13 +68,14 @@ int ioctl(int fd, unsigned long int request, ...) {
         if ((request == VT_RELDISP && (long)data == 1) ||
             (request == VT_ACTIVATE && (long)data == 0)) {
             fprintf(stderr, "Telling Chromium OS to regain control\n");
-            system("host-dbus dbus-send --system --dest=org.chromium.LibCrosService --type=method_call /org/chromium/LibCrosService org.chromium.LibCrosServiceInterface.TakeDisplayOwnership");
+            ret = FREON_DBUS_METHOD_CALL(TakeDisplayOwnership);
         } else if ((request == VT_RELDISP && (long)data == 2) ||
                    (request == VT_ACTIVATE && (long)data == 7)) {
             fprintf(stderr, "Telling Chromium OS to drop control\n");
-            system("host-dbus dbus-send --system --dest=org.chromium.LibCrosService --type=method_call /org/chromium/LibCrosService org.chromium.LibCrosServiceInterface.ReleaseDisplayOwnership");
+            ret = FREON_DBUS_METHOD_CALL(ReleaseDisplayOwnership);
+        } else {
+            ret = 0;
         }
-        ret = 0;
     } else {
         if (request == EVIOCGRAB) {
             fprintf(stderr, "ioctl GRAB %d %lx %p\n", fd, request, data);
