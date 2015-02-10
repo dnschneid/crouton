@@ -180,13 +180,4 @@ fi
 
 echo "Running exit commands..." 1>&2
 
-# Restore framebuffer compression if there are no other non-Chromium X servers
-fbc='/sys/module/i915/parameters/i915_enable_fbc'
-if [ -w "$fbc" ]; then
-    # There is at least 2 servers running (the current one and Chromium OS)
-    if [ "`ps -CX -CXorg -CXephyr -opid= | wc -l`" -le 2 ]; then
-        echo 1 > "$fbc"
-    fi
-fi
-
 exit "$ret"

@@ -11,7 +11,7 @@ REQUIRES='audio'
 PROVIDES='x11'
 DESCRIPTION='X.Org X11 backend. Enables GPU acceleration on supported platforms.'
 CHROOTBIN='croutoncycle croutonxinitrc-wrapper setres xinit'
-CHROOTETC='xbindkeysrc.scm xserverrc xserverrc-xorg xserverrc-local.example'
+CHROOTETC='xbindkeysrc.scm xorg-intel-sna.conf xserverrc xserverrc-xorg xserverrc-local.example'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
@@ -107,6 +107,16 @@ fi
 install xorg dmz-cursor-theme xserver-xorg-video-fbdev$ltspackages
 if [ "${ARCH#arm}" = "$ARCH" ]; then
     install xserver-xorg-video-intel$ltspackages
+fi
+
+# This is a system with framebuffer compression, so we need SNA+tearfree
+xorgconf='/usr/share/X11/xorg.conf.d/20-crouton-intel-sna.conf'
+if grep -q 1 '/sys/module/i915/parameters/i915_enable_fbc' 2>/dev/null; then
+    mkdir -p "${xorgconf%/*}"
+    ln -sfT /etc/crouton/xorg-intel-sna.conf "$xorgconf"
+else
+    # In case this got moved to a different system, delete the config
+    rm -f "$xorgconf"
 fi
 
 # Fix launching X11 from inside crosh (user doesn't own a TTY)

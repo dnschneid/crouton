@@ -146,14 +146,6 @@ fi
 # Avoid kernel panics due to slow I/O
 disablehungtask
 
-# Enable control of framebuffer compression (if used) by video users
-for fbc in '/sys/kernel/debug/dri/0/'*fbc*; do :; done
-if [ -f "$fbc" ] && ! grep -q 'disabled per module param' "$fbc"; then
-    fbc='/sys/module/i915/parameters/i915_enable_fbc'
-    chgrp video "$fbc"
-    chmod g+w "$fbc"
-fi
-
 # Allow X server running as normal user to set/drop DRM master
 drm_relax_file="/sys/kernel/debug/dri/drm_master_relax"
 if [ -f "$drm_relax_file" ]; then
