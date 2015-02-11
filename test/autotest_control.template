@@ -25,13 +25,6 @@ This test fetches a specific branch of crouton, and runs crouton tests.
 # For debugging purpose
 utils.system('cat /etc/lsb-release')
 
-# Add repository so that the test tarball can be fetched
-# FIXME: Remove this hack when test is merged
-devserver_url = 'http://172.19.140.1:8082'
-testcsum = """###TESTCSUM###"""
-utils.system("curl '" + devserver_url + "/stage?archive_url=gs://drinkcat-crouton/crouton-test/packages-" + testcsum + "&files=packages.checksum,test-platform_Crouton.tar.bz2'")
-job.add_repository([devserver_url + "/static/crouton-test/packages-" + testcsum])
-
 args_dict = {
           'repo': """###REPO###""",
           'branch': """###BRANCH###""",
