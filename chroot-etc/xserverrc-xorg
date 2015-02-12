@@ -11,8 +11,19 @@ fi
 
 X=/usr/bin/X
 
-# Freon needs the preload hack for X to coexist
+# Handle Freon systems
 if [ ! -f "/sys/class/tty/tty0/active" ]; then
+    # We won't be able to launch properly if running from frecon
+    ppid="$$"
+    while [ -n "$ppid" -a "$ppid" -ne 1 ]; do
+        ppid="`ps -p "$ppid" -o 'ppid=' 2>/dev/null | sed 's/ //g'`"
+        if ps -p "$ppid" -o 'comm=' | grep -q '^frecon$'; then
+            echo 'Xorg X11 servers cannot be launched from Frecon.' 1>&2
+            echo 'Return to Chromium OS and use crosh to launch X.' 1>&2
+            exit 2
+        fi
+    done
+    # Freon necessitates the preload hack for X to coexist
     X=/usr/bin/Xorg
     XARGS="-logfile /tmp/Xorg.$$.log $XARGS"
     export LD_PRELOAD="/usr/local/lib/croutonfreon.so:$LD_PRELOAD"
