@@ -224,6 +224,12 @@ fi
 if [ -n "${cmd#[pn]}" ]; then
     if [ "${cmd#:}" != "$cmd" ]; then
         destdisp="$cmd"
+        # Resolve a xephyr display into its ID
+        if DISPLAY="$destdisp" xprop -root 'CROUTON_XMETHOD' 2>/dev/null \
+                | grep -q '= "xephyr"$'; then
+            destdisp="`host-x11 croutonwmtools list ni | \
+                       awk "/^Xephyr on $destdisp\.0/"' { print $NF; exit }'`"
+        fi
     else
         i=0
         destdisp=''
@@ -303,6 +309,9 @@ else
             sleep .1
         elif [ "${freonowner:-0}" != 0 ]; then
             kill -USR1 "$freonowner"
+        fi
+        if [ -z "$freonowner" ]; then
+            host-x11 croutonwmtools raise "$aurawin"
         fi
         STATUS="`echo -n "X${destdisp}" | websocketcommand`"
         if [ "$STATUS" != 'XOK' ]; then
