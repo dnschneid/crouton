@@ -129,6 +129,13 @@ install_pkg() {
 }
 
 
+# install_dummy: Installs a dummy package that resolves dependencies. The
+# parameters are a list of crouton-style package names to "install".
+install_dummy() {
+    install_dummy_dist `distropkgs "$@"`
+}
+
+
 # remove: Removes the specified packages. See distropkgs() for package syntax.
 remove() {
     remove_dist `distropkgs "$@"`
