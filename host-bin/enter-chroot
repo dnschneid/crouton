@@ -646,6 +646,27 @@ if [ ! "$NOLOGIN" = 1 ] && grep -q '^root:' "$passwd" 2>/dev/null; then
         # systemd-logind doesn't fork
         chrootcmd "/lib/systemd/systemd-logind >/dev/null 2>&1 </dev/null &"
     fi
+
+    # Launch a daemon that can kill frecon when an X server is launched.
+    # FIXME: remove when crbug.com/457075 is resolved
+    if [ -f /sbin/frecon ]; then
+        mkdir -p "$CROUTONLOCKDIR"
+        chmod 777 "$CROUTONLOCKDIR"
+        if [ ! -e "$CROUTONLOCKDIR/frecon" ]; then
+            mkfifo "$CROUTONLOCKDIR/frecon"
+            chmod 622 "$CROUTONLOCKDIR/frecon"
+        fi
+        chrootcmd "(exec >/dev/null 2>&1 </dev/null
+            while read cmd <'$CROUTONLOCKDIR/frecon'; do
+                if [ \"\$cmd\" = $$ ]; then
+                    break
+                elif [ -z \"\$cmd\" ]; then
+                    pkill '^frecon\$' || true
+                fi
+            done
+        ) &"
+        addtrap "(echo $$ >> '$CROUTONLOCKDIR/frecon') & :"
+    fi
 fi
 
 # Start the chroot and any specified command
