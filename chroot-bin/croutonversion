@@ -72,6 +72,10 @@ if [ -z "$CHANGES$DOWNLOAD$UPDATES" ]; then
     echo "crouton: version $VERSION"
     echo "release: $RELEASE"
     echo "architecture: $ARCH"
+    xmethodfile='/etc/crouton/xmethod'
+    if [ -r "$xmethodfile" ]; then
+        echo "xmethod: `cat "$xmethodfile"`"
+    fi
     targetfile='/etc/crouton/targets'
     if [ -r "$targetfile" ]; then
         echo "targets: `sed 's/^,//' "$targetfile"`"
