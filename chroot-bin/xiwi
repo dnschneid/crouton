@@ -13,17 +13,14 @@ if [ "$#" = 0 ]; then
     exit 2
 elif [ "$1" = '/' ]; then
     shift 1
-    "$@" &
-    exec ratpoison -f /dev/stdin >/dev/null <<WMRC
+    ratpoison -f /dev/stdin >/dev/null <<WMRC &
         escape C-S-M-Escape
         set border 0
         startup_message off
         addhook newwindow exec '$xiwicmd' // '$1'
         addhook switchwin exec '$xiwicmd' // '$1'
-        addhook deletewindow exec sleep 1 \
-            && ! ratpoison -c 'windows %%' | grep -q '%' \
-            && ratpoison -c quit || true
 WMRC
+    exec "$@"
 elif [ "$1" = '//' ]; then
     # Titlebar update. $2 has the original command name
     wininfo="`ratpoison -c 'windows %s%i %t' | sed -n '/^\*/s/^.//p'`"
@@ -44,5 +41,5 @@ elif [ "$1" = '//' ]; then
     } 3>> "/tmp/crouton-lock/xiwi-$DISPLAY-$id" &
 else
     export XMETHOD=xiwi
-    exec /usr/local/bin/xinit "`readlink -f "$0"`" / "$@"
+    exec /usr/local/bin/xinit "$xiwicmd" / "$@"
 fi
