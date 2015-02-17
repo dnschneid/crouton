@@ -10,14 +10,20 @@ if [ "$#" = 0 ]; then
     exit 2
 elif [ "$1" = '/' ]; then
     shift 1
+    genwindowname="`cat /etc/crouton/name`/$1: \`\
+        ratpoison -c 'windows %s%t' | sed -n '/^\*/s/^.//p'\`"
     "$@" &
     exec /usr/bin/ratpoison -f /dev/stdin <<WMRC
         escape C-S-M-Escape
         set border 0
         startup_message off
+        addhook newwindow exec \
+            xprop -root -f CROUTON_NAME 8s -set CROUTON_NAME "$genwindowname"
+        addhook switchwin exec \
+            xprop -root -f CROUTON_NAME 8s -set CROUTON_NAME "$genwindowname"
         addhook deletewindow exec sleep 1 \
-            && [ -z "\`"/usr/bin/ratpoison" -"windows %%"\`" ] \
-            && "/usr/bin/ratpoison" -c quit || true
+            && ! ratpoison -c 'windows %%' | grep -q '%' \
+            && ratpoison -c quit || true
 WMRC
 fi
 export XMETHOD=xiwi
