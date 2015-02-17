@@ -483,6 +483,9 @@ function websocketMessage(evt) {
                     kiwi_win_[k.display].window.setTitle(k.name);
                 }
             })
+
+            lastwindowlistupdate_ = new Date().getTime();
+            websocket_.send("COK");
         }
         refreshUI();
         break;
