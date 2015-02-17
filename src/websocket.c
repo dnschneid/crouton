@@ -28,6 +28,8 @@ static int pipein_fd = -1;
 static int pipeout_fd = -1;
 
 static void pipeout_close();
+static int socket_client_handle_unrequested(const char* buffer,
+                                            const int length);
 
 /* Open a pipe in non-blocking mode, then set it back to blocking mode. */
 /* Returns fd on success, -1 if the pipe cannot be open, -2 if the O_NONBLOCK
@@ -151,6 +153,7 @@ static void pipein_read() {
     int n;
     char buffer[FRAMEMAXHEADERSIZE+BUFFERSIZE];
     int first = 1;
+    char firstchar = '\0';
 
     if (client_fd < 0) {
         log(1, "No client FD.");
@@ -170,6 +173,9 @@ static void pipein_read() {
         } else if (n == 0) {
             break;
         }
+
+        if (first)
+            firstchar = buffer[FRAMEMAXHEADERSIZE];
 
         /* Write a text frame for the first packet, then cont frames. */
         n = socket_client_write_frame(buffer, n,
@@ -202,6 +208,7 @@ static void pipein_read() {
     int fin = 0;
     uint32_t maskkey;
     int retry = 0;
+    first = 1;
 
     /* Ignore return value, so we still read the frame even if pipeout
      * cannot be open. */
@@ -217,21 +224,49 @@ static void pipein_read() {
             continue;
 
         if (len < 0)
-            break;
+            goto exit;
 
         /* Read the whole frame, and write it to pipeout */
         while (len > 0) {
             int rlen = (len > BUFFERSIZE) ? BUFFERSIZE: len;
-            if (socket_client_read_frame_data(buffer, rlen, maskkey) < 0) {
-                pipeout_close();
-                return;
+            if (socket_client_read_frame_data(buffer, rlen, maskkey) < 0)
+                goto exit;
+
+            /* Check first byte */
+            if (first && buffer[0] != firstchar && buffer[0] != 'E') {
+                /* This is not a response: unrequested packet */
+                if (!fin && len < BUFFERSIZE) {
+                    /* !fin, and buffer not full, finish reading... */
+                    rlen = socket_client_read_frame(buffer+len,
+                                                    sizeof(buffer)-len);
+                    if (rlen < 0)
+                        goto exit;
+
+                    len += rlen;
+                }
+
+                if (len >= BUFFERSIZE) {
+                    error("Unrequested command too long: (>%d bytes).", len);
+                    socket_client_close(1);
+                    goto exit;
+                }
+
+                if (socket_client_handle_unrequested(buffer, len) < 0)
+                    goto exit;
+
+                /* Command was handled, try reading the answer again. */
+                fin = 0;
+                break;
             }
+
             /* Ignore return value as well */
             pipeout_write(buffer, rlen);
             len -= rlen;
+            first = 0;
         }
     }
 
+exit:
     pipeout_close();
 }
 
@@ -312,37 +347,37 @@ void pipe_init() {
     pipein_reopen();
 }
 
-/* Unrequested data came in from WebSocket client. */
-static void socket_client_read() {
-    char buffer[BUFFERSIZE];
-    int length;
-
-    length = socket_client_read_frame(buffer, sizeof(buffer));
-    if (length < 0) {
-        socket_client_close(1);
-        return;
-    }
-
+/* Handle unrequested packet from extension.
+ * Returns 0 on success. On error, returns -1 and closes websocket connection.
+ */
+static int socket_client_handle_unrequested(const char* buffer,
+                                            const int length) {
     /* Process the client request. */
-    buffer[length == BUFFERSIZE ? BUFFERSIZE-1 : length] = 0;
     switch (buffer[0]) {
-        case 'C':  /* Send a command to croutoncycle */
-            log(2, "Received croutoncycle command (%s)", &buffer[1]);
-            char* cmd = "croutoncycle";
-            char* args[] = { cmd, &buffer[1], NULL };
+        case 'C': {  /* Send a command to croutoncycle */
+            char reply[BUFFERSIZE];
+            int replylength = 1;
+            reply[FRAMEMAXHEADERSIZE] = 'C';
 
-            buffer[FRAMEMAXHEADERSIZE] = 'C';
+            char* cmd = "croutoncycle";
+            char param[length];
+            memcpy(param, buffer+1, length-1);
+            param[length-1] = '\0';
+            char* args[] = { cmd, param, NULL };
+
+            log(2, "Received croutoncycle command (%s)", param);
+
             /* We are only interested in the output for list commands */
-            if (buffer[1] == 'l') {
-                length = popen2(cmd, args, NULL, 0,
-                                &buffer[FRAMEMAXHEADERSIZE+1],
-                                BUFFERSIZE-FRAMEMAXHEADERSIZE-1);
-                if (length == -1) {
+            if (param[0] == 'l') {
+                int n = popen2(cmd, args, NULL, 0,
+                               &reply[FRAMEMAXHEADERSIZE+1],
+                               BUFFERSIZE-FRAMEMAXHEADERSIZE-1);
+                if (n < 0) {
                     error("Call to croutoncycle failed.");
                     socket_client_close(0);
-                    return;
+                    return -1;
                 }
-                length++;
+                replylength += n;
             } else {
                 /* Launch command in background (this is necessary as
                    croutoncycle may send a websocket command, leaving us
@@ -366,20 +401,48 @@ static void socket_client_read() {
                 }
                 /* Wait for first fork to complete. */
                 waitpid(pid, NULL, 0);
-                length = 1;
             }
-            if (socket_client_write_frame(buffer, length,
+            if (socket_client_write_frame(reply, replylength,
                                           WS_OPCODE_TEXT, 1) < 0) {
                 error("Write error.");
                 socket_client_close(0);
-                return;
+                return -1;
             }
             break;
-        default:
-            error("Received an unexpected packet from client.");
+        }
+        default: {
+            int len = length > 64 ? 64 : length;
+            char dump[len+1];
+            memcpy(dump, buffer, len);
+            dump[len] = '\0';
+            error("Received an unexpected packet from client (%s).", dump);
             socket_client_close(0);
-            break;
+            return -1;
+        }
     }
+
+    return 0;
+}
+
+/* Unrequested data came in from WebSocket client. */
+static void socket_client_read() {
+    char buffer[BUFFERSIZE];
+    int length;
+
+    length = socket_client_read_frame(buffer, sizeof(buffer));
+    if (length < 0) {
+        socket_client_close(1);
+        return;
+    }
+
+    if (length >= BUFFERSIZE) {
+        error("Unrequested command too long: (>%d bytes).", length);
+        socket_client_close(1);
+        return;
+    }
+
+    /* Ignore return value (connection gets closed on error) */
+    socket_client_handle_unrequested(buffer, length);
 }
 
 static int terminate = 0;

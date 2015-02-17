@@ -24,6 +24,9 @@ compile fbserver '-lX11 -lXfixes -lXdamage -lXext -lXtst' \
         arch=,libx11-dev arch=,libxfixes-dev arch=,libxdamage-dev \
         arch=,libxext-dev arch=,libxtst-dev
 
+# Make croutonfbserver setuid root. See issue #1411; this is way insecure
+chmod u+s /usr/local/bin/croutonfbserver
+
 ln -sf /etc/crouton/xorg-dummy.conf /etc/X11/
 
 # Download the latest xf86-video-dummy package

@@ -38,9 +38,6 @@ MIRRORENV=""
 # Maximum test run time (minutes): 24 hours
 MAXTESTRUNTIME="$((24*60))"
 GSAUTOTEST="gs://chromeos-autotest-results"
-# FIXME: Remove this when test is merged (>=R39): a temporary hack fetches
-# the crouton test from gs://drinkcat-crouton/crouton-test/packages
-TESTCSUM="811e9713f6357ee3996cb7cce80a3e2b"
 
 USAGE="$APPLICATION [options] -q QUEUEURL
 
@@ -373,7 +370,6 @@ while sleep "$POLLINTERVAL"; do
                         -e "s|###BRANCH###|$branch|" \
                         -e "s|###RUNARGS###|$params|" \
                         -e "s|###ENV###|$MIRRORENV|" \
-                        -e "s|###TESTCSUM###|$TESTCSUM|" \
                         $SCRIPTDIR/test/autotest_control.template \
                         > "$curtesthostroot/control"
 

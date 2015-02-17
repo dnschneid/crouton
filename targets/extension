@@ -4,7 +4,7 @@
 # found in the LICENSE file.
 REQUIRES='x11'
 DESCRIPTION='Clipboard synchronization and URL handling with Chromium OS.'
-CHROOTBIN='croutonclip croutonurlhandler'
+CHROOTBIN='croutonclip croutonnotify croutonurlhandler'
 EXTENSION='gcpneefbbnfalgjniomfjknbcgkbijom'
 
 # Check if the extension is installed and add a mark to the preparation script
