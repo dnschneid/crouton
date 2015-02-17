@@ -6,6 +6,7 @@
 # Runs the specified X11 application in its own X server in Chromium OS.
 
 . "`dirname "$0"`/../installer/functions"
+xiwicmd="`readlink -f "$0"`"
 
 if [ "$#" = 0 ]; then
     echo "Usage: $0 cmd params" 1>&2
@@ -13,8 +14,7 @@ if [ "$#" = 0 ]; then
 elif [ "$1" = '/' ]; then
     shift 1
     "$@" &
-    xiwicmd="`readlink -f "$0"`"
-    exec ratpoison -f /dev/stdin <<WMRC
+    exec ratpoison -f /dev/stdin >/dev/null <<WMRC
         escape C-S-M-Escape
         set border 0
         startup_message off
@@ -26,13 +26,22 @@ elif [ "$1" = '/' ]; then
 WMRC
 elif [ "$1" = '//' ]; then
     # Titlebar update. $2 has the original command name
-    title="`ratpoison -c 'windows %s%t' | sed -n '/^\*/s/^.//p'`"
-    title="`cat /etc/crouton/name`/$2: $title"
+    wininfo="`ratpoison -c 'windows %s%i %t' | sed -n '/^\*/s/^.//p'`"
+    id="${wininfo%% *}"
+    title="`cat /etc/crouton/name`/$2: ${wininfo#* }"
     xprop -root -f CROUTON_NAME 8s -set CROUTON_NAME "$title"
     ret="`{ echo -n 'C'; croutoncycle l; } | websocketcommand`"
     if [ "$ret" != 'COK' ]; then
         error 1 "${ret#?}"
     fi
+    # Launch titlebar monitoring daemon (only need one per window per display)
+    {
+        flock -n 3 || exit 0
+        xprop -spy -notype -id "$id" '_NET_WM_NAME' 2>/dev/null \
+            | while read _; do
+                "$xiwicmd" // "$2"
+            done
+    } 3>> "/tmp/crouton-lock/xiwi-$DISPLAY-$id" &
 else
     export XMETHOD=xiwi
     exec /usr/local/bin/xinit "`readlink -f "$0"`" / "$@"
