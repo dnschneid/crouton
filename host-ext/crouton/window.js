@@ -16,7 +16,7 @@ var errordiv_ = null; /* error div */
 var debug_ = 0; /* Debuging level, passed to NaCl module */
 var hidpi_ = 0; /* HiDPI mode */
 var display_ = null; /* Display number to use */
-var title_ = "crouton in a tab"; /* window title */
+var title_ = "crouton in a window"; /* window title */
 var connected_ = false;
 var closing_ = false; /* Disconnected, and waiting for the window to close */
 var error_ = false; /* An error has occured */
@@ -95,7 +95,7 @@ function setHiDPI(hidpi) {
 }
 
 function setTitle(title) {
-    document.title = "crouton in a tab: " + title + " (" + display_ + ")";
+    document.title = "crouton (" + display_ + "): " + title;
 }
 
 /* Set status message */
