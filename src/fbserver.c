@@ -438,11 +438,10 @@ int write_image(const struct screen* screen) {
 /* Writes cursor image to websocket */
 int write_cursor() {
     XFixesCursorImage *img = XFixesGetCursorImage(dpy);
-    if (!img) {
-        error("XFixesGetCursorImage returned NULL");
-        return -1;
+    int size = 0;
+    if (img) {
+        size = img->width*img->height;
     }
-    int size = img->width*img->height;
     const int replylength = sizeof(struct cursor_reply) + size*sizeof(uint32_t);
     char reply_raw[FRAMEMAXHEADERSIZE + replylength];
     struct cursor_reply* reply =
@@ -451,18 +450,20 @@ int write_cursor() {
     memset(reply_raw, 0, sizeof(*reply_raw));
 
     reply->type = 'P';
-    reply->width = img->width;
-    reply->height = img->height;
-    reply->xhot = img->xhot;
-    reply->yhot = img->yhot;
-    reply->cursor_serial = img->cursor_serial;
-    /* This casts long[] to uint32_t[] */
-    int i;
-    for (i = 0; i < size; i++)
-        reply->pixels[i] = img->pixels[i];
+    if (img) {
+        reply->width = img->width;
+        reply->height = img->height;
+        reply->xhot = img->xhot;
+        reply->yhot = img->yhot;
+        reply->cursor_serial = img->cursor_serial;
+        /* This casts long[] to uint32_t[] */
+        int i;
+        for (i = 0; i < size; i++)
+            reply->pixels[i] = img->pixels[i];
+        XFree(img);
+    }
 
     socket_client_write_frame(reply_raw, replylength, WS_OPCODE_BINARY, 1);
-    XFree(img);
 
     return 0;
 }
