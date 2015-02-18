@@ -13,6 +13,7 @@ if [ "$#" = 0 ]; then
     exit 2
 elif [ "$1" = '/' ]; then
     shift 1
+    xsetroot -cursor_name left_ptr
     ratpoison -f /dev/stdin >/dev/null <<WMRC &
         escape C-S-M-Escape
         set border 0
