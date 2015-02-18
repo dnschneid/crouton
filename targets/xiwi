@@ -408,6 +408,11 @@ TIPS="$TIPS"'
 You can open your running chroot desktops by clicking on the extension icon.
 Once in a crouton window, press fullscreen or the "switch window" key to switch
 back to Chromium OS.
+
+You can launch individual apps in crouton windows by using the "xiwi" command
+in the chroot shell. Wrap that command with enter-chroot to launch directly
+from the host shell. Use the enter-chroot parameter -b to run in the background.
+Example: sudo enter-chroot -b xiwi xterm
 '
 
 ### append x11-common

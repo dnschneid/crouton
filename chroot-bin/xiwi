@@ -9,7 +9,8 @@
 xiwicmd="`readlink -f "$0"`"
 
 if [ "$#" = 0 ]; then
-    echo "Usage: $0 cmd params" 1>&2
+    echo "Usage: ${0##*/} application [parameters ...]
+Launches a windowed session in Chromium OS for any graphical application." 1>&2
     exit 2
 elif [ "$1" = '/' ]; then
     shift 1
