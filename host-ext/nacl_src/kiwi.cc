@@ -211,7 +211,6 @@ private:
         }
 
         cursor_cache_.clear();
-        last_cursor_request_ = 0;
 
         SocketReceive();
 
@@ -312,14 +311,11 @@ private:
             if (it == cursor_cache_.end()) {
                 /* No cache entry, ask for data. */
                 SocketSend(pp::Var("P"), false);
-                last_cursor_request_ = reply->cursor_serial;
             } else {
                 LogMessage(2) << "Cursor use cache for "
                               << reply->cursor_serial;
-                pp::MouseCursor::SetCursor(this,
-                        it->second.img.is_null() ? PP_MOUSECURSOR_TYPE_POINTER
-                                                 : PP_MOUSECURSOR_TYPE_CUSTOM,
-                        it->second.img, it->second.hot);
+                pp::MouseCursor::SetCursor(this, PP_MOUSECURSOR_TYPE_CUSTOM,
+                                           it->second.img, it->second.hot);
             }
         }
         return true;
@@ -352,28 +348,21 @@ private:
 
         int w = cursor->width/scale;
         int h = cursor->height/scale;
-        pp::ImageData img;
-        if (cursor->cursor_serial) {
-            img = pp::ImageData(this, pp::ImageData::GetNativeImageDataFormat(),
-                                pp::Size(w, h), true);
-            uint32_t* imgdata = (uint32_t*)img.data();
-            for (int y = 0; y < h; y++) {
-                for (int x = 0; x < w; x++) {
-                    /* Nearest neighbour is least ugly */
-                    imgdata[y*w + x] = cursor->pixels[scale*y*scale*w + scale*x];
-                }
+        pp::ImageData img(this, pp::ImageData::GetNativeImageDataFormat(),
+                          pp::Size(w, h), true);
+        uint32_t* imgdata = (uint32_t*)img.data();
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) {
+                /* Nearest neighbour is least ugly */
+                imgdata[y*w + x] = cursor->pixels[scale*y*scale*w + scale*x];
             }
-        } else {
-            cursor->cursor_serial = last_cursor_request_;
         }
         pp::Point hot(cursor->xhot/scale, cursor->yhot/scale);
 
         cursor_cache_[cursor->cursor_serial].img = img;
         cursor_cache_[cursor->cursor_serial].hot = hot;
-        pp::MouseCursor::SetCursor(this,
-                img.is_null() ? PP_MOUSECURSOR_TYPE_POINTER
-                              : PP_MOUSECURSOR_TYPE_CUSTOM,
-                img, hot);
+        pp::MouseCursor::SetCursor(this, PP_MOUSECURSOR_TYPE_CUSTOM,
+                                       img, hot);
         return true;
     }
 
@@ -1099,7 +1088,6 @@ public:
         pp::Point hot;
     };
     std::unordered_map<uint32_t, Cursor> cursor_cache_;
-    uint32_t last_cursor_request_;
 
     /* Display to connect to */
     int display_ = -1;
