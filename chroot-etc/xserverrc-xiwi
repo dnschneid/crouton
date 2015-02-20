@@ -17,12 +17,19 @@ if [ -f /etc/crouton/xserverrc-local ]; then
     . /etc/crouton/xserverrc-local
 fi
 
-# On Arch, Xorg is setuid, and Xorg.bin is non-setuid, while on Ubuntu/Debian,
-# X is setuid, and Xorg is non-setuid (Xorg.bin does not exist). So prefer
-# Xorg.bin, then fall back on Xorg.
-XBIN="/usr/bin/Xorg.bin"
-if [ ! -x "$XBIN" ]; then
-    XBIN="/usr/bin/Xorg"
+# Find the Xorg executable (first 2 required by Arch, third by Debian/Ubuntu)
+XBINS="/usr/lib/xorg-server/Xorg /usr/bin/Xorg.bin /usr/bin/Xorg"
+XBIN=""
+for xbin in $XBINS; do
+    if [ -x "$xbin" ] && ! [ -u "$xbin" -o -g "$xbin" ]; then
+        XBIN="$xbin"
+        break
+    fi
+done
+
+if [ -z "$XBIN" ]; then
+    echo "Cannot find non-setuid Xorg executable." 1>&2
+    exit 1
 fi
 
 exec "$XBIN" $XARGS "$@"
