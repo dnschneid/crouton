@@ -78,40 +78,8 @@ if [ "$XMETHOD" = 'xephyr' ]; then
     croutonwheel $CROUTON_WHEEL_PARAMS &
 fi
 
-# Launch system-wide triggerhappy if it isn't running
-mkdir -m 775 -p /tmp/crouton-lock
-{
-    # Only let one instance *really* run at a time
-    flock 3
-    cmdprev='/usr/local/bin/croutoncycle p'
-    cmdnext='/usr/local/bin/croutoncycle n'
-    echo "#
-# Ctrl+Alt+Shift+F1 = previous. Require full key release to avoid stuck keys.
-KEY_F1+KEY_LEFTSHIFT+KEY_LEFTCTRL+KEY_LEFTALT@ 1 @p
-KEY_F1@p 0 $cmdprev
-KEY_LEFTSHIFT@p 0 $cmdprev
-KEY_LEFTCTRL@p 0 $cmdprev
-KEY_LEFTALT@p 0 $cmdprev
-KEY_F1@p 0 @
-KEY_LEFTSHIFT@p 0 @
-KEY_LEFTCTRL@p 0 @
-KEY_LEFTALT@p 0 @
-#
-# Ctrl+Alt+Shift+F2 = next Require full key release to avoid stuck keys.
-KEY_F2+KEY_LEFTSHIFT+KEY_LEFTCTRL+KEY_LEFTALT@ 1 @n
-KEY_F2@n 0 $cmdnext
-KEY_LEFTSHIFT@n 0 $cmdnext
-KEY_LEFTCTRL@n 0 $cmdnext
-KEY_LEFTALT@n 0 $cmdnext
-KEY_F2@n 0 @
-KEY_LEFTSHIFT@n 0 @
-KEY_LEFTCTRL@n 0 @
-KEY_LEFTALT@n 0 @
-#" | /usr/sbin/thd --triggers /dev/stdin \
-        --socket /tmp/crouton-lock/thd.socket /dev/input/event* >/dev/null &
-    trap "kill '$!' 2>/dev/null" HUP INT TERM
-    wait "$!" || true
-} 3>/tmp/crouton-lock/xbindkeys &
+# Launch system-wide trigger daemon
+croutontriggerd &
 
 # Input-related stuff is not needed for kiwi
 if [ "$XMETHOD" != "xiwi" ]; then
@@ -120,7 +88,7 @@ if [ "$XMETHOD" != "xiwi" ]; then
         setxkbmap -model chromebook
     fi
 
-    # Launch key binding daemon
+    # Launch X-server-local key binding daemon
     xbindkeys -fg /etc/crouton/xbindkeysrc.scm
 
     # Launch touchegg if it is requested.
