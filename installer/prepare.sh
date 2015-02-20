@@ -181,7 +181,9 @@ fixkeyboardmode() {
 # [$3]: if 'so', compiles as a shared object and installs it into lib
 # $3+: any package dependencies other than gcc and libc-dev, crouton-style.
 compile() {
-    local out="/usr/local/bin/crouton$1" linker="$2" cflags='-xc -Os'
+    local out="/usr/local/bin/crouton$1"
+    local linker="$2"
+    local cflags='-xc -Os'
     if [ "$3" = 'so' ]; then
         out="/usr/local/lib/crouton$1.so"
         cflags="$cflags -shared -fPIC"

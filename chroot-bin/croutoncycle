@@ -98,7 +98,7 @@ done
 freonowner=''
 if [ ! -f "/sys/class/tty/tty0/active" ]; then
     if [ -f "/tmp/crouton-lock/display" ]; then
-        read freonowner < "/tmp/crouton-lock/display"
+        read -r freonowner < "/tmp/crouton-lock/display"
     fi
     freonowner="${freonowner:-0}"
     winlist="aura*"

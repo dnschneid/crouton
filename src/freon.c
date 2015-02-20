@@ -28,8 +28,7 @@
            "--type=method_call --print-reply /org/chromium/LibCrosService " \
            "org.chromium.LibCrosServiceInterface." #function)
 
-// #define TRACE(...) fprintf(stderr, __VA_ARGS__)
-#define TRACE(...)
+#define TRACE(...) /* fprintf(stderr, __VA_ARGS__) */
 #define ERROR(...) fprintf(stderr, __VA_ARGS__)
 
 static int tty0fd = -1;
@@ -46,9 +45,16 @@ static void preload_init() {
     orig_close = dlsym(RTLD_NEXT, "close");
 }
 
+/* Grabs the system-wide lockfile that arbitrates which chroot is using the GPU.
+ *
+ * pid should be either the pid of the process that owns the GPU (eg. getpid()),
+ * or 0 to indicate that Chromium OS now owns the GPU.
+ *
+ * Returns 0 on success, or -1 on error.
+ */
 static int set_display_lock(unsigned int pid) {
     if (lockfd == -1) {
-        if (!pid) {
+        if (pid == 0) {
             ERROR("No display lock to release.\n");
             return 0;
         }
@@ -77,7 +83,7 @@ static int set_display_lock(unsigned int pid) {
         ERROR("Unable to write to display lock file.\n");
         return -1;
     }
-    if (!pid) {
+    if (pid == 0) {
         int ret = orig_close(lockfd);
         lockfd = -1;
         if (ret == -1) {
@@ -116,13 +122,13 @@ int ioctl(int fd, unsigned long int request, ...) {
             if (lockfd != -1) {
                 TRACE("Telling Chromium OS to regain control\n");
                 ret = FREON_DBUS_METHOD_CALL(TakeDisplayOwnership);
-                if (set_display_lock(0)) {
+                if (set_display_lock(0) < 0) {
                     ERROR("Failed to release display lock\n");
                 }
             }
         } else if ((request == VT_RELDISP && (long)data == 2) ||
                    (request == VT_ACTIVATE && (long)data == 7)) {
-            if (!set_display_lock(getpid())) {
+            if (set_display_lock(getpid()) == 0) {
                 TRACE("Telling Chromium OS to drop control\n");
                 ret = FREON_DBUS_METHOD_CALL(ReleaseDisplayOwnership);
             } else {
