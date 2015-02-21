@@ -5,8 +5,8 @@
 
 # All supported releases should be able to launch an xorg server
 if [ -z "$release" ]; then
-    if uname -m | grep -q 'arm'; then
-        log "xorg is not available on ARM. Skipping test."
+    if grep -q 'SAMSUNG EXYNOS' /proc/cpuinfo; then
+        log "xorg is not available on Samsung ARM. Skipping test."
     else
         echo "all"
     fi
