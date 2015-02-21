@@ -17,8 +17,12 @@ elif [ "$1" = '/' ]; then
     xsetroot -cursor_name left_ptr
     ratpoison -f /dev/stdin >/dev/null <<WMRC &
         escape C-S-M-Escape
+        bind C-S-M-Escape delete
         set border 0
         startup_message off
+        definekey top C-M-Tab next
+        definekey top C-S-M-Tab prev
+        definekey top C-M-ISO_Left_Tab prev
         addhook newwindow exec '$xiwicmd' // '$1'
         addhook switchwin exec '$xiwicmd' // '$1'
 WMRC
