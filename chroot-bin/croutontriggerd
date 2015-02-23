@@ -8,6 +8,11 @@
 . "`dirname "$0"`/../installer/functions"
 
 # hexdump output format variables
+if getconf LONG_BIT | grep -q 32; then
+    HEXDUMP_FMT='2/4 "%u 0 " " " 2/2 "%u " " " 1/4 "%u " "\n"'
+else
+    HEXDUMP_FMT='4/4 "%u " " " 2/2 "%u " " " 1/4 "%u " "\n"'
+fi
 SECONDS_LO='$1'
 SECONDS_HI='$2'
 USECONDS_LO='$3'
@@ -57,8 +62,7 @@ while :; do
             unset "$event"
         else
             # Read in the event files and split into input_event fields
-            stdbuf -oL hexdump -e '4/4 "%u " " " 2/2 "%u " " " 1/4 "%u " "\n"' \
-                "$event" &
+            stdbuf -oL hexdump -e "$HEXDUMP_FMT" "$event" &
             eval "${event##*/}='$!'"
         fi
     done
