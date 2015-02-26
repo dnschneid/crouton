@@ -243,7 +243,7 @@ struct cache_entry* find_shm(uint64_t paddr, uint64_t sig, size_t length) {
             if (*((uint64_t*)entry->map) == sig)
                 return entry;
 
-            error("Invalid signature, fetching new shm!");
+            log(1, "Invalid signature, fetching new shm!");
             close_mmap(entry);
         }
 
