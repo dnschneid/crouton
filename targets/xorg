@@ -3,17 +3,15 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 if [ "${TARGETNOINSTALL:-c}" = 'c' ]; then
-    if [ -f /sbin/frecon ]; then
-        error 1 'xorg target does not yet work with Freon.'
-    elif [ "${ARCH#arm}" != "$ARCH" ]; then
-        error 1 'xorg target does not work on ARM.'
+    if grep -q 'SAMSUNG EXYNOS' /proc/cpuinfo; then
+        error 1 'xorg target does not work on Samsung ARM devices.'
     fi
 fi
 REQUIRES='audio'
 PROVIDES='x11'
 DESCRIPTION='X.Org X11 backend. Enables GPU acceleration on supported platforms.'
-CHROOTBIN='croutoncycle croutonxinitrc-wrapper setres xinit'
-CHROOTETC='xbindkeysrc.scm xserverrc xserverrc-xorg xserverrc-local.example'
+CHROOTBIN='croutoncycle croutontriggerd croutonxinitrc-wrapper setres xinit'
+CHROOTETC='xbindkeysrc.scm xorg-intel-sna.conf xserverrc xserverrc-xorg xserverrc-local.example'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
@@ -22,14 +20,20 @@ XMETHOD="${XMETHOD:-xorg}"
 # Migration from ambiguous XMETHOD
 rm -f '/etc/crouton/xserverrc-x11'
 
+# On Freon, we need crazy xorg hacks
+if [ ! -f "/sys/class/tty/tty0/active" ]; then
+    compile freon '-ldl' so
+fi
+
 ltspackages=''
-# On precise, install lts-trusty xorg server to support newer hardware if kernel
-# version != 3.4 (lts-trusty mesa requires version >=3.6)
-if release -eq precise && ! uname -r | grep -q "^3.4."; then
+# On non-ARM precise, install lts-trusty xorg server to support newer hardware
+# if kernel version != 3.4 (lts-trusty mesa requires version >=3.6)
+if [ "${ARCH#arm}" = "$ARCH" ] && release -eq precise \
+        && ! uname -r | grep -q "^3.4."; then
     # We still install xorg later to pull in its dependencies
-    install --minimal xserver-xorg-lts-trusty libgl1-mesa-glx-lts-trusty \
-        xserver-xorg-input-synaptics-lts-trusty
     ltspackages='-lts-trusty'
+    install --minimal "xserver-xorg$ltspackages" "libgl1-mesa-glx$ltspackages" \
+        "xserver-xorg-input-synaptics$ltspackages"
 fi
 
 # On saucy onwards, if kernel version is 3.4, manually pin down old mesa
@@ -100,8 +104,21 @@ END
     apt-get -y --force-yes --no-install-recommends dist-upgrade -f
 fi
 
-install xorg dmz-cursor-theme \
-    xserver-xorg-video-fbdev$ltspackages xserver-xorg-video-intel$ltspackages
+install xorg dmz-cursor-theme xserver-xorg-video-fbdev$ltspackages
+if [ "${ARCH#arm}" = "$ARCH" ]; then
+    install xserver-xorg-video-intel$ltspackages
+fi
+
+# This is a system with framebuffer compression, so we need SNA+tearfree
+xorgconf='/usr/share/X11/xorg.conf.d/20-crouton-intel-sna.conf'
+if grep -q 1 '/sys/module/i915/parameters/i915_enable_fbc' 2>/dev/null; then
+    mkdir -p "${xorgconf%/*}"
+    ln -sfT /etc/crouton/xorg-intel-sna.conf "$xorgconf"
+else
+    # In case this got moved to a different system, delete the config
+    rm -f "$xorgconf"
+fi
+
 # Fix launching X11 from inside crosh (user doesn't own a TTY)
 sed -i 's/allowed_users=.*/allowed_users=anybody/' '/etc/X11/Xwrapper.config'
 
