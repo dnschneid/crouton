@@ -30,7 +30,14 @@ if [ ! -f "/sys/class/tty/tty0/active" ]; then
     fi
     # Freon necessitates the preload hack for X to coexist
     X=/usr/bin/Xorg
-    XARGS="-logfile /tmp/Xorg.$$.log $XARGS"
+    logfile="/tmp/Xorg.crouton.$$.log"
+    for arg in "$@"; do
+        disp="`echo "$arg" | sed -n 's/^\:\([0-9]*\)$/\1/p'`"
+        if [ -n "$disp" ]; then
+            logfile="/tmp/Xorg.crouton.$disp.log"
+        fi
+    done
+    XARGS="-logfile $logfile"
     export LD_PRELOAD="/usr/local/lib/croutonfreon.so:$LD_PRELOAD"
 fi
 
