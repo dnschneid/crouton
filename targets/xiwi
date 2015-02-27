@@ -12,6 +12,11 @@ CHROOTETC='xbindkeysrc.scm xorg-dummy.conf xserverrc xserverrc-xiwi xserverrc-lo
 ### Append to prepare.sh:
 XMETHOD="${XMETHOD:-xiwi}"
 
+# On Freon, we need crazy xorg hacks
+if [ ! -f "/sys/class/tty/tty0/active" ]; then
+    compile freon '-ldl' so
+fi
+
 # Unhold xserver-xorg-video-dummy to make sure deps are pulled in
 if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
     apt-mark unhold xserver-xorg-video-dummy || true 2>/dev/null
