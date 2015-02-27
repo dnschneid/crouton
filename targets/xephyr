@@ -32,7 +32,7 @@ fi
 
 # xserver-xephyr won't auto replace the manually-downloaded version.
 install --minimal \
-    xserver-xephyr xinit dmz-cursor-theme libgl1-mesa-dri \
+    xserver-xephyr xinit libgl1-mesa-dri \
     x11-utils x11-xserver-utils xinput xterm
 
 # Compile croutoncursor

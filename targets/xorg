@@ -104,7 +104,7 @@ END
     apt-get -y --force-yes --no-install-recommends dist-upgrade -f
 fi
 
-install xorg dmz-cursor-theme xserver-xorg-video-fbdev$ltspackages
+install xorg xserver-xorg-video-fbdev$ltspackages
 if [ "${ARCH#arm}" = "$ARCH" ]; then
     install xserver-xorg-video-intel$ltspackages
 fi

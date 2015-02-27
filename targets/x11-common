@@ -20,6 +20,9 @@ install --minimal dbus xdg-utils
 ln -sf croutonpowerd /usr/local/bin/gnome-screensaver-command
 ln -sf croutonpowerd /usr/local/bin/xscreensaver-command
 
+# Install nicer cursors
+install --minimal dmz-cursor-theme
+
 # Install bsdmainutils, xbindkeys and xautomation for shortcuts; kbd for chvt
 install --minimal bsdmainutils xbindkeys xautomation kbd
 # Allow users to run sudo chvt without password, so we don't need to run
