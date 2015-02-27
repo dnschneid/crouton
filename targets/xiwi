@@ -17,12 +17,22 @@ if [ ! -f "/sys/class/tty/tty0/active" ]; then
     compile freon '-ldl' so
 fi
 
-# Unhold xserver-xorg-video-dummy to make sure deps are pulled in
-if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
-    apt-mark unhold xserver-xorg-video-dummy || true 2>/dev/null
+ltspackages=''
+# On non-ARM precise, install lts-trusty xorg server for compatibility with xorg
+# if kernel version != 3.4 (lts-trusty mesa requires version >=3.6)
+if [ "${ARCH#arm}" = "$ARCH" ] && release -eq precise \
+        && ! uname -r | grep -q "^3.4."; then
+    # We still install xorg later to pull in its dependencies
+    ltspackages='-lts-trusty'
+    install --minimal "xserver-xorg$ltspackages" "libgl1-mesa-glx$ltspackages"
 fi
 
-install xorg xserver-xorg-video-dummy
+# Unhold xserver-xorg-video-dummy to make sure deps are pulled in
+if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
+    apt-mark unhold xserver-xorg-video-dummy$ltspackages || true 2>/dev/null
+fi
+
+install xorg xserver-xorg-video-dummy$ltspackages
 
 # Compile croutonfbserver
 compile fbserver '-lX11 -lXfixes -lXdamage -lXext -lXtst' \
@@ -45,7 +55,7 @@ echo "Download Xorg dummy driver..." 1>&2
 wget -O "$DUMMYBUILDTMP/dummy.tar.gz" "$urlbase/xf86-video-dummy-0.3.7.tar.gz"
 
 install --minimal --asdeps patch gcc libc-dev pkg-config \
-    xserver-xorg-dev x11proto-xf86dga-dev
+    xserver-xorg-dev$ltspackages x11proto-xf86dga-dev
 
 (
     cd "$DUMMYBUILDTMP"
@@ -388,7 +398,7 @@ EOF
 
 if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
     # Hold xserver-xorg-video-dummy to make sure the driver does not get erased
-    apt-mark hold xserver-xorg-video-dummy
+    apt-mark hold xserver-xorg-video-dummy$ltspackages
 fi
 
 TIPS="$TIPS"'
