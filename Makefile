@@ -62,6 +62,9 @@ $(SRCTARGETS): src/$(patsubst crouton%,src/%.c,$@) $($@_DEPS) Makefile
 croutonfreon.so: src/freon.c Makefile
 	gcc $(CFLAGS) -shared -fPIC src/freon.c -ldl -o croutonfreon.so
 
+croutonxorg.so: src/xorg.c Makefile
+	gcc $(CFLAGS) -shared -fPIC src/xorg.c -ldl -o croutonxorg.so
+
 extension: $(EXTTARGET)
 
 $(CONTRIBUTORS): $(GITHEAD) $(CONTRIBUTORSSED)

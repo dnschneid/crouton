@@ -38,13 +38,11 @@ static int lockfd = -1;
 static int (*orig_ioctl)(int d, int request, void* data);
 static int (*orig_open)(const char *pathname, int flags, mode_t mode);
 static int (*orig_close)(int fd);
-static int (*orig_udev_sysname)(void *udev_enumerate, const char *sysname);
 
 static void preload_init() {
     orig_ioctl = dlsym(RTLD_NEXT, "ioctl");
     orig_open = dlsym(RTLD_NEXT, "open");
     orig_close = dlsym(RTLD_NEXT, "close");
-    orig_udev_sysname = dlsym(RTLD_NEXT, "udev_enumerate_add_match_sysname");
 }
 
 /* Grabs the system-wide lockfile that arbitrates which chroot is using the GPU.
@@ -191,12 +189,4 @@ int close(int fd) {
         tty7fd = -1;
     }
     return orig_close(fd);
-}
-
-int udev_enumerate_add_match_sysname(void *udev_enum, const char *sysname) {
-    if (!orig_udev_sysname) preload_init();
-    if (sysname && !strcmp(sysname, "card[0-9]*")) {
-        sysname = "card0";
-    }
-    return orig_udev_sysname(udev_enum, sysname);
 }

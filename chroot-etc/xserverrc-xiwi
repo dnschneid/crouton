@@ -22,4 +22,6 @@ if [ ! -f "/sys/class/tty/tty0/active" ]; then
     export LD_PRELOAD="/usr/local/lib/croutonfreon.so:$LD_PRELOAD"
 fi
 
+export LD_PRELOAD="/usr/local/lib/croutonxorg.so:$LD_PRELOAD"
+
 exec /usr/bin/Xorg $XARGS "$@"
