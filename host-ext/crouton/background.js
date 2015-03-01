@@ -491,8 +491,16 @@ function websocketMessage(evt) {
         break;
     case 'X': /* Ask to open a crouton window */
         display = payload
-        match = display.match(/^:([0-9]+)$/)
+        match = display.match(/^:([0-9]+)([- ][^- ]*)*$/)
         displaynum = match ? match[1] : null
+        if (displaynum) {
+            display = ":" + displaynum;
+        }
+        mode = (match.length > 2 && match[2].length >= 2) ? match[2][1] : 'f'
+        if (mode != 'f' && mode != 'w') {
+            console.log('invalid xiwi mode: ' + mode);
+            mode = 'f';
+        }
         if (!displaynum) {
             /* Minimize all kiwi windows  */
             var disps = Object.keys(kiwi_win_);
@@ -520,7 +528,7 @@ function websocketMessage(evt) {
                     !kiwi_win_[display].window.closing)) {
             /* focus/full screen an existing window */
             var winid = kiwi_win_[display].id;
-            chrome.windows.update(winid, {focused: true});
+            chrome.windows.update(winid, {'focused': true});
             chrome.windows.get(winid, function(win) {
                 if (win.state == "maximized")
                     chrome.windows.update(winid, {'state': 'fullscreen'},
@@ -538,7 +546,8 @@ function websocketMessage(evt) {
             chrome.windows.create({ 'url': "window.html?display=" + displaynum +
                                            "&debug=" + (debug_ ? 1 : 0) +
                                            "&hidpi=" + (hidpi_ ? 1 : 0) +
-                                           "&title=" + encodeURIComponent(name),
+                                           "&title=" + encodeURIComponent(name) +
+                                           "&mode=" + mode,
                                     'type': "popup" },
                                   function(newwin) {
                                       kiwi_win_[display].id = newwin.id;

@@ -262,8 +262,10 @@ function handleFocusBlur(evt) {
 }
 
 /* Start in full screen */
-chrome.windows.update(chrome.windows.WINDOW_ID_CURRENT,
-                      {'state': "fullscreen"}, function(win) {})
+if (location.search.search(/[&?]mode=f(&|$)/i) != -1) {
+    chrome.windows.update(chrome.windows.WINDOW_ID_CURRENT,
+                          {'state': "fullscreen"}, function(win) {})
+}
 
 document.addEventListener('DOMContentLoaded', function() {
     listener_ = document.getElementById('listener');
