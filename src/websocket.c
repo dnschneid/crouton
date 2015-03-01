@@ -378,6 +378,9 @@ static int socket_client_handle_unrequested(const char* buffer,
                     return -1;
                 }
                 replylength += n;
+            } else if (param[0] == 'O') {
+                /* Extra OK response from a C back-and-forth. Disregard. */
+                break;
             } else {
                 /* Launch command in background (this is necessary as
                    croutoncycle may send a websocket command, leaving us

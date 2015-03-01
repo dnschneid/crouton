@@ -5,7 +5,7 @@
 REQUIRES='audio extension'
 PROVIDES='x11'
 DESCRIPTION='X.org X11 backend running unaccelerated in a Chromium OS window.'
-CHROOTBIN='croutoncycle croutonfindnacl croutontriggerd croutonxinitrc-wrapper setres xinit'
+CHROOTBIN='croutoncycle croutonfindnacl croutontriggerd croutonxinitrc-wrapper setres xinit xiwi'
 CHROOTETC='xbindkeysrc.scm xorg-dummy.conf xserverrc xserverrc-xiwi xserverrc-local.example'
 . "${TARGETSDIR:="$PWD"}/common"
 
@@ -35,7 +35,7 @@ if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
     apt-mark unhold xserver-xorg-video-dummy$ltspackages || true 2>/dev/null
 fi
 
-install xorg xserver-xorg-video-dummy$ltspackages
+install xorg xserver-xorg-video-dummy$ltspackages ratpoison
 
 # Compile croutonfbserver
 compile fbserver '-lX11 -lXfixes -lXdamage -lXext -lXtst' \
@@ -408,6 +408,11 @@ TIPS="$TIPS"'
 You can open your running chroot desktops by clicking on the extension icon.
 Once in a crouton window, press fullscreen or the "switch window" key to switch
 back to Chromium OS.
+
+You can launch individual apps in crouton windows by using the "xiwi" command
+in the chroot shell. Wrap that command with enter-chroot to launch directly
+from the host shell. Use the enter-chroot parameter -b to run in the background.
+Example: sudo enter-chroot -b xiwi xterm
 '
 
 ### append x11-common

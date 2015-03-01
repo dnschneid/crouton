@@ -438,6 +438,10 @@ int write_image(const struct screen* screen) {
 /* Writes cursor image to websocket */
 int write_cursor() {
     XFixesCursorImage *img = XFixesGetCursorImage(dpy);
+    if (!img) {
+        error("XFixesGetCursorImage returned NULL");
+        return -1;
+    }
     int size = img->width*img->height;
     const int replylength = sizeof(struct cursor_reply) + size*sizeof(uint32_t);
     char reply_raw[FRAMEMAXHEADERSIZE + replylength];

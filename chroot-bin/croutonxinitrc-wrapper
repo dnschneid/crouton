@@ -146,7 +146,7 @@ and enabled, and up to date. (download from http://goo.gl/OVQOEt)" 1>&2
         try="$((try+1))"
     done
     if [ "$ret" -eq 0 ]; then
-        echo "Connected to extension, launched crouton in a tab window." 1>&2
+        echo "Connected to extension, launched crouton in a window." 1>&2
     fi
 fi
 
