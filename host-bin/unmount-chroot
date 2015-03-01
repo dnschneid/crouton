@@ -86,7 +86,7 @@ checkusage() {
     if [ -n "$FORCE" ]; then
         return 0
     fi
-    local b="${1%/}/" pid ppid proot prootdir root rootdir
+    local b="${1%/}/" pid ppid proot prootdir root rootdir pids=''
     for root in /proc/*/root; do
         if [ ! -r "$root" ]; then
             continue
@@ -110,10 +110,15 @@ checkusage() {
             fi
         fi
         if [ -n "$PRINT" ]; then
-            ps -p "$pid" -o pid= -o cmd= || true
+            pids="$pids $pid"
+            continue
         fi
         return 1
     done
+    if [ -n "$PRINT" -a -n "$pids" ]; then
+        ps -p "${pids# }" -o pid= -o cmd= || true
+        return 1
+    fi
     return 0
 }
 
