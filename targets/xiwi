@@ -12,11 +12,6 @@ CHROOTETC='xbindkeysrc.scm xorg-dummy.conf xserverrc xserverrc-xiwi xserverrc-lo
 ### Append to prepare.sh:
 XMETHOD="${XMETHOD:-xiwi}"
 
-# On Freon, we need crazy xorg hacks
-if [ ! -f "/sys/class/tty/tty0/active" ]; then
-    compile freon '-ldl' so
-fi
-
 # We need xorg workarounds on all platforms
 compile xorg '-ldl' so
 

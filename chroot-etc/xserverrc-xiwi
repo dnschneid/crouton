@@ -17,11 +17,7 @@ if [ -f /etc/crouton/xserverrc-local ]; then
     . /etc/crouton/xserverrc-local
 fi
 
-# Handle Freon systems
-if [ ! -f "/sys/class/tty/tty0/active" ]; then
-    export LD_PRELOAD="/usr/local/lib/croutonfreon.so:$LD_PRELOAD"
-fi
-
+# Xorg compatibility hacks
 export LD_PRELOAD="/usr/local/lib/croutonxorg.so:$LD_PRELOAD"
 
 exec /usr/bin/Xorg $XARGS "$@"
