@@ -25,9 +25,6 @@ if [ ! -f "/sys/class/tty/tty0/active" ]; then
     compile freon '-ldl' so
 fi
 
-# We need xorg workarounds on all platforms
-compile xorg '-ldl' so
-
 ltspackages=''
 # On non-ARM precise, install lts-trusty xorg server to support newer hardware
 # if kernel version != 3.4 (lts-trusty mesa requires version >=3.6)
