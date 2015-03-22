@@ -288,7 +288,7 @@ if [ "${destdisp#:}" = "$destdisp" ]; then
         # Raise the right window after chvting, so that it can update
         if [ "$tty" != 'tty1' ]; then
             sudo -n chvt 1
-            sleep .1
+            brightness down & sleep .2; brightness up &
         fi
         croutonwmtools raise "${destdisp%"*"}"
     elif [ "${freonowner:-0}" != 0 ]; then
@@ -306,7 +306,7 @@ else
     if xprop -root 'CROUTON_XMETHOD' 2>/dev/null | grep -q '= "xiwi"$'; then
         if [ -z "$freonowner" -a "$tty" != 'tty1' ]; then
             sudo -n chvt 1
-            sleep .1
+            brightness down & sleep .2; brightness up &
         elif [ "${freonowner:-0}" != 0 ]; then
             kill -USR1 "$freonowner"
         fi
