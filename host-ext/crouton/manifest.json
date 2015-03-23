@@ -4,7 +4,7 @@
   "name": "crouton integration",
   "short_name": "crouton",
   "description": "Improves integration with crouton chroots.",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "icons": {
     "48": "icon-48.png",
     "128": "icon-128.png"
@@ -25,7 +25,6 @@
   "permissions": [
     "clipboardRead",
     "clipboardWrite",
-    "notifications",
-    "tabs"
+    "notifications"
   ]
 }

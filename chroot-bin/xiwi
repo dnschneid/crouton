@@ -1,0 +1,60 @@
+#!/bin/sh -e
+# Copyright (c) 2014 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Runs the specified X11 application in its own X server in Chromium OS.
+
+. "`dirname "$0"`/../installer/functions"
+xiwicmd="`readlink -f "$0"`"
+
+if [ "$#" = 0 ]; then
+    echo "Usage: ${0##*/} APPLICATION [PARAMETERS ...]
+Launches a windowed session in Chromium OS for any graphical application.
+All parameters are passed to the specified application.
+
+A default window manager will full-screen all windows, unless APPLICATION begins
+with 'start'. You can cycle through multiple windows inside the application via
+Ctrl-Alt-Tab/Ctrl-Alt-Shift-Tab, or close them via Ctrl-Alt-Shift-Escape-Escape.
+If APPLICATION begins with 'start' but you still want to use the default window
+manager, specify the full path of the application." 1>&2
+    exit 2
+elif [ "$1" = '/' ]; then
+    shift 1
+    xsetroot -cursor_name left_ptr
+    if [ "${1#start}" = "$1" ]; then
+        ratpoison -f /dev/stdin >/dev/null <<WMRC &
+            escape C-S-M-Escape
+            bind C-S-M-Escape delete
+            set border 0
+            startup_message off
+            definekey top C-M-Tab next
+            definekey top C-S-M-Tab prev
+            definekey top C-M-ISO_Left_Tab prev
+            addhook newwindow exec '$xiwicmd' // '$1'
+            addhook switchwin exec '$xiwicmd' // '$1'
+WMRC
+    fi
+    exec "$@"
+elif [ "$1" = '//' ]; then
+    # Titlebar update. $2 has the original command name
+    wininfo="`ratpoison -c 'windows %s%i %t' | sed -n '/^\*/s/^.//p'`"
+    id="${wininfo%% *}"
+    title="`cat /etc/crouton/name`/$2: ${wininfo#* }"
+    xprop -root -f CROUTON_NAME 8s -set CROUTON_NAME "$title"
+    ret="`{ echo -n 'C'; croutoncycle l; } | websocketcommand`"
+    if [ "$ret" != 'COK' ]; then
+        error 1 "${ret#?}"
+    fi
+    # Launch titlebar monitoring daemon (only need one per window per display)
+    {
+        flock -n 3 || exit 0
+        xprop -spy -notype -id "$id" '_NET_WM_NAME' 2>/dev/null \
+            | while read _; do
+                "$xiwicmd" // "$2"
+            done
+    } 3>> "/tmp/crouton-lock/xiwi-$DISPLAY-$id" &
+else
+    export XMETHOD=xiwi
+    exec /usr/local/bin/xinit "$xiwicmd" / "$@"
+fi

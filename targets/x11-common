@@ -16,6 +16,23 @@ install --minimal arch=xorg-xinit,
 ln -sfT '/etc/crouton/xserverrc' '/etc/X11/xinit/xserverrc'
 echo "$XMETHOD" > '/etc/crouton/xmethod'
 
+# Only apply hack if vgem card exists
+if [ -c '/dev/dri/card1' ]; then
+    # Modify the Xorg executable to *not* poll udev for cards
+    offset="`grep -F -m 1 -boa 'card[0-9]*' /usr/bin/Xorg 2>/dev/null || true`"
+    if [ -n "$offset" ]; then
+        echo -n 'croutonhax' | dd seek="${offset%:*}" bs=1 of=/usr/bin/Xorg \
+            conv=notrunc,nocreat 2>/dev/null
+    fi
+elif grep -q 'croutonhax' '/usr/bin/Xorg'; then
+    # Undo hack since there's no vgem module
+    offset="`grep -F -m 1 -boa 'croutonhax' /usr/bin/Xorg 2>/dev/null || true`"
+    if [ -n "$offset" ]; then
+        echo -n 'card[0-9]*' | dd seek="${offset%:*}" bs=1 of=/usr/bin/Xorg \
+            conv=notrunc,nocreat 2>/dev/null
+    fi
+fi
+
 # Install utility for croutoncycle
 compile wmtools '-lX11' arch=,libx11-dev
 
@@ -25,8 +42,15 @@ install --minimal dbus xdg-utils
 ln -sf croutonpowerd /usr/local/bin/gnome-screensaver-command
 ln -sf croutonpowerd /usr/local/bin/xscreensaver-command
 
-# Install xbindkeys and xautomation for key shortcuts and kbd for chvt
-install --minimal xbindkeys xautomation kbd
+# Install nicer cursors
+install --minimal arch=,dmz-cursor-theme
+
+# Install nicer fonts
+install --minimal arch=ttf-dejavu
+
+# Install bsdmainutils (hexdump), xbindkeys and xautomation for shortcuts;
+# kbd for chvt
+install --minimal arch=,bsdmainutils xbindkeys xautomation kbd
 
 # Allow users to run sudo chvt without password, so we don't need to run
 # croutoncycle as root

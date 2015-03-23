@@ -8,7 +8,7 @@ fi
 REQUIRES='audio'
 PROVIDES='x11'
 DESCRIPTION='Nested X11 backend. Improves compatibility but lacks GPU accel.'
-CHROOTBIN='croutoncycle croutonwheel croutonxinitrc-wrapper xinit'
+CHROOTBIN='croutoncycle croutontriggerd croutonwheel croutonxinitrc-wrapper xinit'
 CHROOTETC='xbindkeysrc.scm xserverrc xserverrc-xephyr xserverrc-local.example'
 . "${TARGETSDIR:="$PWD"}/common"
 
@@ -33,8 +33,6 @@ fi
 # xserver-xephyr won't auto replace the manually-downloaded version.
 install --minimal \
     arch=xorg-server-xephyr,xserver-xephyr arch=,xinit \
-    arch=,dmz-cursor-theme \
-    arch=ttf-dejavu, \
     arch=,libgl1-mesa-dri \
     arch=xorg-utils,x11-utils arch=xorg-server-utils,x11-xserver-utils \
     arch=xorg-xinput,xinput xterm

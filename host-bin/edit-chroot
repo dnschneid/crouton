@@ -163,7 +163,7 @@ elif [ $# -gt 1 -a -f "$TARBALL" ]; then
 fi
 
 # Don't allow moving to non-ext filesystems (but don't check if just renaming)
-if [ -n "$MOVE" -a "${MOVE#*/}" = "$MOVE" ] && \
+if [ -n "$MOVE" -a "${MOVE#*/}" != "$MOVE" ] && \
         df -T "`getmountpoint "$MOVE"`" | awk '$2~"^ext"{exit 1}'; then
     error 2 "Chroots can only be moved to ext filesystems."
 fi

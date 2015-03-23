@@ -483,10 +483,13 @@ function websocketMessage(evt) {
                     kiwi_win_[k.display].window.setTitle(k.name);
                 }
             })
+
+            lastwindowlistupdate_ = new Date().getTime();
+            websocket_.send("COK");
         }
         refreshUI();
         break;
-    case 'X': /* Ask to open a crouton-in-a-tab window */
+    case 'X': /* Ask to open a crouton window */
         display = payload
         match = display.match(/^:([0-9]+)$/)
         displaynum = match ? match[1] : null
@@ -530,7 +533,7 @@ function websocketMessage(evt) {
             kiwi_win_[display].window = null;
 
             win = windows_.filter(function(x){ return x.display == display })[0]
-            name = win ? win.name : "crouton in a tab";
+            name = win ? win.name : "crouton in a window";
 
             chrome.windows.create({ 'url': "window.html?display=" + displaynum +
                                            "&debug=" + (debug_ ? 1 : 0) +

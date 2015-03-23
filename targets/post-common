@@ -46,7 +46,7 @@ elif [ "${DISTROAKA:-"$DISTRO"}" = 'arch' ]; then
 fi
 
 # Add the primary user
-groups='audio,video,plugdev'
+groups='audio,input,video,plugdev'
 if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
     groups="$groups,sudo"
 elif [ "${DISTROAKA:-"$DISTRO"}" = 'arch' ]; then

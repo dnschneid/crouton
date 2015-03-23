@@ -78,15 +78,16 @@ fi
 # appropriate commands by checking if the command's parent root is not equal
 # to the pid's root. This avoids not unmounting due to a lazy-quitting
 # background application within the chroot. We also don't consider processes
-# that have a parent PID of 1 (which would mean an orphaned process in this
-# case), as enter-chroot never orphans its children.
+# that have a parent PID of 1 or that of session_manager's (which would mean an
+# orphaned process in this case), as enter-chroot never orphans its children.
 # $1: $base; the canonicalized base path of the chroot
 # Returns: non-zero if the chroot is in use.
 checkusage() {
     if [ -n "$FORCE" ]; then
         return 0
     fi
-    local b="${1%/}/" pid ppid proot prootdir root rootdir
+    local b="${1%/}/" pid ppid proot prootdir root rootdir pids=''
+    local smgrpid="`pgrep -o -u 0 -x session_manager || echo 1`"
     for root in /proc/*/root; do
         if [ ! -r "$root" ]; then
             continue
@@ -99,7 +100,7 @@ checkusage() {
         pid="${root#/proc/}"
         pid="${pid%/root}"
         ppid="`ps -p "$pid" -o ppid= 2>/dev/null | sed 's/ //g'`"
-        if [ -z "$ppid" ] || [ "$ppid" -eq 1 ]; then
+        if [ -z "$ppid" ] || [ "$ppid" -eq 1 -o "$ppid" -eq "$smgrpid" ]; then
             continue
         fi
         proot="/proc/$ppid/root"
@@ -110,10 +111,15 @@ checkusage() {
             fi
         fi
         if [ -n "$PRINT" ]; then
-            ps -p "$pid" -o pid= -o cmd= || true
+            pids="$pids $pid"
+            continue
         fi
         return 1
     done
+    if [ -n "$PRINT" -a -n "$pids" ]; then
+        ps -p "${pids# }" -o pid= -o cmd= || true
+        return 1
+    fi
     return 0
 }
 

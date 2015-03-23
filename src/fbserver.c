@@ -243,7 +243,7 @@ struct cache_entry* find_shm(uint64_t paddr, uint64_t sig, size_t length) {
             if (*((uint64_t*)entry->map) == sig)
                 return entry;
 
-            error("Invalid signature, fetching new shm!");
+            log(1, "Invalid signature, fetching new shm!");
             close_mmap(entry);
         }
 
@@ -438,6 +438,10 @@ int write_image(const struct screen* screen) {
 /* Writes cursor image to websocket */
 int write_cursor() {
     XFixesCursorImage *img = XFixesGetCursorImage(dpy);
+    if (!img) {
+        error("XFixesGetCursorImage returned NULL");
+        return -1;
+    }
     int size = img->width*img->height;
     const int replylength = sizeof(struct cursor_reply) + size*sizeof(uint32_t);
     char reply_raw[FRAMEMAXHEADERSIZE + replylength];
