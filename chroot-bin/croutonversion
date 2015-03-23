@@ -85,6 +85,12 @@ if [ -z "$CHANGES$DOWNLOAD$UPDATES" ]; then
         host="`awk -F= '/_RELEASE_DESCRIPTION=/{print $2}' "$hostrel"`"
     fi
     echo "host: version ${host:-unknown}"
+    echo "kernel: $(uname -a)"
+    freon="yes"
+    if [ -f /sys/class/tty/tty0/active ]; then
+        freon="no"
+    fi
+    echo "freon: $freon"
     exit 0
 fi
 
