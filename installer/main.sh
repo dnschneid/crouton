@@ -660,11 +660,13 @@ if [ -z "$RESTOREBIN" ] && [ -z "$RESTORE" -o -n "$UPDATE" ]; then
     VAREXPAND="${VAREXPAND}s/#SETOPTIONS#/$SETOPTIONS/;"
     installscript "$INSTALLERDIR/prepare.sh" \
                   "$CHROOT$PREPAREDIR/prepare.sh" "$VAREXPAND"
-    # Append the distro-specific prepare.sh
+    # Append the distro-specific functions and prepare
     cp -fT "$DISTRODIR/functions" "$CHROOT$PREPAREDIR/distrofunctions"
+    cp -fT "$DISTRODIR/prepare" "$CHROOT$PREPAREDIR/distroprepare"
 
     echo ". '$PREPAREDIR/prepare.sh'" > "$PREPARE"
     echo ". '$PREPAREDIR/distrofunctions'" >> "$PREPARE"
+    echo ". '$PREPAREDIR/distroprepare'" >> "$PREPARE"
 else # Restore host-bin only
     PREPARE="/dev/null"
 
