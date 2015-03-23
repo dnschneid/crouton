@@ -661,10 +661,10 @@ if [ -z "$RESTOREBIN" ] && [ -z "$RESTORE" -o -n "$UPDATE" ]; then
     installscript "$INSTALLERDIR/prepare.sh" \
                   "$CHROOT$PREPAREDIR/prepare.sh" "$VAREXPAND"
     # Append the distro-specific prepare.sh
-    cp -fT "$DISTRODIR/prepare" "$CHROOT$PREPAREDIR/distroprepare"
+    cp -fT "$DISTRODIR/functions" "$CHROOT$PREPAREDIR/distrofunctions"
 
     echo ". '$PREPAREDIR/prepare.sh'" > "$PREPARE"
-    echo ". '$PREPAREDIR/distroprepare'" >> "$PREPARE"
+    echo ". '$PREPAREDIR/distrofunctions'" >> "$PREPARE"
 else # Restore host-bin only
     PREPARE="/dev/null"
 

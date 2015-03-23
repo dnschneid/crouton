@@ -84,7 +84,7 @@ ret=
 (
 PREPAREDIR="/etc/crouton/prepare"
 . "$PREPAREDIR/prepare.sh"
-. "$PREPAREDIR/distroprepare"
+. "$PREPAREDIR/distrofunctions"
 . "$PREPAREDIR/core.minimal"
 . "$PREPAREDIR/audio"
 . "$PREPAREDIR/post-common.minimal"

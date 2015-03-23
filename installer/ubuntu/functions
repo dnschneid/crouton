@@ -3,7 +3,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# This is a distro-specific continuation of the prepare.sh script.
+# This file defines distro-specific variables and functions, and is sourced
+# right after prepare.sh.
 
 PKGEXT='deb'
 DISTROAKA='debian'
