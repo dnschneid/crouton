@@ -146,7 +146,7 @@ function refreshUI() {
     for (var i = 0; i < views.length; views++) {
         var view = views[i];
         /* Make sure page is ready */
-        if (document.readyState === "complete") {
+        if (view.document.readyState === "complete") {
             /* Update "help" link */
             helplink = view.document.getElementById("help");
             helplink.onclick = showHelp;
