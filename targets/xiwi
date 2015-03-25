@@ -396,7 +396,6 @@ EOF
 
 if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
     # Hold xserver-xorg-video-dummy to make sure the driver does not get erased
-<<<<<<< HEAD
     apt-mark hold xserver-xorg-video-dummy
 elif [ "${DISTROAKA:-"$DISTRO"}" = 'arch' ]; then
     # FIXME: Add a hold/unhold function
@@ -406,9 +405,6 @@ elif [ "${DISTROAKA:-"$DISTRO"}" = 'arch' ]; then
             -e 's/^\#* *IgnorePkg.*=\(.*\)/IgnorePkg = xf86-video-dummy \1/' \
              /etc/pacman.conf
     fi
-=======
-    apt-mark hold xserver-xorg-video-dummy$ltspackages
->>>>>>> crouton/master
 fi
 
 TIPS="$TIPS"'
