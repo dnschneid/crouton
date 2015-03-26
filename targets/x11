@@ -4,7 +4,7 @@
 # found in the LICENSE file.
 if grep -q 'SAMSUNG EXYNOS' /proc/cpuinfo || \
         ([ "${ARCH#arm}" != "$ARCH" ] && \
-        awk -F= '/_RELEASE_VERSION=/ { exit int($2) < 6689 }' \
+        awk -F= '/_RELEASE_VERSION=/ { exit !(int($2) < 6689) }' \
         '/etc/lsb-release'); then
     # Xorg won't work on Samsung ARM devices or K1 on release less than 6689
     REQUIRES='xephyr'
