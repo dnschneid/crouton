@@ -28,6 +28,7 @@ elif [ "$1" = '/' ]; then
         xprop -spy -root | grep -q _NET_ACTIVE_WINDOW
         # Launch the window title monitoring daemon
         xprop -spy -notype -root 0i ' $0\n' '_NET_ACTIVE_WINDOW' 2>/dev/null | {
+            name="`cat /etc/crouton/name`"
             monpid=''
             monwid=''
             while read _ wid; do
@@ -41,9 +42,12 @@ elif [ "$1" = '/' ]; then
                 xprop -spy -notype -id "$wid" 'WM_NAME' 2>/dev/null | {
                     while read _ title; do
                         title="${title%\"}"
-                        title="`cat /etc/crouton/name`/$1: ${title#*\"}"
-                        xprop -root -f CROUTON_NAME 8s -set CROUTON_NAME "$title"
-                        ret="`{ echo -n 'C'; croutoncycle l; } | websocketcommand`"
+                        xprop -root -f CROUTON_NAME 8s -set CROUTON_NAME \
+                            "$name/$1: ${title#*\"}"
+                        {
+                            echo -n 'C'
+                            croutoncycle l
+                        } | websocketcommand >/dev/null
                     done
                 } &
                 monpid="$!"
