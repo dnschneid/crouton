@@ -25,15 +25,23 @@ if [ ! -f "/sys/class/tty/tty0/active" ]; then
     compile freon '-ldl' so
 fi
 
-ltspackages=''
-# On non-ARM precise, install lts-trusty xorg server to support newer hardware
-# if kernel version != 3.4 (lts-trusty mesa requires version >=3.6)
-if [ "${ARCH#arm}" = "$ARCH" ] && release -eq precise \
-        && ! uname -r | grep -q "^3.4."; then
-    # We still install xorg later to pull in its dependencies
-    ltspackages='-lts-trusty'
-    install --minimal "xserver-xorg$ltspackages" "libgl1-mesa-glx$ltspackages" \
-        "xserver-xorg-input-synaptics$ltspackages"
+backport=''
+# Pull in backported Xorg when possible on precise to support newer hardware
+if release -eq precise; then
+    if [ "${ARCH#arm}" = "$ARCH" ]; then
+        # Note: lts-trusty mesa requires kernel version >=3.6
+        if  ! uname -r | grep -q "^3.4."; then
+            backport='-lts-trusty'
+        fi
+    else
+        # ARM only offers quantal backport at the moment
+        backport='-lts-quantal'
+    fi
+    if [ -n "$backport" ]; then
+        # We still install xorg later to pull in its dependencies
+        install --minimal "xserver-xorg$backport" "libgl1-mesa-glx$backport" \
+            "xserver-xorg-input-synaptics$backport"
+    fi
 fi
 
 # On saucy onwards, if kernel version is 3.4, manually pin down old mesa
@@ -104,9 +112,9 @@ END
     apt-get -y --force-yes --no-install-recommends dist-upgrade -f
 fi
 
-install xorg xserver-xorg-video-fbdev$ltspackages
+install xorg xserver-xorg-video-fbdev$backport
 if [ "${ARCH#arm}" = "$ARCH" ]; then
-    install xserver-xorg-video-intel$ltspackages
+    install xserver-xorg-video-intel$backport
 fi
 
 # This is a system with framebuffer compression, so we need SNA+tearfree
