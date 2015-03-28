@@ -9,9 +9,15 @@
 xiwicmd="`readlink -f "$0"`"
 
 if [ "$#" = 0 ]; then
-    echo "Usage: ${0##*/} APPLICATION [PARAMETERS ...]
+    echo "Usage: ${0##*/} [-f] APPLICATION [PARAMETERS ...]
 Launches a windowed session in Chromium OS for any graphical application.
 All parameters are passed to the specified application.
+
+xiwi will normally close when the application returns. Some gui applications
+fork before or during normal operation, which can confuse xiwi and cause it to
+quit prematurely. If your application does not have a parameter that prevents
+it from forking, you can use -f to prevent xiwi from quitting automatically.
+You will need to Ctrl-C xiwi in the terminal to make it quit.
 
 A default window manager will full-screen all windows, unless APPLICATION begins
 with 'start'. You can cycle through multiple windows inside the application via
@@ -21,6 +27,11 @@ manager, specify the full path of the application." 1>&2
     exit 2
 elif [ "$1" = '/' ]; then
     shift 1
+    forever='0'
+    if [ "$1" = '-f' ]; then
+        forever='infinity'
+        shift 1
+    fi
     xsetroot -cursor_name left_ptr
     if [ "${1#start}" = "$1" ]; then
         i3 -c "/etc/crouton/xiwi.conf" &
@@ -61,7 +72,8 @@ elif [ "$1" = '/' ]; then
             /bin/sh "$HOME/.xiwirc" || true
         fi
     fi
-    exec "$@"
+    "$@"
+    exec sleep "$forever"
 else
     export XMETHOD=xiwi
     exec /usr/local/bin/xinit "$xiwicmd" / "$@"
