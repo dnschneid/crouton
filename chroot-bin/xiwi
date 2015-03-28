@@ -56,6 +56,10 @@ elif [ "$1" = '/' ]; then
                 kill "$monpid" 2>/dev/null
             fi
         } &
+        # Launch user init scripts
+        if [ -f "$HOME/.xiwirc" ]; then
+            /bin/sh "$HOME/.xiwirc" || true
+        fi
     fi
     exec "$@"
 else
