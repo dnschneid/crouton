@@ -28,6 +28,9 @@ STATE_UP=0
 KEY_LEFTCTRL=29
 KEY_LEFTALT=56
 KEY_LEFTSHIFT=42
+KEY_RIGHTCTRL=97
+KEY_RIGHTALT=100
+KEY_RIGHTSHIFT=54
 KEY_F1=59
 KEY_F2=60
 
@@ -75,6 +78,7 @@ while :; do
     sleep "$EVENT_DEV_POLL"
 done | unbuffered_awk "
     function update() {
+        c = lc || rc; s = ls || rs; a = la || ra
         if (!cmd && c && s && a && p) {
             cmd = \"p\"
         } else if (!cmd && c && s && a && n) {
@@ -84,9 +88,12 @@ done | unbuffered_awk "
             cmd = \"\"
         }
     }
-    $TYPE == $TYPE_EV_KEY && $KEY == $KEY_LEFTCTRL  { c = $STATE; update() }
-    $TYPE == $TYPE_EV_KEY && $KEY == $KEY_LEFTSHIFT { s = $STATE; update() }
-    $TYPE == $TYPE_EV_KEY && $KEY == $KEY_LEFTALT   { a = $STATE; update() }
-    $TYPE == $TYPE_EV_KEY && $KEY == $KEY_F1        { p = $STATE; update() }
-    $TYPE == $TYPE_EV_KEY && $KEY == $KEY_F2        { n = $STATE; update() }
+    $TYPE == $TYPE_EV_KEY && $KEY == $KEY_LEFTCTRL   { lc = $STATE; update() }
+    $TYPE == $TYPE_EV_KEY && $KEY == $KEY_LEFTSHIFT  { ls = $STATE; update() }
+    $TYPE == $TYPE_EV_KEY && $KEY == $KEY_LEFTALT    { la = $STATE; update() }
+    $TYPE == $TYPE_EV_KEY && $KEY == $KEY_RIGHTCTRL  { rc = $STATE; update() }
+    $TYPE == $TYPE_EV_KEY && $KEY == $KEY_RIGHTSHIFT { rs = $STATE; update() }
+    $TYPE == $TYPE_EV_KEY && $KEY == $KEY_RIGHTALT   { ra = $STATE; update() }
+    $TYPE == $TYPE_EV_KEY && $KEY == $KEY_F1         {  p = $STATE; update() }
+    $TYPE == $TYPE_EV_KEY && $KEY == $KEY_F2         {  n = $STATE; update() }
 "
