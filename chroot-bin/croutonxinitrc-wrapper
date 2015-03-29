@@ -43,6 +43,10 @@ else
 fi
 
 # Run crouton-specific commands:
+
+# Show chroot specifics for troubleshooting
+croutonversion
+
 if [ -z "$XMETHOD" ]; then
     if [ -f '/etc/crouton/xmethod' ]; then
         read -r XMETHOD _ < /etc/crouton/xmethod

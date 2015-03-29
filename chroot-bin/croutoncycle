@@ -168,6 +168,7 @@ if [ "$cmd" = 'l' -o "$cmd" = 'd' ]; then
         fi
     ) | sort | while read -r line; do
         disp="${line##* }"
+        display="${disp%"*"}"
         line="${line% *}"
         number='0'
         active=' '
@@ -177,7 +178,7 @@ if [ "$cmd" = 'l' -o "$cmd" = 'd' ]; then
             if [ "${number#[0-9]}" = "$number" ]; then
                 number='0'
             else
-                disp=":$number"
+                display=":$number"
                 line="`getname "$number"`"
             fi
         fi
@@ -195,11 +196,11 @@ if [ "$cmd" = 'l' -o "$cmd" = 'd' ]; then
         fi
         if [ "$line" = 'aura_root_0' ]; then
             line="$chromiumos"
-            disp="cros"
+            display="cros"
             window=''
         fi
         if [ "$cmd" = 'l' ]; then
-            echo "${disp%"*"}$active $line"
+            echo "$display$active $line"
         fi
     done
     for disp in $displist; do
