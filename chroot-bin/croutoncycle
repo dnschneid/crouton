@@ -56,6 +56,36 @@ getname() {
     fi
 }
 
+# Local version of brightness command for use with nudgebrightness below
+mybrightness() {
+    local postcmd=''
+    local precmd=''
+    local percent=''
+    local junk=''
+    case "$1" in
+    [0-9]*) precmd='Set'; postcmd="Percent double:$1 int32:${2:-"1"}${2:+"2"}";;
+    *) precmd='Get'; postcmd='Percent'; print='--print-reply';;
+    esac
+
+    host-dbus dbus-send --system --dest=org.chromium.PowerManager \
+        --type=method_call $print /org/chromium/PowerManager \
+        org.chromium.PowerManager.${precmd}ScreenBrightness${postcmd} | {
+            read -r junk
+            read -r double percent
+            echo "${percent}"
+        }
+}
+
+# Nudges brightness down then restores old value, because when chvt-ing back
+# to cros, the brightness is not always correctly restored (host dbus knows
+# correct value but hardware appears to need to be poked)
+nudgebrightness() {
+    local oldbrightness=`mybrightness get`
+    mybrightness $((${oldbrightness%.*} - 1)) &
+    sleep 0.2
+    mybrightness $oldbrightness &
+}
+
 # Only let one instance run at a time to avoid nasty race conditions
 mkdir -m 775 -p "$CROUTONLOCKDIR"
 exec 3>"$CROUTONLOCKDIR/cycle"
@@ -289,7 +319,7 @@ if [ "${destdisp#:}" = "$destdisp" ]; then
         # Raise the right window after chvting, so that it can update
         if [ "$tty" != 'tty1' ]; then
             sudo -n chvt 1
-            brightness down & sleep .2; brightness up &
+            nudgebrightness
         fi
         croutonwmtools raise "${destdisp%"*"}"
     elif [ "${freonowner:-0}" != 0 ]; then
@@ -307,7 +337,7 @@ else
     if xprop -root 'CROUTON_XMETHOD' 2>/dev/null | grep -q '= "xiwi"$'; then
         if [ -z "$freonowner" -a "$tty" != 'tty1' ]; then
             sudo -n chvt 1
-            brightness down & sleep .2; brightness up &
+            nudgebrightness
         elif [ "${freonowner:-0}" != 0 ]; then
             kill -USR1 "$freonowner"
         fi
