@@ -396,7 +396,7 @@ EOF
 
 if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
     # Hold xserver-xorg-video-dummy to make sure the driver does not get erased
-    apt-mark hold xserver-xorg-video-dummy
+    apt-mark hold xserver-xorg-video-dummy$ltspackages
 elif [ "${DISTROAKA:-"$DISTRO"}" = 'arch' ]; then
     # FIXME: Add a hold/unhold function
     # Make sure xf86-video-dummy does not get updated
