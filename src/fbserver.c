@@ -99,6 +99,14 @@ void kb_release_all() {
 /* X11-related functions */
 
 static int xerror_handler(Display *dpy, XErrorEvent *e) {
+    if (verbose < 1)
+        return 0;
+    char msg[64] = {0};
+    char op[32] = {0};
+    sprintf(msg, "%d", e->request_code);
+    XGetErrorDatabaseText(dpy, "XRequest", msg, "", op, sizeof(op));
+    XGetErrorText(dpy, e->error_code, msg, sizeof(msg));
+    error("%s (%s)", msg, op);
     return 0;
 }
 
@@ -378,9 +386,11 @@ int write_image(const struct screen* screen) {
     reply->cursor_updated = 0;
     while (XCheckTypedEvent(dpy, fixesEvent + XFixesCursorNotify, &ev)) {
         XFixesCursorNotifyEvent* curev = (XFixesCursorNotifyEvent*)&ev;
-        char* name = XGetAtomName(dpy, curev->cursor_name);
-        log(2, "cursor! %ld %s", curev->cursor_serial, name);
-        XFree(name);
+        if (verbose >= 2) {
+            char* name = XGetAtomName(dpy, curev->cursor_name);
+            log(2, "cursor! %ld %s", curev->cursor_serial, name);
+            XFree(name);
+        }
         reply->cursor_updated = 1;
         reply->cursor_serial = curev->cursor_serial;
     }
