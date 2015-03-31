@@ -9,9 +9,15 @@
 xiwicmd="`readlink -f "$0"`"
 
 if [ "$#" = 0 ]; then
-    echo "Usage: ${0##*/} APPLICATION [PARAMETERS ...]
+    echo "Usage: ${0##*/} [-f] APPLICATION [PARAMETERS ...]
 Launches a windowed session in Chromium OS for any graphical application.
 All parameters are passed to the specified application.
+
+xiwi will normally close when the application returns. Some gui applications
+fork before or during normal operation, which can confuse xiwi and cause it to
+quit prematurely. If your application does not have a parameter that prevents
+it from forking, you can use -f to prevent xiwi from quitting automatically.
+xiwi will quit if you close the Chromium OS window when nothing is displayed.
 
 A default window manager will full-screen all windows, unless APPLICATION begins
 with 'start'. You can cycle through multiple windows inside the application via
@@ -21,12 +27,19 @@ manager, specify the full path of the application." 1>&2
     exit 2
 elif [ "$1" = '/' ]; then
     shift 1
+    foreground=''
+    if [ "$1" = '-f' ]; then
+        foreground="y"
+        shift 1
+    fi
     xsetroot -cursor_name left_ptr
     if [ "${1#start}" = "$1" ]; then
         i3 -c "/etc/crouton/xiwi.conf" &
         # Wait for i3 to launch
         xprop -spy -root | grep -q _NET_ACTIVE_WINDOW
         # Launch the window title monitoring daemon
+        # _NET_ACTIVE_WINDOW is more reliable than _NET_CLIENT_LIST_STACKING for
+        # keeping track of the topmost window.
         xprop -spy -notype -root 0i ' $0\n' '_NET_ACTIVE_WINDOW' 2>/dev/null | {
             name="`cat /etc/crouton/name`"
             monpid=''
@@ -61,7 +74,22 @@ elif [ "$1" = '/' ]; then
             /bin/sh "$HOME/.xiwirc" || true
         fi
     fi
-    exec "$@"
+    "$@"
+    if [ -n "$foreground" ]; then
+        xprop -spy -notype -root 0i ' $0\n' 'CROUTON_CONNECTED' \
+            | while read _ connected; do
+                if [ "$connected" != 0 ]; then
+                    continue
+                fi
+                # _NET_CLIENT_LIST_STACKING is more reliable than
+                # _NET_ACTIVE_WINDOW for detecting when no windows exist
+                if ! xprop -notype -root '_NET_CLIENT_LIST_STACKING' \
+                            | grep -q '0x'; then
+                    kill "$$"
+                    break
+                fi
+            done
+    fi
 else
     export XMETHOD=xiwi
     exec /usr/local/bin/xinit "$xiwicmd" / "$@"
