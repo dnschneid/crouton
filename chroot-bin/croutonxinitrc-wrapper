@@ -56,6 +56,8 @@ if [ -z "$XMETHOD" ]; then
         exit 1
     fi
 fi
+xmethodtype="${XMETHOD%%-*}"
+xmethodargs="${XMETHOD#*-}"
 
 # Record the name of the chroot in the root window properties
 if [ -f '/etc/crouton/name' ] && hash xprop 2>/dev/null; then
@@ -74,7 +76,7 @@ if hash croutonclip 2>/dev/null; then
 fi
 
 # Pass through the host cursor and correct mousewheels on xephyr
-if [ "$XMETHOD" = 'xephyr' ]; then
+if [ "$xmethodtype" = 'xephyr' ]; then
     host-x11 croutoncursor "$DISPLAY" &
     if [ -z "$CROUTON_WHEEL_PARAMS" -a -r "$HOME/.croutonwheel" ]; then
         CROUTON_WHEEL_PARAMS="`head -n1 "$HOME/.croutonwheel"`"
@@ -86,7 +88,7 @@ fi
 croutontriggerd &
 
 # Input-related stuff is not needed for kiwi
-if [ "$XMETHOD" != "xiwi" ]; then
+if [ "$xmethodtype" != "xiwi" ]; then
     # Apply the Chromebook keyboard map if installed.
     if [ -f '/usr/share/X11/xkb/compat/chromebook' ]; then
         setxkbmap -model chromebook
@@ -125,7 +127,7 @@ if [ "$XMETHOD" != "xiwi" ]; then
 fi
 
 # Crouton-in-a-tab: Start fbserver and launch display
-if [ "$XMETHOD" = 'xiwi' ]; then
+if [ "$xmethodtype" = 'xiwi' ]; then
     # The extension sends evdev key codes: fix the keyboard mapping rules
     setxkbmap -rules evdev
     # Reapply xkb map: This fixes autorepeat mask in "xset q"

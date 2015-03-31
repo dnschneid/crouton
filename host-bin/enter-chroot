@@ -138,8 +138,8 @@ fi
 
 # Check to ensure that the XMETHOD requested has been installed
 if [ -n "$TMPXMETHOD" ]; then
-    if ! grep -q "^$TMPXMETHOD$" "$CHROOTS/$NAME/.crouton-targets" 2>/dev/null; then
-        error 1 "$CHROOTS/$NAME does not contain XMETHOD '$TMPXMETHOD'"
+    if ! grep -q "^$TMPXMETHOD\(-\|\$\)" "$CHROOTS/$NAME/.crouton-targets"; then
+        error 1 "$CHROOTS/$NAME does not contain XMETHOD '${TMPXMETHOD%%-*}'"
     fi
 fi
 

@@ -88,7 +88,7 @@ for disp in /tmp/.X*-lock; do
             | grep -q 'INTEGER'; then
         displist="$displist $disp"
     elif DISPLAY="$disp" xprop -root 'CROUTON_XMETHOD' 2>/dev/null \
-            | grep -q '= "xiwi"$'; then
+            | grep -q '= "xiwi'; then
         displist="$displist $disp"
         xiwiactive='y'
     fi
@@ -304,7 +304,7 @@ if [ "${destdisp#:}" = "$destdisp" ]; then
     fi
 else
     export DISPLAY="$destdisp"
-    if xprop -root 'CROUTON_XMETHOD' 2>/dev/null | grep -q '= "xiwi"$'; then
+    if xprop -root 'CROUTON_XMETHOD' 2>/dev/null | grep -q '= "xiwi'; then
         if [ -z "$freonowner" -a "$tty" != 'tty1' ]; then
             sudo -n chvt 1
             sleep .1
