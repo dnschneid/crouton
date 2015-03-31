@@ -15,7 +15,7 @@ All parameters are passed to the specified application.
 
 A default window manager will full-screen all windows, unless APPLICATION begins
 with 'start'. You can cycle through multiple windows inside the application via
-Ctrl-Alt-Tab/Ctrl-Alt-Shift-Tab, or close them via Ctrl-Alt-Shift-Escape-Escape.
+Ctrl-Alt-Tab/Ctrl-Alt-Shift-Tab, or close them via Ctrl-Alt-Shift-Escape.
 If APPLICATION begins with 'start' but you still want to use the default window
 manager, specify the full path of the application." 1>&2
     exit 2
@@ -23,37 +23,45 @@ elif [ "$1" = '/' ]; then
     shift 1
     xsetroot -cursor_name left_ptr
     if [ "${1#start}" = "$1" ]; then
-        ratpoison -f /dev/stdin >/dev/null <<WMRC &
-            escape C-S-M-Escape
-            bind C-S-M-Escape delete
-            set border 0
-            startup_message off
-            definekey top C-M-Tab next
-            definekey top C-S-M-Tab prev
-            definekey top C-M-ISO_Left_Tab prev
-            addhook newwindow exec '$xiwicmd' // '$1'
-            addhook switchwin exec '$xiwicmd' // '$1'
-WMRC
+        i3 -c "/etc/crouton/xiwi.conf" &
+        # Wait for i3 to launch
+        xprop -spy -root | grep -q _NET_ACTIVE_WINDOW
+        # Launch the window title monitoring daemon
+        xprop -spy -notype -root 0i ' $0\n' '_NET_ACTIVE_WINDOW' 2>/dev/null | {
+            name="`cat /etc/crouton/name`"
+            monpid=''
+            monwid=''
+            while read _ wid; do
+                if [ "$wid" = "$monwid" ]; then
+                    continue
+                fi
+                if [ -n "$monpid" ]; then
+                    kill "$monpid" 2>/dev/null
+                fi
+                monwid="$wid"
+                xprop -spy -notype -id "$wid" 'WM_NAME' 2>/dev/null | {
+                    while read _ title; do
+                        title="${title%\"}"
+                        xprop -root -f CROUTON_NAME 8s -set CROUTON_NAME \
+                            "$name/$1: ${title#*\"}"
+                        {
+                            echo -n 'C'
+                            croutoncycle l
+                        } | websocketcommand >/dev/null
+                    done
+                } &
+                monpid="$!"
+            done
+            if [ -n "$monpid" ]; then
+                kill "$monpid" 2>/dev/null
+            fi
+        } &
+        # Launch user init scripts
+        if [ -f "$HOME/.xiwirc" ]; then
+            /bin/sh "$HOME/.xiwirc" || true
+        fi
     fi
     exec "$@"
-elif [ "$1" = '//' ]; then
-    # Titlebar update. $2 has the original command name
-    wininfo="`ratpoison -c 'windows %s%i %t' | sed -n '/^\*/s/^.//p'`"
-    id="${wininfo%% *}"
-    title="`cat /etc/crouton/name`/$2: ${wininfo#* }"
-    xprop -root -f CROUTON_NAME 8s -set CROUTON_NAME "$title"
-    ret="`{ echo -n 'C'; croutoncycle l; } | websocketcommand`"
-    if [ "$ret" != 'COK' ]; then
-        error 1 "${ret#?}"
-    fi
-    # Launch titlebar monitoring daemon (only need one per window per display)
-    {
-        flock -n 3 || exit 0
-        xprop -spy -notype -id "$id" '_NET_WM_NAME' 2>/dev/null \
-            | while read _; do
-                "$xiwicmd" // "$2"
-            done
-    } 3>> "/tmp/crouton-lock/xiwi-$DISPLAY-$id" &
 else
     export XMETHOD=xiwi
     exec /usr/local/bin/xinit "$xiwicmd" / "$@"

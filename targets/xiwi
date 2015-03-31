@@ -6,7 +6,7 @@ REQUIRES='audio extension'
 PROVIDES='x11'
 DESCRIPTION='X.org X11 backend running unaccelerated in a Chromium OS window.'
 CHROOTBIN='croutoncycle croutonfindnacl croutontriggerd croutonxinitrc-wrapper setres xinit xiwi'
-CHROOTETC='xbindkeysrc.scm xorg-dummy.conf xserverrc xserverrc-xiwi xserverrc-local.example'
+CHROOTETC='xbindkeysrc.scm xiwi.conf xorg-dummy.conf xserverrc xserverrc-xiwi xserverrc-local.example'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
@@ -27,7 +27,8 @@ if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
     apt-mark unhold xserver-xorg-video-dummy$ltspackages || true 2>/dev/null
 fi
 
-install xorg xserver-xorg-video-dummy$ltspackages ratpoison
+install xorg xserver-xorg-video-dummy$ltspackages
+install --minimal i3
 
 # Compile croutonfbserver
 compile fbserver '-lX11 -lXfixes -lXdamage -lXext -lXtst' \
