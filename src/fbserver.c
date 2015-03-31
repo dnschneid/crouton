@@ -15,6 +15,7 @@
 #include <sys/mman.h>
 #include <netinet/tcp.h>
 #include <X11/extensions/XTest.h>
+#include <X11/Xatom.h>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <sys/shm.h>
@@ -108,6 +109,19 @@ static int xerror_handler(Display *dpy, XErrorEvent *e) {
     XGetErrorText(dpy, e->error_code, msg, sizeof(msg));
     error("%s (%s)", msg, op);
     return 0;
+}
+
+/* Sets the CROUTON_CONNECTED property for the root window */
+static void set_connected(Display *dpy, uint8_t connected) {
+    Window root = DefaultRootWindow(dpy);
+    Atom prop = XInternAtom(dpy, "CROUTON_CONNECTED", False);
+    if (prop == None) {
+        error("Unable to get atom");
+        return;
+    }
+    XChangeProperty(dpy, root, prop, XA_INTEGER, 8, PropModeReplace,
+                    &connected, 1);
+    XFlush(dpy);
 }
 
 /* Registers XDamage events for a given Window. */
@@ -524,7 +538,9 @@ int main(int argc, char** argv) {
     int length;
 
     while (1) {
+        set_connected(dpy, False);
         socket_server_accept(VERSION);
+        set_connected(dpy, True);
         while (1) {
             length = socket_client_read_frame((char*)buffer, sizeof(buffer));
             if (length < 0) {
