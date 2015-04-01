@@ -16,7 +16,7 @@ var errordiv_ = null; /* error div */
 var debug_ = 0; /* Debuging level, passed to NaCl module */
 var hidpi_ = 0; /* HiDPI mode */
 var display_ = null; /* Display number to use */
-var title_ = "crouton in a window"; /* window title */
+var title_ = "crouton"; /* window title */
 var connected_ = false;
 var closing_ = false; /* Disconnected, and waiting for the window to close */
 var error_ = false; /* An error has occured */
@@ -68,6 +68,13 @@ function handleCrash(event) {
     }
     registerWindow(false);
 }
+
+/* Handle requests from the background page (for tabs) */
+function handleRequest(message, sender, sendResponse) {
+    if (typeof(window[message.func]) == "function") {
+        window[message.func](message.param);
+    }
+};
 
 /* Change debugging level */
 function setDebug(debug) {
@@ -278,6 +285,7 @@ document.addEventListener('DOMContentLoaded', function() {
     window.addEventListener('focus', handleFocusBlur);
     window.addEventListener('blur', handleFocusBlur);
     document.addEventListener('visibilitychange', handleFocusBlur);
+    chrome.runtime.onMessage.addListener(handleRequest);
 
     infodiv_ = document.getElementById('info');
     statusdiv_ = document.getElementById('status');
