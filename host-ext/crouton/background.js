@@ -138,7 +138,7 @@ function refreshUI() {
         icon = "disconnected";
 
     chrome.browserAction.setIcon(
-        {path: {'19': icon + '-19.png', '38': icon + '-38.png'}}
+        {path: {19: icon + '-19.png', 38: icon + '-38.png'}}
     );
     chrome.browserAction.setTitle({title: 'crouton: ' + icon});
 
@@ -510,14 +510,14 @@ function websocketMessage(evt) {
 
                 minimize = function(win) {
                     chrome.windows.update(winid,
-                                      {'state': 'minimized'}, function(win) {})}
+                                      {state: 'minimized'}, function(win) {})}
 
                 chrome.windows.get(winid, function(win) {
                     /* To make restore nicer, first exit full screen,
                      * then minimize */
                     if (win.state == "fullscreen") {
                         chrome.windows.update(winid,
-                                              {'state': 'maximized'}, minimize)
+                                              {state: 'maximized'}, minimize)
                     } else {
                         minimize()
                     }
@@ -528,10 +528,10 @@ function websocketMessage(evt) {
                     !kiwi_win_[display].window.closing)) {
             /* focus/full screen an existing window */
             var winid = kiwi_win_[display].id;
-            chrome.windows.update(winid, {'focused': true});
+            chrome.windows.update(winid, {focused: true});
             chrome.windows.get(winid, function(win) {
                 if (win.state == "maximized")
-                    chrome.windows.update(winid, {'state': 'fullscreen'},
+                    chrome.windows.update(winid, {state: 'fullscreen'},
                                           function(win) {})
             })
         } else {
@@ -543,12 +543,12 @@ function websocketMessage(evt) {
             win = windows_.filter(function(x){ return x.display == display })[0]
             name = win ? win.name : "crouton in a window";
 
-            chrome.windows.create({ 'url': "window.html?display=" + displaynum +
+            chrome.windows.create({ url: "window.html?display=" + displaynum +
                                            "&debug=" + (debug_ ? 1 : 0) +
                                            "&hidpi=" + (hidpi_ ? 1 : 0) +
                                            "&title=" + encodeURIComponent(name) +
                                            "&mode=" + mode,
-                                    'type': "popup" },
+                                    type: "popup" },
                                   function(newwin) {
                                       kiwi_win_[display].id = newwin.id;
                                       focus_win_ = display;

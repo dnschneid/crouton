@@ -180,18 +180,18 @@ function handleMessage(message) {
                 newstate = "fullscreen";
             }
             chrome.windows.update(chrome.windows.WINDOW_ID_CURRENT,
-                                  {'state': newstate}, function(win) {})
+                                  {state: newstate}, function(win) {})
         })
     } else if (type == "state" && payload == "hide") {
         /* Hide window */
         chrome.windows.getCurrent(function(win) {
             minimize = function(win) {
                 chrome.windows.update(chrome.windows.WINDOW_ID_CURRENT,
-                                      {'state': 'minimized'}, function(win) {})}
+                                      {state: 'minimized'}, function(win) {})}
             /* To make restore nicer, first exit full screen, then minimize */
             if (win.state == "fullscreen") {
                 chrome.windows.update(chrome.windows.WINDOW_ID_CURRENT,
-                                      {'state': 'maximized'}, minimize)
+                                      {state: 'maximized'}, minimize)
             } else {
                 minimize()
             }
@@ -264,7 +264,7 @@ function handleFocusBlur(evt) {
 /* Start in full screen */
 if (location.search.search(/[&?]mode=f(&|$)/i) != -1) {
     chrome.windows.update(chrome.windows.WINDOW_ID_CURRENT,
-                          {'state': "fullscreen"}, function(win) {})
+                          {state: "fullscreen"}, function(win) {})
 }
 
 document.addEventListener('DOMContentLoaded', function() {
