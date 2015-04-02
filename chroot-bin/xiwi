@@ -61,17 +61,16 @@ elif [ "$1" = '/' ]; then
                     kill "$monpid" 2>/dev/null
                 fi
                 monwid="$wid"
-                xprop -spy -notype -id "$wid" 'WM_NAME' 2>/dev/null | {
-                    while read _ title; do
+                (xprop -spy -notype -id "$wid" 'WM_NAME' 2>/dev/null || echo) \
+                    | while read _ title; do
                         title="${title%\"}"
                         xprop -root -f CROUTON_NAME 8s -set CROUTON_NAME \
-                            "$name/$1: ${title#*\"}"
+                            "$name/$1${title:+": "}${title#*\"}"
                         {
                             echo -n 'C'
                             croutoncycle l
                         } | websocketcommand >/dev/null
-                    done
-                } &
+                    done &
                 monpid="$!"
             done
             if [ -n "$monpid" ]; then
