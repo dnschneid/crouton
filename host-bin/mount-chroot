@@ -180,8 +180,8 @@ for NAME in "$@"; do
                 random="/dev/urandom"
                 echo 'Generating keys from /dev/urandom...' 1>&2
             fi
-            key="`hexdump -v -n32 -e'"%02x"' "$random"`"
-            fnek="`hexdump -v -n32 -e'"%02x"' "$random"`"
+            key="`hexdump -v -n32 -e'32/1 "%02x"' "$random"`"
+            fnek="`hexdump -v -n32 -e'32/1 "%02x"' "$random"`"
             echo 'done' 1>&2
 
             # Create key file
