@@ -270,26 +270,23 @@ function handleFocusBlur(evt) {
 }
 
 /* Parse arguments */
-(function() {
-    var args = location.search.substring(1).split('&');
-    for (var i = 0; i < args.length; i++) {
-        var keyval = args[i].split('=');
-        if (keyval[0] == "display") {
-            display_ = keyval[1];
-        } else if (keyval[0] == "title") {
-            title_ = decodeURIComponent(keyval[1]);
-        } else if (keyval[0] == "debug") {
-            debug_ = keyval[1];
-        } else if (keyval[0] == "hidpi") {
-            hidpi_ = keyval[1];
-        } else if (keyval[0] == "mode") {
-            if (keyval[1] == 'f') {
-                chrome.windows.update(chrome.windows.WINDOW_ID_CURRENT,
-                                      {state: "fullscreen"});
-            }
+location.search.substring(1).split('&').forEach(function(arg) {
+    var keyval = arg.split('=');
+    if (keyval[0] == "display") {
+        display_ = keyval[1];
+    } else if (keyval[0] == "title") {
+        title_ = decodeURIComponent(keyval[1]);
+    } else if (keyval[0] == "debug") {
+        debug_ = keyval[1];
+    } else if (keyval[0] == "hidpi") {
+        hidpi_ = keyval[1];
+    } else if (keyval[0] == "mode") {
+        if (keyval[1] == 'f') {
+            chrome.windows.update(chrome.windows.WINDOW_ID_CURRENT,
+                                  {state: "fullscreen"});
         }
     }
-}());
+});
 
 document.addEventListener('DOMContentLoaded', function() {
     listener_ = document.getElementById('listener');
