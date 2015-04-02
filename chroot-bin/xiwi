@@ -109,5 +109,9 @@ else
         \?) error 2 "$USAGE";;
         esac
     done
+    eval "exe=\"\$$OPTIND\""
+    if ! hash "$exe" 2>/dev/null; then
+        error 2 "${0##*/}: $exe: not found"
+    fi
     exec /usr/local/bin/xinit "$xiwicmd" / "$@"
 fi
