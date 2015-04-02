@@ -112,7 +112,7 @@ function updateWindowList(force) {
 /* Called from kiwi (window.js), so we can directly access each window */
 function registerKiwi(displaynum, window) {
     var display = ":" + displaynum;
-    if (kiwi_win_[display] && kiwi_win_[display].id >= 0) {
+    if (kiwi_win_[display] && kiwi_win_[display].id >= -1) {
         kiwi_win_[display].window = window;
     }
 }
@@ -669,7 +669,7 @@ function onRemoved(id, isTab) {
     for (var i = 0; i < disps.length; i++) {
         if (kiwi_win_[disps[i]].isTab == isTab
                 && kiwi_win_[disps[i]].id == id) {
-            kiwi_win_[disps[i]].id = -1;
+            kiwi_win_[disps[i]].id = -2;
             kiwi_win_[disps[i]].isTab = false;
             kiwi_win_[disps[i]].window = null;
             printLog("Window " + disps[i] + " removed", LogLevel.DEBUG);
