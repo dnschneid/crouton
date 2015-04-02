@@ -103,7 +103,7 @@ function setHiDPI(hidpi) {
 }
 
 function setTitle(title) {
-    document.title = "crouton (" + display_ + "): " + title;
+    document.title = title;
 }
 
 /* Set status message */
