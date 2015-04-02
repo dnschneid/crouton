@@ -573,7 +573,7 @@ function websocketMessage(evt) {
             /* Open a new window */
             kiwi_win_[display] = new Object();
             kiwi_win_[display].id = -1;
-            kiwi_win_[display].isTab = mode == 't';
+            kiwi_win_[display].isTab = (mode == 't');
             kiwi_win_[display].window = null;
 
             win = windows_.filter(function(x){return x.display == display})[0];
@@ -643,7 +643,7 @@ function websocketClose() {
     checkUpdate(false);
 }
 
-/* Called when window/tab in focus changes: feeback to the extension so the
+/* Called when window/tab in focus changes: feedback to the extension so the
  * clipboard can be transfered. */
 function onFocusChanged(id, isTab) {
     var disps = Object.keys(kiwi_win_);

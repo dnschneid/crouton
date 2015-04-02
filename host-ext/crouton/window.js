@@ -15,7 +15,7 @@ var errordiv_ = null; /* error div */
 
 var debug_ = 0; /* Debuging level, passed to NaCl module */
 var hidpi_ = 0; /* HiDPI mode */
-var display_ = null; /* Display number to use */
+var display_ = -1; /* Display number to use */
 var title_ = "crouton"; /* window title */
 var connected_ = false;
 var closing_ = false; /* Disconnected, and waiting for the window to close */
@@ -268,11 +268,27 @@ function handleFocusBlur(evt) {
     KiwiModule_.focus();
 }
 
-/* Start in full screen */
-if (location.search.search(/[&?]mode=f(&|$)/i) != -1) {
-    chrome.windows.update(chrome.windows.WINDOW_ID_CURRENT,
-                          {state: "fullscreen"}, function(win) {})
-}
+/* Parse arguments */
+(function() {
+    var args = location.search.substring(1).split('&');
+    for (var i = 0; i < args.length; i++) {
+        var keyval = args[i].split('=');
+        if (keyval[0] == "display") {
+            display_ = keyval[1];
+        } else if (keyval[0] == "title") {
+            title_ = decodeURIComponent(keyval[1]);
+        } else if (keyval[0] == "debug") {
+            debug_ = keyval[1];
+        } else if (keyval[0] == "hidpi") {
+            hidpi_ = keyval[1];
+        } else if (keyval[0] == "mode") {
+            if (keyval[1] == 'f') {
+                chrome.windows.update(chrome.windows.WINDOW_ID_CURRENT,
+                                      {state: "fullscreen"});
+            }
+        }
+    }
+}());
 
 document.addEventListener('DOMContentLoaded', function() {
     listener_ = document.getElementById('listener');
@@ -298,22 +314,8 @@ document.addEventListener('DOMContentLoaded', function() {
     warningdiv_.style.display = 'block';
     errordiv_.style.display = 'block';
 
-    /* Parse arguments */
-    var args = location.search.substring(1).split('&');
-    display_ = -1;
-    debug_ = 0;
-    for (var i = 0; i < args.length; i++) {
-        var keyval = args[i].split('=')
-        if (keyval[0] == "display")
-            display_ = keyval[1];
-        else if (keyval[0] == "title")
-            title_ = decodeURIComponent(keyval[1]);
-        else if (keyval[0] == "debug")
-            setDebug(keyval[1]);
-        else if (keyval[0] == "hidpi")
-            setHiDPI(keyval[1]);
-    }
-
+    setDebug(debug_);
+    setHiDPI(hidpi_);
     setTitle(title_);
 
     registerWindow(true);
