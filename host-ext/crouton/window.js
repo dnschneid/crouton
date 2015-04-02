@@ -1,6 +1,7 @@
 // Copyright (c) 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+'use strict';
 
 var CLOSE_TIMEOUT = 2; /* Close window x seconds after disconnect */
 var DEBUG_LEVEL = 2; /* If debug is enabled, use this level in NaCl */
@@ -187,22 +188,22 @@ function handleMessage(message) {
                 newstate = "fullscreen";
             }
             chrome.windows.update(chrome.windows.WINDOW_ID_CURRENT,
-                                  {state: newstate}, function(win) {})
-        })
+                                  {state: newstate}, function(win) {});
+        });
     } else if (type == "state" && payload == "hide") {
         /* Hide window */
         chrome.windows.getCurrent(function(win) {
-            minimize = function(win) {
+            var minimize = function(win) {
                 chrome.windows.update(chrome.windows.WINDOW_ID_CURRENT,
                                       {state: 'minimized'}, function(win) {})}
             /* To make restore nicer, first exit full screen, then minimize */
             if (win.state == "fullscreen") {
                 chrome.windows.update(chrome.windows.WINDOW_ID_CURRENT,
-                                      {state: 'maximized'}, minimize)
+                                      {state: 'maximized'}, minimize);
             } else {
-                minimize()
+                minimize();
             }
-        })
+        });
     } else if (type == "resize") {
         i = payload.indexOf("/");
         if (i < 0) return;
@@ -319,4 +320,4 @@ document.addEventListener('DOMContentLoaded', function() {
     setTitle(title_);
 
     registerWindow(true);
-})
+});

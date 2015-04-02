@@ -1,6 +1,7 @@
 // Copyright (c) 2014 The crouton Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+'use strict';
 
 /* Constants */
 var URL = "ws://localhost:30001/";
@@ -12,11 +13,11 @@ var WINDOW_UPDATE_INTERVAL = 15; /* Update window list every 15" at most */
 /* String to copy to the clipboard if it should be empty */
 var DUMMY_EMPTYSTRING = "%";
 
-LogLevel = {
+var LogLevel = Object.freeze({
     ERROR : "error",
-    INFO : "info",
+    INFO  : "info",
     DEBUG : "debug"
-}
+});
 
 /* Global variables */
 var clipboardholder_; /* textarea used to hold clipboard content */
@@ -110,7 +111,7 @@ function updateWindowList(force) {
 
 /* Called from kiwi (window.js), so we can directly access each window */
 function registerKiwi(displaynum, window) {
-    display = ":" + displaynum
+    var display = ":" + displaynum;
     if (kiwi_win_[display] && kiwi_win_[display].id >= 0) {
         kiwi_win_[display].window = window;
     }
@@ -128,14 +129,13 @@ function closePopup() {
 function refreshUI() {
     updateWindowList(false);
 
+    var icon = "disconnected";
     if (error_)
-        icon = "error"
+        icon = "error";
     else if (!enabled_)
-        icon = "disabled"
+        icon = "disabled";
     else if (active_)
         icon = "connected";
-    else
-        icon = "disconnected";
 
     chrome.browserAction.setIcon(
         {path: {19: icon + '-19.png', 38: icon + '-38.png'}}
@@ -148,10 +148,10 @@ function refreshUI() {
         /* Make sure page is ready */
         if (view.document.readyState === "complete") {
             /* Update "help" link */
-            helplink = view.document.getElementById("help");
+            var helplink = view.document.getElementById("help");
             helplink.onclick = showHelp;
             /* Update enable/disable link. */
-            enablelink = view.document.getElementById("enable");
+            var enablelink = view.document.getElementById("enable");
             if (enabled_) {
                 enablelink.textContent = "Disable";
                 enablelink.onclick = function() {
@@ -175,7 +175,7 @@ function refreshUI() {
             }
 
             /* Update debug mode according to checkbox state. */
-            debugcheck = view.document.getElementById("debugcheck");
+            var debugcheck = view.document.getElementById("debugcheck");
             debugcheck.onclick = function() {
                 debug_ = debugcheck.checked;
                 refreshUI();
@@ -195,7 +195,7 @@ function refreshUI() {
             debugcheck.checked = debug_;
 
             /* Update hidpi mode according to checkbox state. */
-            hidpicheck = view.document.getElementById("hidpicheck");
+            var hidpicheck = view.document.getElementById("hidpicheck");
             if (window.devicePixelRatio > 1) {
                 hidpicheck.onclick = function() {
                     hidpi_ = hidpicheck.checked;
@@ -224,7 +224,7 @@ function refreshUI() {
 
             /* Update window table */
             /* FIXME: Improve UI */
-            windowlist = view.document.getElementById("windowlist");
+            var windowlist = view.document.getElementById("windowlist");
 
             while (windowlist.rows.length > 0) {
                 windowlist.deleteRow(0);
@@ -247,7 +247,7 @@ function refreshUI() {
             }
 
             /* Update logger table */
-            loggertable = view.document.getElementById("logger");
+            var loggertable = view.document.getElementById("logger");
 
             /* FIXME: only update needed rows */
             while (loggertable.rows.length > 0) {
@@ -255,7 +255,7 @@ function refreshUI() {
             }
 
             /* Only update if "show log" is enabled */
-            logcheck = view.document.getElementById("logcheck");
+            var logcheck = view.document.getElementById("logcheck");
             logcheck.onclick = function() {
                 showlog_ = logcheck.checked;
                 refreshUI();
@@ -263,7 +263,7 @@ function refreshUI() {
             logcheck.checked = showlog_;
             if (showlog_) {
                 for (var i = 0; i < logger_.length; i++) {
-                    value = logger_[i];
+                    var value = logger_[i];
 
                     if (value[0] == LogLevel.DEBUG && !debug_)
                         continue;
@@ -483,7 +483,7 @@ function websocketMessage(evt) {
         if (payload.length > 0) {
             windows_ = payload.split('\n').map(
                 function(x) {
-                    m = x.match(/^([^ *]*)\*? +(.*)$/)
+                    var m = x.match(/^([^ *]*)\*? +(.*)$/);
                     if (!m)
                         return null;
 
@@ -491,12 +491,12 @@ function websocketMessage(evt) {
                     if (m[1] != "cros" && !m[1].match(/^:([0-9]+)$/))
                         return null;
 
-                    k = new Object()
+                    var k = new Object();
                     k.display = m[1];
                     k.name = m[2];
                     return k;
                 }
-            ).filter( function(x) { return !!x; } )
+            ).filter( function(x) { return !!x; } );
 
             windows_.forEach(function(k) {
                 var win = kiwi_win_[k.display];
@@ -508,7 +508,7 @@ function websocketMessage(evt) {
                         win.window.setTitle(k.name);
                     }
                 }
-            })
+            });
 
             lastwindowlistupdate_ = new Date().getTime();
             websocket_.send("COK");
@@ -516,10 +516,10 @@ function websocketMessage(evt) {
         refreshUI();
         break;
     case 'X': /* Ask to open a crouton window */
-        display = payload
-        match = display.match(/^:([0-9]+)([- ][^- ]*)*$/)
-        displaynum = match ? match[1] : null;
-        mode = null;
+        var display = payload;
+        var match = display.match(/^:([0-9]+)([- ][^- ]*)*$/);
+        var displaynum = match ? match[1] : null;
+        var mode = null;
         if (displaynum) {
             display = ":" + displaynum;
             mode = match[2].length >= 2 ? match[2].charAt(1) : 'f';
@@ -538,7 +538,7 @@ function websocketMessage(evt) {
                 var winid = kiwi_win_[disps[i]].id;
                 chrome.windows.update(winid, {focused: false});
 
-                minimize = function(win) {
+                var minimize = function(win) {
                     chrome.windows.update(winid, {state: 'minimized'}); };
 
                 chrome.windows.get(winid, function(win) {
@@ -550,7 +550,7 @@ function websocketMessage(evt) {
                     } else {
                         minimize();
                     }
-                })
+                });
             }
         } else if (kiwi_win_[display] && kiwi_win_[display].id >= 0 &&
                    (!kiwi_win_[display].window ||
@@ -576,10 +576,10 @@ function websocketMessage(evt) {
             kiwi_win_[display].isTab = (mode == 't');
             kiwi_win_[display].window = null;
 
-            win = windows_.filter(function(x){return x.display == display})[0];
-            name = win ? win.name : "crouton in a window";
-            create = chrome.windows.create;
-            data = {};
+            var win = windows_.filter(function(x){return x.display == display})[0];
+            var name = win ? win.name : "crouton in a window";
+            var create = chrome.windows.create;
+            var data = {};
 
             if (kiwi_win_[display].isTab) {
                 name = win ? win.name : "crouton in a tab";
@@ -647,16 +647,16 @@ function websocketClose() {
  * clipboard can be transfered. */
 function onFocusChanged(id, isTab) {
     var disps = Object.keys(kiwi_win_);
-    nextfocus_win_ = "cros";
+    var nextfocus_win = "cros";
     for (var i = 0; i < disps.length; i++) {
         if (kiwi_win_[disps[i]].isTab == isTab
                 && kiwi_win_[disps[i]].id == id) {
-            nextfocus_win_ = disps[i];
+            nextfocus_win = disps[i];
             break;
         }
     }
-    if (focus_win_ != nextfocus_win_) {
-        focus_win_ = nextfocus_win_;
+    if (focus_win_ != nextfocus_win) {
+        focus_win_ = nextfocus_win;
         if (active_ && sversion_ >= 2)
             websocket_.send("Cs" + focus_win_);
         printLog("Window " + focus_win_ + " focused", LogLevel.DEBUG);
@@ -702,10 +702,10 @@ function padstr0(i) {
 
 /* Add a message in the log. */
 function printLog(str, level) {
-    date = new Date;
-    datestr = padstr0(date.getHours()) + ":" +
-              padstr0(date.getMinutes()) + ":" +
-              padstr0(date.getSeconds());
+    var date = new Date;
+    var datestr = padstr0(date.getHours()) + ":" +
+                  padstr0(date.getMinutes()) + ":" +
+                  padstr0(date.getSeconds());
 
     if (str.length > 200)
         str = str.substring(0, 197) + "...";
@@ -748,7 +748,7 @@ chrome.runtime.onInstalled.addListener(function(details) {
 chrome.runtime.getPlatformInfo(function(platforminfo) {
     if (platforminfo.os == 'cros') {
         /* On error: disconnect WebSocket, then log errors */
-        onerror = function(msg, url, line) {
+        var onerror = function(msg, url, line) {
             if (websocket_)
                 websocket_.close();
             error("Uncaught JS error: " + msg, false);
