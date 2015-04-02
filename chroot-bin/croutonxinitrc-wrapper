@@ -45,7 +45,7 @@ fi
 # Run crouton-specific commands:
 
 # Show chroot specifics for troubleshooting
-croutonversion
+croutonversion 1>&2
 
 if [ -z "$XMETHOD" ]; then
     if [ -f '/etc/crouton/xmethod' ]; then
