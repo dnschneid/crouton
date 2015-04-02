@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 'use strict';
 
-var CLOSE_TIMEOUT = 2; /* Close window x seconds after disconnect */
+var CLOSE_TIMEOUT = 0; /* Close window x seconds after disconnect */
 var DEBUG_LEVEL = 2; /* If debug is enabled, use this level in NaCl */
 var RESIZE_RATE_LIMIT = 300; /* No more than 1 resize query every x ms */
 
