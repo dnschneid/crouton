@@ -522,7 +522,7 @@ function websocketMessage(evt) {
         var mode = null;
         if (displaynum) {
             display = ":" + displaynum;
-            mode = match[2].length >= 2 ? match[2].charAt(1) : 'f';
+            mode = match[2] && match[2].length >= 2 ? match[2].charAt(1) : 'f';
             if ('fwt'.indexOf(mode) == -1) {
                 console.log('invalid xiwi mode: ' + mode);
                 mode = 'f';
