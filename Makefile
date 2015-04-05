@@ -15,6 +15,9 @@ SCRIPTS := \
 	$(wildcard installer/*/*) \
 	$(wildcard src/*) \
 	$(wildcard targets/*)
+EXTPEXE = host-ext/crouton/kiwi.pexe
+EXTPEXESOURCES = $(wildcard host-ext/nacl_src/*.h) \
+				 $(wildcard host-ext/nacl_src/*.cc)
 EXTSOURCES = $(wildcard host-ext/crouton/*)
 GENVERSION = build/genversion.sh
 CONTRIBUTORSSED = build/CONTRIBUTORS.sed
@@ -55,6 +58,9 @@ $(TARGET): $(WRAPPER) $(SCRIPTS) $(GENVERSION) $(GITHEAD) Makefile
 
 $(EXTTARGET): $(EXTSOURCES) Makefile
 	rm -f $(EXTTARGET) && zip -q --junk-paths $(EXTTARGET) $(EXTSOURCES)
+
+$(EXTPEXE): $(EXTPEXESOURCES)
+	$(MAKE) -C host-ext/nacl_src
 
 $(SRCTARGETS): src/$(patsubst crouton%,src/%.c,$@) $($@_DEPS) Makefile
 	gcc $(CFLAGS) $(patsubst crouton%,src/%.c,$@) $($@_LIBS) -o $@

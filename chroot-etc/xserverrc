@@ -12,7 +12,7 @@ if [ -z "$XMETHOD" ]; then
     fi
 fi
 
-xserverrc="/etc/crouton/xserverrc-$XMETHOD"
+xserverrc="/etc/crouton/xserverrc-${XMETHOD%%-*}"
 if [ "${XMETHOD##*/}" != "$XMETHOD" -o ! -f "$xserverrc" ]; then
     echo "Invalid X11 backend '$XMETHOD'" 1>&2
     exit 2

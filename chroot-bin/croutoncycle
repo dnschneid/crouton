@@ -88,7 +88,7 @@ for disp in /tmp/.X*-lock; do
             | grep -q 'INTEGER'; then
         displist="$displist $disp"
     elif DISPLAY="$disp" xprop -root 'CROUTON_XMETHOD' 2>/dev/null \
-            | grep -q '= "xiwi"$'; then
+            | grep -q '= "xiwi'; then
         displist="$displist $disp"
         xiwiactive='y'
     fi
@@ -304,7 +304,9 @@ if [ "${destdisp#:}" = "$destdisp" ]; then
     fi
 else
     export DISPLAY="$destdisp"
-    if xprop -root 'CROUTON_XMETHOD' 2>/dev/null | grep -q '= "xiwi"$'; then
+    xmethod="`xprop -root 'CROUTON_XMETHOD' 2>/dev/null \
+              | sed -n 's/^.*\"\(.*\)\"/\1/p'`"
+    if [ "${xmethod%%-*}" = 'xiwi' ]; then
         if [ -z "$freonowner" -a "$tty" != 'tty1' ]; then
             sudo -n chvt 1
             sleep .1
@@ -314,7 +316,7 @@ else
         if [ -z "$freonowner" ]; then
             host-x11 croutonwmtools raise "$aurawin"
         fi
-        STATUS="`echo -n "X${destdisp}" | websocketcommand`"
+        STATUS="`echo -n "X${destdisp} ${xmethod#*-}" | websocketcommand`"
         if [ "$STATUS" != 'XOK' ]; then
             error 1 "${STATUS#?}"
         fi
