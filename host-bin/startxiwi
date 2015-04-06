@@ -56,11 +56,20 @@ By default, the CHROOT_APP is launched in a window.
   use the default window manager, specify the full path of the application.
 "
 
-while getopts bc:hlk:n:t:u:xfFHT OPT; do
+# Exits the script with exit code $1, spitting out message $@ to stderr
+error() {
+    local ecode="$1"
+    shift
+    echo "$*" 1>&2
+    exit "$ecode"
+}
+
+options=':bc:hlk:n:t:u:xfFHT'
+while getopts $options OPT; do
   case ${OPT} in
     b) OPTS_ENTER="$OPTS_ENTER -b";;
     c) OPTS_ENTER="$OPTS_ENTER -c ${OPTARG}";;
-    h) echo "$USAGE_ENTER"; exit 0;;
+    h) error 0 "$USAGE_ENTER";;
     l) OPTS_ENTER="$OPTS_ENTER -l";;
     k) OPTS_ENTER="$OPTS_ENTER -k ${OPTARG}";;
     n) OPTS_ENTER="$OPTS_ENTER -n ${OPTARG}";;
@@ -69,9 +78,14 @@ while getopts bc:hlk:n:t:u:xfFHT OPT; do
     x) OPTS_ENTER="$OPTS_ENTER -x";;
     f) OPTS_XIWI="$OPTS_XIWI -f";;
     F) OPTS_XIWI="$OPTS_XIWI -F";;
-    H) echo "$USAGE_XIWI"; exit 0;;
+    H) error 0 "$USAGE_XIWI";;
     T) OPTS_XIWI="$OPTS_XIWI -T";;
-    \?) echo "$USAGE"; exit 2;;
+   \?) echo "Unknown option: -$OPTARG" 1>&2
+       error 2 "USAGE";;
+    :) echo "Missing option argument for -$OPTARG"
+       error 2 "USAGE";;
+    *) echo "Unimplemented option: -$OPTARG" 1>&2
+       error 2 "USAGE";;
   esac
 done
 shift "$((OPTIND-1))"
