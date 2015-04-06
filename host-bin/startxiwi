@@ -81,11 +81,11 @@ while getopts $options OPT; do
     H) error 0 "$USAGE_XIWI";;
     T) OPTS_XIWI="$OPTS_XIWI -T";;
    \?) echo "Unknown option: -$OPTARG" 1>&2
-       error 2 "USAGE";;
+       error 2 "$USAGE";;
     :) echo "Missing option argument for -$OPTARG"
-       error 2 "USAGE";;
+       error 2 "$USAGE";;
     *) echo "Unimplemented option: -$OPTARG" 1>&2
-       error 2 "USAGE";;
+       error 2 "$USAGE";;
   esac
 done
 shift "$((OPTIND-1))"
