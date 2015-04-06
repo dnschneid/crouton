@@ -27,16 +27,16 @@ USAGE_ENTER="enter-chroot [options]
   -n NAME     Name of the chroot to enter. Default: first one found in CHROOTS
   -t TARGET   Only enter the chroot if it contains the specified TARGET.
   -u USERNAME Username (or UID) to log into. Default: 1000 (the primary user)
-  -X XMETHOD  (Override the auto-detected XMETHOD for this session.) - deprecated, 'xiwi' is enforced.
+  -X XMETHOD  Override the auto-detected XMETHOD for this session.
   -x          Does not log in, but directly executes the command instead.
               Note that the environment will be empty (sans TERM).
               Specify -x a second time to run the /prepare.sh script.
 "
 USAGE_XIWI="xiwi [options] CHROOT_APP [options]
 
-  -f          prevent xiwi from quitting automatically.[1]
-  -F          will launch the app full-screen.[2]
-  -T          will launch the app in a tab.
+  -f          Prevent xiwi from quitting automatically.[1]
+  -F          Will launch the app full-screen.[2]
+  -T          Will launch the app in a tab.
 
 By default, the CHROOT_APP is launched in a window.
 
@@ -50,29 +50,31 @@ By default, the CHROOT_APP is launched in a window.
   [2] A default window manager will full-screen all windows, unless CHROOT_APP begins
       with 'start' or is 'xinit'. You can use -F to force the CHROOT_APP full-screen.
 
-      You can cycle through multiple windows inside the
-      application via Ctrl-Alt-Tab/Ctrl-Alt-Shift-Tab, or close them via
-      Ctrl-Alt-Shift-Escape.  If CHROOT_APP begins with 'start' but you still want to
-      use the default window manager, specify the full path of the application.
+  You can cycle through multiple windows inside the
+  application via Ctrl-Alt-Tab/Ctrl-Alt-Shift-Tab, or close them via
+  Ctrl-Alt-Shift-Escape.  If CHROOT_APP begins with 'start' but you still want to
+  use the default window manager, specify the full path of the application.
 "
+
+if [ "$#" = 0 ]; then echo "$USAGE"; exit 2; fi
 
 while getopts bc:hlk:n:t:u:xfFHT OPT; do
   case ${OPT} in
-    [b]) OPTS_ENTER="$OPTS_ENTER -b";;
-    [c]) OPTS_ENTER="$OPTS_ENTER -c ${OPTARG}";;
-    [h]) echo "$USAGE_ENTER"; exit 0;;
-    [l]) OPTS_ENTER="$OPTS_ENTER -l";;
-    [k]) OPTS_ENTER="$OPTS_ENTER -k ${OPTARG}";;
-    [n]) OPTS_ENTER="$OPTS_ENTER -n ${OPTARG}";;
-    [t]) OPTS_ENTER="$OPTS_ENTER -t ${OPTARG}";;
-    [u]) OPTS_ENTER="$OPTS_ENTER -u ${OPTARG}";;
-    [x]) OPTS_ENTER="$OPTS_ENTER -x";;
-    [X]) echo "'-X' option ignored, XMETHOD is always 'xiwi'";;
-    [f]) OPTS_XIWI="$OPTS_XIWI -f";;
-    [F]) OPTS_XIWI="$OPTS_XIWI -F";;
-    [H]) echo "$USAGE_XIWI"; exit 0;;
-    [T]) OPTS_XIWI="$OPTS_XIWI -T";;
-    \?)  echo "$USAGE"; exit 2;;
+    b) OPTS_ENTER="$OPTS_ENTER -b";;
+    c) OPTS_ENTER="$OPTS_ENTER -c ${OPTARG}";;
+    h) echo "$USAGE_ENTER"; exit 0;;
+    l) OPTS_ENTER="$OPTS_ENTER -l";;
+    k) OPTS_ENTER="$OPTS_ENTER -k ${OPTARG}";;
+    n) OPTS_ENTER="$OPTS_ENTER -n ${OPTARG}";;
+    t) OPTS_ENTER="$OPTS_ENTER -t ${OPTARG}";;
+    u) OPTS_ENTER="$OPTS_ENTER -u ${OPTARG}";;
+    x) OPTS_ENTER="$OPTS_ENTER -x";;
+    X) echo "'-X' option ignored, XMETHOD is always 'xiwi'";;
+    f) OPTS_XIWI="$OPTS_XIWI -f";;
+    F) OPTS_XIWI="$OPTS_XIWI -F";;
+    H) echo "$USAGE_XIWI"; exit 0;;
+    T) OPTS_XIWI="$OPTS_XIWI -T";;
+    \?) echo "$USAGE"; exit 2;;
   esac
 done
 shift "$((OPTIND-1))"
