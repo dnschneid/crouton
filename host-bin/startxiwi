@@ -1,5 +1,5 @@
 #!/bin/sh -e
-# Copyright (c) 2014 The crouton Authors. All rights reserved.
+# Copyright (c) 2015 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -15,7 +15,7 @@ You can launch any individual chroot graphical application in crouton windows.
 
 By default, it will log into the primary user on the first chroot found.
 
-Enter '-h' for 'enter-chroot options and enter '-H' for 'xiwi-app' options.
+Enter '-h' for 'enter-chroot' options and enter '-H' for 'xiwi-app' options.
 "
 USAGE_ENTER="enter-chroot [options]
 
@@ -56,9 +56,7 @@ By default, the CHROOT_APP is launched in a window.
   use the default window manager, specify the full path of the application.
 "
 
-if [ "$#" = 0 ]; then echo "$USAGE"; exit 2; fi
-
-while getopts bc:hlk:n:t:u:X:xfFHT OPT; do
+while getopts bc:hlk:n:t:u:xfFHT OPT; do
   case ${OPT} in
     b) OPTS_ENTER="$OPTS_ENTER -b";;
     c) OPTS_ENTER="$OPTS_ENTER -c ${OPTARG}";;
@@ -69,7 +67,6 @@ while getopts bc:hlk:n:t:u:X:xfFHT OPT; do
     t) OPTS_ENTER="$OPTS_ENTER -t ${OPTARG}";;
     u) OPTS_ENTER="$OPTS_ENTER -u ${OPTARG}";;
     x) OPTS_ENTER="$OPTS_ENTER -x";;
-    X) echo "'-X ${OPTARG}' ignored, XMETHOD is always 'xiwi'";;
     f) OPTS_XIWI="$OPTS_XIWI -f";;
     F) OPTS_XIWI="$OPTS_XIWI -F";;
     H) echo "$USAGE_XIWI"; exit 0;;
