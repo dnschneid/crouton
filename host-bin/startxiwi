@@ -58,7 +58,7 @@ By default, the CHROOT_APP is launched in a window.
 
 if [ "$#" = 0 ]; then echo "$USAGE"; exit 2; fi
 
-while getopts bc:hlk:n:t:u:xfFHT OPT; do
+while getopts bc:hlk:n:t:u:X:xfFHT OPT; do
   case ${OPT} in
     b) OPTS_ENTER="$OPTS_ENTER -b";;
     c) OPTS_ENTER="$OPTS_ENTER -c ${OPTARG}";;
@@ -69,7 +69,7 @@ while getopts bc:hlk:n:t:u:xfFHT OPT; do
     t) OPTS_ENTER="$OPTS_ENTER -t ${OPTARG}";;
     u) OPTS_ENTER="$OPTS_ENTER -u ${OPTARG}";;
     x) OPTS_ENTER="$OPTS_ENTER -x";;
-    X) echo "'-X' option ignored, XMETHOD is always 'xiwi'";;
+    X) echo "'-X ${OPTARG}' ignored, XMETHOD is always 'xiwi'";;
     f) OPTS_XIWI="$OPTS_XIWI -f";;
     F) OPTS_XIWI="$OPTS_XIWI -F";;
     H) echo "$USAGE_XIWI"; exit 0;;
