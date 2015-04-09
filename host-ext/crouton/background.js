@@ -142,6 +142,11 @@ function refreshUI() {
     );
     chrome.browserAction.setTitle({title: 'crouton: ' + icon});
 
+    chrome.browserAction.setBadgeText(
+        {text: windows_.length > 1 ? '' + (windows_.length-1) : ''}
+    );
+    chrome.browserAction.setBadgeBackgroundColor({color: '#2E822B'});
+
     var views = chrome.extension.getViews({type: "popup"});
     for (var i = 0; i < views.length; views++) {
         var view = views[i];
@@ -673,6 +678,8 @@ function onRemoved(id, isTab) {
             kiwi_win_[disps[i]].isTab = false;
             kiwi_win_[disps[i]].window = null;
             printLog("Window " + disps[i] + " removed", LogLevel.DEBUG);
+            /* Force a window list update */
+            updateWindowList(true);
         }
     }
 }
