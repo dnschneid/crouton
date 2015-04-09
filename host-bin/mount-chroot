@@ -9,11 +9,15 @@ APPLICATION="${0##*/}"
 BINDIR="`dirname "\`readlink -f "$0"\`"`"
 CHROOTS="`readlink -m "$BINDIR/../chroots"`"
 CREATE=''
+ENABLENOPASS=''
 ENCRYPT=''
 KEYFILE=''
 PRINT=''
+NOPASS=''
+NOENC=''
 ROOT="`readlink -m '/var/run/crouton'`"
 MOUNTOPTS='rw,dev,exec,suid'
+PAD='................'
 
 USAGE="$APPLICATION [options] name [...]
 
@@ -60,27 +64,46 @@ addtrap "stty echo 2>/dev/null"
 
 # Function to prompt the user for a passphrase. Sets $passphrase.
 promptNewPassphrase() {
-    echo_tty -n "Choose an encryption passphrase for $NAME: "
-    [ -t 0 ] && stty -echo
-    while [ -z "$passphrase" ]; do
+    NOPASS=''
+    if [ ! "$CHROOTSRC/.ecryptfs" = "$KEYFILE" ]; then
+        ENABLENOPASS='y'
+    fi
+    while [ -z "$passphrase" -a -z "$NOPASS" ]; do
+        [ -t 0 ] && stty -echo
+        echo_tty -n "Choose an encryption passphrase for $NAME: "
         read -r passphrase
-        if [ -z "$passphrase" ]; then
-            echo_tty ''
-            echo_tty -n 'You must specify a passphrase: '
-            continue
-        fi
         echo_tty ''
-        echo_tty -n 'Please confirm your passphrase: '
+        echo -n 'Please confirm your passphrase: ' 1>&2
         read -r confirmation
+        echo_tty ''
         if [ ! "$confirmation" = "$passphrase" ]; then
             passphrase=''
-            echo_tty ''
-            echo_tty -n 'Passphrases do not match; try again: '
+            echo_tty -n 'Passphrases do not match.'
+            continue
+        fi
+        [ -t 0 ] && stty echo
+        if [ -z "$passphrase" ]; then
+            if [ -n "$ENABLENOPASS" ]; then
+                echo_tty -n \
+'You did not specify a passphrase.  Your keys will not be encrypted.
+Only do this if you are confident that your keys are stored in a secure location.
+Do you want to continue? [y/N]: '
+                read -r response
+                if [ "${response#[Yy]}" = "$response" ]; then
+                    continue
+                else
+                NOPASS='y'
+                echo_tty 'No password set, keys will not be encrypted'
+                fi
+            else
+                echo_tty \
+'You tried to specify no passphrase, but to do that,
+you must store you keyfile in a custom location with -k.'
+                continue
+            fi
         fi
         confirmation=''
     done
-    [ -t 0 ] && stty echo
-    echo_tty ''
 }
 
 # Mount each chroot
@@ -186,63 +209,112 @@ for NAME in "$@"; do
             echo 'done' 1>&2
 
             # Create key file
-            wrappedkey="`mktemp`"
-            wrappedfnek="`mktemp`"
-            addtrap "rm -f '$wrappedkey' '$wrappedfnek'"
-            echo -n "$key
+            if [ -z "$NOPASS" ]; then
+                wrappedkey="`mktemp`"
+                wrappedfnek="`mktemp`"
+                addtrap "rm -f '$wrappedkey' '$wrappedfnek'"
+                echo -n "$key
 $passphrase" | ecryptfs-wrap-passphrase "$wrappedkey" -
-            echo -n "$fnek
+                echo -n "$fnek
 $passphrase" | ecryptfs-wrap-passphrase "$wrappedfnek" -
-            unset key fnek
-            echo | cat - "$wrappedkey" "$wrappedfnek" > "$KEYFILE"
+                unset key fnek
+                echo | cat - "$wrappedkey" "$wrappedfnek" > "$KEYFILE"
+            else
+                echo -n "
+$PAD$key$PAD$fnek" > "$KEYFILE"
+                NOENC=$NOPASS
+            fi
             if [ ! -f "$CHROOTSRC/.ecryptfs" ]; then
                 echo "$KEYFILE" > "$CHROOTSRC/.ecryptfs"
             fi
         elif [ ! -f "$KEYFILE" ]; then
             error 1 "Unable to find encryption key file $KEYFILE"
         else
-            echo_tty -n "Enter encryption passphrase for $NAME: "
-            [ -t 0 ] && stty -echo
-            if [ -z "$passphrase" ]; then
-                read -r passphrase
-            fi
-            [ -t 0 ] && stty echo
-            echo_tty ''
-
             wrappedkey="`mktemp`"
             wrappedfnek="`mktemp`"
             addtrap "rm -f '$wrappedkey' '$wrappedfnek'"
 
-            # Extract wrapped keys from keyfile
-            tail -c 160 "$KEYFILE" | head -c 80 > "$wrappedkey"
-            tail -c 80 "$KEYFILE" > "$wrappedfnek"
+            PAD1="`tail -n+2 "$KEYFILE" | head -c 16`"
+
+            if [ "$PAD1" = "$PAD" ]; then
+                NOENC='y'
+                contents="`tail -n+2 "$KEYFILE"`"
+                key="${contents#${PAD}}"
+                key="${key%%${PAD}*}"
+                fnek="${contents##*${PAD}}"
+            else
+                # Extract wrapped keys from keyfile
+                tail -c 160 "$KEYFILE" | head -c 80 > "$wrappedkey"
+                tail -c 80 "$KEYFILE" > "$wrappedfnek"
+
+                while [ -z "$passphrase" ]; do
+                    echo_tty -n "Enter encryption passphrase for $NAME: "
+                    [ -t 0 ] && stty -echo
+                        read -r passphrase
+                    [ -t 0 ] && stty echo
+                    echo_tty ''
+                done
+            fi
 
             # Change the passphrase if requested
             if [ "${ENCRYPT:-0}" -ge 2 ]; then
                 oldpassphrase="$passphrase"
                 passphrase="$CROUTON_NEW_PASSPHRASE"
                 promptNewPassphrase
-
                 echo "Applying passphrase change" 1>&2
-                echo -n "$oldpassphrase
-$passphrase" | ecryptfs-rewrap-passphrase "$wrappedkey" -
-                echo -n "$oldpassphrase
-$passphrase" | ecryptfs-rewrap-passphrase "$wrappedfnek" -
-                echo | cat - "$wrappedkey" "$wrappedfnek" > "$KEYFILE"
 
+                if [ -z "$NOENC" -a -z "$NOPASS" ]; then
+                    # Re-wrap alreay encrypted passphrase
+                    echo -n "$oldpassphrase
+$passphrase" | ecryptfs-rewrap-passphrase "$wrappedkey" -
+                    echo -n "$oldpassphrase
+$passphrase" | ecryptfs-rewrap-passphrase "$wrappedfnek" -
+                    echo | cat - "$wrappedkey" "$wrappedfnek" > "$KEYFILE"
+                elif [ -n "$NOENC" -a -z "$NOPASS" ]; then
+                    # Wrap previously unwrapped pasphrase
+                    echo -n "$key
+$passphrase" | ecryptfs-wrap-passphrase "$wrappedkey" -
+                    echo -n "$fnek
+$passphrase" | ecryptfs-wrap-passphrase "$wrappedfnek" -
+                    echo | cat - "$wrappedkey" "$wrappedfnek" > "$KEYFILE"
+                    unset key fnek
+                elif [ -z "$NOENC" -a -n "$NOPASS" ]; then
+                    #Unwrap previously wrapped passphrase
+                    key="`echo -n "$oldpassphrase" \
+                        | ecryptfs-unwrap-passphrase "$wrappedkey" - 2>/dev/null`"
+                    fnek="`echo -n "$oldpassphrase" \
+                        | ecryptfs-unwrap-passphrase "$wrappedfnek" - 2>/dev/null`"
+                    echo -n "
+$PAD$key$PAD$fnek" > "$KEYFILE"
+                elif [ -n "$NOENC" -a -n "$NOPASS" ]; then
+                    #Do nothing
+                    echo 'Applying double-ROT13 encryption to keys.. :)' 1>&2
+                fi
+
+                NOENC=$NOPASS
                 unset oldpassphrase
             fi
         fi
 
         # Add keys to keychain and extract
-        keysig="`echo -n "$passphrase" \
-            | ecryptfs-unwrap-passphrase "$wrappedkey" - 2>/dev/null \
-            | ecryptfs-add-passphrase - 2>/dev/null \
-            | sed -n 's/.*\[\([0-9a-zA-Z]*\)\].*/\1/p'`"
-        fneksig="`echo -n "$passphrase" \
-            | ecryptfs-unwrap-passphrase "$wrappedfnek" - 2>/dev/null \
-            | ecryptfs-add-passphrase - 2>/dev/null \
-            | sed -n 's/.*\[\([0-9a-zA-Z]*\)\].*/\1/p'`"
+        if [ -n "$NOENC" ]; then
+            keysig="`echo -n "$key" \
+                | ecryptfs-add-passphrase - 2>/dev/null \
+                | sed -n 's/.*\[\([0-9a-zA-Z]*\)\].*/\1/p'`"
+            fneksig="`echo -n "$fnek" \
+                | ecryptfs-add-passphrase - 2>/dev/null \
+                | sed -n 's/.*\[\([0-9a-zA-Z]*\)\].*/\1/p'`"
+        else
+            keysig="`echo -n "$passphrase" \
+                | ecryptfs-unwrap-passphrase "$wrappedkey" - 2>/dev/null \
+                | ecryptfs-add-passphrase - 2>/dev/null \
+                | sed -n 's/.*\[\([0-9a-zA-Z]*\)\].*/\1/p'`"
+            fneksig="`echo -n "$passphrase" \
+                | ecryptfs-unwrap-passphrase "$wrappedfnek" - 2>/dev/null \
+                | ecryptfs-add-passphrase - 2>/dev/null \
+                | sed -n 's/.*\[\([0-9a-zA-Z]*\)\].*/\1/p'`"
+        fi
+
         if [ -z "$keysig" -o -z "$fneksig" ]; then
             error 1 "Failed to decrypt $NAME."
         fi
