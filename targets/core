@@ -2,7 +2,7 @@
 # Copyright (c) 2014 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-REQUIRES=''
+REQUIRES='core.minimal'
 DESCRIPTION='Performs core system configuration. Most users would want this.'
 CHROOTBIN='brightness croutonpowerd croutonversion host-dbus host-x11'
 . "${TARGETSDIR:="$PWD"}/common"
@@ -16,33 +16,8 @@ if [ ! "$VERSION" = '#VERSION#' ]; then
         -i '/usr/local/bin/croutonversion'
 fi
 
-# Create the new environment file
-oldenv='/etc/environment'
-newenv='/etc/environment.new'
-{
-    echo '### begin crouton-generated environment variables'
-    if [ "$PROXY" = 'unspecified' -o "$PROXY" = '#PROXY#' ]; then
-        # Copy over previously generated content
-        awk '/^### end/ { exit }
-             x && tolower($0) ~ /^[a-z]*_proxy=/
-             /^### begin/ { x=1 }' "$oldenv" 2>/dev/null || true
-    elif [ -n "$PROXY" ]; then
-        for var in http_proxy HTTP_PROXY https_proxy HTTPS_PROXY \
-                   ftp_proxy FTP_PROXY; do
-            echo "$var='$PROXY'"
-        done
-        for var in no_proxy NO_PROXY; do
-            echo "$var='localhost,127.0.0.1'"
-        done
-    fi
-    echo '### end crouton-generated environment variables'
-} > "$newenv"
-
-# Set proxy variables for this script
-. "$newenv"
-export http_proxy https_proxy ftp_proxy
-
 # Copy in previous user-environment settings
+# (oldenv/newenv are defined in core.minimal, and $newenv is generated there)
 if [ -r "$oldenv" ]; then
     awk '/^### begin/{x=1}!x;/^### end/{x=0}' "$oldenv" >> "$newenv"
 fi

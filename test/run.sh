@@ -95,6 +95,8 @@ echo "System: $SYSTEM" 1>&2
 echo "Supported releases: $SUPPORTED_RELEASES" 1>&2
 echo "Default release for this run: ${RELEASE%% *}" 1>&2
 
+start="`date '+%s'`"
+
 # Logs all output to the specified file with the date and time prefixed.
 # File is always appended. Use "log" to output a line with a [t] prefix.
 # $1: log file or directory
@@ -109,7 +111,6 @@ logto() {
     fi
     local testlog="$file-test"
     date "+%F %T: BEGIN TEST ${1##*/}.$2.$3" | tee -a "$file" "$testlog" 1>&2
-    local start="`date '+%s'`"
     local retpreamble="${1##*/}.$2.$3 finished with exit code"
     local AWK='mawk -W interactive'
     # srand() uses system time as seed but returns previous seed. Call it twice.

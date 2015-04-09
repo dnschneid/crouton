@@ -27,10 +27,12 @@ if [ -z "$TARGET" ]; then
 fi
 
 if [ "$TARGETS" = 'help' ]; then
-    echo "$TARGET"
-    echo "	$DESCRIPTION"
-    if [ -n "$REQUIRES" ]; then
-        echo "	Requires: $REQUIRES"
+    if [ -n "$DESCRIPTION" ]; then
+        echo "$TARGET"
+        echo "	$DESCRIPTION"
+        if [ -n "$REQUIRES" ]; then
+            echo "	Requires: $REQUIRES"
+        fi
     fi
 elif [ "$TARGETNOINSTALL" = "p" ]; then
     # This will check the provides from /etc/crouton/targets and targets
@@ -59,10 +61,7 @@ elif [ -z "$TARGETNOINSTALL" -o -n "$RESTOREHOSTBIN" ]; then
         (TARGET="$t" PROVIDES='' HOSTBIN='' CHROOTBIN='' CHROOTETC=''
          . "$TARGETSDIR/$t")
     done
-    # Add a print to the output
-    echo ''
-    echo "echo 'Installing target $TARGET...' 1>&2"
-    # Copy in requested items from host-bin and chroot-bin
+    # Copy in requested items from host-bin
     for f in $HOSTBIN; do
         echo "Installing $f into the host..." 1>&2
         src="${HOSTBINDIR:-../host-bin}/$f"
@@ -75,6 +74,13 @@ elif [ -z "$TARGETNOINSTALL" -o -n "$RESTOREHOSTBIN" ]; then
         exit
     fi
 
+    # Generate output file name
+    PREPAREFILE="`echo -n "$TARGET" | tr -c '[:alnum:].-' '_'`"
+
+    echo "echo 'Installing target $TARGET...' 1>&2" \
+        > "$CHROOT$PREPAREDIR/$PREPAREFILE"
+
+    # Copy in requested items from chroot-bin
     for f in $CHROOTBIN; do
         echo "Installing $f into the chroot..." 1>&2
         src="${CHROOTBINDIR:-../chroot-bin}/$f"
@@ -137,7 +143,8 @@ elif [ -z "$TARGETNOINSTALL" -o -n "$RESTOREHOSTBIN" ]; then
             next
         }
         ok;
-    ' "$t"
+    ' "$t"  >> "$CHROOT$PREPAREDIR/$PREPAREFILE"
+    echo ". '$PREPAREDIR/$PREPAREFILE'"
 fi
 # Break out of the subshell.
 exit

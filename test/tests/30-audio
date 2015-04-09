@@ -45,14 +45,42 @@ if [ "`uname -m`" = "x86_64" ]; then
     '
 fi
 
+# Test CRAS autoupdate
+
+# Destroy CRAS functionality
+host enter-chroot -n "$release" -u 0 sh -exc 'rm -f /usr/local/lib/libcras*'
+# At this stage, enter-chroot would try to run the auto-update, but
+# we are not in a tty, so it doesn't.
+fails host enter-chroot -n "$release" cras_test_client --dump_server_info
+
+# Manually update
+host enter-chroot -n "$release" -u 0 cras-audio-update
+
+if [ -z "`cras_test_client --version`" ]; then
+    # This version of Chromium OS does not support audio auto-update, so audio
+    # should still be broken.
+    fails host enter-chroot -n "$release" cras_test_client --dump_server_info
+
+    # Force update
+    host enter-chroot -n "$release" -u 0 cras-audio-update -f
+fi
+
+# Check that audio works again
+exitswithin 0 30 host enter-chroot -n "$release" sh -exc '
+    cras_test_client --dump_server_info
+    dd if=/dev/zero bs=48000 count=8 | aplay -fdat -v
+    arecord -fdat -v | dd of=/dev/null bs=48000 count=8 iflag=fullblock
+'
+
 echo 'install pulseaudio pulseaudio-utils' | \
     crouton -T -U -n "$release"
-exitswithin 0 30 host enter-chroot -n "$release" sh -exc '
+exitswithin 0 60 host enter-chroot -n "$release" sh -exc '
     pulseaudio --start
-    echo | pacat -v
+    dd if=/dev/zero bs=44100 count=8 | pacat -v
+    parec -v | dd of=/dev/null bs=44100 count=8 iflag=fullblock
     dd if=/dev/zero bs=48000 count=8 | aplay -f dat -Dpulse -v
     arecord -fdat -Dpulse -v | \
-        dd if=/dev/null bs=48000 count=8 iflag=fullblock
+        dd of=/dev/null bs=48000 count=8 iflag=fullblock
     cras_test_client --dump_server_info
     pulseaudio --kill
 '

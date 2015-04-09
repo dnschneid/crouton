@@ -684,13 +684,25 @@ if [ -n "$NOLOGIN" ]; then
         fi
     fi
 else
-    # Run rc.local
-    if [ -n "$firstrun" -a -x "$CHROOT/etc/rc.local" ]; then
-        chrootcmd 'exec /etc/rc.local >/dev/null 2>/dev/null </dev/null' \
-            || ret=$?
+    if [ -n "$firstrun" ]; then
+        # Run cras-audio-update
+        chrootcmd 'if hash cras-audio-update 2>/dev/null; then
+                       cras-audio-update -a -q
+                   fi' || ret=$?
         if [ ! "$ret" = 0 ]; then
-            echo "WARNING: /etc/rc.local failed with code $ret" 1>&2
+            sleep 5
             ret=0
+        fi
+
+        # Run rc.local
+        if [ -x "$CHROOT/etc/rc.local" ]; then
+            chrootcmd 'exec /etc/rc.local >/dev/null 2>/dev/null </dev/null' \
+                || ret=$?
+            if [ ! "$ret" = 0 ]; then
+                echo "WARNING: /etc/rc.local failed with code $ret" 1>&2
+                sleep 5
+                ret=0
+            fi
         fi
     fi
 

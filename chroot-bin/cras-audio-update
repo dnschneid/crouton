@@ -1,0 +1,114 @@
+#!/bin/sh -e
+# Copyright (c) 2014 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+set -e
+
+APPLICATION="${0##*/}"
+ASK=
+FORCE=
+QUIET=
+
+USAGE="$APPLICATION [-a] [-f]
+
+Update Chromium OS audio plugin in the chroot, so that it is in sync with the
+version provided by Chromium OS.
+
+Options:
+    -a          Ask before updating.
+    -f          Force updating, even if the plugin is up to date.
+    -q          If up to date, don't print anything."
+
+# We need to run as root
+if [ "$USER" != root -a "$UID" != 0 ]; then
+    echo "$0 must be run as root." 1>&2
+    exit 2
+fi
+
+while getopts 'afq' f; do
+    case "$f" in
+    a) ASK='y';;
+    f) FORCE='y';;
+    q) QUIET='y';;
+    \?) echo "$USAGE" 1>&2; exit 2;;
+    esac
+done
+
+if [ -z "$FORCE" ]; then
+    hostver="`cat /var/host/cras-version`"
+    localver="`cras_test_client --version 2>/dev/null || true`"
+    # Strip out anything before the commit id
+    hostver="${hostver##*-}"
+    localver="${localver##*-}"
+
+    if [ -z "$hostver" ]; then
+        # Old builds (<6276, <R39) do no support --version option. Also, on
+        # broken builds without CRAS, /var/host/cras-version is empty. For
+        # these, don't do auto-updates.
+        if [ -z "$QUIET" ]; then
+            echo "\
+Chromium OS does not provide CRAS version information. Not updating."
+        fi
+        exit 0
+    fi
+
+    if [ "$hostver" = "$localver" ]; then
+        if [ -z "$QUIET" ]; then
+            echo "Chromium OS audio plugin is up to date."
+        fi
+        exit 0
+    else
+        if [ -z "$ASK" ]; then
+            echo "\
+Chromium OS audio plugin is out of date." 1>&2
+        else
+            echo -n "\
+Chromium OS audio plugin is out of date. Would you like to update it? [Y/n] " 1>&2
+            response='n'
+            if [ -t 0 ]; then
+                read -r response
+            fi
+            if [ -n "$response" -a "${response#[Yy]}" = "$response" ]; then
+                echo "Not updating..." 1>&2
+                exit 0
+            fi
+        fi
+    fi
+fi
+
+echo "Updating Chromium OS audio plugin..." 1>&2
+
+# Run the installer
+ret=
+(
+PREPAREDIR="/etc/crouton/prepare"
+. "$PREPAREDIR/prepare.sh"
+. "$PREPAREDIR/distrofunctions"
+. "$PREPAREDIR/core.minimal"
+. "$PREPAREDIR/audio"
+. "$PREPAREDIR/post-common.minimal"
+) || ret=$?
+
+if [ -n "$ret" ]; then
+    echo "\
+Failed to update Chromium OS audio plugin.
+Please download a fresh crouton installer and update your chroot." 1>&2
+    exit "$ret"
+fi
+
+echo "Testing audio..." 1>&2
+cras_test_client --dump_server_info > /dev/null || ret=$?
+timeout 2 sh -ec 'dd if=/dev/zero bs=48000 count=1 2>/dev/null \
+                     | aplay -q -fdat -Dcras' || ret=$?
+
+if [ -n "$ret" ]; then
+    echo "\
+Chromium OS audio plugin was updated successfully, but audio could not be
+played. Please download a fresh crouton installer and update your chroot." 1>&2
+    exit "$ret"
+fi
+
+echo "Chromium OS audio plugin was updated successfully!" 1>&2
+
+exit 0
