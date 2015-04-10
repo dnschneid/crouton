@@ -14,35 +14,30 @@ USAGE="$APPLICATION [options] chroot_app [parameters]
 Wraps enter-chroot to launch a window or tab in Chromium OS for any graphical application.
 Applications launched in this way show in independent windows or tabs.
 
-By default, it will use the primary user on the first xiwi-enabled chroot found.
+By default, it will use the primary user on the first xiwi-enabled chroot found and launch
+the chroot_app in a window.
 
-Enter '-h' for help with 'enter-chroot' and 'xiwi' options.
-"
+    -b          Fork and run the specified command silently in the background.
+    -c CHROOTS  Directory the chroots are in. Default: /usr/local/chroots
+    -f          Prevent xiwi from quitting automatically.[1]
+    -h          Help with $APPLICATION options, with brief explanations.
+    -k KEYFILE  Override the auto-detected encryption key location.
+    -n NAME     Name of the chroot to enter. Default: first one found in CHROOTS
+    -t TARGET   Only enter the chroot if it contains the specified TARGET.
+    -u USERNAME Username (or UID) to log into. Default: 1000 (the primary user)
+    -F          Launch the chroot_app full-screen.
+    -T          Launch the chroot_app in a tab.
 
-USAGE_HELP="Usage: enter-chroot [options]
-
-`enter-chroot -h 2>&1 | grep -e ' -[bckntu]'`
-
-    Options: -l, -x, and -X are deprecated for the xiwi application.
-
-
-Usage: xiwi [options] chroot_app [parameters]
-
-`enter-chroot -t xiwi xiwi -h 2>&1 | grep -e ' -[FT]' | sed 's/^/    /g'`
-
-    xiwi will normally close when the application returns. Some gui applications
-    fork before or during normal operation, which can confuse xiwi and cause it to
-    quit prematurely. If your application does not have a parameter that prevents
-    it from forking, and crouton is unable to automatically detect the fork, you can
-    use -f to prevent xiwi from quitting automatically.
-    xiwi will quit if you close the Chromium OS window when nothing is displayed.
+    [1] xiwi will normally close when the application returns. Some gui applications
+        fork before or during normal operation, which can confuse xiwi and cause it to
+        quit prematurely. If your application does not have a parameter that prevents
+        it from forking, and crouton is unable to automatically detect the fork, you can
+        use -f to prevent xiwi from quitting automatically.
+        xiwi will quit if you close the Chromium OS window when nothing is displayed.
   
-    A default window manager will full-screen all windows, unless chroot_app begins
-    with 'start' or is 'xinit'. You can use -F to force the chroot_app full-screen.
-
     You can cycle through multiple windows inside the
     application via Ctrl-Alt-Tab/Ctrl-Alt-Shift-Tab, or close them via
-    Ctrl-Alt-Shift-Escape.  If chroot_app begins with 'start' but you still want to
+    Ctrl-Alt-Shift-Escape.  If the chroot_app begins with 'start' but you still want to
     use the default window manager, specify the full path of the application.
 "
 
@@ -54,29 +49,24 @@ error() {
     exit "$ecode"
 }
 
-options='bc:hk:n:t:u:fFT'
+options='bc:fhk:n:t:u:FT'
 while getopts $options OPT; do
-  case ${OPT} in
-    b) OPTS_ENTER="$OPTS_ENTER -${OPT}";;
-    c|k|n|t|u) OPTS_ENTER="$OPTS_ENTER -${OPT} ${OPTARG}";;
-    h) error 2 "$USAGE_HELP";;
-    f|F|T) OPTS_XIWI="$OPTS_XIWI -${OPT}";;
-   \?) error 2 "$USAGE";;
-  esac
+    case ${OPT} in
+      b) OPTS_ENTER="$OPTS_ENTER -${OPT}";;
+      c|k|n|t|u) for param in "$OPTARG"; do
+                     opts_enter="$opts_enter'$(echo -n "$param" | sed "s/'/'\\\\\\''/g")'"
+                     opts_enter="$(echo -n "$opts_enter" | sed -e "s/^ //" -e "s/'//g")"
+                 done
+                 OPTS_ENTER="$OPTS_ENTER -${OPT} ${opts_enter}";;
+      h) error 2 "$USAGE";;
+      f|F|T) OPTS_XIWI="$OPTS_XIWI -${OPT}";;
+      ?) error 2 "$USAGE";;
+    esac
 done
 shift "$((OPTIND-1))"
 
-for param in "$OPTS_ENTER"; do
-  ENTER_OPTS="$ENTER_OPTS'`echo -n "$param" | sed "s/'/'\\\\\\''/g"`'"
-  ENTER_OPTS="`echo -n "$ENTER_OPTS" | sed -e "s/^ //" -e "s/'//g"`"
-done
-for param in "$OPTS_XIWI"; do
-  XIWI_OPTS="$XIWI_OPTS'`echo -n "$param" | sed "s/'/'\\\\\\''/g"`'"
-  XIWI_OPTS="`echo -n "$XIWI_OPTS" | sed -e "s/^ //" -e "s/'//g"`"
-done
-
-eval exec sh -e "`dirname "\`readlink -f "$0"\`"`/enter-chroot" -t xiwi $ENTER_OPTS \
-     exec xiwi $XIWI_OPTS "$@" \
+eval "exec sh -e '`dirname "\`readlink -f "$0"\`"`/enter-chroot' -t xiwi $OPTS_ENTER \
+      exec xiwi $OPTS_XIWI \"\$@\"" \
      || ret=$?
-     
+
 exit $ret
