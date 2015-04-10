@@ -8,52 +8,42 @@ set -e
 APPLICATION="${0##*/}"
 OPTS_ENTER=''
 OPTS_XIWI=''
-USAGE="$APPLICATION [options] CHROOT_APP [options]
 
-Wraps enter-chroot to launch a xiwi-app in a new windowed or tabbed session.
-You can launch any individual chroot graphical application in crouton windows.
+USAGE="$APPLICATION [options] chroot_app [parameters]
 
-By default, it will log into the primary user on the first chroot found.
+Wraps enter-chroot to launch a window or tab in Chromium OS for any graphical application.
+Applications launched in this way show in independent windows or tabs.
 
-Enter '-h' for 'enter-chroot' options and enter '-H' for 'xiwi-app' options.
+By default, it will use the primary user on the first xiwi-enabled chroot found.
+
+Enter '-h' for help with 'enter-chroot' and 'xiwi' options.
 "
-USAGE_ENTER="enter-chroot [options]
 
-  -b          Fork and run the specified command silently in the background.
-  -c CHROOTS  Directory the chroots are in. Default: /mnt/stateful_partition/crouton/chroots
-  -l          Make the command part of a login. Parameters are passed directly
-              to the chroot command, and a call to su is appended.
-  -k KEYFILE  Override the auto-detected encryption key location.
-  -n NAME     Name of the chroot to enter. Default: first one found in CHROOTS
-  -t TARGET   Only enter the chroot if it contains the specified TARGET.
-  -u USERNAME Username (or UID) to log into. Default: 1000 (the primary user)
-  -X XMETHOD  (Override the auto-detected XMETHOD for this session.) - deprecated, 'xiwi' is enforced.
-  -x          Does not log in, but directly executes the command instead.
-              Note that the environment will be empty (sans TERM).
-              Specify -x a second time to run the /prepare.sh script.
-"
-USAGE_XIWI="xiwi [options] CHROOT_APP [options]
+USAGE_HELP="Usage: enter-chroot [options]
 
-  -f          Prevent xiwi from quitting automatically.[1]
-  -F          Will launch the app full-screen.[2]
-  -T          Will launch the app in a tab.
+`enter-chroot -h 2>&1 | grep -e ' -[bckntu]'`
 
-By default, the CHROOT_APP is launched in a window.
+    Options: -l, -x, and -X are deprecated for the xiwi application.
 
-  [1] xiwi will normally close when the application returns. Some gui applications
-      fork before or during normal operation, which can confuse xiwi and cause it to
-      quit prematurely. If your application does not have a parameter that prevents
-      it from forking, and crouton is unable to automatically detect the fork, you can
-      use -f to prevent xiwi from quitting automatically.
-      xiwi will quit if you close the Chromium OS window when nothing is displayed.
+
+Usage: xiwi [options] chroot_app [parameters]
+
+`enter-chroot -t xiwi xiwi -h 2>&1 | grep -e ' -[FT]' | sed 's/^/    /g'`
+
+    xiwi will normally close when the application returns. Some gui applications
+    fork before or during normal operation, which can confuse xiwi and cause it to
+    quit prematurely. If your application does not have a parameter that prevents
+    it from forking, and crouton is unable to automatically detect the fork, you can
+    use -f to prevent xiwi from quitting automatically.
+    xiwi will quit if you close the Chromium OS window when nothing is displayed.
   
-  [2] A default window manager will full-screen all windows, unless CHROOT_APP begins
-      with 'start' or is 'xinit'. You can use -F to force the CHROOT_APP full-screen.
+    A default window manager will full-screen all windows, unless chroot_app begins
+    with 'start' or is 'xinit'. You can use -F to force the chroot_app full-screen.
 
-  You can cycle through multiple windows inside the
-  application via Ctrl-Alt-Tab/Ctrl-Alt-Shift-Tab, or close them via
-  Ctrl-Alt-Shift-Escape.  If CHROOT_APP begins with 'start' but you still want to
-  use the default window manager, specify the full path of the application.
+    You can cycle through multiple windows inside the
+    application via Ctrl-Alt-Tab/Ctrl-Alt-Shift-Tab, or close them via
+    Ctrl-Alt-Shift-Escape.  If chroot_app begins with 'start' but you still want to
+    use the default window manager, specify the full path of the application.
 "
 
 # Exits the script with exit code $1, spitting out message $@ to stderr
@@ -64,30 +54,27 @@ error() {
     exit "$ecode"
 }
 
-options=':bc:hlk:n:t:u:xfFHT'
+options='bc:hk:n:t:u:fFT'
 while getopts $options OPT; do
   case ${OPT} in
-    b) OPTS_ENTER="$OPTS_ENTER -b";;
-    c) OPTS_ENTER="$OPTS_ENTER -c ${OPTARG}";;
-    h) error 0 "$USAGE_ENTER";;
-    l) OPTS_ENTER="$OPTS_ENTER -l";;
-    k) OPTS_ENTER="$OPTS_ENTER -k ${OPTARG}";;
-    n) OPTS_ENTER="$OPTS_ENTER -n ${OPTARG}";;
-    t) OPTS_ENTER="$OPTS_ENTER -t ${OPTARG}";;
-    u) OPTS_ENTER="$OPTS_ENTER -u ${OPTARG}";;
-    x) OPTS_ENTER="$OPTS_ENTER -x";;
-    f) OPTS_XIWI="$OPTS_XIWI -f";;
-    F) OPTS_XIWI="$OPTS_XIWI -F";;
-    H) error 0 "$USAGE_XIWI";;
-    T) OPTS_XIWI="$OPTS_XIWI -T";;
-   \?) echo "Unknown option: -$OPTARG" 1>&2
-       error 2 "$USAGE";;
-    :) echo "Missing option argument for -$OPTARG"
-       error 2 "$USAGE";;
-    *) echo "Unimplemented option: -$OPTARG" 1>&2
-       error 2 "$USAGE";;
+    b) OPTS_ENTER="$OPTS_ENTER -${OPT}";;
+    c|k|n|t|u) OPTS_ENTER="$OPTS_ENTER -${OPT} ${OPTARG}";;
+    h) error 2 "$USAGE_HELP";;
+    f|F|T) OPTS_XIWI="$OPTS_XIWI -${OPT}";;
+   \?) error 2 "$USAGE";;
   esac
 done
 shift "$((OPTIND-1))"
 
-sh -e "`dirname "\`readlink -f "$0"\`"`/enter-chroot" $OPTS_ENTER -t xiwi xiwi $OPTS_XIWI "$@"
+for param in "$OPTS_ENTER"; do
+  opts_enter="$opts_enter'`echo -n "$param" | sed "s/'/'\\\\\\''/g"`'"
+  opts_enter="`echo -n "$opts_enter" | sed -e "s/^ //" -e "s/'//g"`"
+done
+for param in "$OPTS_XIWI"; do
+  opts_xiwi="$opts_xiwi'`echo -n "$param" | sed "s/'/'\\\\\\''/g"`'"
+  opts_xiwi="`echo -n "$opts_xiwi" | sed -e "s/^ //" -e "s/'//g"`"
+done
+
+eval exec sh -e "`dirname "\`readlink -f "$0"\`"`/enter-chroot" -t xiwi $opts_enter exec xiwi $opts_xiwi "$@" \
+     || ret=$?
+exit $ret
