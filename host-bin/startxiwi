@@ -67,14 +67,16 @@ done
 shift "$((OPTIND-1))"
 
 for param in "$OPTS_ENTER"; do
-  opts_enter="$opts_enter'`echo -n "$param" | sed "s/'/'\\\\\\''/g"`'"
-  opts_enter="`echo -n "$opts_enter" | sed -e "s/^ //" -e "s/'//g"`"
+  ENTER_OPTS="$ENTER_OPTS'`echo -n "$param" | sed "s/'/'\\\\\\''/g"`'"
+  ENTER_OPTS="`echo -n "$ENTER_OPTS" | sed -e "s/^ //" -e "s/'//g"`"
 done
 for param in "$OPTS_XIWI"; do
-  opts_xiwi="$opts_xiwi'`echo -n "$param" | sed "s/'/'\\\\\\''/g"`'"
-  opts_xiwi="`echo -n "$opts_xiwi" | sed -e "s/^ //" -e "s/'//g"`"
+  XIWI_OPTS="$XIWI_OPTS'`echo -n "$param" | sed "s/'/'\\\\\\''/g"`'"
+  XIWI_OPTS="`echo -n "$XIWI_OPTS" | sed -e "s/^ //" -e "s/'//g"`"
 done
 
-eval exec sh -e "`dirname "\`readlink -f "$0"\`"`/enter-chroot" -t xiwi $opts_enter exec xiwi $opts_xiwi "$@" \
+eval exec sh -e "`dirname "\`readlink -f "$0"\`"`/enter-chroot" -t xiwi $ENTER_OPTS \
+     exec xiwi $XIWI_OPTS "$@" \
      || ret=$?
+     
 exit $ret
