@@ -19,7 +19,7 @@ By default, it will use the primary user on the first xiwi-enabled chroot found 
 the chroot_app in a window.
 
 Options:
-$($ENTERCHROOT -h 2>&1 | grep -e ' -[bckntu]')
+$("$ENTERCHROOT" -h 2>&1 | grep -e ' -[bckntu]')
     -F          Launch the chroot_app full-screen.
     -T          Launch the chroot_app in a tab.
     -f          Prevent xiwi from quitting automatically. (see NOTE below)
@@ -41,9 +41,9 @@ use the default window manager, specify the full path of the application.
 while getopts 'bc:k:n:t:u:FTf' OPT; do
     case "$OPT" in
       b) OPTS_ENTER="$OPTS_ENTER -$OPT";;
-      c|k|n|t|u) OPTARG="$(echo -n "$OPTARG" | \
-                 sed -e "s/'/'\\\\\\''/g")"
-                 OPTS_ENTER="$OPTS_ENTER -$OPT '$OPTARG'";;
+      c|k|n|t|u)
+         OPTARG="$(echo -n "$OPTARG" | sed -e "s/'/'\\\\\\''/g")"
+         OPTS_ENTER="$OPTS_ENTER -$OPT '$OPTARG'";;
       f|F|T) OPTS_XIWI="$OPTS_XIWI -$OPT";;
       \?) echo "$USAGE" 1>&2
           exit 2;;
