@@ -10,6 +10,8 @@ Launches a windowed session in Chromium OS for any graphical application.
 Applications launched in this way show in independent windows or tabs.
 All parameters are passed to the specified application.
 
+By default, the app is launched in a window.
+
 Options:
     -F          Launch the APPLICATION full-screen.
     -T          Launch the APPLICATION in a tab.
