@@ -7,4 +7,8 @@ DESCRIPTION='Installs Xfce along with common applications. (Approx. 1200MB)'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
+# Avoid /etc/skel/.xscreensaver conflicts
+xsvr='/etc/skel/.xscreensaver'
+[ -f "$xsvr" ] && mv -f "$xsvr" "$xsvr.bak"
 install ubuntu=xubuntu-desktop,task-xfce-desktop -- network-manager xorg
+[ -f "$xsvr.bak" ] && mv -f "$xsvr.bak" "$xsvr"
