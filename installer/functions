@@ -211,6 +211,15 @@ getmountpoint() {
     done
 }
 
+# Echos to stderr, or /dev/tty if stdin is a tty but stderr is not
+echo_tty() {
+    if [ -t 0 -a ! -t 2 ]; then
+        echo "$@" 1>/dev/tty
+    else
+        echo "$@" 1>&2
+    fi
+}
+
 # Websocket interface
 PIPEDIR='/tmp/crouton-ext'
 CRIATDISPLAY="$PIPEDIR/kiwi-display"
