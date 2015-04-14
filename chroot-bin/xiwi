@@ -7,17 +7,23 @@
 
 USAGE="Usage: ${0##*/} [-f] [-F|-T] APPLICATION [PARAMETERS ...]
 Launches a windowed session in Chromium OS for any graphical application.
+Applications launched in this way show in independent windows or tabs.
 All parameters are passed to the specified application.
 
-By default, the app is launched in a window. Passing -F will launch the app
-full-screen, and passing -T will launch the app in a tab.
+By default, the app is launched in a window.
 
-xiwi will normally close when the application returns. Some gui applications
-fork before or during normal operation, which can confuse xiwi and cause it to
+Options:
+    -F          Launch the APPLICATION full-screen.
+    -T          Launch the APPLICATION in a tab.
+    -f          Prevent ${0##*/} from quitting automatically. (see NOTE below)
+
+NOTE:
+${0##*/} will normally close when the application returns. Some gui applications
+fork before or during normal operation, which can confuse ${0##*/} and cause it to
 quit prematurely. If your application does not have a parameter that prevents
 it from forking, and crouton is unable to automatically detect the fork, you can
-use -f to prevent xiwi from quitting automatically.
-xiwi will quit if you close the Chromium OS window when nothing is displayed.
+use -f to prevent ${0##*/} from quitting automatically.
+${0##*/} will quit if you close the Chromium OS window when nothing is displayed.
 
 A default window manager will full-screen all windows, unless APPLICATION begins
 with 'start' or is 'xinit'. You can cycle through multiple windows inside the
