@@ -5,6 +5,7 @@
 REQUIRES='audio extension'
 PROVIDES='x11'
 DESCRIPTION='X.org X11 backend running unaccelerated in a Chromium OS window.'
+HOSTBIN='startxiwi'
 CHROOTBIN='croutoncycle croutonfindnacl croutontriggerd croutonxinitrc-wrapper setres xinit xiwi'
 CHROOTETC='xbindkeysrc.scm xiwi.conf xorg-dummy.conf xserverrc xserverrc-xiwi xserverrc-local.example'
 . "${TARGETSDIR:="$PWD"}/common"
@@ -403,9 +404,9 @@ Once in a crouton window, press fullscreen or the "switch window" key to switch
 back to Chromium OS.
 
 You can launch individual apps in crouton windows by using the "xiwi" command
-in the chroot shell. Wrap that command with enter-chroot to launch directly
-from the host shell. Use the enter-chroot parameter -b to run in the background.
-Example: sudo enter-chroot -b xiwi xterm
+in the chroot shell. Use startxiwi to launch directly from the host shell.
+Use the startxiwi parameter -b to run in the background.
+Example: sudo startxiwi -b xiwi xterm
 '
 
 ### append x11-common
