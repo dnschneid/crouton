@@ -51,6 +51,11 @@ while getopts 'bc:k:n:t:u:FTf' OPT; do
 done
 shift "$((OPTIND-1))"
 
+if [ "$#" = "0" ]; then 
+    echo "$USAGE" 1>&2
+    exit 2
+fi
+
 eval "exec sh -e \"\$ENTERCHROOT\" -t xiwi $OPTS_ENTER \
     exec xiwi $OPTS_XIWI \"\$@\""
     
