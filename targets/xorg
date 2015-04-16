@@ -115,19 +115,34 @@ END
     apt-get -y --force-yes --no-install-recommends dist-upgrade -f
 fi
 
-install xorg -- xserver-xorg-video-fbdev$backport
+# If the system has an Intel FBC-capable video card but has too old a driver to
+# support the chipset, disable hardware acceleration.
+hasfbc=''
+fbcsupport='y'
+if grep -q 1 '/sys/module/i915/parameters/i915_enable_fbc' 2>/dev/null; then
+    hasfbc=y
+    if release -le wheezy -le kali; then
+        fbcsupport=''
+    fi
+fi
+inteldriver=''
+if [ "${ARCH#arm}" = "$ARCH" ]; then
+    inteldriver=xserver-xorg-video-intel$backport
+fi
+
+install xorg -- xserver-xorg-video-fbdev$backport $inteldriver
 if [ ! -f "/sys/class/tty/tty0/active" ]; then
     install xserver-xorg-video-modesetting$backport
 else
     install xserver-xorg-video-fbdev$backport
 fi
-if [ "${ARCH#arm}" = "$ARCH" ]; then
-    install xserver-xorg-video-intel$backport
+if [ -z "$hasfbc" -o -n "$fbcsupport" ]; then
+    install $inteldriver
 fi
 
 # This is a system with framebuffer compression, so we need SNA+tearfree
 xorgconf='/usr/share/X11/xorg.conf.d/20-crouton-intel-sna.conf'
-if grep -q 1 '/sys/module/i915/parameters/i915_enable_fbc' 2>/dev/null; then
+if [ -n "$hasfbc" -a -n "$fbcsupport" ]; then
     mkdir -p "${xorgconf%/*}"
     ln -sfT /etc/crouton/xorg-intel-sna.conf "$xorgconf"
 else
