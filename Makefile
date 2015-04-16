@@ -4,8 +4,9 @@
 
 TARGET = crouton
 EXTTARGET = crouton.zip
-SRCTARGETS = $(patsubst src/%.c,crouton%,$(shell find src/ -name *.c -and -not -name freon.c))
-LIBS = croutonfreon.so #croutonxorg.so
+LIBS = src/freon.c
+LIBSTARGETS = $(patsubst src/%.c, crouton%.so, $(LIBS))
+SRCTARGETS = $(patsubst src/%.c,crouton%,$(filter-out $(LIBS),$(wildcard src/*.c)))
 CONTRIBUTORS = CONTRIBUTORS
 WRAPPER = build/wrapper.sh
 SCRIPTS := \
@@ -87,9 +88,9 @@ release: $(CONTRIBUTORS) $(TARGET) $(RELEASE)
 force-release: $(CONTRIBUTORS) $(TARGET) $(RELEASE)
 	$(RELEASE) -f $(TARGET)
 
-all: $(TARGET) $(SRCTARGETS) $(LIBS) $(EXTTARGET)
+all: $(TARGET) $(SRCTARGETS) $(LIBSTARGETS) $(EXTTARGET)
 
 clean:
-	rm -f $(TARGET) $(EXTTARGET) $(SRCTARGETS) $(LIBS)
+	rm -f $(TARGET) $(EXTTARGET) $(SRCTARGETS) $(LIBSTARGETS)
 
 .PHONY: all clean contributors extension release force-release
