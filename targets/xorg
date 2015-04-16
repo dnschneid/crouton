@@ -36,8 +36,6 @@ if release -eq precise; then
     else
         # ARM only offers quantal backport at the moment
         backport='-lts-quantal'
-        # Also, xorg is packaged wrong and doesn't recognize the backport
-        install_dummy xserver-xorg
     fi
     if [ -n "$backport" ]; then
         # We still install xorg later to pull in its dependencies
@@ -130,7 +128,20 @@ if [ "${ARCH#arm}" = "$ARCH" ]; then
     inteldriver=xserver-xorg-video-intel$backport
 fi
 
-install xorg -- xserver-xorg-video-fbdev$backport $inteldriver
+# Install xorg, no video drivers
+if [ "${ARCH#arm}" != "$ARCH" ] && release -eq precise; then
+    # xorg is packaged wrong and conflicts with xserver-xorg-lts-quantal so
+    # replace it with something not broken
+    install_dummy xorg -- xserver-xorg$backport libgl1-mesa-glx$backport \
+        libgl1-mesa-dri$backport libglu1-mesa xfonts-base x11-apps \
+        x11-session-utils x11-utils x11-xfs-utils x11-xkb-utils \
+        x11-xserver-utils xauth xinit xfonts-utils xkb-data xorg-docs-core \
+        xterm x11-common xinput
+else
+    install xorg -- xserver-xorg-video-fbdev$backport $inteldriver
+fi
+
+# Install relevant video drivers
 if [ ! -f "/sys/class/tty/tty0/active" ]; then
     install xserver-xorg-video-modesetting$backport
 else
