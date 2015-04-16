@@ -3,7 +3,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 if [ "${TARGETNOINSTALL:-c}" = 'c' ]; then
-    if grep -q 'SAMSUNG EXYNOS' /proc/cpuinfo; then
+    if grep -q 'SAMSUNG EXYNOS' /proc/cpuinfo && [ ! -f /sbin/frecon ]; then
         error 1 'xorg target does not work on Samsung ARM devices.'
     fi
 fi
