@@ -33,6 +33,7 @@ croutoncursor_LIBS = -lX11 -lXfixes -lXrender
 croutonfbserver_LIBS = -lX11 -lXdamage -lXext -lXfixes -lXtst
 croutonwmtools_LIBS = -lX11
 croutonxi2event_LIBS = -lX11 -lXi
+croutonfreon.so_LIBS = -ldl
 
 croutonwebsocket_DEPS = src/websocket.h
 croutonfbserver_DEPS = src/websocket.h
@@ -67,8 +68,8 @@ $(EXTPEXE): $(EXTPEXESOURCES)
 $(SRCTARGETS): src/$(patsubst crouton%,src/%.c,$@) $($@_DEPS) Makefile
 	gcc $(CFLAGS) $(patsubst crouton%,src/%.c,$@) $($@_LIBS) -o $@
 
-croutonfreon.so: src/freon.c Makefile
-	gcc $(CFLAGS) -shared -fPIC src/freon.c -ldl -o croutonfreon.so
+$(LIBSTARGETS): $(patsubst crouton%.so,src/%.c,$@) $($@_DEPS) Makefile
+	gcc $(CFLAGS) -shared -fPIC $(patsubst crouton%.so,src/%.c,$@) $($@_LIBS) -o $@
 
 extension: $(EXTTARGET)
 
