@@ -65,7 +65,7 @@ $(EXTTARGET): $(EXTSOURCES) Makefile
 $(EXTPEXE): $(EXTPEXESOURCES)
 	$(MAKE) -C host-ext/nacl_src
 
-$(SRCTARGETS): src/$(patsubst crouton%,src/%.c,$@) $($@_DEPS) Makefile
+$(SRCTARGETS): $(patsubst crouton%,src/%.c,$@) $($@_DEPS) Makefile
 	gcc $(CFLAGS) $(patsubst crouton%,src/%.c,$@) $($@_LIBS) -o $@
 
 $(LIBSTARGETS): $(patsubst crouton%.so,src/%.c,$@) $($@_DEPS) Makefile
