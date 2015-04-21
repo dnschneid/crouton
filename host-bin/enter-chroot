@@ -684,8 +684,19 @@ if [ -n "$NOLOGIN" ]; then
         fi
     fi
 else
-    # Run rc.local
+    # Check and run rc.local
     if [ -n "$firstrun" -a -x "$CHROOT/etc/rc.local" ]; then
+        if [ $(grep -cE '^[a-Z]|^\/' "$CHROOT/etc/rc.local") > 1 ]; then
+                ( 
+                  sleep 10
+                  if [ ! $(ps -ef | grep -c /etc/rc.local) -eq 1 ]; then
+                        echo "
+                        
+You rc.local is running for too long...
+Check the file if this is not expected!"
+                  fi
+                ) &
+        fi
         chrootcmd 'exec /etc/rc.local >/dev/null 2>/dev/null </dev/null' \
             || ret=$?
         if [ ! "$ret" = 0 ]; then
