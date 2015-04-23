@@ -4,7 +4,9 @@
 
 TARGET = crouton
 EXTTARGET = crouton.zip
-SRCTARGETS = $(patsubst src/%.c,crouton%,$(wildcard src/*.c))
+LIBS = src/freon.c
+LIBSTARGETS = $(patsubst src/%.c, crouton%.so, $(LIBS))
+SRCTARGETS = $(patsubst src/%.c,crouton%,$(filter-out $(LIBS),$(wildcard src/*.c)))
 CONTRIBUTORS = CONTRIBUTORS
 WRAPPER = build/wrapper.sh
 SCRIPTS := \
@@ -31,6 +33,7 @@ croutoncursor_LIBS = -lX11 -lXfixes -lXrender
 croutonfbserver_LIBS = -lX11 -lXdamage -lXext -lXfixes -lXtst
 croutonwmtools_LIBS = -lX11
 croutonxi2event_LIBS = -lX11 -lXi
+croutonfreon.so_LIBS = -ldl
 
 croutonwebsocket_DEPS = src/websocket.h
 croutonfbserver_DEPS = src/websocket.h
@@ -62,14 +65,11 @@ $(EXTTARGET): $(EXTSOURCES) Makefile
 $(EXTPEXE): $(EXTPEXESOURCES)
 	$(MAKE) -C host-ext/nacl_src
 
-$(SRCTARGETS): src/$(patsubst crouton%,src/%.c,$@) $($@_DEPS) Makefile
+$(SRCTARGETS): $(patsubst crouton%,src/%.c,$@) $($@_DEPS) Makefile
 	gcc $(CFLAGS) $(patsubst crouton%,src/%.c,$@) $($@_LIBS) -o $@
 
-croutonfreon.so: src/freon.c Makefile
-	gcc $(CFLAGS) -shared -fPIC src/freon.c -ldl -o croutonfreon.so
-
-croutonxorg.so: src/xorg.c Makefile
-	gcc $(CFLAGS) -shared -fPIC src/xorg.c -ldl -o croutonxorg.so
+$(LIBSTARGETS): $(patsubst crouton%.so,src/%.c,$@) $($@_DEPS) Makefile
+	gcc $(CFLAGS) -shared -fPIC $(patsubst crouton%.so,src/%.c,$@) $($@_LIBS) -o $@
 
 extension: $(EXTTARGET)
 
@@ -86,9 +86,9 @@ release: $(CONTRIBUTORS) $(TARGET) $(RELEASE)
 force-release: $(CONTRIBUTORS) $(TARGET) $(RELEASE)
 	$(RELEASE) -f $(TARGET)
 
-all: $(TARGET) $(SRCTARGETS) $(EXTTARGET)
+all: $(TARGET) $(SRCTARGETS) $(LIBSTARGETS) $(EXTTARGET)
 
 clean:
-	rm -f $(TARGET) $(EXTTARGET) $(SRCTARGETS)
+	rm -f $(TARGET) $(EXTTARGET) $(SRCTARGETS) $(LIBSTARGETS)
 
 .PHONY: all clean contributors extension release force-release
