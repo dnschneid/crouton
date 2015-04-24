@@ -688,15 +688,15 @@ else
     if [ -n "$firstrun" -a -x "$CHROOT/etc/rc.local" ]; then
         ( 
             sleep 10
-            if [ ! $(ps -ef | grep -c /etc/rc.local) -eq 1 ]; then
-            echo "
-                        
-You rc.local is running for too long...
-Check the file if this is not expected!"
-            fi
-        ) &
+            echo "Still running chroot's rc.local..." 2>&1
+            while true 
+            do
+                    sleep 1
+            done
+        ) & forkpid=$! 
         chrootcmd 'exec /etc/rc.local >/dev/null 2>/dev/null </dev/null' \
             || ret=$?
+        kill "$forkpid"
         if [ ! "$ret" = 0 ]; then
             echo "WARNING: /etc/rc.local failed with code $ret" 1>&2
             ret=0
