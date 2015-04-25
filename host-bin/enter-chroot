@@ -689,14 +689,13 @@ else
         ( 
             sleep 10
             echo "Still running chroot's rc.local..." 2>&1
-            while true 
-            do
-                    sleep 1
-            done
         ) & forkpid=$! 
         chrootcmd 'exec /etc/rc.local >/dev/null 2>/dev/null </dev/null' \
             || ret=$?
+        addtrap "kill '$forkpid' 2>/dev/null"
         kill "$forkpid"
+        wait "$forkpid"
+        undotrap
         if [ ! "$ret" = 0 ]; then
             echo "WARNING: /etc/rc.local failed with code $ret" 1>&2
             ret=0
