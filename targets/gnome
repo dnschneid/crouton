@@ -10,7 +10,7 @@ CHROOTBIN='crouton-noroot startgnome gnome-session-wrapper'
 
 ### Append to prepare.sh:
 install --minimal evolution-data-server gnome-control-center \
-        gnome-screensaver gnome-session gnome-session-fallback \
+        gnome-screensaver gnome-session gnome-session-flashback \
         gnome-shell gnome-themes-standard gvfs-backends nautilus \
         unzip gtk2-engines-pixbuf
 
