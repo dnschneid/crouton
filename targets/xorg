@@ -90,7 +90,7 @@ Pin-Priority: 1100
 END
 
     # Fetch new package sources
-    apt-get update
+    apt-get update || true
 
     # Forcibly replace libwayland-egl1-mesa by libwayland-egl1-dummy
     # (dpkg -r does not fail if package does not exist)

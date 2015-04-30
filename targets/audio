@@ -137,7 +137,7 @@ build_cras() {
         if ! dpkg --print-foreign-architectures | grep -q "^$cras_arch$"; then
             echo "Adding foreign architecture $cras_arch to dpkg..." 1>&2
             dpkg --add-architecture "$cras_arch"
-            apt-get update
+            apt-get update || true
         fi
     fi
 
