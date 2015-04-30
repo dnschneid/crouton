@@ -98,7 +98,9 @@ EOF
         fi
     fi
 
-    apt-get -y update
+    # Update the package list.
+    # Ignore failures, as most are due to bad PPAs and are not critical.
+    apt-get -y update || true
 
     echo 'Ensuring system is up-to-date...' 1>&2
     apt-get -y dist-upgrade
