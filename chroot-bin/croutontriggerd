@@ -33,6 +33,7 @@ KEY_RIGHTALT=100
 KEY_RIGHTSHIFT=54
 KEY_F1=59
 KEY_F2=60
+KEY_ESC=1
 
 EVENT_DEV_POLL=15
 
@@ -83,7 +84,11 @@ done | unbuffered_awk "
             cmd = \"p\"
         } else if (!cmd && c && s && a && n) {
             cmd = \"n\"
-        } else if (cmd && !c && !s && !a && !p && !n) {
+        } else if (!cmd && c && s && esc) {
+            cmd = \"p\"
+        } else if (!cmd && c && esc) {
+            cmd = \"n\"
+        } else if (cmd && !c && !s && !a && !p && !n && !esc) {
             system(\"/usr/local/bin/croutoncycle \" cmd)
             cmd = \"\"
         }
@@ -96,4 +101,5 @@ done | unbuffered_awk "
     $TYPE == $TYPE_EV_KEY && $KEY == $KEY_RIGHTALT   { ra = $STATE; update() }
     $TYPE == $TYPE_EV_KEY && $KEY == $KEY_F1         {  p = $STATE; update() }
     $TYPE == $TYPE_EV_KEY && $KEY == $KEY_F2         {  n = $STATE; update() }
+    $TYPE == $TYPE_EV_KEY && $KEY == $KEY_ESC        { esc = $STATE; update() }
 "
