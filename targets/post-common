@@ -68,6 +68,7 @@ else
 fi
 
 if [ -n "$TIPS" ]; then
+    # color blue 34m
     echo "\033[34m
 Here's some tips:
 $TIPS\033[" 1>&2

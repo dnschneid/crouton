@@ -40,9 +40,11 @@ installscript() {
 # Exits the script with exit code $1, spitting out message $@ to stderr
 error() {
     local ecode="$1"
+    # color red 31m
     local color="31m"
     shift
-    if [ ! $ecode -eq 1 ]; then
+    if [ $ecode -ne 1 ]; then
+        # color yellow 33m"
         color="33m"
     fi
     echo "\033[$color$*\033[" 1>&2
