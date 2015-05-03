@@ -47,7 +47,7 @@ error() {
         # color yellow 33m
         color="33m"
     fi
-    echo "\033[$color$*\033[" 1>&2
+    echo "\033[$color$*\033[0m" 1>&2
     exit "$ecode"
 }
 

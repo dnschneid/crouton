@@ -71,7 +71,7 @@ if [ -n "$TIPS" ]; then
     # color blue 34m
     echo "\033[34m
 Here's some tips:
-$TIPS\033[" 1>&2
+$TIPS\033[0m" 1>&2
 fi
 
 rm -f "$0"
