@@ -43,8 +43,8 @@ error() {
     # color red 31m
     local color="31m"
     shift
-    if [ $ecode -ne 1 ]; then
-        # color yellow 33m"
+    if [ "$ecode" -ne 1 ]; then
+        # color yellow 33m
         color="33m"
     fi
     echo "\033[$color$*\033[" 1>&2
