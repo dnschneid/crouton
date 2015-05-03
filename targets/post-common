@@ -68,9 +68,9 @@ else
 fi
 
 if [ -n "$TIPS" ]; then
-    echo "
+    echo "\033[34m
 Here's some tips:
-$TIPS" 1>&2
+$TIPS\033[" 1>&2
 fi
 
 rm -f "$0"
