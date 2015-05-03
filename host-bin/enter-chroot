@@ -692,7 +692,7 @@ else
         chrootcmd 'exec /etc/rc.local >/dev/null 2>/dev/null </dev/null' \
             || ret=$?
         undotrap
-        kill "$noticepid" 2>/dev/null
+        kill "$noticepid" 2>/dev/null || true
         wait "$noticepid" || true
         if [ ! "$ret" = 0 ]; then
             echo "WARNING: /etc/rc.local failed with code $ret" 1>&2
