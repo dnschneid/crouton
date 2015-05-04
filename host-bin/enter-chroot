@@ -684,10 +684,16 @@ if [ -n "$NOLOGIN" ]; then
         fi
     fi
 else
-    # Run rc.local
+    # Check and run rc.local
     if [ -n "$firstrun" -a -x "$CHROOT/etc/rc.local" ]; then
+        ( sleep 10; echo "Still running chroot's rc.local..." 2>&1 ) &
+        noticepid="$!"
+        addtrap "kill '$noticepid' 2>/dev/null"
         chrootcmd 'exec /etc/rc.local >/dev/null 2>/dev/null </dev/null' \
             || ret=$?
+        undotrap
+        kill "$noticepid" 2>/dev/null || true
+        wait "$noticepid" || true
         if [ ! "$ret" = 0 ]; then
             echo "WARNING: /etc/rc.local failed with code $ret" 1>&2
             ret=0
