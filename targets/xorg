@@ -36,10 +36,10 @@ if [ "${ARCH#arm}" = "$ARCH" ] && release -eq precise \
         "xserver-xorg-input-synaptics$ltspackages"
 fi
 
-# On saucy onwards, if kernel version is 3.4, manually pin down old mesa
+# On saucy/jessie onwards, if kernel version is 3.4, manually pin down old mesa
 # libraries, as new ones require version >=3.6 (see issue #704).
 # This is only required on non-Atom Intel chipsets (Atom uses i915 dri driver)
-if release -ge saucy && uname -r | grep -q "^3.4." &&
+if release -ge saucy -ge jessie && uname -r | grep -q "^3.4." &&
         grep -q 0x8086 /sys/class/graphics/fb0/device/vendor 2>/dev/null &&
         ! grep -q 0xa0 /sys/class/graphics/fb0/device/device 2>/dev/null; then
     # Create a dummy libwayland-egl1 package, to satisfy dependencies
@@ -64,19 +64,31 @@ END
     # Add precise package sources
     mirror="`detect_mirror`"
 
-    cat > "/etc/apt/sources.list.d/precise.list" <<END
-deb $mirror precise main
-deb $mirror precise-updates main
-deb $mirror precise-security main
-END
+    if release -ge saucy; then
+        oldrelease="precise"
 
-    cat > "/etc/apt/preferences.d/precise-mesa-pin" <<END
-# Do not install any packages from precise by default
+        cat > "/etc/apt/sources.list.d/$oldrelease.list" <<END
+deb $mirror $oldrelease main
+deb $mirror $oldrelease-updates main
+deb $mirror $oldrelease-security main
+END
+    elif release -ge jessie; then
+        oldrelease="wheezy"
+
+        cat > "/etc/apt/sources.list.d/$oldrelease.list" <<END
+deb $mirror $oldrelease main
+END
+    else
+        error 2 "Invalid release."
+    fi
+
+    cat > "/etc/apt/preferences.d/${oldrelease}-mesa-pin" <<END
+# Do not install any packages from $oldrelease by default
 Package: *
-Pin: release n=precise
+Pin: release n=$oldrelease
 Pin-Priority: -10
 
-# Install mesa packages and their dependencies from precise
+# Install mesa packages and their dependencies from $oldrelease
 Package: libegl1-mesa:* libegl1-mesa-dbg:* libegl1-mesa-dev:* \
          libegl1-mesa-drivers:* libegl1-mesa-drivers-dbg:* \
          libgl1-mesa-dev:* libgl1-mesa-dri:* libgl1-mesa-dri-dbg:* \
@@ -84,13 +96,37 @@ Package: libegl1-mesa:* libegl1-mesa-dbg:* libegl1-mesa-dev:* \
          libglapi-mesa:* libglapi-mesa-dbg:* \
          libgles1-mesa:* libgles1-mesa-dbg:* libgles1-mesa-dev:* \
          libgles2-mesa:* libgles2-mesa-dbg:* libgles2-mesa-dev:* \
-         libdrm-nouveau1a:* libllvm3.0:* libudev0:*
-Pin: release n=precise
+         libdrm-nouveau1a:* libllvm3.0:* libudev0:* libffi5:*
+Pin: release n=$oldrelease
 Pin-Priority: 1100
 END
 
+    if release -ge jessie; then
+        cat >> "/etc/apt/preferences.d/${oldrelease}-mesa-pin" <<END
+
+# Prevent upgrading of libegl1-mesa*: we want to install these from
+# the crouton installer to fix libwayland0 dependency
+Package: libegl1-mesa:* libegl1-mesa-drivers:*
+Pin: release o=Debian
+Pin-Priority: -1
+END
+    fi
+
     # Fetch new package sources
     apt-get update || true
+
+    # Debian needs special handling as old packages depend on
+    # libwayland0=0.85.0-2
+    if release -ge jessie && \
+            [ -n "`list_needs_update libegl1-mesa libegl1-mesa-drivers`" ]; then
+        # Note: we only install native packages here. It's unlikely i386
+        # packages would require EGL anyway (e.g. Steam does not)
+        ( cd "$DEBTMP"; apt-get download libegl1-mesa libegl1-mesa-drivers )
+        dpkg -i --force-depends --force-breaks "$DEBTMP"/libegl1-mesa*.deb
+        # Hack the package database to replace broken dependency
+        sed -i -e 's/libwayland0 (= 0.85.0-2)/libwayland-client0/' \
+            /var/lib/dpkg/status
+    fi
 
     # Forcibly replace libwayland-egl1-mesa by libwayland-egl1-dummy
     # (dpkg -r does not fail if package does not exist)
@@ -98,8 +134,9 @@ END
     dpkg -i --force-depends "$DEBTMP"/libwayland-egl1-dummy_*_all.deb
 
     # Downgrade packages, -f is needed as dependencies are broken
-    # This happens to install python2.7-minimal as well, pulled in by a wrong
-    # dependency of ubuntu-minimal-1.267 (precise), which we did not install.
+    # On Ubuntu, this happens to install python2.7-minimal as well, pulled in
+    # by a wrong dependency of ubuntu-minimal-1.267 (precise), which we did
+    # not install.
     # Looks like an apt bug, I guess we can live with that.
     apt-get -y --force-yes --no-install-recommends dist-upgrade -f
 fi

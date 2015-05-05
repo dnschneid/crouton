@@ -200,6 +200,29 @@ install_mirror_package() {
     fi
 }
 
+
+# list_needs_update: For the specified package names, prints out any
+# package that needs an update (packages that do not exist in the
+# database are also printed).
+list_needs_update() {
+    local pkg
+    for pkg in "$@"; do
+        local v v1="" v2="(not found)"
+        for v in `apt-cache policy "$pkg" | \
+                  awk '$1~/(Installed|Candidate):/{print $2}'`; do
+            if [ -z "$v1" ]; then
+                v1="$v"
+            else
+                v2="$v"
+                break
+            fi
+        done
+        if [ "$v1" != "$v2" ]; then
+            echo -n "$pkg "
+        fi
+    done
+}
+
 # Run dpkg in non-interactive mode
 export DEBIAN_FRONTEND=noninteractive
 
