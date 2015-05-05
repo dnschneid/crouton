@@ -3,7 +3,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 if [ -f /sbin/frecon ]; then
-    REQUIRES='xorg'
+    # Wheezy/Kali are too old to use KMS well
+    if release -le wheezy -le kali; then
+        REQUIRES='xiwi'
+    else
+        REQUIRES='xorg'
+    fi
 elif grep -q 'SAMSUNG EXYNOS' /proc/cpuinfo || \
         ([ "${ARCH#arm}" != "$ARCH" ] && \
         awk -F= '/_RELEASE_VERSION=/ { exit !(int($2) < 6689) }' \
