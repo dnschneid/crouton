@@ -3,7 +3,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-export XMETHOD='xorg'
+if [ "${XMETHOD%%-*}" != 'xorg' ]; then
+    export XMETHOD='xorg'
+fi
 XARGS='-nolisten tcp'
 if [ -f /etc/crouton/xserverrc-local ]; then
     . /etc/crouton/xserverrc-local
@@ -37,7 +39,7 @@ if [ ! -f "/sys/class/tty/tty0/active" ]; then
             logfile="/tmp/Xorg.crouton.$disp.log"
         fi
     done
-    XARGS="-logfile $logfile"
+    XARGS="$XARGS -logfile $logfile"
     export LD_PRELOAD="/usr/local/lib/croutonfreon.so:$LD_PRELOAD"
 fi
 

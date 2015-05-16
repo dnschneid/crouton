@@ -21,7 +21,7 @@ deb http://ppa.launchpad.net/xubuntu-dev/xfce-4.10/ubuntu $RELEASE main
 deb-src http://ppa.launchpad.net/xubuntu-dev/xfce-4.10/ubuntu $RELEASE main
 EOF
     # Update database
-    apt-get update
+    apt-get update || true
 fi
 
 if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then

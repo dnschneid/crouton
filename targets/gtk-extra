@@ -7,6 +7,7 @@ DESCRIPTION='GTK-based tools including gdebi, gksu, and a simple browser.'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
+install_dummy arch=,network-manager arch=,network-manager-gnome
 install arch=,gdebi arch=,gksu arch=netsurf,netsurf-gtk
 
 if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then

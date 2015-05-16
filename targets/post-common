@@ -66,9 +66,9 @@ username="`awk -F: '$3==1000{print $1; exit}' '/etc/passwd'`"
 if [ -z "$username" ]; then
     while ! echo "$username" | grep -q '^[a-z][-a-z0-9_]*$'; do
         if [ -n "$username" ]; then
-            echo 'Username must be lowercase letters, numbers, or dashes.' 1>&2
+            echo_tty 'Username must be lowercase letters, numbers, or dashes.'
         fi
-        echo -n 'Please specify a username for the primary user: ' 1>&2
+        echo_tty -n 'Please specify a username for the primary user: '
         if [ -n "$USERNAME" ]; then
             username="$USERNAME"
             echo "$username" 1>&2

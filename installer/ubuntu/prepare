@@ -54,6 +54,40 @@ install_pkg_dist() {
 }
 
 
+# install_dummy_dist: see install_dummy() in prepare.sh for details.
+install_dummy_dist() {
+    if [ "$#" = 0 ]; then
+        return
+    fi
+    local pkgname="crouton-$1" pkgprovides="$1"
+    shift
+    while [ "$#" != 0 ]; do
+        pkgprovides="$pkgprovides, $1"
+        shift
+    done
+    local tmp="`mktemp -d crouton.XXXXXX --tmpdir=/tmp`"
+    addtrap "rm -rf '$tmp'"
+    cat > "$tmp/control" <<EOF
+Package: $pkgname
+Version: 0
+Architecture: all
+Maintainer: crouton
+Installed-Size: 0
+Provides: $pkgprovides
+Section: misc
+Priority: optional
+Description: Provides a dummy ${pkgname#*-} for crouton
+EOF
+    touch "$tmp/md5sums"
+    echo '2.0' > "$tmp/debian-binary"
+    tar -czf "$tmp/control.tar.gz" -C "$tmp" control md5sums
+    tar -cf "$tmp/data.tar" -T /dev/null
+    ar r "$tmp/$pkgname.deb" \
+        "$tmp/debian-binary" "$tmp/control.tar.gz" "$tmp/data.tar"
+    dpkg -i "$tmp/$pkgname.deb"
+}
+
+
 # remove_dist: see remove() in prepare.sh for details.
 remove_dist() {
     apt-get -y --purge remove "$@"

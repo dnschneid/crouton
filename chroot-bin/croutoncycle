@@ -88,7 +88,7 @@ for disp in /tmp/.X*-lock; do
             | grep -q 'INTEGER'; then
         displist="$displist $disp"
     elif DISPLAY="$disp" xprop -root 'CROUTON_XMETHOD' 2>/dev/null \
-            | grep -q '= "xiwi"$'; then
+            | grep -q '= "xiwi'; then
         displist="$displist $disp"
         xiwiactive='y'
     fi
@@ -168,6 +168,7 @@ if [ "$cmd" = 'l' -o "$cmd" = 'd' ]; then
         fi
     ) | sort | while read -r line; do
         disp="${line##* }"
+        display="${disp%"*"}"
         line="${line% *}"
         number='0'
         active=' '
@@ -177,7 +178,7 @@ if [ "$cmd" = 'l' -o "$cmd" = 'd' ]; then
             if [ "${number#[0-9]}" = "$number" ]; then
                 number='0'
             else
-                disp=":$number"
+                display=":$number"
                 line="`getname "$number"`"
             fi
         fi
@@ -195,11 +196,11 @@ if [ "$cmd" = 'l' -o "$cmd" = 'd' ]; then
         fi
         if [ "$line" = 'aura_root_0' ]; then
             line="$chromiumos"
-            disp="cros"
+            display="cros"
             window=''
         fi
         if [ "$cmd" = 'l' ]; then
-            echo "${disp%"*"}$active $line"
+            echo "$display$active $line"
         fi
     done
     for disp in $displist; do
@@ -303,7 +304,9 @@ if [ "${destdisp#:}" = "$destdisp" ]; then
     fi
 else
     export DISPLAY="$destdisp"
-    if xprop -root 'CROUTON_XMETHOD' 2>/dev/null | grep -q '= "xiwi"$'; then
+    xmethod="`xprop -root 'CROUTON_XMETHOD' 2>/dev/null \
+              | sed -n 's/^.*\"\(.*\)\"/\1/p'`"
+    if [ "${xmethod%%-*}" = 'xiwi' ]; then
         if [ -z "$freonowner" -a "$tty" != 'tty1' ]; then
             sudo -n chvt 1
             sleep .1
@@ -313,7 +316,7 @@ else
         if [ -z "$freonowner" ]; then
             host-x11 croutonwmtools raise "$aurawin"
         fi
-        STATUS="`echo -n "X${destdisp}" | websocketcommand`"
+        STATUS="`echo -n "X${destdisp} ${xmethod#*-}" | websocketcommand`"
         if [ "$STATUS" != 'XOK' ]; then
             error 1 "${STATUS#?}"
         fi

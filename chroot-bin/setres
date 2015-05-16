@@ -27,7 +27,7 @@ fi
 
 xmethod="`xprop -root 'CROUTON_XMETHOD' | sed -n 's/^.*\"\(.*\)\"/\1/p'`"
 
-if [ "$xmethod" != "xiwi" ]; then
+if [ "${xmethod%%-*}" != "xiwi" ]; then
     cvt "$x" "$y" "$r" | {
         read -r _
         read -r _ mode data

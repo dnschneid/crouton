@@ -1,8 +1,9 @@
 // Copyright (c) 2014 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+'use strict';
 
-var CLOSE_TIMEOUT = 2; /* Close window x seconds after disconnect */
+var CLOSE_TIMEOUT = 0; /* Close window x seconds after disconnect */
 var DEBUG_LEVEL = 2; /* If debug is enabled, use this level in NaCl */
 var RESIZE_RATE_LIMIT = 300; /* No more than 1 resize query every x ms */
 
@@ -15,8 +16,8 @@ var errordiv_ = null; /* error div */
 
 var debug_ = 0; /* Debuging level, passed to NaCl module */
 var hidpi_ = 0; /* HiDPI mode */
-var display_ = null; /* Display number to use */
-var title_ = "crouton in a window"; /* window title */
+var display_ = -1; /* Display number to use */
+var title_ = "crouton"; /* window title */
 var connected_ = false;
 var closing_ = false; /* Disconnected, and waiting for the window to close */
 var error_ = false; /* An error has occured */
@@ -69,6 +70,13 @@ function handleCrash(event) {
     registerWindow(false);
 }
 
+/* Handle requests from the background page (for tabs) */
+function handleRequest(message, sender, sendResponse) {
+    if (typeof(window[message.func]) == "function") {
+        window[message.func](message.param);
+    }
+};
+
 /* Change debugging level */
 function setDebug(debug) {
     debug_ = (debug > 0) ? DEBUG_LEVEL : 0;
@@ -95,7 +103,7 @@ function setHiDPI(hidpi) {
 }
 
 function setTitle(title) {
-    document.title = "crouton (" + display_ + "): " + title;
+    document.title = title;
 }
 
 /* Set status message */
@@ -180,22 +188,22 @@ function handleMessage(message) {
                 newstate = "fullscreen";
             }
             chrome.windows.update(chrome.windows.WINDOW_ID_CURRENT,
-                                  {'state': newstate}, function(win) {})
-        })
+                                  {state: newstate}, function(win) {});
+        });
     } else if (type == "state" && payload == "hide") {
         /* Hide window */
         chrome.windows.getCurrent(function(win) {
-            minimize = function(win) {
+            var minimize = function(win) {
                 chrome.windows.update(chrome.windows.WINDOW_ID_CURRENT,
-                                      {'state': 'minimized'}, function(win) {})}
+                                      {state: 'minimized'}, function(win) {})}
             /* To make restore nicer, first exit full screen, then minimize */
             if (win.state == "fullscreen") {
                 chrome.windows.update(chrome.windows.WINDOW_ID_CURRENT,
-                                      {'state': 'maximized'}, minimize)
+                                      {state: 'maximized'}, minimize);
             } else {
-                minimize()
+                minimize();
             }
-        })
+        });
     } else if (type == "resize") {
         i = payload.indexOf("/");
         if (i < 0) return;
@@ -261,9 +269,24 @@ function handleFocusBlur(evt) {
     KiwiModule_.focus();
 }
 
-/* Start in full screen */
-chrome.windows.update(chrome.windows.WINDOW_ID_CURRENT,
-                      {'state': "fullscreen"}, function(win) {})
+/* Parse arguments */
+location.search.substring(1).split('&').forEach(function(arg) {
+    var keyval = arg.split('=');
+    if (keyval[0] == "display") {
+        display_ = keyval[1];
+    } else if (keyval[0] == "title") {
+        title_ = decodeURIComponent(keyval[1]);
+    } else if (keyval[0] == "debug") {
+        debug_ = keyval[1];
+    } else if (keyval[0] == "hidpi") {
+        hidpi_ = keyval[1];
+    } else if (keyval[0] == "mode") {
+        if (keyval[1] == 'f') {
+            chrome.windows.update(chrome.windows.WINDOW_ID_CURRENT,
+                                  {state: "fullscreen"});
+        }
+    }
+});
 
 document.addEventListener('DOMContentLoaded', function() {
     listener_ = document.getElementById('listener');
@@ -276,6 +299,7 @@ document.addEventListener('DOMContentLoaded', function() {
     window.addEventListener('focus', handleFocusBlur);
     window.addEventListener('blur', handleFocusBlur);
     document.addEventListener('visibilitychange', handleFocusBlur);
+    chrome.runtime.onMessage.addListener(handleRequest);
 
     infodiv_ = document.getElementById('info');
     statusdiv_ = document.getElementById('status');
@@ -288,23 +312,9 @@ document.addEventListener('DOMContentLoaded', function() {
     warningdiv_.style.display = 'block';
     errordiv_.style.display = 'block';
 
-    /* Parse arguments */
-    var args = location.search.substring(1).split('&');
-    display_ = -1;
-    debug_ = 0;
-    for (var i = 0; i < args.length; i++) {
-        var keyval = args[i].split('=')
-        if (keyval[0] == "display")
-            display_ = keyval[1];
-        else if (keyval[0] == "title")
-            title_ = decodeURIComponent(keyval[1]);
-        else if (keyval[0] == "debug")
-            setDebug(keyval[1]);
-        else if (keyval[0] == "hidpi")
-            setHiDPI(keyval[1]);
-    }
-
+    setDebug(debug_);
+    setHiDPI(hidpi_);
     setTitle(title_);
 
     registerWindow(true);
-})
+});
