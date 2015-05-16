@@ -4,7 +4,6 @@
 # found in the LICENSE file.
 REQUIRES='core'
 DESCRIPTION='Support audio playback via Chromium OS'\''s audio system.'
-CHROOTETC='pulseaudio-default.pa'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
@@ -121,46 +120,50 @@ fi
 # A blank parameter means we are building for the native architecture.
 build_cras() {
     local cras_arch="$1"
-    local pkgsuffix=''
+    local pkgaffix=''
     local pkgdepextra=''
-    local archextrapath=''
     local pkgconfigpath=''
     local archgccflags=''
     if [ -n "$cras_arch" ]; then
-        pkgsuffix=":$cras_arch"
-        pkgdepextra='gcc-multilib'
-        archextrapath="/$cras_arch-linux-gnu"
-        pkgconfigpath="/usr/lib$archextrapath/pkgconfig"
-        archgccflags='-m32'
-
-        # Add foreign architecture, if necessary
-        if ! dpkg --print-foreign-architectures | grep -q "^$cras_arch$"; then
-            echo "Adding foreign architecture $cras_arch to dpkg..." 1>&2
-            dpkg --add-architecture "$cras_arch"
-            apt-get update || true
+        if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
+            pkgaffix=":$cras_arch"
+            pkgdepextra='gcc-multilib'
+            # Add foreign architecture, if necessary
+            if ! dpkg --print-foreign-architectures | \
+                                  grep -q "^$cras_arch$"; then
+		echo "Adding foreign architecture $cras_arch to dpkg..." 1>&2
+		dpkg --add-architecture "$cras_arch"
+                apt-get update || true
+            fi
+            pkgconfigpath="/usr/lib/$cras_arch-linux-gnu/pkgconfig"
+        elif [ "${DISTROAKA:-"$DISTRO"}" = 'arch' ]; then
+            pkgaffix="lib32-"
+            pkgconfigpath="/usr/lib32/pkgconfig"
         fi
+        archgccflags='-m32'
     fi
 
     # Install CRAS dependencies
     install --minimal alsa-utils \
-        libasound2$pkgsuffix libspeexdsp1$pkgsuffix
+        arch=${pkgaffix}alsa-lib,libasound2$pkgaffix \
+        arch=${pkgaffix}speex,libspeexdsp1$pkgaffix
 
-    install --minimal --asdeps gcc $pkgdepextra libc6-dev$pkgsuffix \
-        pkg-config libspeexdsp-dev$pkgsuffix
+    install --minimal --asdeps gcc $pkgdepextra arch=,libc6-dev$pkgaffix \
+        pkg-config arch=,libspeexdsp-dev$pkgaffix
 
     # precise does not allow libasound2-dev and libasound2-dev:i386 to be
     # installed simultaneously
     if release -le precise && [ -n "$cras_arch" ]; then
         install --minimal --asdeps libasound2-dev
         # Manually link .so file
-        libasoundso="/usr/lib$archextrapath/libasound.so"
+        libasoundso="/usr/lib/$cras_arch-linux-gnu/libasound.so"
         if [ ! -f "$libasoundso" ]; then
             addtrap "rm -f '$libasoundso' 2>/dev/null"
             ln -sfT libasound.so.2 "$libasoundso"
         fi
-        ALSALIBDIR="/usr/lib$archextrapath/alsa-lib"
+        ALSALIBDIR="/usr/lib/$cras_arch-linux-gnu/alsa-lib"
     else
-        install --minimal --asdeps libasound2-dev$pkgsuffix
+        install --minimal --asdeps arch=,libasound2-dev$pkgaffix
         ALSALIBDIR="`PKG_CONFIG_PATH="$pkgconfigpath" \
                                 pkg-config --variable=libdir alsa`/alsa-lib"
     fi
@@ -353,8 +356,13 @@ END
         sed -e 's/SBC_[A-Z0-9_]*/0/g' -i tests/cras_test_client.c
 
         # Directory to install CRAS library/binaries
-        CRASLIBDIR="/usr/local$archextrapath/lib"
-        CRASBINDIR="/usr/local$archextrapath/bin"
+        if [ -n "$cras_arch" ]; then
+            CRASLIBDIR="/usr/local/$cras_arch-linux-gnu/lib"
+            CRASBINDIR="/usr/local/$cras_arch-linux-gnu/bin"
+        else
+            CRASLIBDIR="/usr/local/lib"
+            CRASBINDIR="/usr/local/bin"
+        fi
 
         echo "Compiling CRAS (${cras_arch:-native})..." 1>&2
         # Convert Makefile.am to a shell script, and run it.
@@ -391,8 +399,15 @@ END
 
 # On x86_64, the ALSA plugin needs to be compiled for both 32-bit and 64-bit
 # to allow audio playback using 32-bit applications.
-if [ "$ARCH" = 'amd64' ]; then
-    build_cras 'i386'
+if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
+    if [ "$ARCH" = 'amd64' ]; then
+        build_cras 'i386'
+    fi
+elif [ "${DISTROAKA:-"$DISTRO"}" = 'arch' ]; then
+    # Only build 32-bit version if multilib repository is setup
+    if [ "$ARCH" = "x86_64" ] && arch_multilib; then
+        build_cras 'i386'
+    fi
 fi
 
 # Build CRAS for native architecture
@@ -428,10 +443,43 @@ EOF
 # not have been created yet, so we add a script in /etc/profile.d to link
 # ~/.config/pulse/default.pa to /etc/crouton/pulseaudio-default.pa.
 
+# Arch relies on systemd to stop pulseaudio when the session exits, and
+# pulseaudio fails to start as it cannot find the appropriate systemd service.
+# For this reason, we:
+#  1. Cannot include the default /etc/pulse/default.pa
+#  2. Need to provide blank daemon.conf & client.conf in ~/.config/pulse, to
+#     make sure pulseaudio uses default settings (20 seconds timeout, and client
+#     can start the server on demand)
+
 paconfigdir='$HOME/.config/pulse'
 # Old versions of pulseaudio use ~/.pulse/default.pa
 if release -le quantal -le wheezy; then
     paconfigdir='$HOME/.pulse'
+fi
+
+# Default: include default configuration
+pa_default_prepend='.include /etc/pulse/default.pa'
+if [ "${DISTROAKA:-"$DISTRO"}" = 'arch' ]; then
+    # Arch: do not include default configuration, but load native unix protocol
+    # module, so that clients can connect
+    pa_default_prepend='load-module module-native-protocol-unix'
+fi
+
+cat > /etc/crouton/pulseaudio-default.pa <<EOF
+#!/usr/bin/pulseaudio -nF
+
+$pa_default_prepend
+
+# Forward audio to Chromium OS audio server
+load-module module-alsa-sink device=cras sink_name=cras-sink
+load-module module-alsa-source device=cras source_name=cras-source
+set-default-sink cras-sink
+set-default-source cras-source
+EOF
+
+touchconfigfiles=''
+if [ "${DISTROAKA:-"$DISTRO"}" = 'arch' ]; then
+    touchconfigfiles='y'
 fi
 
 profiledsh='/etc/profile.d/crouton-pulseaudio-cras.sh'
@@ -440,9 +488,15 @@ echo '#!/bin/sh
 
 defaultpa="'"$paconfigdir"'/default.pa"
 # Do not install if user is root, or $HOME does not exist
-if [ "`id -u`" -ne 0 -a -d "$HOME" -a ! -e "$defaultpa" ]; then
-    mkdir -p "'"$paconfigdir"'"
-    ln -sfT /etc/crouton/pulseaudio-default.pa "$defaultpa"
+if [ "`id -u`" -ne 0 -a -d "$HOME" ]; then
+    if [ ! -e "$defaultpa" ]; then
+        mkdir -p "'"$paconfigdir"'"
+        ln -sfT /etc/crouton/pulseaudio-default.pa "$defaultpa"
+    fi
+    # Create empty configuration files if necessary
+    if [ -n "'"$touchconfigfiles"'" ]; then
+        touch -a "'"$paconfigdir"'/daemon.conf" "'"$paconfigdir"'/client.conf"
+    fi
 fi' > "$profiledsh"
 
 chmod 755 "$profiledsh"

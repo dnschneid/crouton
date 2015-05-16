@@ -6,5 +6,9 @@ DESCRIPTION='Google Chrome browser, dev channel.'
 . "${TARGETSDIR:="$PWD"}/chrome-common"
 
 ### Append to prepare.sh:
-CHANNEL='unstable'
+if [ "${DISTROAKA:-"$DISTRO"}" = 'arch' ]; then
+    CHANNEL='-dev'
+else
+    CHANNEL='unstable'
+fi
 ### append chrome-common

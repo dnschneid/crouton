@@ -9,7 +9,7 @@ CHROOTBIN='croutonpowerd'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
-install dbus openssh-client kbd
+install dbus arch=openssh,openssh-client kbd
 
 TIPS="$TIPS
 You can start a shell in a new VT via the startcli host command: sudo startcli

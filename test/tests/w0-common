@@ -16,7 +16,7 @@ fi
 snapshot "$release" x11
 
 # Install snapshot tools + xte
-echo 'install --minimal x11-apps imagemagick xautomation' | \
+echo 'install --minimal arch=xorg-xwd,x11-apps imagemagick xautomation' | \
     crouton -T -U -n "$release"
 
 ret=0

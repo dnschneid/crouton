@@ -11,7 +11,7 @@ HOSTBIN='starte17'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
-install e17
+install arch=enlightenment17,e17
 
 TIPS="$TIPS
 You can start e17 via the starte17 host command: sudo starte17

@@ -34,7 +34,12 @@ if [ "${DESKTOP_SESSION#cinnamon}" != "$DESKTOP_SESSION" ] && \
 fi
 
 if [ -z "$DISPLAY" ]; then
-    exec xinit /etc/X11/xinit/xinitrc "$0"
+    CHROOTRELEASE="`croutonversion -r`"
+    if [ "$CHROOTRELEASE" = "arch" -o "$CHROOTRELEASE" = "alarm" ]; then
+        exec xinit "$0"
+    else
+        exec xinit /etc/X11/xinit/xinitrc "$0"
+    fi
 else
     exec "$SESSION" --session="$DESKTOP_SESSION"
 fi

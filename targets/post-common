@@ -32,11 +32,38 @@ echo 'Cleaning up...' 1>&2
 if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
     apt-get -y --purge autoremove
     apt-get clean
+elif [ "${DISTROAKA:-"$DISTRO"}" = 'arch' ]; then
+    # Archlinux equivalent of autoremove (recursively remove unneeded packages)
+    while true; do
+        remove="`pacman -Qdtq || true`"
+        if [ -z "$remove" ]; then
+            break
+        fi
+        pacman --noconfirm -R $remove
+    done
+    # Clear package cache
+    yes | pacman -Scc
 fi
 
 # Add the primary user
-groups='audio,input,video,sudo,plugdev'
-if ! grep -q ':1000:' /etc/passwd; then
+groups='audio,input,video,plugdev'
+if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
+    groups="$groups,sudo"
+elif [ "${DISTROAKA:-"$DISTRO"}" = 'arch' ]; then
+    groups="$groups,users,wheel"
+    if [ ! -e /etc/sudoers.d/00-wheel ]; then
+        echo '%wheel ALL=(ALL) ALL' > /etc/sudoers.d/00-wheel
+        chmod 440 /etc/sudoers.d/00-wheel
+    fi
+fi
+
+# Make sure the groups actually exist
+for group in `echo "$groups" | tr ',' ' '`; do
+    groupadd -r -f "$group"
+done
+
+username="`awk -F: '$3==1000{print $1; exit}' '/etc/passwd'`"
+if [ -z "$username" ]; then
     while ! echo "$username" | grep -q '^[a-z][-a-z0-9_]*$'; do
         if [ -n "$username" ]; then
             echo_tty 'Username must be lowercase letters, numbers, or dashes.'
@@ -49,7 +76,9 @@ if ! grep -q ':1000:' /etc/passwd; then
             read -r username junk
         fi
     done
-    useradd -u 1000 -G "$groups" -s '/bin/bash' -m "$username"
+    # Create a group with the same name as the user (GID 1000)
+    groupadd -g 1000 "$username"
+    useradd -u 1000 -g 1000 -G "$groups" -s '/bin/bash' -m "$username"
     if [ -t 0 ]; then
         tries=0
     else
@@ -63,7 +92,6 @@ if ! grep -q ':1000:' /etc/passwd; then
 "Password left unset. To set a password, inside the chroot run: passwd $username" 1>&2
     fi
 else
-    username="`awk -F: '$3==1000{print $1; exit}' '/etc/passwd'`"
     usermod -a -G "$groups" "$username"
 fi
 

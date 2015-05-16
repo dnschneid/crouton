@@ -3,8 +3,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 if [ "${TARGETNOINSTALL:-c}" = 'c' ] &&
-        [ "$DISTRO" = 'debian' -o "$DISTRO" = 'kali' ]; then
-    error 99 "touch target is not supported on Debian."
+        [ "$DISTRO" = 'debian' -o "$DISTRO" = 'kali' -o \
+               "${DISTROAKA:-"$DISTRO"}" = 'arch' ]; then
+    error 99 "touch target is not supported on $DISTRO."
 fi
 REQUIRES='x11'
 DESCRIPTION='Touchscreen and limited generic gesture support.'

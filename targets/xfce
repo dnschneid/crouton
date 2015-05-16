@@ -24,9 +24,11 @@ EOF
     apt-get update || true
 fi
 
-# Fix icons by setting default icon theme to Tango
-mkdir -p /etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml
-cat > '/etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xsettings.xml' <<EOF
+if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
+    # Fix icons by setting default icon theme to Tango
+    xfconfdir='/etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml'
+    mkdir -p "$xfconfdir"
+    cat > "$xfconfdir/xsettings.xml" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 
 <channel name="xsettings" version="1.0">
@@ -35,6 +37,7 @@ cat > '/etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xsettings.xml' <<EOF
   </property>
 </channel>
 EOF
+fi
 
 install xfce4 xfce4-goodies ubuntu=shimmer-themes, \
         -- dictionaries-common hddtemp xorg
