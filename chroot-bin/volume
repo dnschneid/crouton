@@ -1,0 +1,153 @@
+#!/bin/bash
+
+# This script uses cras_test_client to present an interface similar to the
+# brightness script for crouton.
+
+# The MIT License (MIT)
+# 
+# Copyright (c) 2015 Samuel Dionne-Riel
+# 
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+# 
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+# 
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+
+set -e
+set -u
+
+DEFAULT_VOLUME_DELTA=5
+
+get_current_output() {
+	cras_test_client --dump_server_info | grep -i 'Selected Output Node' | \
+		sed -e 's#[[:space:]]*##g' | sed -e 's#^[a-zA-Z]*:##'
+}
+
+get_current_output_infos() {
+	cras_test_client --dump_server_info | grep $(get_current_output) | grep '^	'
+}
+
+get_current_volume() {
+	get_current_output_infos | cut -d'	' -f3 | sed -e 's# *##' | cut -d' ' -f1
+}
+set_volume() {
+	local volume=$1
+	# Clamp volume to zero
+	# A negative amount of absolute volume sets it to 100%
+	if (( volume < 0 )); then
+		volume=0
+	fi
+	cras_test_client --set_node_volume $(get_current_output):$volume
+}
+
+get_is_muted() {
+	local counter=0
+	local is_muted=""
+	host-dbus dbus-send --print-reply --system \
+		--dest=org.chromium.cras --type=method_call \
+		/org/chromium/cras org.chromium.cras.Control.GetVolumeState \
+		| while read line ; do
+		# We want the fifth value.
+		if [[ "$counter" == "5" ]]; then
+			is_muted=$(echo $line | cut -d' ' -f2-)
+			echo $is_muted
+		fi
+		(( counter++ ))||:
+	done
+}
+
+toggle_mute() {
+	if [[ $(get_is_muted) == "true" ]]; then
+		unmute
+	else
+		mute
+	fi
+	exit 0
+}
+
+mute() {
+	cras_test_client --user_mute 1
+}
+unmute() {
+	cras_test_client --user_mute 0
+}
+
+relative_volume() {
+	local delta=$1
+	# FIXME : When muted, set to zero if relative is going down.
+	# We cannot currently get the proper mute state.
+	# FIXME : When unmuting, should only unmute and not adjust.
+	if [[ $(get_is_muted) == "true" ]]; then
+		unmute
+		if (( delta < 0 )); then
+			set_volume 0
+		fi
+	else
+		set_volume $(( $(get_current_volume) + $delta ))
+	fi
+}
+
+print_help() {
+	echo "Usage: $(basename $0) [set|up|down|mute|0-100]"
+	echo "   up/down can receive an amount value to increase/decrease."
+	echo "   mute can receive commands set|unset."
+	echo "   set take a value between 0 and 100."
+	echo ""
+	echo "Shortcut invocations:"
+	echo "  $(basename $0) up     increases by $DEFAULT_VOLUME_DELTA"
+	echo "  $(basename $0) down   decreases by $DEFAULT_VOLUME_DELTA"
+	echo "  $(basename $0) mute   sets muted"
+	echo "  $(basename $0) 0-100  sets volume to given value"
+}
+
+if [[ $# -lt 1 ]]; then
+	print_help
+	exit 0
+fi
+
+cmd=$1
+
+if [[ "$cmd" == "up" ]]; then
+	relative_volume ${2-$DEFAULT_VOLUME_DELTA}
+	exit 0
+elif [[ "$cmd" == "down" ]]; then
+	relative_volume "-${2-$DEFAULT_VOLUME_DELTA}"
+	exit 0
+elif [[ "$cmd" == "mute" ]]; then
+	# Toggle cannot be used right now.
+	action="${2-set}"
+	if [[ "$action" == "toggle" ]]; then
+		toggle_mute
+	elif [[ "$action" == "set" ]]; then
+		mute
+	elif [[ "$action" == "unset" ]]; then
+		unmute
+	else
+		echo "Invalid action: $action for mute."
+		print_help
+		exit 1
+	fi
+	exit 0
+elif [[ "$cmd" == "set" ]]; then
+	shift
+fi
+
+if [[ $# -lt 1 ]]; then
+	echo "set needs an amount to set."
+	print_help
+	exit 1
+fi
+
+set_volume $1
