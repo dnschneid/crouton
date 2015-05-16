@@ -56,6 +56,15 @@ install_pkg_dist() {
 }
 
 
+# install_dummy_dist: see install_dummy() in prepare.sh for details.
+install_dummy_dist() {
+    if [ "$#" = 0 ]; then
+        return
+    fi
+    error 1 'ERROR: install_dummy_dist is not supported on Arch'
+}
+
+
 # remove_dist: see remove() in prepare.sh for details.
 remove_dist() {
     if [ "$#" -gt 0 ]; then
