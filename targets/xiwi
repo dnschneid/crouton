@@ -29,7 +29,7 @@ if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
 fi
 
 install xorg arch=xf86-video-dummy,xserver-xorg-video-dummy$ltspackages
-install --minimal i3
+install --minimal arch=i3-wm,i3
 
 # Compile croutonfbserver
 compile fbserver '-lX11 -lXfixes -lXdamage -lXext -lXtst' \
