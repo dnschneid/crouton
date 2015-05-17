@@ -40,14 +40,12 @@ installscript() {
 # Exits the script with exit code $1, spitting out message $@ to stderr
 error() {
     local ecode="$1"
-    # color red 31m
-    local color="31m"
+    local color="lred"
     shift
     if [ "$ecode" -ne 1 ]; then
-        # color yellow 33m
-        color="33m"
+        color="lyellow"
     fi
-    echo "\033[$color$*\033[0m" 1>&2
+    echo_color "$color" "$*"
     exit "$ecode"
 }
 
@@ -224,6 +222,41 @@ echo_tty() {
     else
         echo "$@" 1>&2
     fi
+}
+
+# Set a console color (shorthand)
+# usage: echo_color [l][color] [string]
+# Specifying "l" uses the light version of the color.
+# Color can be red, green, yellow, blue, magenta, cyan.
+# Color can be specified with just the first letter. 
+# example: echo_color "lr" "light red"
+echo_color() {
+    # If not outputting to a tty print no colors.
+    if [ ! -t 2 ]; then
+        shift
+        echo "$*" 1>&2 
+        return
+    fi
+    printf "\033["
+    local c="$1"
+    if [ "${c#l}" != "$c" ]; then
+        printf "1;"
+        c="${c#l}"
+    else
+        printf "0;"
+    fi
+    case "$c" in
+        r*) printf "31m";;
+        g*) printf "32m";;
+        y*) printf "33m";;
+        b*) printf "34m";;
+        m*) printf "35m";;
+        c*) printf "36m";;
+         *) printf "37m";;
+    esac
+    shift
+    echo "$*" 1>&2
+    printf "\033[0m"
 }
 
 # Websocket interface
