@@ -41,14 +41,16 @@ set_volume() {
 
 get_is_muted() {
     # Get the alsa state of the control.
-    local state="$(_amixer sget $ALSA_CONTROL \
-        | sed -n -e '$s/[[:space:]]\+/;/gp' | cut -d';' -f6 )"
-    #                ^     ^                   ^ Get the sixth field.
-    #                ^     ^ Normalize spaces to one semicolon
-    #                ^ Work only on the last line
+    local state="$(_amixer contents | sed -n \
+        -e "/^numid.*name=.$ALSA_CONTROL Playback Switch/,/^numid/{/[[:space:]]\+:/s/.*=//p}")"
+    #        ^                                             ^      ^ ^              ^      ^ Print the line.
+    #        ^                                             ^      ^ ^              ^ Replace everything before the equal sign.
+    #        ^                                             ^      ^ ^ Search for the line with spaces and a colon (the value).
+    #        ^                                             ^      ^ On that selection:
+    #        ^---------------------------------------------^ Select from first group to next group.
 
-    # Muted is [off] (control is off)
-    if [ "$state" = "[on]" ]; then
+    # Muted is off (control is off)
+    if [ "$state" = "on" ]; then
         # Is not muted, so is_muted is false
         return 1
     else
