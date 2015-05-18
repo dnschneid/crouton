@@ -70,6 +70,13 @@ unmute() {
 
 relative_volume() {
     local delta="$1"
+
+    # Check that this is integer-ish enough.
+    if ! [ "$delta" -eq "$delta" ] 2>/dev/null; then
+        error_help "Error: $APPLICATION <up|down> needs a number [0-100]"
+        exit 1
+    fi
+
     if get_is_muted; then
         if [ "$delta" -lt 0 ]; then
             set_volume 0
@@ -78,10 +85,9 @@ relative_volume() {
     else
         # Is the volume going down or up?
         if [ "$delta" -lt 0 ]; then
-            # Down, then we need to make that number positive
-            : $(( delta=delta * -1 ))
+            # Going down, we strip the leading minus sign,
             # And suffix the minus sign.
-            set_volume "${delta}-"
+            set_volume "${delta#*-}-"
         else
             # Only suffix the plus sign.
             set_volume "${delta}+"
@@ -90,14 +96,16 @@ relative_volume() {
 }
 
 print_help() {
-    # Prints the usage message.
-    # Can also get a message to show first.
-    [ $# -gt 0 ] && echo "$@"
     echo "$USAGE"
+}
+error_help() {
+    # Prints an error message and the usage to stderr
+    [ $# -gt 0 ] && echo "$@" 1>&2
+    print_help 1>&2
 }
 
 if [ $# -lt 1 ]; then
-    print_help "Error: $APPLICATION needs at least a command." 1>&2
+    error_help "Error: $APPLICATION needs at least a command."
     exit 1
 fi
 
@@ -109,25 +117,19 @@ h*|-h*|--help)
     print_help
     ;;
 up)
-    relative_volume "${1-$DEFAULT_VOLUME_DELTA}"
+    relative_volume "${1:-$DEFAULT_VOLUME_DELTA}"
     ;;
 down)
-    relative_volume "-${1-$DEFAULT_VOLUME_DELTA}"
+    relative_volume "-${1:-$DEFAULT_VOLUME_DELTA}"
     ;;
 mute)
     action="${1-set}"
     case "$action" in
-    "toggle")
-        toggle_mute
-        ;;
-    set)
-        mute
-        ;;
-    unset)
-        unmute
-        ;;
+    toggle) toggle_mute ;;
+    set) mute ;;
+    unset) unmute ;;
     *)
-        print_help "Invalid action: $action for mute." 1>&2
+        error_help "Invalid action: $action for mute."
         exit 1
         ;;
     esac
@@ -136,7 +138,7 @@ set|[0-9]|[0-9][0-9]|100)
     amount="$cmd"
     # First, check that we received a value to set the volume to.
     if [ $# -eq 0 ] && [ "$cmd" = "set" ]; then
-        print_help "Error: $APPLICATION set needs an amount to set." 1>&2
+        error_help "Error: $APPLICATION set needs an amount to set."
         exit 1
     fi
     # The value /could/ have been a parameter or the command itself.
@@ -146,13 +148,13 @@ set|[0-9]|[0-9][0-9]|100)
     fi
     # Check that this is integer-ish enough.
     if ! [ "$amount" -eq "$amount" ] 2>/dev/null; then
-        print_help "Error: $APPLICATION set needs a number [0-100]" 1>&2
+        error_help "Error: $APPLICATION set needs a number [0-100]"
         exit 1
     fi
     set_volume "$amount"
     ;;
 *)
-    print_help "Error: Unkown command $cmd" 1>&2
+    error_help "Error: Unkown command $cmd"
     exit 1
     ;;
 esac
