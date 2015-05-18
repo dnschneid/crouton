@@ -1,178 +1,158 @@
 #!/bin/sh
-
-# This script uses cras_test_client to present an interface similar to the
-# brightness script for crouton.
-
 # Copyright (c) 2015 The crouton Authors. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions are
-# met:
-#
-#    * Redistributions of source code must retain the above copyright
-# notice, this list of conditions and the following disclaimer.
-#    * Redistributions in binary form must reproduce the above
-# copyright notice, this list of conditions and the following disclaimer
-# in the documentation and/or other materials provided with the
-# distribution.
-#    * Neither the name of Google Inc. nor the names of its
-# contributors may be used to endorse or promote products derived from
-# this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-# A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-# OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-# DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-# THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# This script uses amixer to present an interface similar to the
+# brightness script for crouton.
 
 set -e
 set -u
 
 DEFAULT_VOLUME_DELTA=5
 
-get_current_output() {
-    # This function gets the current Output Node ID (x:y)
+APPLICATION="${0##*/}"
+USAGE="$APPLICATION [set] [0-100]
+$APPLICATION up|down [0-100]
+$APPLICATION mute [set|unset|toggle]
 
-    # From cras_test_client we can get the current output node from
-    # a specific line. This sed pipeline extracts it.
-    # The line looks like this:
-    #     Selected Output Node: 7:1
-    cras_test_client --dump_server_info | sed -n \
-        -e '/Selected Output Node/s#[[:space:]]*##g;s#^[a-zA-Z]*:##p'
-    #       ^                     ^                 ^              ^ print
-    #       ^                     ^                 ^ substitute letters
-    #       ^                     ^ substitude spaces for nothing
-    #       ^ select this line only
-}
+This script changes the volume of the current output
+device, as would changing it with the shortcut keys or
+with the GUI in Chrome OS.
 
-get_current_output_infos() {
-    # This function gets line from cras_test_client --dump_server_info that 
-    # represents the current state of the current output.
+Shortcut invocations:
+    $APPLICATION up     increases by $DEFAULT_VOLUME_DELTA
+    $APPLICATION down   decreases by $DEFAULT_VOLUME_DELTA
+    $APPLICATION mute   sets muted
+    $APPLICATION 0-100  sets volume to given value
+"
+# The control which controls the current output.
+ALSA_CONTROL="Master"
 
-    # The current output informations will not duplicate an output node, this makes
-    # it safe(-ish) to filter out on the current output ID.
-    # This would also select the "Selected Output Node" line, but by filtering the
-    # lines beginning with space characters, this selects the proper line.
-    # If for any reason this starts failing, it could be replaced with a sed script
-    # that acts only between the two "headers" "Output Nodes" and "Input Devices".
-    cras_test_client --dump_server_info | grep "^[[:space:]].*$(get_current_output)"
-}
-
-get_current_volume() {
-    get_current_output_infos | sed -e \
-        "s#[[:space:]]\+#;#g" | cut -d';' -f3
-    #    ^                        ^ Use cut to get the third field (Volume)
-    #    ^ normalize spaces/tab separators to semicolons
+# Tiny sugar coating around amixer for common parameters.
+_amixer() {
+    amixer -Dcras "$@"
 }
 
 set_volume() {
     local volume="$1"
-    # Clamp volume to zero
-    # A negative amount of absolute volume sets it to 100%
-    if [ "$volume" -lt 0 ] ; then
-        volume=0
-    fi
-    cras_test_client --set_node_volume "$(get_current_output):$volume"
+    _amixer -q sset $ALSA_CONTROL "$volume"
 }
 
 get_is_muted() {
-    local muted="$(host-dbus dbus-send --print-reply --system \
-        --dest=org.chromium.cras --type=method_call \
-        /org/chromium/cras org.chromium.cras.Control.GetVolumeState \
-        | sed -n -e '6s/.*boolean[[:space:]]\+//p')"
-    [ "$muted" = "true" ]
-}
+    # Get the alsa state of the control.
+    local state="$(_amixer sget $ALSA_CONTROL \
+        | sed -n -e '$s/[[:space:]]\+/;/gp' | cut -d';' -f6 )"
+    #                ^     ^                   ^ Get the sixth field.
+    #                ^     ^ Normalize spaces to one semicolon
+    #                ^ Work only on the last line
 
-toggle_mute() {
-    if get_is_muted; then
-        unmute
+    # Muted is [off] (control is off)
+    if [ "$state" = "[on]" ]; then
+        # Is not muted, so is_muted is false
+        return 1
     else
-        mute
+        # Is muted, so is_muted is true
+        return 0
     fi
 }
 
+toggle_mute() {
+    _amixer -q sset $ALSA_CONTROL toggle
+}
+
 mute() {
-    cras_test_client --user_mute 1
+    _amixer -q sset $ALSA_CONTROL mute
 }
 unmute() {
-    cras_test_client --user_mute 0
+    _amixer -q sset $ALSA_CONTROL unmute
 }
 
 relative_volume() {
     local delta="$1"
     if get_is_muted; then
-        unmute
         if [ "$delta" -lt 0 ]; then
             set_volume 0
         fi
+        unmute
     else
-        set_volume "$(( $(get_current_volume) + delta ))"
+        # Is the volume going down or up?
+        if [ "$delta" -lt 0 ]; then
+            # Down, then we need to make that number positive
+            : $(( delta=delta * -1 ))
+            # And suffix the minus sign.
+            set_volume "${delta}-"
+        else
+            # Only suffix the plus sign.
+            set_volume "${delta}+"
+        fi
     fi
 }
 
 print_help() {
-    local script="$(basename "$0")"
-    echo "$script [set] [0-100]"
-    echo "$script up|down [0-100]"
-    echo "$script mute [set|unset|toggle]"
-    echo ""
-    echo "This script changes the volume of the current output"
-    echo "device, as would changing it with the shortcut keys or"
-    echo "with the GUI in Chrome OS."
-    echo ""
-    echo "Shortcut invocations:"
-    echo "  $script up     increases by $DEFAULT_VOLUME_DELTA"
-    echo "  $script down   decreases by $DEFAULT_VOLUME_DELTA"
-    echo "  $script mute   sets muted"
-    echo "  $script 0-100  sets volume to given value"
+    # Prints the usage message.
+    # Can also get a message to show first.
+    [ $# -gt 0 ] && echo "$@"
+    echo "$USAGE"
 }
 
 if [ $# -lt 1 ]; then
-    print_help
-    exit 0
+    print_help "Error: $APPLICATION needs at least a command." 1>&2
+    exit 1
 fi
 
 cmd="$1"
 shift
 
-if [ "$cmd" = "help" ] || [ "$cmd" = "-h" ] || [ "$cmd" = "--help" ]; then
+case "$cmd" in
+h*|-h*|--help)
     print_help
-elif [ "$cmd" = "up" ]; then
-    relative_volume "${2-$DEFAULT_VOLUME_DELTA}"
-elif [ "$cmd" = "down" ]; then
-    relative_volume "-${2-$DEFAULT_VOLUME_DELTA}"
-elif [ "$cmd" = "mute" ]; then
-    # Toggle cannot be used right now.
+    ;;
+up)
+    relative_volume "${1-$DEFAULT_VOLUME_DELTA}"
+    ;;
+down)
+    relative_volume "-${1-$DEFAULT_VOLUME_DELTA}"
+    ;;
+mute)
     action="${1-set}"
-    if [ "$action" = "toggle" ]; then
+    case "$action" in
+    "toggle")
         toggle_mute
-    elif [ "$action" = "set" ]; then
+        ;;
+    set)
         mute
-    elif [ "$action" = "unset" ]; then
+        ;;
+    unset)
         unmute
-    else
-        echo "Invalid action: $action for mute."
-        print_help
+        ;;
+    *)
+        print_help "Invalid action: $action for mute." 1>&2
+        exit 1
+        ;;
+    esac
+    ;;
+set|[0-9]|[0-9][0-9]|100)
+    amount="$cmd"
+    # First, check that we received a value to set the volume to.
+    if [ $# -eq 0 ] && [ "$cmd" = "set" ]; then
+        print_help "Error: $APPLICATION set needs an amount to set." 1>&2
         exit 1
     fi
-elif [ "$cmd" = "set" ]; then
-    if [ $# -lt 1 ]; then
-        echo "set needs an amount to set."
-        print_help
+    # The value /could/ have been a parameter or the command itself.
+    if [ $# -gt 0 ]; then
+        amount="$1"
+        shift
+    fi
+    # Check that this is integer-ish enough.
+    if ! [ "$amount" -eq "$amount" ] 2>/dev/null; then
+        print_help "Error: $APPLICATION set needs a number [0-100]" 1>&2
         exit 1
     fi
-    set_volume "$1"
-elif [ "$cmd" -eq "$cmd" ] 2>/dev/null; then
-    # Previous test tests for integer-ish value
-    set_volume "$cmd"
-else
-    print_help
-fi
-
-# vim: noai:ts=4:sw=4:expandtab
+    set_volume "$amount"
+    ;;
+*)
+    print_help "Error: Unkown command $cmd" 1>&2
+    exit 1
+    ;;
+esac
