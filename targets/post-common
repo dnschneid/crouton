@@ -69,7 +69,8 @@ fi
 
 if [ -n "$TIPS" ]; then
     echo_color "lblue" \
-"Here's some tips:
+"
+Here's some tips:
 $TIPS"
 fi
 

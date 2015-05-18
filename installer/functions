@@ -224,7 +224,7 @@ echo_tty() {
     fi
 }
 
-# Set a console color (shorthand)
+# Outputs colored text to stderr
 # usage: echo_color [l][color] [string]
 # Specifying "l" uses the light version of the color.
 # Color can be red, green, yellow, blue, magenta, cyan.
@@ -234,7 +234,7 @@ echo_color() {
     # If not outputting to a tty print no colors.
     if [ ! -t 2 ]; then
         shift
-        echo "$*" 1>&2 
+        echo "$@" 1>&2
         return
     fi
     printf "\033["
@@ -255,8 +255,13 @@ echo_color() {
          *) printf "37m";;
     esac
     shift
-    echo "$*" 1>&2
-    printf "\033[0m"
+    local s='\n'
+    if [ "$1" = '-n' ]; then
+        s=''
+        shift
+    fi
+    echo '-n' "$@" 1>&2
+    printf "\033[0m$s"
 }
 
 # Websocket interface
