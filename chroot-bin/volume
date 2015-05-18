@@ -41,13 +41,11 @@ set_volume() {
 
 get_is_muted() {
     # Get the alsa state of the control.
-    local state="$(_amixer contents | sed -n \
-        -e "/^numid.*name=.$ALSA_CONTROL Playback Switch/,/^numid/{/[[:space:]]\+:/s/.*=//p}")"
-    #        ^                                             ^      ^ ^              ^      ^ Print the line.
-    #        ^                                             ^      ^ ^              ^ Replace everything before the equal sign.
-    #        ^                                             ^      ^ ^ Search for the line with spaces and a colon (the value).
-    #        ^                                             ^      ^ On that selection:
-    #        ^---------------------------------------------^ Select from first group to next group.
+    local state="$(_amixer cget "name=$ALSA_CONTROL Playback Switch" | sed -n \
+        -e "/[[:space:]]\+:/s/.*=//p")"
+    #       ^              ^      ^ Print the line.
+    #       ^              ^ Replace everything before the equal sign.
+    #       ^ Search for the line with spaces and a colon (the value).
 
     # Muted is off (control is off)
     if [ "$state" = "on" ]; then
