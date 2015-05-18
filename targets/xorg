@@ -77,9 +77,7 @@ installvideodrivers=''
 removevideodrivers=''
 if [ -n "$freon" ]; then
     installvideodrivers="$modesetting"
-    if [ -z "$(list_uninstalled "$fbdev")" ]; then
-        removevideodrivers="$fbdev"
-    fi
+    removevideodrivers="$fbdev"
 else
     installvideodrivers="$fbdev"
 fi
@@ -87,7 +85,7 @@ if [ -n "$inteldriver" ]; then
     # If we need SNA (for fbc) but don't have it, don't install intel
     if [ -z "$intelhasfbc" -o -n "$intelfbcsupport" ]; then
         installvideodrivers="$installvideodrivers $inteldriver"
-    elif [ -z "$(list_uninstalled "$inteldriver")" ]; then
+    else
         removevideodrivers="$removevideodrivers $inteldriver"
     fi
 fi
