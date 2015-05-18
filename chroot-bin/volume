@@ -82,7 +82,6 @@ set_volume() {
 }
 
 get_is_muted() {
-    local counter=0
     local muted="$(host-dbus dbus-send --print-reply --system \
         --dest=org.chromium.cras --type=method_call \
         /org/chromium/cras org.chromium.cras.Control.GetVolumeState \
@@ -113,7 +112,7 @@ relative_volume() {
             set_volume 0
         fi
     else
-        set_volume "$(( $(get_current_volume) + $delta ))"
+        set_volume "$(( $(get_current_volume) + delta ))"
     fi
 }
 
@@ -145,7 +144,7 @@ shift
 if [ "$cmd" = "help" ] || [ "$cmd" = "-h" ] || [ "$cmd" = "--help" ]; then
     print_help
 elif [ "$cmd" = "up" ]; then
-    relative_volume ${2-$DEFAULT_VOLUME_DELTA}
+    relative_volume "${2-$DEFAULT_VOLUME_DELTA}"
 elif [ "$cmd" = "down" ]; then
     relative_volume "-${2-$DEFAULT_VOLUME_DELTA}"
 elif [ "$cmd" = "mute" ]; then
@@ -168,10 +167,10 @@ elif [ "$cmd" = "set" ]; then
         print_help
         exit 1
     fi
-    set_volume $1
+    set_volume "$1"
 elif [ "$cmd" -eq "$cmd" ] 2>/dev/null; then
     # Previous test tests for integer-ish value
-    set_volume $cmd
+    set_volume "$cmd"
 else
     print_help
 fi
