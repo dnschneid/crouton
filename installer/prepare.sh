@@ -130,7 +130,8 @@ install_pkg() {
 
 
 # install_dummy: Installs a dummy package that resolves dependencies. The
-# parameters are a list of crouton-style package names to "install".
+# parameters are a list of crouton-style package names to "install", optionally
+# followed by -- and the packages it depends on.
 install_dummy() {
     install_dummy_dist `distropkgs "$@"`
 }
