@@ -3,8 +3,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# This script uses amixer to present an interface similar to the
-# brightness script for crouton.
+# This script uses amixer to present an interface similar to the brightness
+# script for crouton.
 
 set -e
 set -u
@@ -15,6 +15,7 @@ APPLICATION="${0##*/}"
 USAGE="$APPLICATION [set] [0-100]
 $APPLICATION up|down [0-100]
 $APPLICATION mute [set|unset|toggle]
+$APPLICATION get [all|volume|mute]
 
 This script changes the volume of the current output
 device, as would changing it with the shortcut keys or
@@ -25,6 +26,7 @@ Shortcut invocations:
     $APPLICATION down   decreases by $DEFAULT_VOLUME_DELTA
     $APPLICATION mute   sets muted
     $APPLICATION 0-100  sets volume to given value
+    $APPLICATION get    shortcut for get all
 "
 # The control which controls the current output.
 ALSA_CONTROL="Master"
@@ -32,6 +34,18 @@ ALSA_CONTROL="Master"
 # Tiny sugar coating around amixer for common parameters.
 _amixer() {
     amixer -Dcras "$@"
+}
+amixer_get_value() {
+    # $1 is the control name to get the value for
+    _amixer cget "name=$1" | sed -n \
+        -e "/[[:space:]]\+:/s/.*=//p"
+    #       ^              ^      ^ Print the line.
+    #       ^              ^ Replace everything before the equal sign.
+    #       ^ Search for the line with spaces and a colon (the value).
+}
+
+get_volume() {
+    amixer_get_value "$ALSA_CONTROL Playback Volume"
 }
 
 set_volume() {
@@ -41,11 +55,7 @@ set_volume() {
 
 get_is_muted() {
     # Get the alsa state of the control.
-    local state="$(_amixer cget "name=$ALSA_CONTROL Playback Switch" | sed -n \
-        -e "/[[:space:]]\+:/s/.*=//p")"
-    #       ^              ^      ^ Print the line.
-    #       ^              ^ Replace everything before the equal sign.
-    #       ^ Search for the line with spaces and a colon (the value).
+    local state="$(amixer_get_value "$ALSA_CONTROL Playback Switch")"
 
     # Muted is off (control is off)
     if [ "$state" = "on" ]; then
@@ -54,6 +64,14 @@ get_is_muted() {
     else
         # Is muted, so is_muted is true
         return 0
+    fi
+}
+
+get_is_muted_as_text() {
+    if get_is_muted; then
+        echo "yes"
+    else
+        echo "no"
     fi
 }
 
@@ -152,6 +170,21 @@ set|[0-9]|[0-9][0-9]|100)
         exit 1
     fi
     set_volume "$amount"
+    ;;
+get)
+    action="${1-all}"
+    case "$action" in
+    mute) get_is_muted_as_text ;;
+    volume) get_volume ;;
+    all)
+        echo "Volume: $(get_volume)"
+        echo "Muted: $(get_is_muted_as_text)"
+        ;;
+    *)
+        error_help "Invalid action: $action for get."
+        exit 1
+        ;;
+    esac
     ;;
 *)
     error_help "Error: Unkown command $cmd"
