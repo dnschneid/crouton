@@ -13,7 +13,6 @@ ENABLENOPASS=''
 ENCRYPT=''
 KEYFILE=''
 PRINT=''
-NOPASS=''
 NOENC=''
 ROOT="`readlink -m '/var/run/crouton'`"
 MOUNTOPTS='rw,dev,exec,suid'
@@ -65,7 +64,7 @@ addtrap "stty echo 2>/dev/null"
 # Function to prompt the user for a passphrase. Sets $passphrase.
 promptNewPassphrase() {
     NOPASS=''
-    if [ ! "$CHROOTSRC/.ecryptfs" = "$KEYFILE" ]; then
+    if [ "$KEYFILE" != "$CHROOTSRC/.ecryptfs" ]; then
         ENABLENOPASS='y'
     fi
     while [ -z "$passphrase" -a -z "$NOPASS" ]; do
@@ -73,7 +72,7 @@ promptNewPassphrase() {
         echo_tty -n "Choose an encryption passphrase for $NAME: "
         read -r passphrase
         echo_tty ''
-        echo -n 'Please confirm your passphrase: ' 1>&2
+        echo_tty -n 'Please confirm your passphrase: '
         read -r confirmation
         echo_tty ''
         if [ ! "$confirmation" = "$passphrase" ]; then
@@ -92,13 +91,13 @@ Do you want to continue? [y/N]: '
                 if [ "${response#[Yy]}" = "$response" ]; then
                     continue
                 else
-                NOPASS='y'
-                echo_tty 'No password set, keys will not be encrypted'
+                    NOPASS='y'
+                    echo_tty 'No password set, keys will not be encrypted'
                 fi
             else
                 echo_tty \
-'You tried to specify no passphrase, but to do that,
-you must store you keyfile in a custom location with -k.'
+'Passphrases cannot be empty unless the keyfile
+is stored separately from the chroot using -k.'
                 continue
             fi
         fi
@@ -279,7 +278,7 @@ $passphrase" | ecryptfs-wrap-passphrase "$wrappedfnek" -
                     echo | cat - "$wrappedkey" "$wrappedfnek" > "$KEYFILE"
                     unset key fnek
                 elif [ -z "$NOENC" -a -n "$NOPASS" ]; then
-                    #Unwrap previously wrapped passphrase
+                    # Unwrap previously wrapped passphrase
                     key="`echo -n "$oldpassphrase" \
                         | ecryptfs-unwrap-passphrase "$wrappedkey" - 2>/dev/null`"
                     fnek="`echo -n "$oldpassphrase" \
