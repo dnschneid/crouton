@@ -1,5 +1,5 @@
 #!/bin/sh -e
-# Copyright (c) 2014 The crouton Authors. All rights reserved.
+# Copyright (c) 2015 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -56,34 +56,14 @@ getname() {
     fi
 }
 
-# Local version of brightness command for use with nudgebrightness below
-mybrightness() {
-    local postcmd=''
-    local precmd=''
-    local percent=''
-    local junk=''
-    case "$1" in
-    [0-9]*) precmd='Set'; postcmd="Percent double:$1 int32:${2:-"1"}${2:+"2"}";;
-    *) precmd='Get'; postcmd='Percent'; print='--print-reply';;
-    esac
-
-    host-dbus dbus-send --system --dest=org.chromium.PowerManager \
-        --type=method_call $print /org/chromium/PowerManager \
-        org.chromium.PowerManager.${precmd}ScreenBrightness${postcmd} | {
-            read -r junk
-            read -r double percent
-            echo "${percent}"
-        }
-}
-
-# Nudges brightness down then restores old value, because when chvt-ing back
-# to cros, the brightness is not always correctly restored (host dbus knows
-# correct value but hardware appears to need to be poked)
+# Nudges brightness down then restores old value, because when
+# chvt-ing back to cros, the brightness is not always correctly restored
+# (host dbus knows the correct value but hardware must be poked)
 nudgebrightness() {
-    local oldbrightness=`mybrightness get`
-    mybrightness $((${oldbrightness%.*} - 1)) &
-    sleep 0.2
-    mybrightness $oldbrightness &
+  local oldbrightness=`brightness get-untruncated`
+  brightness down &
+  sleep 0.2
+  brightness $oldbrightness &
 }
 
 # Only let one instance run at a time to avoid nasty race conditions
@@ -118,7 +98,7 @@ for disp in /tmp/.X*-lock; do
             | grep -q 'INTEGER'; then
         displist="$displist $disp"
     elif DISPLAY="$disp" xprop -root 'CROUTON_XMETHOD' 2>/dev/null \
-            | grep -q '= "xiwi"$'; then
+            | grep -q '= "xiwi'; then
         displist="$displist $disp"
         xiwiactive='y'
     fi
@@ -334,7 +314,9 @@ if [ "${destdisp#:}" = "$destdisp" ]; then
     fi
 else
     export DISPLAY="$destdisp"
-    if xprop -root 'CROUTON_XMETHOD' 2>/dev/null | grep -q '= "xiwi"$'; then
+    xmethod="`xprop -root 'CROUTON_XMETHOD' 2>/dev/null \
+              | sed -n 's/^.*\"\(.*\)\"/\1/p'`"
+    if [ "${xmethod%%-*}" = 'xiwi' ]; then
         if [ -z "$freonowner" -a "$tty" != 'tty1' ]; then
             sudo -n chvt 1
             nudgebrightness
@@ -344,7 +326,7 @@ else
         if [ -z "$freonowner" ]; then
             host-x11 croutonwmtools raise "$aurawin"
         fi
-        STATUS="`echo -n "X${destdisp}" | websocketcommand`"
+        STATUS="`echo -n "X${destdisp} ${xmethod#*-}" | websocketcommand`"
         if [ "$STATUS" != 'XOK' ]; then
             error 1 "${STATUS#?}"
         fi
