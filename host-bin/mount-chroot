@@ -63,7 +63,7 @@ addtrap "stty echo 2>/dev/null"
 
 # Function to prompt the user for a passphrase. Sets $passphrase.
 promptNewPassphrase() {
-    NOPASS=''
+    local NOPASS=''
     if [ "$KEYFILE" != "$CHROOTSRC/.ecryptfs" ]; then
         ENABLENOPASS='y'
     fi
