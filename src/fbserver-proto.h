@@ -81,6 +81,12 @@ struct  __attribute__((__packed__)) mousemove {
     uint16_t y;
 };
 
+/* Send initialization info */
+struct  __attribute__((__packed__)) initinfo {
+    char type; /* I */
+    uint8_t freon; /* 0: not using freon, 1: using freon */
+};
+
 /* Click the mouse */
 struct  __attribute__((__packed__)) mouseclick {
     char type;  /* 'C' */

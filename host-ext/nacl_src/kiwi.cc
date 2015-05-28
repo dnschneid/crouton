@@ -246,6 +246,12 @@ private:
         return false;
     }
 
+    /* Recieves and processes initialization information */
+    void SocketParseInitInformation(const char* data, int datalen) {
+        initinfo* info = (struct initinfo*) data;
+        freon_ = info->freon;
+    }
+
     /* Receives and handles a version request */
     bool SocketParseVersion(const char* data, int datalen) {
         if (connected_) {
@@ -421,6 +427,11 @@ private:
             return;
         }
 
+        if (data[0] == 'I') { /* Init information */
+            SocketParseInitInformation(data, datalen);
+            return;
+        }
+
         if (connected_) {
             switch (data[0]) {
             case 'S':  /* Screen */
@@ -523,40 +534,42 @@ public:
                 return PP_TRUE;
             }
 
-            /* We delay sending Super-L, and only "press" it on mouse clicks and
-             * letter keys (a-z). This way, Home (Search+Left) appears without
-             * modifiers (instead of Super_L+Home) */
-            if (keystr == "OSLeft") {
-                if (down) {
-                    search_state_ = kSearchUpFirst;
-                } else {
-                    if (search_state_ == kSearchUpFirst) {
-                        /* No other key was pressed: press+release */
-                        SendSearchKey(1);
-                        SendSearchKey(0);
-                    } else if (search_state_ == kSearchDown) {
-                        SendSearchKey(0);
+            if (!freon_) {
+                /* We delay sending Super-L, and only "press" it on mouse clicks and
+                 * letter keys (a-z). This way, Home (Search+Left) appears without
+                 * modifiers (instead of Super_L+Home) */
+                if (keystr == "OSLeft") {
+                    if (down) {
+                        search_state_ = kSearchUpFirst;
+                    } else {
+                        if (search_state_ == kSearchUpFirst) {
+                            /* No other key was pressed: press+release */
+                            SendSearchKey(1);
+                            SendSearchKey(0);
+                        } else if (search_state_ == kSearchDown) {
+                            SendSearchKey(0);
+                        }
+                        search_state_ = kSearchInactive;
                     }
-                    search_state_ = kSearchInactive;
+                    return PP_TRUE;  /* Ignore key */
                 }
-                return PP_TRUE;  /* Ignore key */
-            }
 
-            if (jskeycode >= 65 && jskeycode <= 90) {  /* letter */
-                /* Search is active, send Super_L if needed */
-                if (down && (search_state_ == kSearchUpFirst ||
-                             search_state_ == kSearchUp)) {
-                    SendSearchKey(1);
-                    search_state_ = kSearchDown;
-                }
-            } else {  /* non-letter */
-                /* Release Super_L if needed */
-                if (search_state_ == kSearchDown) {
-                    SendSearchKey(0);
-                    search_state_ = kSearchUp;
-                } else if (search_state_ == kSearchUpFirst) {
-                    /* Switch from UpFirst to Up */
-                    search_state_ = kSearchUp;
+                if (jskeycode >= 65 && jskeycode <= 90) {  /* letter */
+                    /* Search is active, send Super_L if needed */
+                    if (down && (search_state_ == kSearchUpFirst ||
+                                 search_state_ == kSearchUp)) {
+                        SendSearchKey(1);
+                        search_state_ = kSearchDown;
+                    }
+                } else {  /* non-letter */
+                    /* Release Super_L if needed */
+                    if (search_state_ == kSearchDown) {
+                        SendSearchKey(0);
+                        search_state_ = kSearchUp;
+                    } else if (search_state_ == kSearchUpFirst) {
+                        /* Switch from UpFirst to Up */
+                        search_state_ = kSearchUp;
+                    }
                 }
             }
             if (server_version_ == "VF1")
@@ -849,10 +862,12 @@ private:
     void SendClick(int button, int down) {
         struct mouseclick* mc;
 
-        if (down && (search_state_ == kSearchUpFirst ||
-                     search_state_ == kSearchUp)) {
-            SendSearchKey(1);
-            search_state_ = kSearchDown;
+        if (!freon_) {
+            if (down && (search_state_ == kSearchUpFirst ||
+                        search_state_ == kSearchUp)) {
+                SendSearchKey(1);
+                search_state_ = kSearchDown;
+            }
         }
 
         pp::VarArrayBuffer array_buffer(sizeof(*mc));
@@ -1051,6 +1066,7 @@ private:
     int retry_ = 0;
     bool connected_ = false;
     std::string server_version_ = "";
+    bool freon_ = false;
     bool screen_flying_ = false;
     pp::Var receive_var_;
     int target_fps_ = kFullFPS;
