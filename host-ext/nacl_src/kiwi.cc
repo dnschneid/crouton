@@ -247,9 +247,13 @@ private:
     }
 
     /* Recieves and processes initialization information */
-    void SocketParseInitInformation(const char* data, int datalen) {
+    bool SocketParseInitInformation(const char* data, int datalen) {
+        if (!CheckSize(datalen, sizeof(struct initinfo), "Init information"))
+            return false;
+
         initinfo* info = (struct initinfo*) data;
         freon_ = info->freon;
+        return true;
     }
 
     /* Receives and handles a version request */
@@ -263,7 +267,7 @@ private:
 
         if (server_version_ != VERSION) {
             /* TODO: Remove VF1 compatiblity */
-            if (server_version_ == "VF1") {
+            if (server_version_ == "VF1" || server_version_ == "VF2") {
                 WarningMessage() << "Outdated server version ("
                                  << server_version_ << "), expecting " << VERSION
                                  << ". Please update your chroot.";
@@ -427,11 +431,6 @@ private:
             return;
         }
 
-        if (data[0] == 'I') { /* Init information */
-            SocketParseInitInformation(data, datalen);
-            return;
-        }
-
         if (connected_) {
             switch (data[0]) {
             case 'S':  /* Screen */
@@ -442,6 +441,9 @@ private:
                 break;
             case 'R':  /* Resolution request reply */
                 if (SocketParseResolution(data, datalen)) return;
+                break;
+            case 'I':  /* Init information */
+                if (SocketParseInitInformation(data, datalen)) return;
                 break;
             default:
                 ErrorMessage() << "Invalid request. First char: "

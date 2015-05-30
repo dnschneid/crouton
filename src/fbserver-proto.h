@@ -12,7 +12,7 @@
 #include <stdint.h>
 
 /* WebSocket constants */
-#define VERSION "VF2"
+#define VERSION "VF3"
 #define PORT_BASE 30010
 
 /* Request for a frame */
