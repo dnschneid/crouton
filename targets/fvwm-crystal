@@ -11,4 +11,4 @@ CHROOTBIN='crouton-noroot startfvwm'
 install fvwm-crystal --chromium browser nano network-manager
 
 TIPS="$TIPS
-ou can start fvwm via the startfvwm host command: sudo startfvwm"
+can start fvwm via the startfvwm host command: sudo startfvwm"
