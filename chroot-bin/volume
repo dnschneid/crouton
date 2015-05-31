@@ -122,6 +122,16 @@ error_help() {
     print_help 1>&2
 }
 
+# Do a sanity check with amixer.
+# An out of date crouton chroot might exhibit problems like:
+#     amixer: Control cras element read error: Input/output error
+# We cannot do it in _amixer since it's executed in a subshell and its value is
+# used as a substitution.
+if ! _amixer > /dev/null 2>&1; then
+    echo "Failed to communicate with the audio server. Please update your chroot." 1>&2
+    exit 2
+fi
+
 if [ $# -lt 1 ]; then
     error_help "Error: $APPLICATION needs at least a command."
     exit 1
