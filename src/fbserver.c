@@ -492,12 +492,12 @@ int write_cursor() {
 }
 
 void write_init() {
-    struct stat _stat;
+    struct stat stat_buf;
     char raw[FRAMEMAXHEADERSIZE + sizeof(struct initinfo)];
     struct initinfo* i = (struct initinfo*)(raw + FRAMEMAXHEADERSIZE);
     i->type = 'I';
     i->freon = 0;
-    if (stat("/sys/class/tty/tty0/active", &_stat) == -1) {
+    if (stat("/sys/class/tty/tty0/active", &stat_buf) == -1) {
         trueorabort(errno == ENOENT, "Could not determine if using Freon or not");
         i->freon = 1;
     }
