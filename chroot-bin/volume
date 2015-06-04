@@ -1,0 +1,203 @@
+#!/bin/sh
+# Copyright (c) 2015 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# This script uses amixer to present an interface similar to the brightness
+# script for crouton.
+
+set -e
+set -u
+
+DEFAULT_VOLUME_DELTA=5
+
+APPLICATION="${0##*/}"
+USAGE="$APPLICATION [set] [0-100]
+$APPLICATION up|down [0-100]
+$APPLICATION mute [set|unset|toggle]
+$APPLICATION get [all|volume|mute]
+
+This script changes the volume of the current output
+device, as would changing it with the shortcut keys or
+with the GUI in Chrome OS.
+
+Shortcut invocations:
+    $APPLICATION up     increases by $DEFAULT_VOLUME_DELTA
+    $APPLICATION down   decreases by $DEFAULT_VOLUME_DELTA
+    $APPLICATION mute   sets muted
+    $APPLICATION 0-100  sets volume to given value
+    $APPLICATION get    shortcut for get all
+"
+# The control which controls the current output.
+ALSA_CONTROL="Master"
+
+# Tiny sugar coating around amixer for common parameters.
+_amixer() {
+    amixer -Dcras "$@"
+}
+amixer_get_value() {
+    # $1 is the control name to get the value for
+    _amixer cget "name=$1" | sed -n \
+        -e "/[[:space:]]\+:/s/.*=//p"
+    #       ^              ^      ^ Print the line.
+    #       ^              ^ Replace everything before the equal sign.
+    #       ^ Search for the line with spaces and a colon (the value).
+}
+
+get_volume() {
+    amixer_get_value "$ALSA_CONTROL Playback Volume"
+}
+
+set_volume() {
+    local volume="$1"
+    _amixer -q sset $ALSA_CONTROL "$volume"
+}
+
+get_is_muted() {
+    # Get the alsa state of the control.
+    local state="$(amixer_get_value "$ALSA_CONTROL Playback Switch")"
+
+    # Muted is off (control is off)
+    if [ "$state" = "on" ]; then
+        # Is not muted, so is_muted is false
+        return 1
+    else
+        # Is muted, so is_muted is true
+        return 0
+    fi
+}
+
+get_is_muted_as_text() {
+    if get_is_muted; then
+        echo "yes"
+    else
+        echo "no"
+    fi
+}
+
+toggle_mute() {
+    _amixer -q sset $ALSA_CONTROL toggle
+}
+
+mute() {
+    _amixer -q sset $ALSA_CONTROL mute
+}
+unmute() {
+    _amixer -q sset $ALSA_CONTROL unmute
+}
+
+relative_volume() {
+    local delta="$1"
+
+    # Check that this is integer-ish enough.
+    if ! [ "$delta" -eq "$delta" ] 2>/dev/null; then
+        error_help "Error: $APPLICATION <up|down> needs a number [0-100]"
+        exit 1
+    fi
+
+    if get_is_muted; then
+        if [ "$delta" -lt 0 ]; then
+            set_volume 0
+        fi
+        unmute
+    else
+        # Is the volume going down or up?
+        if [ "$delta" -lt 0 ]; then
+            # Going down, we strip the leading minus sign,
+            # And suffix the minus sign.
+            set_volume "${delta#*-}-"
+        else
+            # Only suffix the plus sign.
+            set_volume "${delta}+"
+        fi
+    fi
+}
+
+print_help() {
+    echo "$USAGE"
+}
+error_help() {
+    # Prints an error message and the usage to stderr
+    [ $# -gt 0 ] && echo "$@" 1>&2
+    print_help 1>&2
+}
+
+# Do a sanity check with amixer.
+# An out of date crouton chroot might exhibit problems like:
+#     amixer: Control cras element read error: Input/output error
+# We cannot do it in _amixer since it's executed in a subshell and its value is
+# used as a substitution.
+if ! _amixer > /dev/null 2>&1; then
+    echo "Failed to communicate with the audio server. Please update your chroot." 1>&2
+    exit 2
+fi
+
+if [ $# -lt 1 ]; then
+    error_help "Error: $APPLICATION needs at least a command."
+    exit 1
+fi
+
+cmd="$1"
+shift
+
+case "$cmd" in
+h*|-h*|--help)
+    print_help
+    ;;
+up)
+    relative_volume "${1:-$DEFAULT_VOLUME_DELTA}"
+    ;;
+down)
+    relative_volume "-${1:-$DEFAULT_VOLUME_DELTA}"
+    ;;
+mute)
+    action="${1-set}"
+    case "$action" in
+    toggle) toggle_mute ;;
+    set) mute ;;
+    unset) unmute ;;
+    *)
+        error_help "Invalid action: $action for mute."
+        exit 1
+        ;;
+    esac
+    ;;
+set|[0-9]|[0-9][0-9]|100)
+    amount="$cmd"
+    # First, check that we received a value to set the volume to.
+    if [ $# -eq 0 ] && [ "$cmd" = "set" ]; then
+        error_help "Error: $APPLICATION set needs an amount to set."
+        exit 1
+    fi
+    # The value /could/ have been a parameter or the command itself.
+    if [ $# -gt 0 ]; then
+        amount="$1"
+        shift
+    fi
+    # Check that this is integer-ish enough.
+    if ! [ "$amount" -eq "$amount" ] 2>/dev/null; then
+        error_help "Error: $APPLICATION set needs a number [0-100]"
+        exit 1
+    fi
+    set_volume "$amount"
+    ;;
+get)
+    action="${1-all}"
+    case "$action" in
+    mute) get_is_muted_as_text ;;
+    volume) get_volume ;;
+    all)
+        echo "Volume: $(get_volume)"
+        echo "Muted: $(get_is_muted_as_text)"
+        ;;
+    *)
+        error_help "Invalid action: $action for get."
+        exit 1
+        ;;
+    esac
+    ;;
+*)
+    error_help "Error: Unkown command $cmd"
+    exit 1
+    ;;
+esac
