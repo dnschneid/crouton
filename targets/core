@@ -103,7 +103,7 @@ EOF
     apt-get -y update || true
 
     echo 'Ensuring system is up-to-date...' 1>&2
-    apt-get -y dist-upgrade
+    apt-get -y --force-yes dist-upgrade
 fi
 
 # On release upgrade, keyboard-configuration might be reconfigured.
