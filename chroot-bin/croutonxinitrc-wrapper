@@ -87,7 +87,7 @@ fi
 # Launch system-wide trigger daemon
 croutontriggerd &
 
-# Input-related stuff is not needed for kiwi, unless we are using Freon which sends raw input
+# Input-related stuff is not needed for kiwi
 if [ "$xmethodtype" != "xiwi" ]; then
     # Apply the Chromebook keyboard map if installed.
     if [ -f '/usr/share/X11/xkb/compat/chromebook' ]; then
