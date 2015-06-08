@@ -126,9 +126,8 @@ if [ "$xmethodtype" != "xiwi" ]; then
     fi
 fi
 
-# Apply the Chromebook keyboard map if using Freon. 
-# TODO: Add more Freon specific xiwi stuff when the need arises
-if [ "$xmethodtype" == "xiwi" ] || [ ! -f "/sys/class/tty/tty0/active" ]; then
+# Apply the Chromebook keyboard map in xiwi if using Freon. 
+if [ "$xmethodtype" = 'xiwi' ] && [ ! -f "/sys/class/tty/tty0/active" ]; then
     # Apply the Chromebook keyboard map if installed.
     if [ -f '/usr/share/X11/xkb/compat/chromebook' ]; then
         setxkbmap -model chromebook
