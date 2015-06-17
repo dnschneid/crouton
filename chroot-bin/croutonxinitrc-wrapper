@@ -87,12 +87,17 @@ fi
 # Launch system-wide trigger daemon
 croutontriggerd &
 
-# Input-related stuff is not needed for kiwi
-if [ "$xmethodtype" != "xiwi" ]; then
+
+# Apply the Chromebook keyboard map. Not needed for xiwi with the exception of Freon.
+if [ "$xmethodtype" != 'xiwi' ] || [ ! -f "/sys/class/tty/tty0/active" ]; then
     # Apply the Chromebook keyboard map if installed.
     if [ -f '/usr/share/X11/xkb/compat/chromebook' ]; then
         setxkbmap -model chromebook
     fi
+fi
+
+# Input-related stuff is not needed for kiwi
+if [ "$xmethodtype" != "xiwi" ]; then
 
     # Launch X-server-local key binding daemon
     xbindkeys -fg /etc/crouton/xbindkeysrc.scm
