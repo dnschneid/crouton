@@ -88,8 +88,8 @@ fi
 croutontriggerd &
 
 
-# Apply the Chromebook keyboard map. Not needed for xiwi with the exception of Freon.
-if [ "$xmethodtype" != 'xiwi' ] || [ ! -f "/sys/class/tty/tty0/active" ]; then
+# Apply the Chromebook keyboard map. Not needed for non-Freon xiwi.
+if [ "$xmethodtype" != 'xiwi' -o ! -f "/sys/class/tty/tty0/active" ]; then
     # Apply the Chromebook keyboard map if installed.
     if [ -f '/usr/share/X11/xkb/compat/chromebook' ]; then
         setxkbmap -model chromebook
