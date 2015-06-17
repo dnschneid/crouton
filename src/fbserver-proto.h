@@ -12,7 +12,7 @@
 #include <stdint.h>
 
 /* WebSocket constants */
-#define VERSION "VF2"
+#define VERSION "VF3"
 #define PORT_BASE 30010
 
 /* Request for a frame */
@@ -79,6 +79,12 @@ struct  __attribute__((__packed__)) mousemove {
     char type;  /* 'M' */
     uint16_t x;
     uint16_t y;
+};
+
+/* Send initialization info */
+struct  __attribute__((__packed__)) initinfo {
+    char type; /* I */
+    uint8_t freon; /* 0: not using freon, 1: using freon */
 };
 
 /* Click the mouse */
