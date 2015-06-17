@@ -5,3 +5,4 @@ s/^tedm$/Ted Matsumura/
 /^root$/d
 /^ttk153$/d
 /^lnxsrt$/d
+/\?/d
