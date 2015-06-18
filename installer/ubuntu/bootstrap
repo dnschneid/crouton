@@ -63,7 +63,7 @@ tar -czf "$tmp/devices.tar.gz" -T /dev/null
 # There is no bootstrap script for some distros derived from Debian. Thus we use
 # the scripts for matching upstream distros to bootstrap the derived distros.
 if [ ! -f "$tmp/scripts/$RELEASE" ]; then
-        ln -s "$tmp/scripts/$BOOTSTRAP_RELEASE" "$tmp/scripts/$RELEASE"
+    ln -s "$tmp/scripts/$BOOTSTRAP_RELEASE" "$tmp/scripts/$RELEASE"
 fi
 
 # Grab the release and drop it into the subdirectory
