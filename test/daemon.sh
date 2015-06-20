@@ -103,8 +103,8 @@ cat /etc/lsb-release
         return 1
     fi
 
-    # Drop -freon suffix (Omaha will get us back to -freon if needed)
-    sed -n 's/-freon$//;s/^CHROMEOS_RELEASE_BOARD=//p' "$hostinfo"
+    # Drop freon suffix (Omaha will get us back to freon if needed)
+    sed -n 's/[_-]freon$//;s/^CHROMEOS_RELEASE_BOARD=//p' "$hostinfo"
 }
 
 # Find a release/build name from host, board and channel
@@ -131,7 +131,11 @@ findrelease() {
             ver=$2; gsub(/"/, "", ver); gsub(/\..*$/, "", ver)
         }
         $2 ~ /-freon_/ { # Freon detection heuristics
-            freon="-freon"
+            # If there is already an _ => use -, otherwise _
+            if ("'$board'" ~ /_/)
+                freon="-freon"
+            else
+                freon="_freon"
         }
         END {
             if (length(ver) > 0 && length(osver) > 0)
