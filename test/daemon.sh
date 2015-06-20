@@ -495,7 +495,7 @@ while sleep "$POLLINTERVAL"; do
                         status2="`awk '($1 == "END") && \
                                        ($3 == "platform_Crouton") \
                                            { print $2 }' \
-                                       "$curtesthostresult/status.log"`"
+                                       "$curtesthostresult/status.log" || true`"
                     fi
                     log "$curtest $curtesthost: $status ${status2:="UNKNOWN"}"
                     sed -i -e "s;\$;|Status2=$status2|;" "$statusfile"
