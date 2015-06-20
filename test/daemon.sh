@@ -103,7 +103,8 @@ cat /etc/lsb-release
         return 1
     fi
 
-    sed -n 's/^CHROMEOS_RELEASE_BOARD=//p' "$hostinfo"
+    # Drop -freon suffix (Omaha will get us back to -freon if needed)
+    sed -n 's/-freon$//;s/^CHROMEOS_RELEASE_BOARD=//p' "$hostinfo"
 }
 
 # Find a release/build name from host, board and channel
@@ -121,7 +122,21 @@ findrelease() {
     local hwid="`sed -n 's/^HWID=//p' "$hostinfo"`"
 
     tee /dev/stderr<<EOF | curl -d @- https://tools.google.com/service/update2 \
-        | sed -n 's/.*<action[^>]*ChromeOSVersion="\([^"]*\)"[^>]*ChromeVersion="\([0-9]*\)\..*/R\2-\1/p'
+            | tee /dev/stderr | awk '
+        BEGIN { RS=" "; FS="=" }
+        $1 == "ChromeOSVersion" {
+            osver=$2; gsub(/"/, "", osver)
+        }
+        $1 == "ChromeVersion" {
+            ver=$2; gsub(/"/, "", ver); gsub(/\..*$/, "", ver)
+        }
+        $2 ~ /-freon_/ { # Freon detection heuristics
+            freon="-freon"
+        }
+        END {
+            if (length(ver) > 0 && length(osver) > 0)
+                print "cros-version:'$board'" freon "-release/R" ver "-" osver
+        }'
 <?xml version="1.0" encoding="UTF-8"?>
 <request protocol="3.0" version="ChromeOSUpdateEngine-0.1.0.0"
                  updaterversion="ChromeOSUpdateEngine-0.1.0.0">
@@ -385,7 +400,7 @@ while sleep "$POLLINTERVAL"; do
                         set -x
                         atest job create -m "$host" -w cautotest \
                             -f "$curtesthostroot/control" \
-                            -d "cros-version:${board}-release/$release" \
+                            -d "$release" \
                             -B always --max_runtime="$MAXTESTRUNTIME" \
                             "$tname-$hostfull"
                     ) > "$curtesthostroot/atest" 2>&1 || ret=$?
