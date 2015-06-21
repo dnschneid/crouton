@@ -60,9 +60,15 @@ chmod 755 "$tmp/ar" "$tmp/pkgdetails"
 # want any files there. Create an empty tarball that it can extract.
 tar -czf "$tmp/devices.tar.gz" -T /dev/null
 
+# There is no bootstrap script for some distros derived from Debian. Thus we use
+# the scripts for matching upstream distros to bootstrap the derived distros.
+if [ ! -f "$tmp/scripts/$RELEASE" ]; then
+    ln -s "$tmp/scripts/$BOOTSTRAP_RELEASE" "$tmp/scripts/$RELEASE"
+fi
+
 # Grab the release and drop it into the subdirectory
 echo 'Downloading bootstrap files...' 1>&2
 PATH="$newpath" DEBOOTSTRAP_DIR="$tmp" $FAKEROOT \
     "$tmp/debootstrap" --foreign --arch="$ARCH" \
-    "${BOOTSTRAP_RELEASE:-"$RELEASE"}" \
-                       "$tmp/$subdir" "$MIRROR" 1>&2
+    "$RELEASE" "$tmp/$subdir" "$MIRROR" 1>&2
+
