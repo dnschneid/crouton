@@ -239,19 +239,15 @@ log "crouton autotest daemon starting..."
 echo "Fetching latest autotest..." 1>&2
 AUTOTESTROOT="$LOCALROOT/autotest.git"
 if [ -d "$AUTOTESTROOT/.git" ]; then
-    (
-        cd "$AUTOTESTROOT"
-        git fetch
-        git reset --hard origin/master >/dev/null
-    )
+    git -C "$AUTOTESTROOT" fetch
+    git -C "$AUTOTESTROOT" reset --hard origin/master >/dev/null
 else
     rm -rf "$AUTOTESTROOT"
     git clone "$AUTOTESTGIT" "$AUTOTESTROOT"
 fi
-( # FIXME: Remove dependency on chromite.lib: See crbug.com/502534
-    cd "$AUTOTESTROOT"
-    git revert d188984d9aef5a4ff09d8d459b5b3a6c46789fb0
-)
+# FIXME: Remove dependency on chromite.lib: See crbug.com/502534
+git -C "$AUTOTESTROOT" revert d188984d9aef5a4ff09d8d459b5b3a6c46789fb0
+
 PATH="$AUTOTESTROOT/cli:$PATH"
 
 echo "Checking if gsutil is installed..." 1>&2
