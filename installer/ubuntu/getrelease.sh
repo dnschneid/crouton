@@ -18,8 +18,11 @@ if [ ! -s "$sources" ]; then
     exit 1
 fi
 
-rel="`awk '/^deb .* main( .*)?$/ { print $3; exit }' \
-          "$sources" "$sources.d"/*.list 2>/dev/null`"
+rel="`awk '/^deb .* main( .*)?$/ \
+    { for ( i = 1; i <= NF; i++ ) \
+    { if ( $i~/http|file|cdrom|ftp|copy|rsh|ssh/ ) \
+    { i++; print $i; exit } } }' \
+    "$sources" "$sources.d"/*.list 2>/dev/null`"
 if [ -z "$rel" ] || \
         ! grep -q "^$rel\([^a-z].*\)*$" "`dirname "$0"`/releases"; then
     exit 1
