@@ -16,7 +16,7 @@ if ! wget -O- --no-verbose --timeout=60 -t2 "$d"  \
     echo 'Download from Debian gitweb failed. Trying latest release...' 1>&2
     d='http://ftp.debian.org/debian/pool/main/d/debootstrap/'
     f="`wget -O- --no-verbose --timeout=60 -t2 "$d" \
-            | sed -ne 's ^.*\(debootstrap_[0-9.]*.tar.xz\).*$ \1 p' \
+            | sed -ne 's ^.*\(debootstrap_[0-9.]*.tar.gz\).*$ \1 p' \
             | tail -n 1`"
     if [ -z "$f" ]; then
         error 1 'Failed to download debootstrap.
@@ -26,7 +26,7 @@ Check your internet connection or proxy settings and try again.'
     v="${v%.tar.xz}"
     echo "Downloading debootstrap version $v..." 1>&2
     if ! wget -O- --no-verbose --timeout=60 -t2 "$d$f" \
-            | tar -C "$tmp" --strip-components=1 -Jx 2>/dev/null; then
+            | tar -C "$tmp" --strip-components=1 -zx 2>/dev/null; then
         error 1 'Failed to download debootstrap.'
     fi
 fi
