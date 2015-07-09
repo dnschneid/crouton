@@ -18,6 +18,17 @@ for file in "$PREFIX/chroots/$release"/*; do
     test "${file#*/ECRYPTFS}" != "$file"
 done
 
+# Check chroot is encrypted and locked
+host edit-chroot -l "$release" | passes grep "^encrypted: yes, locked"
+
+# Unlocked after mounted
+host mount-chroot "$release"
+host edit-chroot -l "$release" | passes grep "^encrypted: yes, unlocked"
+
+# Locked again if unmounted
+host unmount-chroot "$release"
+host edit-chroot -l "$release" | passes grep "^encrypted: yes, locked"
+
 # Enter encrypted chroot
 host enter-chroot -n "$release" true
 
