@@ -307,7 +307,7 @@ for NAME in "$@"; do
                         -a "$LISTDETAILS" -gt 1 ]; then
                     sh "$BINDIR/mount-chroot" -c "$CHROOTS" -- "$NAME" || true
                 fi
-                if [ -d "/var/run/crouton/$CHROOT" ]; then
+                if mountpoint -q "/var/run/crouton/$CHROOT"; then
                     echo "encrypted: yes, unlocked"
                 else
                     echo "encrypted: yes, locked"
