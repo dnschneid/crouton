@@ -14,7 +14,7 @@ d='http://anonscm.debian.org/gitweb/?p=d-i/debootstrap.git;a=snapshot;h=HEAD;sf=
 if ! wget -O- --no-verbose --timeout=60 -t2 "$d"  \
         | tar -C "$tmp" --strip-components=1 -zx 2>/dev/null; then
     echo 'Download from Debian gitweb failed. Trying latest release...' 1>&2
-    d='http://ftp.debian.org/debian/pool/main/d/debootstrap/'
+    d='http://httpredir.debian.org/debian/pool/main/d/debootstrap/'
     f="`wget -O- --no-verbose --timeout=60 -t2 "$d" \
             | sed -ne 's ^.*\(debootstrap_[0-9.]*.tar.xz\).*$ \1 p' \
             | tail -n 1`"

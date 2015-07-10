@@ -18,7 +18,7 @@ arm*) ARCH="armhf";;
 esac
 
 if [ -z "$MIRROR" ]; then
-    MIRROR="${CROUTON_MIRROR_debian:-http://ftp.debian.org/debian/}"
+    MIRROR="${CROUTON_MIRROR_debian:-http://httpredir.debian.org/debian/}"
 fi
 
 if [ -z "$MIRROR2" ]; then
