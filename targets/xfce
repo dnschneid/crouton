@@ -12,7 +12,7 @@ CHROOTBIN='crouton-noroot startxfce4'
 # Ubuntu 12.04 no longer has a PPA for Xfce 4.10 - so remove it if found.
 if release -eq precise && [ "$ARCH" = 'amd64' -o "$ARCH" = 'i386' ]; then
     if [ -s /etc/apt/sources.list.d/xfce-4.10.list ]; then
-        rm /etc/apt/sources.list.d/xfce-4.10.list
+        rm /etc/apt/sources.list.d/xfce-4.10.list*
         # Remove PPA key
         apt-key del 142986CE
         # Update database
