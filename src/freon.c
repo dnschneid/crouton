@@ -209,3 +209,8 @@ int close(int fd) {
     }
     return orig_close(fd);
 }
+
+uid_t getuid0(void) {
+    TRACE("getuid0\n");
+    return 0;
+}
