@@ -72,7 +72,7 @@ fi
 # Catalog relevant and irrelevant video drivers
 # Debian sid has modesetting built into xserver-xorg-core
 fbdev="xserver-xorg-video-fbdev$backport"
-modesetting="xserver-xorg-video-modesetting$backport,debian~sid="
+modesetting="xserver-xorg-video-modesetting$backport,debian~sid+ubuntu~vivid="
 installvideodrivers=''
 removevideodrivers=''
 if [ -n "$freon" ]; then
