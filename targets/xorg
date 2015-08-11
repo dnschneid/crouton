@@ -67,6 +67,9 @@ if [ "${ARCH#arm}" = "$ARCH" ]; then
             ! grep -q 0xa0 /sys/class/graphics/fb0/device/device; then
         pinmesa='y'
     fi
+
+    # Unhold xserver-xorg-video-intel, modification will be reapplied later.
+    apt-mark unhold "$inteldriver" 2>/dev/null || true
 fi
 
 # Catalog relevant and irrelevant video drivers
@@ -207,6 +210,23 @@ fi
 
 # Fix launching X11 from inside crosh (user doesn't own a TTY)
 sed -i 's/allowed_users=.*/allowed_users=anybody/' '/etc/X11/Xwrapper.config'
+
+inteldrv='/usr/lib/xorg/modules/drivers/intel_drv.so'
+if [ -n "$freon" -a -e "$inteldrv" ]; then
+    # Modify the Intel driver to call getuid0 (provided by croutonfreon.so)
+    # instead of geteuid, to force DRM master setting/dropping.
+    offset="`grep -F -m 1 -boa 'geteuid' "$inteldrv" 2>/dev/null || true`"
+    if [ -n "$offset" ]; then
+        echo -n 'getuid0' | dd seek="${offset%:*}" bs=1 of="$inteldrv" \
+                               conv=notrunc,nocreat 2>/dev/null
+    fi
+
+    if grep -F -q -a 'getuid0' "$inteldrv" 2>/dev/null; then
+        # Hold xserver-xorg-video-intel to make sure that the modification
+        # (which may have been made in a previous update) does not get erased.
+        apt-mark hold "$inteldriver"
+    fi
+fi
 
 TIPS="$TIPS
 You can flip through your running chroot desktops and Chromium OS by hitting
