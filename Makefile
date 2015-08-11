@@ -74,7 +74,7 @@ $(LIBSTARGETS): $(patsubst crouton%.so,src/%.c,$@) $($@_DEPS) Makefile
 extension: $(EXTTARGET)
 
 $(CONTRIBUTORS): $(GITHEAD) $(CONTRIBUTORSSED)
-	git shortlog -s | sed -f $(CONTRIBUTORSSED) | sort -u > $(CONTRIBUTORS)
+	git shortlog -s | sed -f $(CONTRIBUTORSSED) | sort -uf > $(CONTRIBUTORS)
 
 contributors: $(CONTRIBUTORS)
 
