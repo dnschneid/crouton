@@ -1,5 +1,5 @@
 #!/bin/sh -e
-# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2015 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -7,8 +7,15 @@
 # It must set at least ARCH and MIRROR if not already specified.
 
 if [ -z "$ARCH" ]; then
-    ARCH="`uname -m | sed -e 's i.86 i386 ;s x86_64 amd64 ;s arm.* armhf ;'`"
+    ARCH="`uname -m`"
 fi
+
+case "$ARCH" in
+x86 | i?86) ARCH="i386";;
+x86_64 | amd64) ARCH="amd64";;
+arm*) ARCH="armhf";;
+*) error 2 "Invalid architecture '$ARCH'.";;
+esac
 
 if [ -z "$MIRROR" ]; then
     if [ "$ARCH" = 'amd64' -o "$ARCH" = 'i386' ]; then

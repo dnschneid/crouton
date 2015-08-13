@@ -1,5 +1,5 @@
 #!/bin/sh -e
-# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2015 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -8,16 +8,44 @@
 
 ### Append to prepare.sh:
 # Store and apply the X11 method
-ln -sfT "/etc/crouton/xserverrc-$XMETHOD" '/etc/X11/xinit/xserverrc'
+ln -sfT '/etc/crouton/xserverrc' '/etc/X11/xinit/xserverrc'
+echo "$XMETHOD" > '/etc/crouton/xmethod'
+
+# Only apply hack if vgem card exists
+if [ -c '/dev/dri/card1' ]; then
+    # Modify the Xorg executable to *not* poll udev for cards
+    offset="`grep -F -m 1 -boa 'card[0-9]*' /usr/bin/Xorg 2>/dev/null || true`"
+    if [ -n "$offset" ]; then
+        echo -n 'croutonhax' | dd seek="${offset%:*}" bs=1 of=/usr/bin/Xorg \
+            conv=notrunc,nocreat 2>/dev/null
+    fi
+elif grep -q 'croutonhax' '/usr/bin/Xorg'; then
+    # Undo hack since there's no vgem module
+    offset="`grep -F -m 1 -boa 'croutonhax' /usr/bin/Xorg 2>/dev/null || true`"
+    if [ -n "$offset" ]; then
+        echo -n 'card[0-9]*' | dd seek="${offset%:*}" bs=1 of=/usr/bin/Xorg \
+            conv=notrunc,nocreat 2>/dev/null
+    fi
+fi
+
+# Install utility for croutoncycle
+compile wmtools '-lX11' libx11-dev
 
 # Install utilities and links for powerd-poking daemon
 compile xi2event '-lX11 -lXi' libx11-dev libxi-dev
-install --minimal dbus
+install --minimal dbus xdg-utils
 ln -sf croutonpowerd /usr/local/bin/gnome-screensaver-command
 ln -sf croutonpowerd /usr/local/bin/xscreensaver-command
 
-# Install xbindkeys for key shortcuts
-install --minimal xbindkeys
+# Install nicer cursors
+install --minimal dmz-cursor-theme
+
+# Install bsdmainutils, xbindkeys and xautomation for shortcuts; kbd for chvt
+install --minimal bsdmainutils xbindkeys xautomation kbd
+# Allow users to run sudo chvt without password, so we don't need to run
+# croutoncycle as root
+echo '%sudo ALL = NOPASSWD:/bin/chvt' > /etc/sudoers.d/chvt
+chmod 440 /etc/sudoers.d/chvt
 
 # Add a blank Xauthority to all users' home directories
 touch /etc/skel/.Xauthority
@@ -31,6 +59,13 @@ mkdir -p /usr/share/desktop-directories
 
 # Prevent Upstart from taking over X sessions
 echo > /etc/upstart-xsessions
+
+# This makes sure Xephyr, running as user, can write server-*.xkm files to
+# /var/lib/xkb, so it does not conflict with files created by Chromium OS
+# X server in /tmp.
+mkdir -p /var/lib/xkb
+chgrp video /var/lib/xkb
+chmod g+rw /var/lib/xkb
 
 # Update policies for mounting and unmounting devices with udisks2
 mkdir -p '/etc/polkit-1/localauthority/10-vendor.d'

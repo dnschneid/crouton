@@ -1,5 +1,5 @@
 #!/bin/sh -e
-# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2015 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -8,14 +8,14 @@ set -e
 APPLICATION="${0##*/}"
 ALLCHROOTS=''
 BINDIR="`dirname "\`readlink -f "$0"\`"`"
-CHROOTS="`readlink -f "$BINDIR/../chroots"`"
+CHROOTS="`readlink -m "$BINDIR/../chroots"`"
 EXCLUDEROOT=''
 FORCE=''
 PRINT=''
 SIGNAL='TERM'
 TRIES=5
 YES=''
-ROOT='/var/run/crouton'
+ROOT="`readlink -m '/var/run/crouton'`"
 
 USAGE="$APPLICATION [options] name [...]
 
@@ -38,29 +38,24 @@ Options:
     -y          Signal any remaining processes without confirmation.
                 Automatically escalates from SIGTERM to SIGKILL."
 
-# Function to exit with exit code $1, spitting out message $@ to stderr
-error() {
-    local ecode="$1"
-    shift
-    echo "$*" 1>&2
-    exit "$ecode"
-}
+# Common functions
+. "$BINDIR/../installer/functions"
 
 # Process arguments
-while getopts 'ac:fkpt:xy' f; do
-    case "$f" in
+getopts_string='ac:fkpt:xy'
+while getopts_nextarg; do
+    case "$getopts_var" in
     a) ALLCHROOTS='y';;
-    c) CHROOTS="`readlink -f "$OPTARG"`";;
+    c) CHROOTS="`readlink -m -- "$getopts_arg"`";;
     f) FORCE='y';;
     k) SIGNAL="KILL";;
     p) PRINT='y';;
-    t) TRIES="$OPTARG";;
+    t) TRIES="$getopts_arg";;
     x) EXCLUDEROOT='y';;
     y) YES='a';;
     \?) error 2 "$USAGE";;
     esac
 done
-shift "$((OPTIND-1))"
 
 # Need at least one chroot listed, or -a; not both.
 if [ $# = 0 -a -z "$ALLCHROOTS" ] || [ ! $# = 0 -a -n "$ALLCHROOTS" ]; then
@@ -83,16 +78,16 @@ fi
 # appropriate commands by checking if the command's parent root is not equal
 # to the pid's root. This avoids not unmounting due to a lazy-quitting
 # background application within the chroot. We also don't consider processes
-# that have a parent PID of 1 (which would mean an orphaned process in this
-# case), as enter-chroot never orphans its children, and we don't consider
-# processes that have CROUTON=CORE in the environment.
+# that have a parent PID of 1 or that of session_manager's (which would mean an
+# orphaned process in this case), as enter-chroot never orphans its children.
 # $1: $base; the canonicalized base path of the chroot
 # Returns: non-zero if the chroot is in use.
 checkusage() {
     if [ -n "$FORCE" ]; then
         return 0
     fi
-    local b="${1%/}/" pid ppid proot prootdir root rootdir
+    local b="${1%/}/" pid ppid proot prootdir root rootdir pids=''
+    local smgrpid="`pgrep -o -u 0 -x session_manager || echo 1`"
     for root in /proc/*/root; do
         if [ ! -r "$root" ]; then
             continue
@@ -105,7 +100,7 @@ checkusage() {
         pid="${root#/proc/}"
         pid="${pid%/root}"
         ppid="`ps -p "$pid" -o ppid= 2>/dev/null | sed 's/ //g'`"
-        if [ -z "$ppid" ] || [ "$ppid" -eq 1 ]; then
+        if [ -z "$ppid" ] || [ "$ppid" -eq 1 -o "$ppid" -eq "$smgrpid" ]; then
             continue
         fi
         proot="/proc/$ppid/root"
@@ -115,14 +110,16 @@ checkusage() {
                 continue
             fi
         fi
-        if grep -q 'CROUTON=CORE' "/proc/$pid/environ" 2>/dev/null; then
-            continue
-        fi
         if [ -n "$PRINT" ]; then
-            ps -p "$pid" -o pid= -o cmd= || true
+            pids="$pids $pid"
+            continue
         fi
         return 1
     done
+    if [ -n "$PRINT" -a -n "$pids" ]; then
+        ps -p "${pids# }" -o pid= -o cmd= || true
+        return 1
+    fi
     return 0
 }
 
@@ -239,10 +236,12 @@ unmount() {
     # Some /proc/mounts entries may end with \040(deleted), in that case, try to
     # umount them with and without the suffix (in the unlikely case the mount
     # point actually ends with ' (deleted)')
+    # umount has a bug and may return 0 when many mount points cannot be
+    # unmounted, so we call it once per mount point ('-n 1')
     while ! sed "s=\\\\040=//=g" /proc/mounts | cut -d' ' -f2 | filter \
               | sed -e 's=//= =g;s/^\(\(.*\) (deleted)\)$/\1\n\2/' \
-              | xargs --no-run-if-empty -d '
-' -n 50 umount 2>/dev/null; do
+              | sort -r | xargs --no-run-if-empty -d '
+' -n 1 umount 2>/dev/null; do
         if [ "$ntries" -eq "$TRIES" ]; then
             # Send signal to all processes running under the chroot
             # ...but confirm first.
@@ -253,7 +252,7 @@ unmount() {
                     YES="$CROUTON_UNMOUNT_RESPONSE"
                     echo "$YES" 1>&2
                 else
-                    read YES
+                    read -r YES
                 fi
                 if [ ! "${YES#[Kk]}" = "$YES" ]; then
                     SIGNAL='KILL'
@@ -275,11 +274,6 @@ unmount() {
                 fi
                 pid="${root#/proc/}"
                 pid="${pid%/root}"
-                if [ -z "$FORCE" ] \
-                        && grep -q 'CROUTON=CORE' \
-                                   "/proc/$pid/environ" 2>/dev/null; then
-                    continue
-                fi
                 if [ -n "${printonly:-"$PRINT"}" ]; then
                     ps -p "$pid" -o pid= -o cmd= || true
                 fi

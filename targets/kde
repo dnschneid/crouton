@@ -1,14 +1,15 @@
 #!/bin/sh -e
-# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2015 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 REQUIRES='x11'
-DESCRIPTION='Installs the KDE desktop environment. (Approx. 800MB)'
+DESCRIPTION='Installs a minimal KDE desktop environment. (Approx. 600MB)'
 HOSTBIN='startkde'
+CHROOTBIN='crouton-noroot startkde'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
-install kde-standard -- network-manager
+install --minimal kde-plasma-desktop -- network-manager
 
 TIPS="$TIPS
 You can start KDE via the startkde host command: sudo startkde

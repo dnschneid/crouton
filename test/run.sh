@@ -1,5 +1,5 @@
 #!/bin/sh -e
-# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2015 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -8,18 +8,26 @@
 # Tests numbering is categorical in 10's by the following guide:
 #   0*: meta-tests, e.g. tester
 #   1*: core tests, e.g. basic, background, upgrade
-#   2*: small-target/tech tests, e.g. cli-extra, audio
+#   3*: small-target/tech tests, e.g. cli-extra, audio
 #   5*: DE tests, e.g. xfce, xbmc
 #   9*: misc application tests, e.g. chrome
+# Alphabetic tests are long, and not run by default:
+#   w*: Start all DE/wm, and take snapshots
+#   x*: Install test all targets that do not have tests
 # Numbering within a category is arbitrary and can have overlaps.
 # Tests are always run in alphanumeric order unless specified by parameters.
+
+set -e
 
 APPLICATION="${0##*/}"
 SCRIPTDIR="`readlink -f "\`dirname "$0"\`/.."`"
 # List of all supported (non-*'d) releases
-SUPPORTED_RELEASES="`awk '/[^*]$/ { printf $1 " " }' \
-                         "$SCRIPTDIR/installer/"*"/releases"`"
+SUPPORTED_RELEASES="`awk -F'|' '
+    ($1 ~ /[^*]$/ && $2 !~ /(^|,)notest($|,)/) || $2 ~ /(^|,)test($|,)/ \
+        { sub(/[^a-z]*$/, "", $1); printf $1 " " }' \
+    "$SCRIPTDIR/installer/"*"/releases"`"
 SUPPORTED_RELEASES="${SUPPORTED_RELEASES%" "}"
+SUPPORTED_RELEASES_SET=''
 # System info
 SYSTEM="`awk -F= '/_RELEASE_DESCRIPTION=/ {print $2}' /etc/lsb-release`"
 TESTDIR="$SCRIPTDIR/test/run"
@@ -28,8 +36,10 @@ TESTDIR="$TESTDIR/$TESTNAME"
 # PREFIX intentionally includes a space. Run in /usr/local to avoid encryption
 PREFIXROOT="/usr/local/$TESTNAME prefix"
 RELEASE=''
+MAXTRIES=3
 
-JOBS="`grep -c '^processor' /proc/cpuinfo`"
+# Default: run 3 jobs in parallel
+JOBS=3
 
 USAGE="$APPLICATION [options] [test [...]]
 
@@ -48,18 +58,21 @@ Options:
     -r RELEASE   Specify a release to use whenever it shouldn't matter.
                  Default is a random supported release, considering -R.
     -R RELEASES  Limit the 'all supported releases' testing to a comma-separated
-                 list of releases. Default: all supported releases are tested."
+                 list of releases. Default: all supported releases are tested.
+    -T MAXTRIES  Number of times to repeat a failed test (default: $MAXTRIES)"
 
 # Common functions
 . "$SCRIPTDIR/installer/functions"
 
 # Process arguments
-while getopts 'j:l:r:R:' f; do
+while getopts 'j:l:r:R:T:' f; do
     case "$f" in
     j) JOBS="$OPTARG";;
     l) TESTDIR="${OPTARG%/}";;
     r) RELEASE="$OPTARG";;
-    R) SUPPORTED_RELEASES="`echo "$OPTARG" | tr ',' ' '`";;
+    R) SUPPORTED_RELEASES="`echo "$OPTARG" | tr ',' ' '`";
+       SUPPORTED_RELEASES_SET='y';;
+    T) MAXTRIES="$OPTARG";;
     \?) error 2 "$USAGE";;
     esac
 done
@@ -71,20 +84,23 @@ if [ ! "$USER" = root -a ! "$UID" = 0 ]; then
 fi
 
 # Choose a random release to test when the release (shouldn't) matter
+# This is a list: when a test fail on a given release, the next one is picked
 if [ -z "$RELEASE" ]; then
-    RELEASE="`echo "$SUPPORTED_RELEASES" | tr ' ' "\n" | sort -R | head -n 1`"
+    RELEASE="`echo "$SUPPORTED_RELEASES" | tr ' ' "\n" | sort -R | tr "\n" ' '`"
 fi
 
 echo "Running tests in $PREFIXROOT" 1>&2
 echo "Logging to $TESTDIR" 1>&2
 echo "System: $SYSTEM" 1>&2
 echo "Supported releases: $SUPPORTED_RELEASES" 1>&2
-echo "Default release for this run: $RELEASE" 1>&2
+echo "Default release for this run: ${RELEASE%% *}" 1>&2
 
 # Logs all output to the specified file with the date and time prefixed.
 # File is always appended. Use "log" to output a line with a [t] prefix.
 # $1: log file or directory
 # $2: script to source, run, and log
+# $3: release to run the test on
+# $4: number of attempts so far
 logto() {
     local file="$1" line='{print strftime("%F %T: ") $0}'
     shift
@@ -92,13 +108,36 @@ logto() {
         file="$file/log"
     fi
     local testlog="$file-test"
-    date "+%F %T: BEGIN TEST ${1##*/}" | tee -a "$file" "$testlog" 1>&2
+    date "+%F %T: BEGIN TEST ${1##*/}.$2.$3" | tee -a "$file" "$testlog" 1>&2
     local start="`date '+%s'`"
-    local retpreamble="${1##*/} finished with exit code"
+    local retpreamble="${1##*/}.$2.$3 finished with exit code"
     local AWK='mawk -W interactive'
     # srand() uses system time as seed but returns previous seed. Call it twice.
     ((((ret=0; TRAP=''
-        . "$1" </dev/null 3>&- || ret=$?
+        (
+            PREFIX="`mktemp -d --tmpdir="$PREFIXROOT" "$tname.XXX"`"
+            # Remount noexec/etc to make the environment as harsh as possible
+            mount --bind "$PREFIX" "$PREFIX"
+            mount -i -o remount,nosuid,nodev,noexec "$PREFIX"
+
+            # Get subshell pid
+            pid="`sh -c 'echo $PPID'`"
+
+            # Clean up on exit
+            settrap "
+                set -x
+                echo Running trap...
+                if [ -d '$PREFIX/chroots' ]; then
+                    sh -e '$SCRIPTDIR/host-bin/unmount-chroot' \
+                        -a -f -y -c '$PREFIX/chroots'
+                fi
+                # Kill any leftover subprocess
+                pkill -9 -P '$pid'
+                umount -l '$PREFIX'
+                rm -rf --one-file-system '$PREFIX'
+            "
+            release="$2" . "$1"
+        ) </dev/null 3>&- || ret=$?
         sleep 1
         if [ "$ret" = 0 ]; then
             log "TEST PASSED: $retpreamble $ret"
@@ -197,12 +236,12 @@ bootstrap() {
     echo "$file"
 
     # Use flock so that bootstrap can be called in parallel
-    if ! flock -n 3; then
+    if ! flock -n 4; then
         log "Waiting for bootstrap for $1 to complete..."
-        flock 3
+        flock 4
     elif [ ! -s "$file" ]; then
         crouton -r "$1" -f "$file" -d 1>&2
-    fi 3>>"$file"
+    fi 4>>"$file"
 
     if [ ! -s "$file" ]; then
         log "FAIL due to incomplete bootstrap for $1"
@@ -222,14 +261,14 @@ snapshot() {
     local name="${3:-"$1"}"
 
     # Use flock so that snapshot can be called in parallel
-    if ! flock -n 3; then
+    if ! flock -n 4; then
         log "Waiting for snapshot for $1-$targets to complete..."
-        flock 3
+        flock 4
     elif [ ! -s "$file" ]; then
         crouton -f "`bootstrap "$1"`" -t "$targets" -n "$name" 1>&2
         host edit-chroot -y -b -f "$file" "$name"
         return 0
-    fi 3>>"$file"
+    fi 4>>"$file"
 
     # Restore the snapshot into place
     crouton -f "$file" -n "$name"
@@ -331,6 +370,60 @@ fails() {
     return 0
 }
 
+# Sources a function from a script for unit testing.
+# Note that the function may need global variables defined when run.
+# Usage:
+#   from scriptfile import functionA[[,] functionB]*
+# scriptfile should be tarball-relative, i.e., host-bin/mount-chroot
+from() {
+    local scriptpath="$SCRIPTDIR/$1" scriptfile="$1" name script
+    if [ "$2" != 'import' -o -z "$3" ]; then
+        echo "    $*
+SyntaxError: invalid syntax" 1>&2
+        return 2
+    fi
+    if [ ! -f "$scriptpath" ]; then
+        echo "ImportError: No module named $scriptfile" 1>&2
+        return 2
+    fi
+    shift 2
+    for name in "$@"; do
+        name="${name%,}"
+        script="`awk '
+            /^'"$name"'[(][)] {$/ {x=1}
+            x;
+            x && /^}$/ {exit}
+        ' "$scriptpath"`"
+        if [ -z "$script" ]; then
+            echo "ImportError: cannot import name $name" 1>&2
+            return 2
+        fi
+        log "Importing $name from $scriptfile"
+        eval "$script"
+    done
+    return 0
+}
+
+# Ensures only one test can play with graphics at one time
+# Run it without parameters, in a subshell. The lock will be released when
+# the subshell exits
+vtlock() {
+    local vtlockfile='/var/lock/croutonvt'
+    exec 4>>"$vtlockfile"
+    if ! flock -n 4; then
+        log 'Waiting for VT lock...'
+        flock 4
+    fi
+}
+
+# Runs the provided command under vtlock
+vtlockrun() {
+    (
+        vtlock
+        "$@" || return $?
+    )
+}
+
 # Default responses to questions
 export CROUTON_USERNAME='test'
 export CROUTON_PASSPHRASE='hunter2'
@@ -370,9 +463,9 @@ if [ "$#" = 0 ]; then
 fi
 
 jobpids=''
+fail=0
 
 # Waits for there to be fewer than $1 jobs running. Reads and updates $jobpids.
-# Fails if one of the jobs failed.
 # If $1 is omitted, uses $JOBS
 # If 0 is specified, assumes 1
 waitjobs() {
@@ -389,7 +482,9 @@ waitjobs() {
                 newjobpids="$newjobpids $pid"
             else
                 # Grab the return code
-                wait "$pid"
+                if ! wait "$pid"; then
+                    fail="$((fail+1))"
+                fi
             fi
         done
         jobpids="${newjobpids# }"
@@ -397,45 +492,107 @@ waitjobs() {
     done
 }
 
-# Run all tests matching the supplied prefixes
+# Queue format: "test file|release|number of tries
+# Make sure QUEUELOCK is held when modifying QUEUEFILE
+QUEUEFILE="`tmpfile queue`"
+QUEUEFILETMP="`tmpfile queuetmp`"
+QUEUELOCK="`tmpfile queuelock`"
+
+# Add all tests matching the supplied prefixes to the queue (random order)
 tname=''
 for p in "$@"; do
     for t in "$SCRIPTDIR/test/tests/$p"*; do
-        if [ ! -s "$t" ]; then
+        if [ ! -s "$t" -o "${t%~}" != "$t" ]; then
             continue
         fi
-        waitjobs
-        tname="${t##*/}"
-        # Run the test
-        (
-            PREFIX="`mktemp -d --tmpdir="$PREFIXROOT" "$tname.XXX"`"
-            # Remount PREFIX noexec/etc to make the environment as harsh as possible
-            mount --bind "$PREFIX" "$PREFIX"
-            mount -i -o remount,nosuid,nodev,noexec "$PREFIX"
-            # Clean up on exit
-            settrap "
-                if [ -d '$PREFIX/chroots' ]; then
-                    sh -e '$SCRIPTDIR/host-bin/unmount-chroot' \
-                        -a -y -c '$PREFIX/chroots'
-                fi
-                umount -l '$PREFIX'
-                rm -rf --one-file-system '$PREFIX'
-            "
-            logto "$TESTDIR/$tname" "$t"
-        ) &
-        jobpids="$jobpids${jobpids:+" "}$!"
-    done
-done
 
-# Wait for all jobs to finish
-waitjobs 0
+        # When $release is blank, the tests output a list of supported releases,
+        # that is intersected with $SUPPORTED_RELEASES. Also, "all" indicates
+        # that all releases are supported, and "default" indicates that only a
+        # default release should be tested
+        testrel=""
+        for rel in `release="" . "$t"`; do
+            for sup in $SUPPORTED_RELEASES; do
+                if [ "$rel" = "all" -o "$rel" = "$sup" ]; then
+                    echo "$t|$sup|0"
+                fi
+            done
+
+            # default is translated later
+            if [ "$rel" = "default" ]; then
+                echo "$t|default|0"
+            fi
+        done
+    done
+done | sort -u | sort -R > "$QUEUEFILE"
+
+if [ ! -s "$QUEUEFILE" ]; then
+    echo "No tests found matching $*" 1>&2
+    exit 2
+fi
+
+# Start jobs from the queue
+while true; do
+    # Wait for a free slot (max $JOBS at a time)
+    waitjobs
+    if [ ! -s "$QUEUEFILE" ]; then
+        if [ -z "$jobpids" ]; then
+            break
+        fi
+        # Queue empty, but jobs are still running, check again in a while.
+        sleep 10
+        continue
+    fi
+    job="`(
+        flock 3
+        head -n 1 "$QUEUEFILE"
+        tail -n +2 "$QUEUEFILE" > "$QUEUEFILETMP"
+        mv "$QUEUEFILETMP" "$QUEUEFILE"
+    ) 3>"$QUEUELOCK"`"
+    if [ -z "$job" ]; then
+        continue
+    fi
+
+    # Split job line
+    t="${job%%|*}"
+    job="${job#$t|}"
+    jobrel="${job%%|*}"
+    job="${job#$jobrel|}"
+    try="${job%%|*}"
+
+    # jobrel is the release indicated in the job line (can be default)
+    # rel is an actual release
+    if [ "$jobrel" = "default" ]; then
+        # Select element $try in $RELEASE (wrap around)
+        rel="`echo "$RELEASE" | awk '{x=('"$try"'%NF)+1; print $x; exit}'`"
+    else
+        rel="$jobrel"
+    fi
+
+    tname="${t##*/}.$rel.$try"
+    # Run the test
+    (
+        if ! logto "$TESTDIR/$tname" "$t" "$rel" "$try"; then
+            if [ "$((try+1))" -lt "$MAXTRIES" ]; then
+                # Test failed, try again...
+                (
+                    flock 3
+                    echo "$t|$jobrel|$((try+1))" >> "$QUEUEFILE"
+                ) 3>"$QUEUELOCK"
+            else
+                exit 1
+            fi
+        fi
+    ) &
+    jobpids="$jobpids${jobpids:+" "}$!"
+done
 
 # Clean up /var/run/crouton
 rm -rf --one-file-system /var/run/crouton || true
 
-if [ -n "$tname" ]; then
-    echo "All tests passed!" 1>&2
+if [ "$fail" -gt 0 ]; then
+   echo "$fail test(s) failed." 1>&2
+   exit 1
 else
-    echo "No tests found matching $*" 1>&2
-    exit 2
+   echo "All tests passed." 1>&2
 fi

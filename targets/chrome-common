@@ -1,5 +1,5 @@
 #!/bin/sh -e
-# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2015 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -9,13 +9,12 @@
 # This command expects CHANNEL to be set with the requested Google Chrome
 # channel: stable, beta, or unstable.
 
-if [ ! "$TARGETS" = 'help' -a ! "${ARCH#arm}" = "$ARCH" ]; then
+if [ "${TARGETNOINSTALL:-c}" = 'c' -a "${ARCH#arm}" != "$ARCH" ]; then
     echo 'Google Chrome does not yet have an ARM build. Installing Chromium instead.' 1>&2
     TARGET=chromium
     . "${TARGETSDIR:="$PWD"}/$TARGET"
 fi
-if [ "$TARGETS" != 'help' -a "$TARGETS" != 'check' \
-        -a "$TARGET" != 'chrome' ]; then
+if [ "${TARGETNOINSTALL:-c}" = 'c' -a "$TARGET" != 'chrome' ]; then
     # Avoid installing multiple chrome targets
     if grep -q "^chrome\$" "${TARGETDEDUPFILE:-/dev/null}"; then
         exit
@@ -30,8 +29,8 @@ REQUIRES='x11'
 # Only download if it's not already installed, since it auto-updates
 pkg="google-chrome-$CHANNEL"
 if [ -n "`list_uninstalled '' "$pkg"`" ]; then
-    # Chrome needs xdg-utils to configure
-    install xdg-utils
+    # Chrome needs hicolor-icon-theme to configure/install
+    install hicolor-icon-theme
 
     url="https://dl.google.com/linux/direct/${pkg}_current_$ARCH.$PKGEXT"
     tmp="`mktemp crouton.XXXXXX --tmpdir=/tmp`"

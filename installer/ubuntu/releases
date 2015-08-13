@@ -14,7 +14,10 @@ maverick*
 natty*
 oneiric*
 precise
-quantal
-raring
-saucy
-trusty*
+quantal*
+raring*
+saucy*
+trusty
+utopic*
+vivid*|test
+wily*|test

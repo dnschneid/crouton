@@ -1,61 +1,355 @@
 #!/bin/sh -e
-# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2015 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-USAGE="${0##*/} next|prev|cros
+. "`dirname "$0"`/../installer/functions"
+
+USAGE="${0##*/} next|prev|cros|list|#
 Cycles through running graphical chroots.
-\"cros\" switches back to Chromium OS."
+    next: switch to the next display
+    prev: switch to the previous display
+    cros: switch directly to Chromium OS
+    list: list all of the active displays and the associated chroot name
+    #: switch to the nth item in the list, zero-indexed
+    :#: switch directly to the chroot owning the specified display number"
+
+# Undocumented:
+#   display: return display associated with current window
+#            (used from croutonclip):
+#     - cros: Chromium OS
+#     - :0: Chromium OS X11 display (non-aura window)
+#     - :1-9: chroot displays
+#   s<num>: informs of a Chromium OS window change (called from extension):
+#     - cros: any Chromium OS window
+#     - :1-9: kiwi window: X11 display number
+#   force [command]: Force switching display, even if it does not appear
+#                    to be necessary.
+
+force=''
+if [ "${1#[Ff]}" != "$1" ]; then
+    force='y'
+    shift
+fi
 
 case "$1" in
-[Cc]*) cmd='select 0';;
-[Pp]*) cmd='prev';;
-[Nn]*) cmd='next';;
-*) echo "$USAGE" 1>&2; exit 2;;
+[Ll]*) cmd='l';;
+[Dd]*) cmd='d';;
+[Cc]*) cmd='0';;
+[Pp]*) cmd='p';;
+[Nn]*) cmd='n';;
+[Ss]*) cmd='s' disp="${1#s}";;
+:*) cmd="${1%%.*}"; cmd=":$((${cmd#:}))";;
+[0-9]*) cmd="$(($1))";;
+*) error 2 "$USAGE";;
 esac
 
-# If we're using Xephyr, run ratpoison
-xmethod="`readlink -f '/etc/X11/xinit/xserverrc'`"
-xmethod="${xmethod##*-}"
-if [ "$xmethod" = 'xephyr' ]; then
-    exec /usr/local/bin/host-x11 ratpoison -c "$cmd"
+# Returns the chroot name of an X11 display specified in $1 on stdout
+getname() {
+    local name=''
+    name="`DISPLAY=":${1#:}" xprop -root CROUTON_NAME 2>/dev/null`"
+    if [ "${name%\"}" != "$name" ]; then
+        name="${name%\"}"
+        echo "${name#*\"}"
+    else
+        echo "Unknown"
+    fi
+}
+
+# Only let one instance run at a time to avoid nasty race conditions
+mkdir -m 775 -p "$CROUTONLOCKDIR"
+exec 3>"$CROUTONLOCKDIR/cycle"
+flock 3
+
+# set display command from extension
+if [ "$cmd" = 's' ]; then
+    echo "$disp" > "$CRIATDISPLAY"
+    if [ -s "$CROUTONLOCKDIR/clip" ]; then
+        kill -USR1 "`cat "$CROUTONLOCKDIR/clip"`" || true
+    fi
+    exit 0
 fi
 
-# cros: Switch to VT1
-if [ "$cmd" = 'select 0' ]; then
-    exec chvt 1
+# Ensure environment sanity
+export XAUTHORITY=''
+
+# Set to y if there is any xiwi instance running
+xiwiactive=''
+
+# Prepare display list for easier looping
+displist=''
+for disp in /tmp/.X*-lock; do
+    disp="${disp#*X}"
+    disp=":${disp%-lock}"
+    # Only add VT-based and xiwi-based chroots here (that excludes Xephyr)
+    if [ "$disp" = ':0' ]; then
+        continue
+    elif DISPLAY="$disp" xprop -root 'XFree86_VT' 2>/dev/null \
+            | grep -q 'INTEGER'; then
+        displist="$displist $disp"
+    elif DISPLAY="$disp" xprop -root 'CROUTON_XMETHOD' 2>/dev/null \
+            | grep -q '= "xiwi'; then
+        displist="$displist $disp"
+        xiwiactive='y'
+    fi
+done
+
+# Set to the freon display owner if freon is used
+freonowner=''
+if [ ! -f "/sys/class/tty/tty0/active" ]; then
+    if [ -f "/tmp/crouton-lock/display" ]; then
+        read -r freonowner < "/tmp/crouton-lock/display"
+    fi
+    freonowner="${freonowner:-0}"
+    winlist="aura*"
+    aurawin="aura"
+    tty=''
+else
+    # List windows on :0. Includes aura
+    winlist="`host-x11 croutonwmtools list nim | \
+              sort | awk '{ printf $NF " " }'`"
+    aurawin="`host-x11 croutonwmtools list ni | \
+              awk '$1 == "aura_root_0" { print $NF; exit }'`"
+    tty="`cat '/sys/class/tty/tty0/active'`"
 fi
 
-# Otherwise, determine current tty and X11 ttys
-curtty="`cat '/sys/class/tty/tty0/active'`"
-seltty=''
-prevtty=''
-for tty in `ps -CX -CXorg -otname= | sort`; do
-    # On some systems, the tty of Chromium OS cannot be determined and returns ?
-    if [ "$tty" = '?' ]; then
-        tty='tty1'
+# Combine the two
+fulllist="$winlist$displist"
+fulllist="${fulllist% }"
+
+if [ "$freonowner" = 0 -o "$tty" = 'tty1' ]; then
+    # Either in Chromium OS, xephyr/xiwi chroot, or window.
+    # Active window is starred.
+    for disp in $winlist; do
+        if [ "${disp%"*"}" != "$disp" ]; then
+            curdisp="$disp"
+            if [ -n "$xiwiactive" -a "${disp%"*"}" = "$aurawin" -a \
+                    -s "$CRIATDISPLAY" ]; then
+                kiwidisp="`cat $CRIATDISPLAY`"
+                if [ "${kiwidisp#:[0-9]}" != "$kiwidisp" ]; then
+                    curdisp="$kiwidisp"
+                fi
+            fi
+            break
+        fi
+    done
+elif [ -z "$freonowner" ]; then
+    # Poll the displays to figure out which one owns this VT
+    curdisp="$tty"
+    for disp in $displist; do
+        if DISPLAY="$disp" xprop -root 'XFree86_VT' 2>/dev/null \
+                | grep -q " ${tty#tty}\$"; then
+            curdisp="$disp"
+            break
+        fi
+    done
+else
+    # Match the pid to the current freon owner
+    for lockfile in /tmp/.X*-lock; do
+        if grep -q "\\<$freonowner$" "$lockfile"; then
+            curdisp="${lockfile#*X}"
+            curdisp=":${curdisp%%-*}"
+        fi
+    done
+fi
+
+# List the displays if requested
+if [ "$cmd" = 'l' -o "$cmd" = 'd' ]; then
+    chromiumos='Unknown'
+    if [ -r '/var/host/lsb-release' ]; then
+        chromiumos="`awk -F= '/_RELEASE_NAME=/{print $2}' \
+                             '/var/host/lsb-release'`"
     fi
-    if [ "$cmd" = 'next' -a -z "$seltty" ]; then
-        seltty="$tty"
-    fi
-    if [ -z "$curtty" ]; then
-        seltty="$tty"
-        break
-    elif [ "$tty" = "$curtty" ]; then
-        # Make the tty selection.
-        if [ "$cmd" = 'prev' ]; then
-            seltty="$prevtty"
+    (
+        if [ -z "$freonowner" ]; then
+            host-x11 croutonwmtools list nim
         else
-            curtty=''
+            echo "aura_root_0 aura*"
+        fi
+    ) | sort | while read -r line; do
+        disp="${line##* }"
+        display="${disp%"*"}"
+        line="${line% *}"
+        number='0'
+        active=' '
+        if [ "${line#Xephyr}" != "$line" ]; then
+            number="${line#*:}"
+            number="${number%%.*}"
+            if [ "${number#[0-9]}" = "$number" ]; then
+                number='0'
+            else
+                display=":$number"
+                line="`getname "$number"`"
+            fi
+        fi
+        if [ "$disp" = "$curdisp" ]; then
+            active='*'
+            if [ "$cmd" = 'd' ]; then
+                if [ "$line" = 'aura_root_0' ]; then
+                    echo 'cros'
+                else
+                    echo ":$number"
+                fi
+                # exit would only break the loop anyway...
+                break
+            fi
+        fi
+        if [ "$line" = 'aura_root_0' ]; then
+            line="$chromiumos"
+            display="cros"
+            window=''
+        fi
+        if [ "$cmd" = 'l' ]; then
+            echo "$display$active $line"
+        fi
+    done
+    for disp in $displist; do
+        active=' '
+        if [ "$disp" = "$curdisp" ]; then
+            active='*'
+            if [ "$cmd" = 'd' ]; then
+                echo "$disp"
+                exit 0
+            fi
+        fi
+
+        if [ "$cmd" = 'l' ]; then
+            echo -n "$disp$active "
+            getname "$disp"
+        fi
+    done
+    exit 0
+fi
+
+# Determine the target display
+if [ -n "${cmd#[pn]}" ]; then
+    if [ "${cmd#:}" != "$cmd" ]; then
+        destdisp="$cmd"
+        # Resolve a xephyr display into its ID
+        if DISPLAY="$destdisp" xprop -root 'CROUTON_XMETHOD' 2>/dev/null \
+                | grep -q '= "xephyr"$'; then
+            destdisp="`host-x11 croutonwmtools list ni | \
+                       awk "/^Xephyr on $destdisp\.0/"' { print $NF; exit }'`"
+        fi
+    else
+        i=0
+        destdisp=''
+        for disp in $fulllist; do
+            if [ "$i" -eq "$cmd" ]; then
+                destdisp="$disp"
+                break
+            fi
+            i="$((i+1))"
+        done
+        if [ -z "$destdisp" ]; then
+            error 2 "Display number out of range."
         fi
     fi
-    prevtty="$tty"
-done
-if [ -z "$seltty" ]; then
-    seltty="$tty"
+elif [ "$cmd" = 'p' ]; then
+    destdisp="${fulllist##* }"
+    for disp in $fulllist; do
+        if [ "$disp" = "$curdisp" ]; then
+            break
+        fi
+        destdisp="$disp"
+    done
+elif [ "$cmd" = 'n' ]; then
+    destdisp=''
+    for disp in $fulllist; do
+        if [ -n "$destdisp" ]; then
+            destdisp="$disp"
+            break
+        elif [ "$disp" = "$curdisp" ]; then
+            destdisp="${fulllist%% *}"
+        fi
+    done
+    if [ -z "$destdisp" ]; then
+        destdisp="${fulllist%% *}"
+    fi
+else
+    error 3 "Bad command $cmd."
 fi
 
-# If we have a tty and it's not the same as the current one, switch
-if [ -n "$seltty" -a ! "$seltty" = "$curtty" ]; then
-    exec chvt "${seltty#tty}"
+# No-op on no-op
+if [ "$destdisp" = "$curdisp" -a -z "$force" ]; then
+    exit 0
 fi
+
+# Make sure tap-to-click is enabled
+if [ -z "$freonowner" ] && hash xinput 2>/dev/null; then
+    for id in `host-x11 xinput --list --id-only`; do
+        host-x11 xinput set-prop "$id" 'Tap Paused' 0 2>/dev/null || true
+    done
+fi
+
+# Determine if the target display is on a VT
+if [ "${destdisp#:}" = "$destdisp" ]; then
+    if [ -z "$freonowner" ]; then
+        eval "`host-x11`"
+        # Raise the right window after chvting, so that it can update
+        if [ "$tty" != 'tty1' ]; then
+            sudo -n chvt 1
+            sleep .1
+        fi
+        croutonwmtools raise "${destdisp%"*"}"
+    elif [ "${freonowner:-0}" != 0 ]; then
+        kill -USR1 "$freonowner"
+    fi
+
+    if [ -n "$xiwiactive" -a "${destdisp%"*"}" = "$aurawin" ]; then
+        STATUS="`echo -n "Xcros" | websocketcommand`"
+        if [ "$STATUS" != 'XOK' ]; then
+            error 1 "${STATUS#?}"
+        fi
+    fi
+else
+    export DISPLAY="$destdisp"
+    xmethod="`xprop -root 'CROUTON_XMETHOD' 2>/dev/null \
+              | sed -n 's/^.*\"\(.*\)\"/\1/p'`"
+    if [ "${xmethod%%-*}" = 'xiwi' ]; then
+        if [ -z "$freonowner" -a "$tty" != 'tty1' ]; then
+            sudo -n chvt 1
+            sleep .1
+        elif [ "${freonowner:-0}" != 0 ]; then
+            kill -USR1 "$freonowner"
+        fi
+        if [ -z "$freonowner" ]; then
+            host-x11 croutonwmtools raise "$aurawin"
+        fi
+        STATUS="`echo -n "X${destdisp} ${xmethod#*-}" | websocketcommand`"
+        if [ "$STATUS" != 'XOK' ]; then
+            error 1 "${STATUS#?}"
+        fi
+    elif [ -z "$freonowner" ]; then
+        dest="`xprop -root 'XFree86_VT' 2>/dev/null`"
+        dest="${dest##* }"
+        if [ "${dest#[1-9]}" = "$dest" ]; then
+            dest='1'
+        fi
+        # When the destination we are changing to is using fbdev driver in X, we
+        # need first a change to vt 2, else only the session switches and the
+        # display will be stuck on the old vt.
+        sudo -n chvt 2
+        sudo -n chvt "$dest"
+    else
+        dest="/tmp/.X${destdisp#:}-lock"
+        if [ -f "$dest" ]; then
+            # Trigger the target before releasing the current owner
+            kill -USR1 `cat /tmp/.X${destdisp#:}-lock`
+        fi
+        if [ "${freonowner:-0}" != 0 ]; then
+            kill -USR1 "$freonowner"
+        fi
+    fi
+fi
+
+if [ -s "$CROUTONLOCKDIR/clip" ]; then
+    kill -USR1 "`cat "$CROUTONLOCKDIR/clip"`" || true
+fi
+
+# Wait a flip and then refresh the display for good measure
+if hash xrefresh 2>/dev/null; then
+    sleep .1
+    xrefresh
+fi
+exit 0

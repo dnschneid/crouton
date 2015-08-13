@@ -1,12 +1,15 @@
 #!/bin/sh -e
-# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2015 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-REQUIRES='core audio'
+if [ "${TARGETNOINSTALL:-c}" = 'c' -a -f /sbin/frecon ]; then
+    error 1 'xephyr target does not work with Freon. Use xiwi instead.'
+fi
+REQUIRES='audio'
 PROVIDES='x11'
 DESCRIPTION='Nested X11 backend. Improves compatibility but lacks GPU accel.'
-CHROOTBIN='croutoncycle croutonpowerd croutonwheel croutonwm croutonxinitrc-wrapper xinit'
-CHROOTETC='xbindkeysrc.scm xserverrc-xephyr xserverrc-local.example'
+CHROOTBIN='croutoncycle croutontriggerd croutonwheel croutonxinitrc-wrapper xinit'
+CHROOTETC='xbindkeysrc.scm xserverrc xserverrc-xephyr xserverrc-local.example'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
@@ -29,8 +32,8 @@ fi
 
 # xserver-xephyr won't auto replace the manually-downloaded version.
 install --minimal \
-    xserver-xephyr xinit ratpoison dmz-cursor-theme libgl1-mesa-dri \
-    x11-utils x11-xserver-utils xautomation xinput xterm
+    xserver-xephyr xinit libgl1-mesa-dri \
+    x11-utils x11-xserver-utils xinput xterm
 
 # Compile croutoncursor
 compile cursor '-lX11 -lXfixes -lXrender' \

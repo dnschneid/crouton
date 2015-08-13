@@ -1,5 +1,5 @@
 #!/bin/sh -e
-# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2015 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -8,12 +8,13 @@ set -e
 APPLICATION="${0##*/}"
 BACKGROUND=''
 BINDIR="`dirname "\`readlink -f "$0"\`"`"
-CHROOTS="`readlink -f "$BINDIR/../chroots"`"
+CHROOTS="`readlink -m "$BINDIR/../chroots"`"
 KEYFILE=''
 LOGIN=''
 NAME=''
 TARGET=''
 USERNAME='1000'
+TMPXMETHOD=''
 NOLOGIN=''
 SETUPSCRIPT='/prepare.sh'
 
@@ -33,6 +34,7 @@ Options:
     -n NAME     Name of the chroot to enter. Default: first one found in CHROOTS
     -t TARGET   Only enter the chroot if it contains the specified TARGET.
     -u USERNAME Username (or UID) to log into. Default: 1000 (the primary user)
+    -X XMETHOD  Override the auto-detected XMETHOD for this session.
     -x          Does not log in, but directly executes the command instead.
                 Note that the environment will be empty (sans TERM).
                 Specify -x a second time to run the $SETUPSCRIPT script."
@@ -56,21 +58,34 @@ chrootcmd() {
 }
 
 # Process arguments
-while getopts 'bc:k:ln:t:u:x' f; do
+prevoptind=1
+while getopts 'bc:k:ln:t:u:X:x' f; do
+    # Disallow empty string as option argument
+    if [ "$((OPTIND-prevoptind))" = 2 -a -z "$OPTARG" ]; then
+        error 2 "$USAGE"
+    fi
+    prevoptind="$OPTIND"
     case "$f" in
     b) BACKGROUND='y';;
-    c) CHROOTS="`readlink -f "$OPTARG"`";;
+    c) CHROOTS="`readlink -m -- "$OPTARG"`";;
     k) KEYFILE="$OPTARG";;
     l) LOGIN='y';;
     n) NAME="$OPTARG";;
     t) TARGET="$OPTARG";;
     u) USERNAME="$OPTARG";;
+    X) TMPXMETHOD="$OPTARG";;
     x) NOLOGIN="$((NOLOGIN+1))"
        [ "$NOLOGIN" -gt 2 ] && NOLOGIN=2;;
     \?) error 2 "$USAGE";;
     esac
 done
 shift "$((OPTIND-1))"
+
+# Shift away empty string as first argument (used in start* scripts to mark
+# the end of user-specified parameters)
+if [ "$#" -ge 1 -a -z "$1" ]; then
+    shift
+fi
 
 # We need to run as root
 if [ ! "$USER" = root -a ! "$UID" = 0 ]; then
@@ -121,15 +136,20 @@ elif [ -n "$TARGET" ]; then
     fi
 fi
 
+# Check to ensure that the XMETHOD requested has been installed
+if [ -n "$TMPXMETHOD" ]; then
+    if ! grep -q "^${TMPXMETHOD%%-*}$" "$CHROOTS/$NAME/.crouton-targets"; then
+        error 1 "$CHROOTS/$NAME does not contain XMETHOD '${TMPXMETHOD%%-*}'"
+    fi
+fi
+
 # Avoid kernel panics due to slow I/O
 disablehungtask
 
-# Enable control of framebuffer compression (if used) by video users
-for fbc in '/sys/kernel/debug/dri/0/'*fbc*; do :; done
-if [ -f "$fbc" ] && ! grep -q 'disabled per module param' "$fbc"; then
-    fbc='/sys/module/i915/parameters/i915_enable_fbc'
-    chgrp video "$fbc"
-    chmod g+w "$fbc"
+# Allow X server running as normal user to set/drop DRM master
+drm_relax_file="/sys/kernel/debug/dri/drm_master_relax"
+if [ -f "$drm_relax_file" ]; then
+    echo 'Y' > "$drm_relax_file"
 fi
 
 # Make sure we always exit with echo on the tty.
@@ -139,9 +159,9 @@ addtrap "stty echo 2>/dev/null"
 CHROOTSRC="$CHROOTS/$NAME"
 if [ -n "$KEYFILE" ]; then
     CHROOT="`sh -e "$BINDIR/mount-chroot" \
-                                     -k "$KEYFILE" -p -c "$CHROOTS" "$NAME"`"
+                                     -k "$KEYFILE" -p -c "$CHROOTS" -- "$NAME"`"
 else
-    CHROOT="`sh -e "$BINDIR/mount-chroot" -p -c "$CHROOTS" "$NAME"`"
+    CHROOT="`sh -e "$BINDIR/mount-chroot" -p -c "$CHROOTS" -- "$NAME"`"
 fi
 
 if [ ! "$NOLOGIN" = 2 ]; then
@@ -163,7 +183,7 @@ fi
 
 if [ -z "$CROUTON_NO_UNMOUNT" ]; then
     # Auto-unmount everything below and including the chroot upon exit
-    addtrap "sh -e '$BINDIR/unmount-chroot' -yc '$CHROOTS' '$NAME'"
+    addtrap "sh -e '$BINDIR/unmount-chroot' -yc '$CHROOTS' -- '$NAME'"
 fi
 
 # If our root is on an external disk we need to ensure USB device persistence is
@@ -188,7 +208,7 @@ if [ -z "$NOLOGIN" -a -f "$CHROOT$SETUPSCRIPT" ]; then
     fi
     if [ -t 0 -a -z "$response" ]; then
         echo -n 'Would you like to finish the setup? [Y/n/d] ' 1>&2
-        read response
+        read -r response
     fi
     if [ -z "$response" -o "${response#[Yy]}" != "$response" ]; then
         echo 'Preparing chroot environment...' 1>&2
@@ -245,12 +265,17 @@ mkdir -p "$CHROOT/var/host"
 # Copy in the current Chromium OS version for reference
 cp -f '/etc/lsb-release' "$CHROOT/var/host/"
 
+# Copy CRAS version into the chroot
+cras_test_client --version 2>/dev/null > "$CHROOT/var/host/cras-version" || true
+
 # Copy the latest Xauthority into the chroot
-cp -f "$XAUTHORITY" "$CHROOT/var/host/Xauthority"
-chmod 444 "$CHROOT/var/host/Xauthority"
-# Be backwards-compatible, just in case
-if [ -f "$CHROOT/etc/X11/host-Xauthority" ]; then
-    ln -sfT '/var/host/Xauthority' "$CHROOT/etc/X11/host-Xauthority"
+if [ -f "${XAUTHORITY:=/home/chronos/.Xauthority}" ]; then
+    cp -f "$XAUTHORITY" "$CHROOT/var/host/Xauthority"
+    chmod 444 "$CHROOT/var/host/Xauthority"
+    # Be backwards-compatible, just in case
+    if [ -f "$CHROOT/etc/X11/host-Xauthority" ]; then
+        ln -sfT '/var/host/Xauthority' "$CHROOT/etc/X11/host-Xauthority"
+    fi
 fi
 
 # Prepare chroot filesystem
@@ -323,15 +348,12 @@ fi
 bindmount /dev
 bindmount /dev/pts
 bindmount /dev/shm
-bindmount /sys
-bindmount /sys/fs/fuse/connections
 bindmount /tmp /tmp exec
 bindmount /proc
 tmpfsmount /var/run 'noexec,nosuid,mode=0755,size=10%'
 tmpfsmount /var/run/lock 'noexec,nosuid,nodev,size=5120k'
 bindmount /var/run/dbus /var/host/dbus
 bindmount /var/run/shill /var/host/shill
-bindmount /var/run/cras /var/host/cras
 bindmount /var/lib/timezone /var/host/timezone
 for m in /lib/modules/*; do
     if [ -d "$m" ]; then
@@ -342,11 +364,24 @@ done
 # Add a shm symlink to our new /var/run
 ln -sfT /dev/shm "`fixabslinks '/var/run'`/shm"
 
-# Add a /run/udev symlink for later versions of udev
-ln -sfT /dev/.udev "`fixabslinks '/var/run'`/udev"
+# Setup udev control directory in the chroot
+# Chromium OS >=6092 uses /run/udev, older versions /dev/.udev
+if [ -d /var/run/udev ]; then
+    bindmount /var/run/udev /var/host/udev
+    ln -sfT /var/host/udev "`fixabslinks '/var/run'`/udev"
+else
+    # Add a /run/udev symlink for later versions of udev in chroot
+    ln -sfT /dev/.udev "`fixabslinks '/var/run'`/udev"
+fi
 
-# Add a /var/host/cras symlink for CRAS clients
-ln -sfT /var/host/cras "`fixabslinks '/var/run'`/cras"
+if [ -d /var/run/cras ]; then
+    bindmount /var/run/cras /var/host/cras
+    # Add a /var/host/cras symlink for CRAS clients
+    ln -sfT /var/host/cras "$(fixabslinks '/var/run')/cras"
+else
+    echo "\
+WARNING: CRAS not running in Chromium OS. Audio forwarding will not work." 1>&2
+fi
 
 # Bind-mount /media, specifically the removable directory
 destmedia="`fixabslinks '/var/host/media'`"
@@ -357,10 +392,149 @@ if ! mountpoint -q "$destmedia"; then
     mount --rbind /media "$destmedia"
 fi
 
-# Bind-mount ~/Downloads if we're logged in as a user
-localdownloads='/home/chronos/user/Downloads'
-if [ -z "$NOLOGIN" -a -n "$CHROOTHOME" -a -d "$localdownloads" ]; then
-    bindmount "$localdownloads" "$CHROOTHOME/Downloads" exec
+# Provide a default /etc/crouton/shares file
+shares="`fixabslinks '/etc/crouton/shares'`"
+if [ -e "$shares" -a ! -f "$shares" ]; then
+    echo "Not mounting shares: /etc/crouton/shares is not a file." 1>&2
+elif [ ! -f "$shares" ]; then
+    cat > "$shares" <<EOF
+# Defines directories to map into the chroot from the host.
+# Order is important: be sure to mount directories before you mount
+# subdirectories of those mounts.
+# The only directories that can be mapped from outside of the chroot are
+# subdirectories of the following locations:
+#  downloads: ~/Downloads
+#  shared: /mnt/stateful_partition/crouton/shared
+#  encrypted: ~/crouton/shared
+# Inside the chroot, any absolute or user-relative path (~/x or ~user/x) is OK.
+# Syntax is as follows:
+#  HOSTDIR CHROOTDIR [OPTIONS]
+# Directory names can have spaces (if quoted), but no quote characters or
+# relative path elements (..'s).
+# Options can be any options to mount. If unspecified, "exec" is assumed.
+
+# Examples:
+#  Share a home directory encrypted by the current user's unsynced profile
+#   encrypted/home ~
+#  Share an unencrypted directory between chroots.
+#   shared/home ~/Share
+#  Absolute directories on the chroot side work too
+#   shared/bin /usr/local/bin exec,suid
+#  Share a noexec path that has spaces, and a specific user home directory
+#   "encrypted/stupid example" "~omg/Why are you even doing this?" noexec
+
+# Share the downloads folder of the current user's profile
+downloads ~/Downloads
+EOF
+fi
+# Bind-mount the stuff in $CHROOT/etc/crouton/shares, unless NOLOGIN is set
+if [ -z "$NOLOGIN" -a -f "$shares" ]; then
+    localdownloads='/home/chronos/user/Downloads'
+    if [ ! -d "$localdownloads" ]; then
+        localdownloads=''
+    fi
+    localencrypted='/home/chronos/user/crouton/shared'
+    if [ ! -d "/home/chronos/user" ]; then
+        localencrypted=''
+    fi
+    localshare='/mnt/stateful_partition/crouton/shared'
+    # Parse file and split into three lines: src, dest, options
+    awk '
+        BEGIN {
+            PARAMMATCH = "^[ \t]*(\"[^\"]+\"|[^ \t\"]+)([ \t]"
+        }
+        function strip(s) {
+            if (index(s, "\"")) {
+                sub("[ \t]*\"", "", s)
+                sub("\"[ \t]*", "", s)
+            } else {
+                gsub("[ \t]", "", s)
+            }
+            return s
+        }
+        $1 ~ /^#/ { next }
+        match($0, PARAMMATCH ")") {
+            dest = substr($0, RLENGTH+1)
+            src = strip(substr($0, 1, RLENGTH))
+            if (match(dest, PARAMMATCH "|$)")) {
+                opts = strip(substr(dest, RLENGTH+1))
+                dest = strip(substr(dest, 1, RLENGTH))
+                if (src && dest ~ "^[/~]" && opts ~ "^[a-z,]*$") {
+                    # Ensure that they end in slashes
+                    if (src !~ "/$")
+                        src = src "/"
+                    if (dest !~ "/$")
+                        dest = dest "/"
+                    # .. path elements are not allowed
+                    if (src !~ "/../" && dest !~ "/../") {
+                        print src
+                        print dest
+                        print opts
+                        next
+                    }
+                }
+            }
+        }
+        /./ {
+            print "Invalid syntax in /etc/crouton/shares on line " NR ":\n  " \
+                  $0 > "/dev/stderr"
+        }
+    ' "$shares" | while read -r src && read -r dest && read -r opts; do
+        line="\n  \"$src\" \"$dest\" $opts"
+        # Expand src
+        case "${src%%/*}" in
+            download|downloads)
+                if [ -z "$localdownloads" ]; then
+                    echo "Not mounting share (no Chromium OS user):$line" 1>&2
+                    continue
+                fi
+                src="$localdownloads/${src#*/}";;
+            encrypt|encrypted)
+                if [ -z "$localencrypted" ]; then
+                    echo "Not mounting share (no Chromium OS user):$line" 1>&2
+                    continue
+                fi
+                src="$localencrypted/${src#*/}";;
+            share|shares|shared)
+                src="$localshare/${src#*/}";;
+            *)
+                echo "Invalid share:$line" 1>&2
+                continue;;
+        esac
+        # Expand dest for homedirs
+        if [ "${dest#~}" != "$dest" ]; then
+            destuser="${dest%%/*}"
+            if [ "$destuser" = '~' ]; then
+                if [ -z "$CHROOTHOME" ]; then
+                    echo "Not mounting share (no chroot user):$line" 1>&2
+                    continue
+                fi
+                dest="$CHROOTHOME/${dest#*/}"
+            else
+                dest="/home/${destuser#~}/${dest#*/}"
+            fi
+        fi
+        # Do the bindmount
+        mkdir -m 700 -p "$src"
+        if ! bindmount "$src" "$dest" "${opts:-exec}"; then
+            echo "Failed to mount share:$line" 1>&2
+        fi
+    done
+fi
+
+# Bind-mount /sys recursively, making it a slave in the chroot
+if ! mountpoint -q "$CHROOT/sys"; then
+    mkdir -p "$CHROOT/sys"
+    mount --make-rshared /sys
+    mount --rbind /sys "$CHROOT/sys"
+    mount --make-rslave "$CHROOT/sys"
+fi
+
+# Get croutonversion variables
+croutonversion="$CHROOT/usr/local/bin/croutonversion"
+CHROOTRELEASE="unknown"
+if [ -x "$croutonversion" ]; then
+    CHROOTRELEASE="`"$croutonversion" -r 2>/dev/null || echo "$CHROOTRELEASE"`"
 fi
 
 # For test machines with low entropy, bind mount /dev/urandom to /dev/random
@@ -372,8 +546,8 @@ fi
 # so that users have access to shared hardware, such as video and audio.
 gfile="$CHROOT/etc/group"
 if [ -f "$gfile" ]; then
-    for group in audio:hwaudio cras:audio cdrom disk floppy i2c input lp \
-                 serial tape tty usb:plugdev uucp video; do
+    for group in audio:hwaudio cras:audio cdrom devbroker-access disk floppy \
+                 i2c input lp serial tape tty usb:plugdev uucp video; do
         hostgroup="${group%:*}"
         chrootgroup="${group#*:}"
         gid="`awk -F: '$1=="'"$hostgroup"'"{print $3; exit}' '/etc/group'`"
@@ -453,6 +627,46 @@ if [ ! "$NOLOGIN" = 1 ] && grep -q '^root:' "$passwd" 2>/dev/null; then
         echo "WARNING: starting chroot system dbus daemon failed with code $ret" 1>&2
         ret=0
     fi
+
+    # Launch systemd-logind if available and not already running
+    # Whitelisted for saucy and trusty
+    systemd_dir="`fixabslinks '/run/systemd'`"
+    if [ -x "$CHROOT/lib/systemd/systemd-logind" ] && \
+            [ ! -d "$systemd_dir" ] && \
+            [ "$CHROOTRELEASE" = 'saucy' -o "$CHROOTRELEASE" = 'trusty' ]; then
+        # Every piece of systemd code ever assumes that this directory exists
+        mkdir -p "$systemd_dir"
+
+        # Create systemd cgroup if necessary
+        if ! mountpoint -q "$CHROOT/sys/fs/cgroup/systemd"; then
+            mkdir -p "$CHROOT/sys/fs/cgroup/systemd"
+            mount -t cgroup -o nosuid,noexec,nodev,none,name=systemd systemd \
+                  "$CHROOT/sys/fs/cgroup/systemd"
+        fi
+        # systemd-logind doesn't fork
+        chrootcmd "/lib/systemd/systemd-logind >/dev/null 2>&1 </dev/null &"
+    fi
+
+    # Launch a daemon that can kill frecon when an X server is launched.
+    # FIXME: remove when crbug.com/457075 is resolved
+    if [ -f /sbin/frecon ]; then
+        mkdir -p "$CROUTONLOCKDIR"
+        chmod 777 "$CROUTONLOCKDIR"
+        if [ ! -e "$CROUTONLOCKDIR/frecon" ]; then
+            mkfifo "$CROUTONLOCKDIR/frecon"
+            chmod 622 "$CROUTONLOCKDIR/frecon"
+        fi
+        chrootcmd "(exec >/dev/null 2>&1 </dev/null
+            while read -r cmd <'$CROUTONLOCKDIR/frecon'; do
+                if [ \"\$cmd\" = $$ ]; then
+                    break
+                elif [ -z \"\$cmd\" ]; then
+                    pkill '^frecon\$' || true
+                fi
+            done
+        ) &"
+        addtrap "(echo $$ >> '$CROUTONLOCKDIR/frecon') & :"
+    fi
 fi
 
 # Start the chroot and any specified command
@@ -462,7 +676,7 @@ if [ -n "$NOLOGIN" ]; then
     if [ "$NOLOGIN" = 2 ]; then
         # If it succeeded yet still exists, run it again.
         if [ "$ret" = 0 -a -f "$CHROOT$SETUPSCRIPT" ]; then
-            sh -e "$BINDIR/unmount-chroot" -yxc "$CHROOTS" "$NAME"
+            sh -e "$BINDIR/unmount-chroot" -yxc "$CHROOTS" -- "$NAME"
             # We don't need to return from this.
             exec sh -e "$BINDIR/enter-chroot" -c "$CHROOTS" -n "$NAME" -xx
         elif [ ! "$ret" = 0 ]; then
@@ -470,10 +684,16 @@ if [ -n "$NOLOGIN" ]; then
         fi
     fi
 else
-    # Run rc.local
+    # Check and run rc.local
     if [ -n "$firstrun" -a -x "$CHROOT/etc/rc.local" ]; then
+        ( sleep 10; echo "Still running chroot's rc.local..." 2>&1 ) &
+        noticepid="$!"
+        addtrap "kill '$noticepid' 2>/dev/null"
         chrootcmd 'exec /etc/rc.local >/dev/null 2>/dev/null </dev/null' \
             || ret=$?
+        undotrap
+        kill "$noticepid" 2>/dev/null || true
+        wait "$noticepid" || true
         if [ ! "$ret" = 0 ]; then
             echo "WARNING: /etc/rc.local failed with code $ret" 1>&2
             ret=0
@@ -485,6 +705,9 @@ else
     else
         # Escape out the command
         cmd="export SHELL='$CHROOTSHELL';"
+        if [ -n "$TMPXMETHOD" ]; then
+            cmd="$cmd export XMETHOD='$TMPXMETHOD';"
+        fi
         for param in "$@"; do
             cmd="$cmd'`echo -n "$param" | sed "s/'/'\\\\\\''/g"`' "
         done

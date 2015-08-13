@@ -1,11 +1,15 @@
 #!/bin/sh -e
-# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2015 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 # All supported releases should be able to create a core chroot and enter it.
-for release in $SUPPORTED_RELEASES; do
-    crouton -r "$release" -t core
-    host enter-chroot -n "$release" true
-    host delete-chroot -y "$release"
-done
+
+if [ -z "$release" ]; then
+    echo "all"
+    exit 0
+fi
+
+crouton -r "$release" -t core
+host enter-chroot -n "$release" true
+host delete-chroot -y "$release"

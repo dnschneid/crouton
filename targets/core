@@ -1,15 +1,15 @@
 #!/bin/sh -e
-# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2015 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 REQUIRES=''
 DESCRIPTION='Performs core system configuration. Most users would want this.'
-CHROOTBIN='brightness croutonversion host-dbus host-x11'
+CHROOTBIN='brightness croutonpowerd croutonversion host-dbus host-x11'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
 echo 'Preparing environment...' 1>&2
-if [ ! "$VERSION" = '#VERSION' ]; then
+if [ ! "$VERSION" = '#VERSION#' ]; then
     sed -e "s ^VERSION=.*\$ VERSION='$VERSION' ;" \
         -e "s ^RELEASE=.*\$ RELEASE='$RELEASE' ;" \
         -e "s ^ARCH=.*\$ ARCH='$ARCH' ;" \
@@ -21,8 +21,11 @@ oldenv='/etc/environment'
 newenv='/etc/environment.new'
 {
     echo '### begin crouton-generated environment variables'
-    if [ "$PROXY" = 'unspecified' -o "$PROXY" = '#PROXY' ]; then
-        grep -i '^[a-z]*_proxy' "$oldenv" 2>/dev/null || true
+    if [ "$PROXY" = 'unspecified' -o "$PROXY" = '#PROXY#' ]; then
+        # Copy over previously generated content
+        awk '/^### end/ { exit }
+             x && tolower($0) ~ /^[a-z]*_proxy=/
+             /^### begin/ { x=1 }' "$oldenv" 2>/dev/null || true
     elif [ -n "$PROXY" ]; then
         for var in http_proxy HTTP_PROXY https_proxy HTTPS_PROXY \
                    ftp_proxy FTP_PROXY; do
@@ -33,16 +36,21 @@ newenv='/etc/environment.new'
         done
     fi
     echo '### end crouton-generated environment variables'
-    # Copy in previous user-environment settings
-    if [ -r "$oldenv" ]; then
-        awk '/^### begin/{x=1}!x;/^### end/{x=0}' "$oldenv"
-    fi
 } > "$newenv"
+
+# Set proxy variables for this script
+. "$newenv"
+export http_proxy https_proxy ftp_proxy
+
+# Copy in previous user-environment settings
+if [ -r "$oldenv" ]; then
+    awk '/^### begin/{x=1}!x;/^### end/{x=0}' "$oldenv" >> "$newenv"
+fi
 mv -f "$newenv" "$oldenv"
 
 if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
     echo 'Preparing software sources...' 1>&2
-    if [ ! "$PROXY" = 'unspecified' -a ! "$PROXY" = '#PROXY' ]; then
+    if [ ! "$PROXY" = 'unspecified' -a ! "$PROXY" = '#PROXY#' ]; then
         aptproxy='/etc/apt/apt.conf.d/80croutonproxy'
         if [ -z "$PROXY" ]; then
             rm -f "$aptproxy"
@@ -58,6 +66,7 @@ EOF
     # Only update sources.list if MIRROR is specified
     if [ -n "$MIRROR" -a "$MIRROR" != 'unspecified' ]; then
         if [ "$DISTRO" = 'ubuntu' ]; then
+            # Ubuntu has its own categories of packages
             cat > /etc/apt/sources.list <<EOF
 deb $MIRROR $RELEASE main restricted universe multiverse
 deb-src $MIRROR $RELEASE main restricted universe multiverse
@@ -66,28 +75,32 @@ deb-src $MIRROR $RELEASE-updates main restricted universe multiverse
 deb $MIRROR $RELEASE-security main restricted universe multiverse
 deb-src $MIRROR $RELEASE-security main restricted universe multiverse
 EOF
-        elif [ "$DISTRO" = 'kali' ]; then
+        else
+            # Not all Debian distros have all sets of repos
             cat > /etc/apt/sources.list <<EOF
 deb $MIRROR $RELEASE main non-free contrib
-deb $MIRROR2 $RELEASE main non-free contrib
-deb-src $MIRROR $RELEASE main contrib
+deb-src $MIRROR $RELEASE main non-free contrib
 EOF
-
-        else
-            cat > /etc/apt/sources.list <<EOF
-deb $MIRROR $RELEASE main contrib
-deb-src $MIRROR $RELEASE main contrib
-EOF
+            # Only stable and testing have an updates channel
             if release -lt jessie; then
                 cat >> /etc/apt/sources.list <<EOF
-deb $MIRROR $RELEASE-updates main contrib
-deb-src $MIRROR $RELEASE-updates main contrib
+deb $MIRROR $RELEASE-updates main non-free contrib
+deb-src $MIRROR $RELEASE-updates main non-free contrib
+EOF
+            fi
+            # Some derivatives also have security updates
+            if release -lt jessie -eq kali; then
+                cat >> /etc/apt/sources.list <<EOF
+deb $MIRROR2 $RELEASE/updates main non-free contrib
+deb-src $MIRROR2 $RELEASE/updates main non-free contrib
 EOF
             fi
         fi
     fi
 
-    apt-get -y update
+    # Update the package list.
+    # Ignore failures, as most are due to bad PPAs and are not critical.
+    apt-get -y update || true
 
     echo 'Ensuring system is up-to-date...' 1>&2
     apt-get -y dist-upgrade
@@ -97,12 +110,14 @@ fi
 fixkeyboardmode
 
 # Install critical packages
-install --minimal sudo wget ca-certificates
+install --minimal sudo wget ca-certificates apt-transport-https
 
 # Generate and set default locale
 if [ ! -f '/etc/default/locale' ] && hash locale-gen 2>/dev/null; then
     locale-gen --lang en_US.UTF-8
-    update-locale LANG=en_US.UTF-8
+    if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
+        dpkg-reconfigure locales
+    fi
 fi
 
 # Link debian_chroot to the chroot name

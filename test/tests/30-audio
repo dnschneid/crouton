@@ -1,95 +1,60 @@
 #!/bin/sh -e
-# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2015 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 # All supported releases should be able to create an audio chroot and play sound
-for release in $SUPPORTED_RELEASES; do
-    snapshot "$release" core
-    crouton -u -n "$release" -t audio
+if [ -z "$release" ]; then
+    echo "all"
+    exit 0
+fi
 
-    # We pass -fdat to aplay/arecord, which means 48kHz, 16-bit, stereo.
-    # dd writes/reads 8 blocks of 48000 bytes: 2 seconds worth of sound.
-    host enter-chroot -n "$release" sh -exc '
-        cras_test_client --dump_server_info
-        dd if=/dev/zero bs=48000 count=8 | aplay -fdat -v
-        arecord -fdat -v | dd of=/dev/null bs=48000 count=8 iflag=fullblock
+snapshot "$release" audio
+
+# We pass -fdat to aplay/arecord, which means 48kHz, 16-bit, stereo.
+# dd writes/reads 8 blocks of 48000 bytes: 2 seconds worth of sound.
+exitswithin 0 30 host enter-chroot -n "$release" sh -exc '
+    cras_test_client --dump_server_info
+    dd if=/dev/zero bs=48000 count=8 | aplay -fdat -v
+    arecord -fdat -v | dd of=/dev/null bs=48000 count=8 iflag=fullblock
+'
+
+# On x86_64 systems, test x86 client
+if [ "`uname -m`" = "x86_64" ]; then
+    echo '
+        mkdir -p /home/tmp
+        if [ "${DISTROAKA:-"$DISTRO"}" = "debian" ]; then
+            (
+                cd /home/tmp
+                apt-get download alsa-utils:i386
+                dpkg -x alsa-utils_*_i386.deb .
+                mv usr/bin/* .
+            )
+        else
+            # Other distributions must be implemented or explicitly ignored
+            error 1 "Cannot fetch alsa-utils:i386 for $DISTRO"
+        fi
+    ' | crouton -T -U -n "$release"
+
+    exitswithin 0 30 host enter-chroot -n "$release" sh -exc '
+        /usr/local/i386-linux-gnu/bin/cras_test_client --dump_server_info
+        dd if=/dev/zero bs=48000 count=8 | \
+                /home/tmp/aplay -fdat -v
+        /home/tmp/arecord -fdat -v | \
+                dd of=/dev/null bs=48000 count=8 iflag=fullblock
     '
+fi
 
-    # On x86_64 systems, test x86 client
-    if [ "`uname -m`" = "x86_64" ]; then
-        echo '
-            mkdir -p /home/tmp
-            if [ "${DISTROAKA:-"$DISTRO"}" = "debian" ]; then
-                (
-                    cd /home/tmp
-                    apt-get download alsa-utils:i386
-                    dpkg -x alsa-utils_*_i386.deb .
-                    mv usr/bin/* .
-                )
-            else
-                # Other distributions must be implemented or explicitly ignored
-                error 1 "Cannot fetch alsa-utils:i386 for $DISTRO"
-            fi
-        ' | crouton -T -U -n "$release"
+echo 'install pulseaudio pulseaudio-utils' | \
+    crouton -T -U -n "$release"
+exitswithin 0 30 host enter-chroot -n "$release" sh -exc '
+    pulseaudio --start
+    echo | pacat -v
+    dd if=/dev/zero bs=48000 count=8 | aplay -f dat -Dpulse -v
+    arecord -fdat -Dpulse -v | \
+        dd if=/dev/null bs=48000 count=8 iflag=fullblock
+    cras_test_client --dump_server_info
+    pulseaudio --kill
+'
 
-        host enter-chroot -n "$release" sh -exc '
-            /usr/local/i386-linux-gnu/bin/cras_test_client --dump_server_info
-            dd if=/dev/zero bs=48000 count=8 | \
-                    /home/tmp/aplay -fdat -v
-            /home/tmp/arecord -fdat -v | \
-                    dd of=/dev/null bs=48000 count=8 iflag=fullblock
-        '
-    fi
-
-    echo 'install --minimal pulseaudio pulseaudio-utils' | \
-            crouton -T -U -n "$release"
-    host enter-chroot -n "$release" sh -exc '
-        pulseaudio --start
-        echo | pacat -v
-        dd if=/dev/zero bs=48000 count=8 | aplay -f dat -Dpulse -v
-        arecord -fdat -Dpulse -v | \
-            dd if=/dev/null bs=48000 count=8 iflag=fullblock
-        cras_test_client --dump_server_info
-        pulseaudio --kill
-    '
-    host delete-chroot -y "$release"
-done
-
-# For a single release, check if the audio target can compile a number of recent
-# ADHD branches (release-*, stabilize-* and master branch).
-
-# Note: This assumes that branches are sorted alphabetically, and therefore
-# release branches appear before stabilize ones.
-# We match recent release-* branches, then stabilize-* branches ahead of the
-# latest release branch, and finally master.
-ADHD_HEADS="`wget --quiet -O- \
-'https://chromium.googlesource.com/chromiumos/third_party/adhd/+refs/heads?format=TEXT' \
-    | awk '
-    BEGIN {
-        # Do not test any release before R28 (stable as of 2013-07-30)
-        minrel=28
-    }
-    $2 ~ /.*release-R[0-9]+-[0-9]+/ {
-        split($2, s, /[-\.]R?/)
-        if (s[2] >= minrel) {
-           print $2
-           minstab=s[3]
-        }
-    }
-    minstab && $2 ~ /.*stabilize-[0-9]+/ {
-        split($2, s, /[-\.]/)
-        if (s[2] > minstab) {
-           print $2
-        }
-    }
-    END {
-        print "master"
-    }
-'`"
-
-for adhd_head in $ADHD_HEADS; do
-    snapshot "$RELEASE" core
-    echo "ADHD_HEAD='$adhd_head'" | crouton -T -u -n "$RELEASE" -t audio
-    host delete-chroot -y "$RELEASE"
-done
+host delete-chroot -y "$release"

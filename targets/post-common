@@ -1,5 +1,5 @@
 #!/bin/sh -e
-# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2015 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -35,18 +35,18 @@ if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
 fi
 
 # Add the primary user
-groups='audio,video,sudo,plugdev'
+groups='audio,input,video,sudo,plugdev'
 if ! grep -q ':1000:' /etc/passwd; then
     while ! echo "$username" | grep -q '^[a-z][-a-z0-9_]*$'; do
         if [ -n "$username" ]; then
-            echo 'Username must be lowercase letters, numbers, or dashes.' 1>&2
+            echo_tty 'Username must be lowercase letters, numbers, or dashes.'
         fi
-        echo -n 'Please specify a username for the primary user: ' 1>&2
+        echo_tty -n 'Please specify a username for the primary user: '
         if [ -n "$USERNAME" ]; then
             username="$USERNAME"
             echo "$username" 1>&2
         else
-            read username junk
+            read -r username junk
         fi
     done
     useradd -u 1000 -G "$groups" -s '/bin/bash' -m "$username"

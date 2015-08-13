@@ -1,5 +1,5 @@
 #!/bin/sh -e
-# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2015 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -31,8 +31,8 @@ esac
 host-dbus dbus-send --system --dest=org.chromium.PowerManager \
           --type=method_call $print /org/chromium/PowerManager \
           org.chromium.PowerManager.${precmd}${device}Brightness${postcmd} | {
-    read junk
-    read double percent
+    read -r junk
+    read -r double percent
     if [ -n "$print" ]; then
         echo "${percent%.*}"
     fi

@@ -1,5 +1,5 @@
 #!/bin/sh -e
-# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2015 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 #
@@ -10,27 +10,19 @@ VERBOSE=''
 
 . "`dirname "$0"`/../installer/functions"
 
-PIPEDIR='/tmp/crouton-ext'
-PIPEIN="$PIPEDIR/in"
-PIPEOUT="$PIPEDIR/out"
-PIPELOCK="$PIPEDIR/lock"
-
-# Write a command to croutonwebsocket, and read back response
-websocketcommand() {
-    # Check that $PIPEDIR and the FIFO pipes exist
-    if ! [ -d "$PIPEDIR" -a -p "$PIPEIN" -a -p "$PIPEOUT" ]; then
-        echo "EError $PIPEIN or $PIPEOUT are not pipes."
-        exit 0
-    fi
-
+# rundisplay :X cmd ...
+# Run a command on the specified display
+rundisplay() {
+    local disp="$1"
+    shift
     (
-        flock 5
-        cat > "$PIPEIN"
-        cat "$PIPEOUT"
-    ) 5>"$PIPELOCK"
+        # If display is :0, setup XAUTHORITY
+        if [ "$disp" = ":0" ]; then
+            eval "`host-x11`" 2>/dev/null
+        fi
+        DISPLAY="$disp" "$@"
+    )
 }
-
-current=''
 
 copyclip() {
     next="$1"
@@ -38,22 +30,25 @@ copyclip() {
     # Do not copy if next is empty (display cannot be detected), or
     # if current == next. Also set current=$next if $current is empty
     if [ -z "$next" -o "${current:="$next"}" = "$next" ]; then
+        if [ -n "$VERBOSE" ]; then
+            echo "==Current: $current==Next: $next==" 1>&2
+        fi
         return 0
     fi
 
     if [ -n "$VERBOSE" ]; then
-        echo ">>Current: $current>>"
+        echo ">>Current: $current>>" 1>&2
     fi
 
     # Copy clipboard content from the current display
     {
-        if [ "$current" = ':0' ]; then
+        if [ "$current" = 'cros' ]; then
             echo -n 'R' | websocketcommand
         else
             # Check if display is still running
-            if DISPLAY="$current" xdpyinfo >/dev/null 2>&1; then
+            if rundisplay "$current" xdpyinfo >/dev/null 2>&1; then
                 echo -n 'R'
-                DISPLAY="$current" xclip -o -sel clip
+                rundisplay "$current" xclip -o -sel clip
             else
                 echo -n "EUnable to open display '$current'."
             fi
@@ -68,7 +63,7 @@ copyclip() {
         fi
 
         # Paste clipboard content to the next display
-        if [ "$next" = ':0' ]; then
+        if [ "$next" = 'cros' ]; then
             STATUS="`(echo -n 'W'; cat) | websocketcommand`"
             if [ "$STATUS" != 'WOK' ]; then
                 # Write failed, skip Chromium OS (do not update $current)
@@ -82,14 +77,15 @@ copyclip() {
             trap "rm -f '$cliptmp'" 0
             cat > $cliptmp
 
-            if ! DISPLAY="$next" xclip -o -sel clip | diff -q - "$cliptmp" > /dev/null; then
-                cat "$cliptmp" | DISPLAY="$next" xclip -i -sel clip
+            if ! rundisplay "$next" xclip -o -sel clip \
+                    | diff -q - "$cliptmp" > /dev/null; then
+                cat "$cliptmp" | rundisplay "$next" xclip -i -sel clip
             fi
         fi
     ) && current="$next"
 
     if [ -n "$VERBOSE" ]; then
-        echo "<<Next: $current<<"
+        echo "<<Next: $current<<" 1>&2
     fi
 }
 
@@ -99,7 +95,7 @@ waitwebsocket() {
     timeout=10
     while [ $timeout -gt 0 ]; do
         if [ -n "$VERBOSE" ]; then
-            echo "Ping..."
+            echo "Ping..." 1>&2
         fi
 
         # Prepare and send a ping message
@@ -107,13 +103,13 @@ waitwebsocket() {
         STATUS="`echo -n "$MSG" | websocketcommand`"
         if [ "$STATUS" = "$MSG" ]; then
             if [ -n "$VERBOSE" ]; then
-                echo "OK!"
+                echo "OK!" 1>&2
             fi
             return 0
         fi
 
         if [ -n "$VERBOSE" ]; then
-            echo "$STATUS"
+            echo "$STATUS" 1>&2
         fi
 
         sleep 1
@@ -122,116 +118,56 @@ waitwebsocket() {
     echo "Timeout waiting for extension to connect." >&2
 }
 
-croutonwebsocket &
-addtrap "kill $! 2>/dev/null"
-
-xmethod="`readlink -f '/etc/X11/xinit/xserverrc'`"
-xmethod="${xmethod##*-}"
-
-# For both x11/xephyr, the code works as follow:
-#  - A command outputs one line per event (window/tty change).
-#  - In a second subshell, read these events, one by one, and transfer the
-#    clipboard content.
-# This makes sure we do not miss any events and that we copy the clipboard
-# around in the right sequence.
-
 # Assume current display is Chromium OS: avoid race as we may not be able to
 # detect the first VT/window change.
-current=':0'
+current='cros'
 
-if [ "$xmethod" = 'xephyr' ]; then
-    # Wait for ratpoison to come up
-    while ! host-x11 xprop -root _NET_WM_NAME | grep -q 'ratpoison'; do
-        sleep .1
-    done 2>&-
-
-    # Get the aura root window number (hex)
-    aura="`host-x11 xwininfo -root -children | mawk '/aura_root/ {print $1}'`"
-
-    # Detect window change using MapNotify events that do not have the
-    # override-redirect flag ("override NO" in xev events)
-    {
-        host-x11 xev -root &
-        cpid=$!
-        addtrap "kill $cpid 2>/dev/null"
-        if ! wait $cpid; then
-            echo "croutonclip: xev error ($?)"
-        fi
-    } | mawk -W interactive '
-        BEGIN {
-            # Detect current window in case we missed the first MapNotify.
-            while (("host-x11 xdpyinfo" | getline) > 0) {
-                if (match($0, /^focus:.*window 0x[0-9a-f]*/)) {
-                    print $3
-                }
-            }
-        }
-        m {
-            if ($6 == "NO") {
-                print $4 # Window id
-            }
-            m = 0
-        }
-        /^MapNotify/ {
-            m = 1
-        }
-    ' | {
-        # Wait for extension to connect (do not fail even if it times out)
-        waitwebsocket
-
-        while read line; do
-            # Translate window id to display number
-            id="${line%,}"
-            if [ "$id" = "$aura" ]; then
-                display=":0"
-            else
-                # This relies on WM_NAME looking like "Xephyr on :1.0 (...)"
-                display="`host-x11 xprop -format WM_NAME 8s '\t$0' \
-                        -id "$id" WM_NAME | cut -f 2 | \
-                        sed -n -e 's/^\"Xephyr on \(:[0-9]\{1,\}\).*$/\1/p'`"
-            fi
-
-            copyclip "$display"
-        done
-    }
-elif [ "$xmethod" = 'x11' ]; then
-    # croutonvtmonitor first prints the current tty, so we are sure not to
-    # miss the initial VT change.
-    {
-        croutonvtmonitor &
-        cpid=$!
-        addtrap "kill $cpid 2>/dev/null"
-        if ! wait $cpid; then
-            echo "croutonclip: croutonvtmonitor error ($?)"
-        fi
-    } | {
-        # Wait for extension to connect (do not fail even if it times out)
-        waitwebsocket
-
-        while read tty; do
-            display=''
-            if [ "$tty" = "tty1" ]; then
-                display=":0"
-            else
-                # Find which process owns the tty
-                process="`ps -o pid= -t "$tty" | sed 's/ //g'`"
-
-                if [ -n "$process" ]; then
-                    # Find which display the process owns (if any)
-                    for lock in /tmp/.X*-lock; do
-                        if grep -q "^ *$process$" "$lock"; then
-                            display="${lock#/tmp/.X}"
-                            display=":${display%-lock}"
-                        fi
-                    done
-                fi
-            fi
-
-            copyclip "$display"
-        done
-    }
-else
-    echo "Invalid xmethod='$xmethod'." >&2
+mkdir -m 775 -p "$CROUTONLOCKDIR"
+exec 3>>"$CROUTONLOCKDIR/clip"
+if ! flock -n 3; then
+    echo "Another instance of croutonclip running, waiting..."
+    flock 3
 fi
+
+addtrap "echo -n > '$CROUTONLOCKDIR/clip' 2>/dev/null"
+
+(
+    # This subshell handles USR1 signals from croutoncycle.
+    # It prints a line when it receives a signal, or on VT change (we are able
+    # to filter out duplicate notifications).
+
+    # Start croutonwebsocket here to give "wait" something to wait for
+    croutonwebsocket &
+    addtrap "kill $! 2>/dev/null"
+
+    waitwebsocket
+
+    # Update on VT change (if user types Ctrl-Alt instead of Ctrl-Alt-Shift)	
+    if hash croutonvtmonitor 2>/dev/null; then
+       croutonvtmonitor &
+       addtrap "kill $! 2>/dev/null"
+    fi
+
+    trap "echo 'USR1'" USR1
+
+    # Set the PID of this subshell after the trap is in place
+    sh -c 'echo -n "$PPID"' > "$CROUTONLOCKDIR/clip"
+
+    # Force an update when started.
+    echo "Force"
+
+    # Wait until all the children have terminated (gets interrupted on signal,
+    # which gives handlers a chance to run)
+    while ! wait; do
+        :
+    done
+) | (
+    # Do not hold the lock in this subshell and children (especially xclip)
+    exec 3>/dev/null
+    while read -r line; do
+        display="`croutoncycle display`"
+        copyclip "$display"
+    done
+)
 
 exit 1

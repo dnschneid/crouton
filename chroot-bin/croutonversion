@@ -1,5 +1,5 @@
 #!/bin/sh -e
-# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2015 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -10,15 +10,16 @@ ARCH='unknown'
 APPLICATION="${0##*/}"
 CHANGES=''
 DOWNLOAD=''
-DEST="$HOME/Downloads/crouton"
 UPDATES=''
 
 BRANCH="${VERSION##*~}"
 BRANCH="${BRANCH%%:*}"
 COMMIT="${VERSION##*:}"
 CHANGESURL="https://github.com/dnschneid/crouton/compare/$COMMIT..."
-CROUTONURL='http://goo.gl/cZ2PL'
-
+INSTALLER="crouton-$BRANCH"
+INSTALLER="${INSTALLER%-master}"
+CROUTONURL="https://github.com/dnschneid/crouton/raw/releases/$INSTALLER"
+DEST="$HOME/Downloads/$INSTALLER"
 
 USAGE="$APPLICATION [options]
 
@@ -28,6 +29,7 @@ and/or launches a changelog.
 If no options are specified, outputs crouton version information to STDOUT.
 
 Options:
+    -a       Prints the architecture of this chroot to stdout.
     -c       Launches a browser to view the list of changes.
              If -u is specified, only launches if a newer version exists.
     -d       Downloads the latest version of crouton to the location specified.
@@ -35,6 +37,7 @@ Options:
     -f FILE  Changes the destination of the downloaded crouton.
              Default: $DEST
     -h       Prints out usage.
+    -r       Prints the release of this chroot to stdout.
     -u       Checks for updates, and prints out the updated version number."
 
 
@@ -47,11 +50,13 @@ error() {
 }
 
 # Process arguments
-while getopts 'cdf:u' f; do
+while getopts 'acdf:ru' f; do
     case "$f" in
+    a) echo "$ARCH"; exit 0;;
     c) CHANGES='y';;
     d) DOWNLOAD='y';;
     f) DEST="$OPTARG";;
+    r) echo "$RELEASE"; exit 0;;
     u) UPDATES='y';;
     \?) error 2 "$USAGE";;
     esac
@@ -67,6 +72,10 @@ if [ -z "$CHANGES$DOWNLOAD$UPDATES" ]; then
     echo "crouton: version $VERSION"
     echo "release: $RELEASE"
     echo "architecture: $ARCH"
+    xmethodfile='/etc/crouton/xmethod'
+    if [ -r "$xmethodfile" ]; then
+        echo "xmethod: `cat "$xmethodfile"`"
+    fi
     targetfile='/etc/crouton/targets'
     if [ -r "$targetfile" ]; then
         echo "targets: `sed 's/^,//' "$targetfile"`"
@@ -76,6 +85,12 @@ if [ -z "$CHANGES$DOWNLOAD$UPDATES" ]; then
         host="`awk -F= '/_RELEASE_DESCRIPTION=/{print $2}' "$hostrel"`"
     fi
     echo "host: version ${host:-unknown}"
+    echo "kernel: $(uname -a)"
+    freon="yes"
+    if [ -f /sys/class/tty/tty0/active ]; then
+        freon="no"
+    fi
+    echo "freon: $freon"
     exit 0
 fi
 
@@ -87,9 +102,13 @@ tmpdir=''
 if [ -n "$UPDATES$DOWNLOAD" ]; then
     tmpdir="`mktemp -d --tmpdir=/tmp crouton.XXX`"
     trap "rm -rf --one-file-system '$tmpdir'" INT HUP 0
-    echo "Retreiving latest version of crouton" 1>&2
-    wget -q "$CROUTONURL" -O "$tmpdir/crouton"
-    latest="`awk -F"'" '/^VERSION=/{print $2;exit}' "$tmpdir/crouton"`"
+    echo "Retrieving latest version of $INSTALLER" 1>&2
+    if ! wget "$CROUTONURL" -O "$tmpdir/$INSTALLER" 2>"$tmpdir/log"; then
+        cat "$tmpdir/log" 1>&2
+        echo "Failed to retrieve latest version of $INSTALLER" 1>&2
+        exit 1
+    fi
+    latest="`awk -F"'" '/^VERSION=/{print $2;exit}' "$tmpdir/$INSTALLER"`"
 fi
 
 # Print out latest version number if requested
@@ -102,7 +121,7 @@ fi
 # Save latest version if requested
 if [ -n "$DOWNLOAD" -a ! "$VERSION" = "$latest" ]; then
     echo "Saving latest version to $DEST" 1>&2
-    mv -f "$tmpdir/crouton" "$DEST"
+    mv -f "$tmpdir/$INSTALLER" "$DEST"
 fi
 
 # Launch changelog if requested

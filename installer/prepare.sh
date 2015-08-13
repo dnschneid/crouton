@@ -1,5 +1,5 @@
 #!/bin/sh -e
-# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2015 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -20,11 +20,6 @@ fi
 
 # We need all paths to do administrative things
 export PATH='/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin'
-
-# Apply the proxy for this script
-if [ ! "$PROXY" = 'unspecified' -a "${PROXY#"#"}" = "$PROXY" ]; then
-    export http_proxy="$PROXY" https_proxy="$PROXY" ftp_proxy="$PROXY"
-fi
 
 # Common functions
 . "`dirname "$0"`/../installer/functions"
@@ -134,6 +129,14 @@ install_pkg() {
 }
 
 
+# install_dummy: Installs a dummy package that resolves dependencies. The
+# parameters are a list of crouton-style package names to "install", optionally
+# followed by -- and the packages it depends on.
+install_dummy() {
+    install_dummy_dist `distropkgs "$@"`
+}
+
+
 # remove: Removes the specified packages. See distropkgs() for package syntax.
 remove() {
     remove_dist `distropkgs "$@"`
@@ -170,7 +173,7 @@ fixkeyboardmode() {
                 tty='tty1'
             fi
             if [ -e "/dev/$tty" ]; then
-                kbd_mode -s -C "/dev/$tty"
+                kbd_mode -s -C "/dev/$tty" 2>/dev/null || true
             fi
         done
     fi
@@ -181,20 +184,143 @@ fixkeyboardmode() {
 # stdin to the specified output and strips it. Finally, removes whatever it
 # installed. This allows targets to provide on-demand binaries without
 # increasing the size of the chroot after install.
-# $1: name; target is /usr/local/bin/crouton$1
+# $1: name; target is /usr/local/(bin|lib)/crouton$1[.so]
 # $2: linker flags, quoted together
+# [$3]: if 'so', compiles as a shared object and installs it into lib
 # $3+: any package dependencies other than gcc and libc-dev, crouton-style.
 compile() {
-    local out="/usr/local/bin/crouton$1" linker="$2"
-    echo "Installing dependencies for $out..." 1>&2
+    local out="/usr/local/bin/crouton$1"
+    local linker="$2"
+    local cflags='-xc -Os'
+    if [ "$3" = 'so' ]; then
+        out="/usr/local/lib/crouton$1.so"
+        cflags="$cflags -shared -fPIC"
+        shift 1
+    fi
     shift 2
+    echo "Installing dependencies for $out..." 1>&2
     local pkgs="gcc libc6-dev $*"
     install --minimal --asdeps $pkgs </dev/null
     echo "Compiling $out..." 1>&2
     local tmp="`mktemp crouton.XXXXXX --tmpdir=/tmp`"
     addtrap "rm -f '$tmp'"
-    gcc -xc -Os - $linker -o "$tmp"
+    gcc $cflags - $linker -o "$tmp"
     /usr/bin/install -sDT "$tmp" "$out"
+}
+
+
+# Convert an automake Makefile.am into a shell script, and provide useful
+# functions to compile libraries and executables.
+# Needs to be run in the same directory as the Makefile.am file.
+# This outputs the converted Makefile.am to stdout, which is meant to be
+# piped to sh -s (see audio and xiat for examples)
+convert_automake() {
+    echo '
+        top_srcdir=".."
+        top_builddir=".."
+    '
+    sed -e '
+        # Concatenate lines ending in \
+        : start; /\\$/{N; b start}
+        s/ *\\\n[ \t]*/ /g
+        # Convert automake to shell
+        s/^[^ ]*:/#\0/
+        s/^\t/#\0/
+        s/\t/ /g
+        s/ *= */=/
+        s/\([^ ]*\) *+= */\1=${\1}\ /
+        s/ /\\ /g
+        y/()/{}/
+        s/if\\ \(.*\)/if [ -n "${\1}" ]; then/
+        s/endif/fi/
+    ' 'Makefile.am'
+    echo '
+        # buildsources: Build all source files for target
+        #  $1: target
+        #  $2: additional gcc flags
+        # Prints a list of .o files
+        buildsources() {
+            local target="$1"
+            local extragccflags="$2"
+
+            eval local sources=\"\$${target}_SOURCES\"
+            eval local cppflags=\"\$${target}_CPPFLAGS\"
+            local cflags="$cppflags ${CFLAGS} ${AM_CFLAGS}"
+
+            for dep in $sources; do
+                if [ "${dep%.c}" != "$dep" ]; then
+                    ofile="${dep%.c}.o"
+                    gcc -c "$dep" -o "$ofile" '"$archgccflags"' \
+                        $cflags $extragccflags 1>&2 || return $?
+                    echo -n "$ofile "
+                fi
+            done
+        }
+
+        # fixlibadd:
+        # Fix list of libraries ($1): replace lib<x>.la by -l<x>
+        fixlibadd() {
+            for libdep in $*; do
+                if [ "${libdep%.la}" != "$libdep" ]; then
+                    libdep="${libdep%.la}"
+                    libdep="-l${libdep#lib}"
+                fi
+                echo -n "$libdep "
+            done
+        }
+
+        # buildlib: Build a library
+        #  $1: library name
+        #  $2: additional linker flags
+        buildlib() {
+            local lib="$1"
+            local extraflags="$2"
+            local ofiles
+            # local eats the return status: separate the 2 statements
+            ofiles="`buildsources "${lib}_la" "-fPIC -DPIC"`"
+
+            eval local libadd=\"\$${lib}_la_LIBADD\"
+            eval local ldflags=\"\$${lib}_la_LDFLAGS\"
+
+            libadd="`fixlibadd $libadd`"
+
+            # Detect library version (e.g. 0.0.0)
+            local fullver="`echo -n "$ldflags" | \
+                      sed -n '\''y/:/./; \
+                                 s/.*-version-info \([0-9.]*\)$/\\1/p'\''`"
+            local shortver=""
+            # Get "short" library version (e.g. 0)
+            if [ -n "$fullver" ]; then
+                shortver=".${fullver%%.*}"
+                fullver=".$fullver"
+            fi
+            local fullso="$lib.so$fullver"
+            local shortso="$lib.so$shortver"
+            gcc -shared -fPIC -DPIC $ofiles $libadd -o "$fullso" \
+                '"$archgccflags"' $extraflags -Wl,-soname,"$shortso"
+            if [ -n "$fullver" ]; then
+                ln -sf "$fullso" "$shortso"
+                # Needed at link-time only
+                ln -sf "$shortso" "$lib.so"
+            fi
+        }
+
+        # buildexe: Build an executable file
+        #  $1: executable file name
+        #  $2: additional linker flags
+        buildexe() {
+            local exe="$1"
+            local extraflags="$2"
+            local ofiles="`buildsources "$exe" ""`"
+
+            eval local ldadd=\"\$${exe}_LDADD\"
+            eval local ldflags=\"\$${exe}_LDFLAGS\"
+
+            ldadd="`fixlibadd $ldadd`"
+
+            gcc $ofiles $ldadd -o "$exe" '"$archgccflags"' $extraflags
+        }
+    '
 }
 
 

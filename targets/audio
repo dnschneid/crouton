@@ -1,9 +1,10 @@
 #!/bin/sh -e
-# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2015 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 REQUIRES='core'
 DESCRIPTION='Support audio playback via Chromium OS'\''s audio system.'
+CHROOTBIN='volume'
 CHROOTETC='pulseaudio-default.pa'
 . "${TARGETSDIR:="$PWD"}/common"
 
@@ -17,18 +18,34 @@ addtrap "rm -rf --one-file-system '$CRASBUILDTMP'"
 
 # ADHD_HEAD is normally autodetected, but it can be set manually using a custom
 # target sourced before this one (used for automated testing)
+# The custom target also needs to set CROS_VER_1
+if [ -z "$ADHD_HEAD" ]; then
+    # Chrome OS version (e.g. 4100.86.0)
+    CROS_VER="`sed -n 's/^CHROMEOS_RELEASE_VERSION=//p' /var/host/lsb-release`"
+
+    # Set CROS_VER_1 to the major version number (e.g. 4100), used later on to
+    # selectively apply patches.
+    CROS_VER_1="${CROS_VER%%.*}"
+
+    cras_version="`cat /var/host/cras-version 2>/dev/null || true`"
+    ADHD_HEAD="${cras_version##*-}"
+    # Make sure ADHD_HEAD looks like a commit id
+    if [ "${#ADHD_HEAD}" -ne 40 -o "${head%[^0-9a-f]*}" != "$head" ]; then
+        echo "Empty or invalid cras-version (${cras_version})." 1>&2
+        ADHD_HEAD=""
+    fi
+fi
+
+# TODO: Remove autodetection code (not needed since build 6276)
 if [ -z "$ADHD_HEAD" ]; then
     # Fetch list of branches from repository
     wget -O "$CRASBUILDTMP/adhd.refs" \
 'https://chromium.googlesource.com/chromiumos/third_party/adhd/+refs/heads?format=TEXT'
 
-    # Chrome OS version (e.g. 4100.86.0)
-    CROS_VER="`sed -n 's/^CHROMEOS_RELEASE_VERSION=//p' /var/host/lsb-release`"
+    echo "Detecting CRAS branch (Chromium OS build $CROS_VER)..." 1>&2
 
     ADHD_HEAD="`awk '
         BEGIN {
-            # Default to master if nothing else is found
-            print 0, "master"
             len = split("'"$CROS_VER"'", crosvers, ".")
             # Prepare a regex with each additional version component optional
             for (i = len; i >= 2; i--)
@@ -44,91 +61,62 @@ if [ -z "$ADHD_HEAD" ]; then
             print RLENGTH, $2
         }
     ' "$CRASBUILDTMP/adhd.refs" | sort -V | tail -n 1 | cut -d' ' -f2`"
+
+    # If no branch can be found, fall back on manifests. This should only be
+    # needed on dev or canary channel, and this cannot be used on stable/beta,
+    # as additional patches may be added to the git branch.
+    if [ -z "$ADHD_HEAD" ]; then
+        echo "No CRAS branch found, falling back on manifests..." 1>&2
+
+        MANIFEST_GIT="https://chromium.googlesource.com/chromiumos/manifest-versions/+/master/chrome-LKGM-candidates"
+
+        # Get the list of releases (e.g. 35). Only last 2 should be required.
+        majorlist="`wget -O- "$MANIFEST_GIT/buildspecs" \
+            | tr '>' '\n' | sed -n 's|^\([0-9]*\)/<.*|\1|p' \
+            | sort -n -r | head -n 2`"
+
+        for major in $majorlist; do
+            # Get the latest manifest for the current build
+            manifest="`wget -O- "$MANIFEST_GIT/buildspecs/$major" \
+                 | sed -n 's/.*\('"$CROS_VER_1"'.0.0-rc[0-9]*.xml\).*/\1/p'`"
+
+            if [ -n "$manifest" ]; then
+                # Fetch git commit id
+                ADHD_HEAD="`wget -O- \
+                    "$MANIFEST_GIT/buildspecs/$major/$manifest?format=TEXT" \
+                        | base64 -d \
+| sed -n 's|.*path="src/third_party/adhd".* revision="\([0-9a-f]*\)".*|\1|p'`"
+                break
+            fi
+        done
+    fi
+
+    if [ -z "$ADHD_HEAD" ]; then
+        echo "Cannot figure out CRAS branch or commit ID." 1>&2
+        exit 1
+    fi
 fi
 
 echo "Fetching CRAS (branch $ADHD_HEAD)..." 1>&2
 
-wget -O "$CRASBUILDTMP/adhd.tar.gz" \
-"https://chromium.googlesource.com/chromiumos/third_party/adhd/+archive/$ADHD_HEAD.tar.gz"
+# Try to download the CRAS commit id first, and fall back on master if that is
+# not found (see crbug.com/417820).
 
-# Patch CRAS so that x86 client can connect to x86_64 server (multilib)
-# Assume current directory is "$CRASBUILDTMP"/cras/src
-patch_cras_x86_x86_64() {
-    common="common/cras_shm.h common/cras_messages.h common/cras_iodev_info.h \
-            common/cras_types.h common/cras_audio_format.c"
-    cras_audio_format_h=""
-
-    # Newer versions (>=5062) contain an additional header file
-    if [ -e "common/cras_audio_format.h" ]; then
-        cras_audio_format_h="common/cras_audio_format.h"
+archive="$CRASBUILDTMP/adhd.tar.gz"
+log="$CRASBUILDTMP/wget.log"
+urlbase="https://chromium.googlesource.com/chromiumos/third_party/adhd/+archive"
+( wget -O "$archive" "$urlbase/$ADHD_HEAD.tar.gz" 2>&1 \
+                                    || echo "Error fetching CRAS" ) | tee "$log"
+if tail -n 1 "$log" | grep -q "^Error"; then
+    if grep -q "404 Not Found" "$log" 2>/dev/null; then
+        echo "Branch not found, falling back on master (audio might not work)..." 1>&2
+        ADHD_HEAD="master"
+        wget -O "$archive" "$urlbase/$ADHD_HEAD.tar.gz"
+    else
+        # wget already printed an explicit error
+        exit 1
     fi
-
-    # Replace size_t/long by fixed-size integers corresponding to their
-    # respective sizes on x86_64, aligned on 8-byte boundaries
-    sed -i -e 's/uint64_t[ \t]/aligned_uint64_t /g
-               s/size_t[ \t]/aligned_uint64_t /g
-               s/long[ \t]/aligned_int64_t /g' $common $cras_audio_format_h
-
-    # Hack to make sure sizeof(struct cras_server/client_message) is a
-    # multiple of 8
-    sed -i -e \
-        's/\(enum CRAS_CLIENT_MESSAGE_ID\) id;/\1 __attribute__((aligned(8))) id;/
-         s/\(enum CRAS_SERVER_MESSAGE_ID\) id;/\1 __attribute__((aligned(8))) id;/' \
-        common/cras_messages.h
-
-    # Disable syslog to remove warnings about printf formats
-    sed -i -e '/#include <syslog.h>/a \
-#define syslog(...) do \{\} while(0)' \
-        common/cras_fmt_conv.c libcras/cras_client.c
-
-    # Replace timespec/timeval
-    sed -i -e 's/struct timespec[ \t]/struct cras_timespec /g
-               s/clock_gettime(/cras_clock_gettime(/' \
-        $common $cras_audio_format_h common/cras_util.h \
-        libcras/cras_client.h libcras/cras_client.c \
-        alsa_plugin/pcm_cras.c tests/cras_test_client.c
-    sed -i -e \
-        's/struct timeval/struct { aligned_int64_t tv_sec; aligned_int64_t tv_usec; }/' \
-        common/cras_iodev_info.h
-
-    # Include compat file (it will get included multiple times, but this is
-    # harmless compared to the complexity of a sed script that replaces the
-    # first match only)
-    sed -i -e '/#include.*/i \
-#include "cras_x86_64_compat.h"' common/cras_iodev_info.h $cras_audio_format_h
-
-    # Create a new header file with x86_64 compatibility types: aligned integers
-    # and timespec wrapper.
-    cat > common/cras_x86_64_compat.h <<END
-#ifndef CRAS_X86_64_COMPAT_H_
-#define CRAS_X86_64_COMPAT_H_
-
-#include <stdint.h>
-#include <time.h>
-
-typedef uint64_t __attribute__((aligned(8))) aligned_uint64_t;
-typedef int64_t  __attribute__((aligned(8))) aligned_int64_t;
-
-struct cras_timespec {
-       aligned_int64_t tv_sec;
-       aligned_int64_t tv_nsec;
-};
-
-static inline int cras_clock_gettime(clockid_t clk_id, struct cras_timespec *ctp) {
-    struct timespec tp;
-    int ret = clock_gettime(clk_id, &tp);
-    ctp->tv_sec = tp.tv_sec;
-    ctp->tv_nsec = tp.tv_nsec;
-    return ret;
-}
-#endif
-END
-
-    # Restore uncorrectly replaced timespec, add 2 necessary casts
-    sed -i -e 's/struct cras_timespec sleep_ts;/struct timespec sleep_ts;/
-               s/nodes\[i\].priority/(size_t)nodes[i].priority/
-               s/clients\[i\].id/(size_t)clients[i].id/' tests/cras_test_client.c
-}
+fi
 
 # Build CRAS ALSA plugin for the given architecture ($1)
 # A blank parameter means we are building for the native architecture.
@@ -150,7 +138,7 @@ build_cras() {
         if ! dpkg --print-foreign-architectures | grep -q "^$cras_arch$"; then
             echo "Adding foreign architecture $cras_arch to dpkg..." 1>&2
             dpkg --add-architecture "$cras_arch"
-            apt-get update
+            apt-get update || true
         fi
     fi
 
@@ -178,23 +166,6 @@ build_cras() {
                                 pkg-config --variable=libdir alsa`/alsa-lib"
     fi
 
-    # SBC is not available in older Debian/Ubuntu: fetch it manually
-    if release -le quantal; then
-        install_mirror_package 'libsbc1' \
-                            'pool/main/s/sbc' '1\.0-.*' $cras_arch
-        install_mirror_package --asdeps 'libsbc-dev' \
-                            'pool/main/s/sbc' '1\.0-.*' $cras_arch
-    elif release -le wheezy -eq kali; then
-        # wheezy provides a backport for libsbc1
-        install_mirror_package 'libsbc1' \
-                            'pool/main/s/sbc' '.*~bpo7\+.*' $cras_arch
-        install_mirror_package --asdeps 'libsbc-dev' \
-                            'pool/main/s/sbc' '.*~bpo7\+.*' $cras_arch
-    else
-        install --minimal libsbc1$pkgsuffix
-        install --minimal --asdeps libsbc-dev$pkgsuffix
-    fi
-
     # Start subshell for compilation
     (
         cd "$CRASBUILDTMP"
@@ -207,11 +178,180 @@ build_cras() {
 
         cd cras/src
 
-        # CRAS needs to be patched so that x86 client can access x86_64 server
-        if [ "`uname -m`" = "x86_64" ] &&
-           [ "$ARCH" = "i386" -o "$cras_arch" = "i386" ]; then
-            patch_cras_x86_x86_64
+        # Create version file
+        echo '#define VCSID "crouton-'"$ADHD_HEAD"'"' > common/cras_version.h
+
+        install --minimal --asdeps patch
+
+        # Fix volume control, see crbug.com/415661
+        # Applied upstream in build 6283
+        # FIXME: Remove this when 6283 has trickled down to stable
+        if [ "$CROS_VER_1" -lt 6283 ]; then
+            echo "Patching CRAS (volume control)..." 1>&2
+            patch -p3 <<END
+diff --git a/cras/src/alsa_plugin/ctl_cras.c b/cras/src/alsa_plugin/ctl_cras.c
+index e9a0c47..e9549d9 100644
+--- a/cras/src/alsa_plugin/ctl_cras.c
++++ b/cras/src/alsa_plugin/ctl_cras.c
+@@ -161,21 +161,30 @@
+ 				 long *value)
+ {
+ 	struct ctl_cras *cras = (struct ctl_cras *)ext_ctl->private_data;
++	cras_node_id_t node_id;
++	struct cras_ionode_info node;
+ 
+ 	switch (key) {
+ 	case CTL_CRAS_MIXER_PLAYBACK_SWITCH:
+-		*value = !cras_client_get_system_muted(cras->client);
++		*value = !cras_client_get_user_muted(cras->client);
+ 		break;
+ 	case CTL_CRAS_MIXER_PLAYBACK_VOLUME:
+-		*value = cras_client_get_system_volume(cras->client);
++		node_id = cras_client_get_selected_output(cras->client);
++		if (cras_client_get_node_by_id(cras->client, 0,
++							node_id, &node) < 0)
++			return -EIO;
++		*value = node.volume;
+ 		break;
+ 	case CTL_CRAS_MIXER_CAPTURE_SWITCH:
+ 		*value = !cras_client_get_system_capture_muted(cras->client);
+ 		break;
+ 	case CTL_CRAS_MIXER_CAPTURE_VOLUME:
+-		*value = capture_gain_to_index(
+-			cras->client,
+-			cras_client_get_system_capture_gain(cras->client));
++		node_id = cras_client_get_selected_input(cras->client);
++		if (cras_client_get_node_by_id(cras->client, 1,
++							node_id, &node) < 0)
++			return -EIO;
++		*value = capture_gain_to_index(cras->client,
++						node.capture_gain);
+ 		break;
+ 	default:
+ 		return -EINVAL;
+@@ -189,20 +198,24 @@
+ 				   long *value)
+ {
+ 	struct ctl_cras *cras = (struct ctl_cras *)ext_ctl->private_data;
++	cras_node_id_t node_id;
+ 
+ 	switch (key) {
+ 	case CTL_CRAS_MIXER_PLAYBACK_SWITCH:
+-		cras_client_set_system_mute(cras->client, !(*value));
++		cras_client_set_user_mute(cras->client, !(*value));
+ 		break;
+ 	case CTL_CRAS_MIXER_PLAYBACK_VOLUME:
+-		cras_client_set_system_volume(cras->client, *value);
++		node_id = cras_client_get_selected_output(cras->client);
++		cras_client_set_node_volume(cras->client, node_id, *value);
+ 		break;
+ 	case CTL_CRAS_MIXER_CAPTURE_SWITCH:
+ 		cras_client_set_system_capture_mute(cras->client, !(*value));
+ 		break;
+ 	case CTL_CRAS_MIXER_CAPTURE_VOLUME:
+-		cras_client_set_system_capture_gain(
++		node_id = cras_client_get_selected_input(cras->client);
++		cras_client_set_node_capture_gain(
+ 				cras->client,
++				node_id,
+ 				capture_index_to_gain(cras->client, *value));
+ 		break;
+ 	default:
+END
+
+        cat >>libcras/cras_client.h <<END
+int cras_client_get_user_muted(struct cras_client *client);
+int cras_client_get_node_by_id(const struct cras_client *client,
+			       int input,
+			       const cras_node_id_t node_id,
+			       struct cras_ionode_info* node_info);
+END
+
+        cat >>libcras/cras_client.c <<END
+int cras_client_get_user_muted(struct cras_client *client)
+{
+	if (!client || !client->server_state)
+		return 0;
+	return client->server_state->user_mute;
+}
+
+int cras_client_get_node_by_id(const struct cras_client *client,
+			       int input,
+			       const cras_node_id_t node_id,
+			       struct cras_ionode_info* node_info)
+{
+	size_t ndevs, nnodes;
+	struct cras_iodev_info *devs = NULL;
+	struct cras_ionode_info *nodes = NULL;
+	int rc = -EINVAL;
+	unsigned i;
+
+	if (!client || !node_info) {
+		rc = -EINVAL;
+		goto quit;
+	}
+
+	devs = (struct cras_iodev_info *)
+			malloc(CRAS_MAX_IODEVS * sizeof(*devs));
+	if (!devs) {
+		rc = -ENOMEM;
+		goto quit;
+	}
+
+	nodes = (struct cras_ionode_info *)
+			malloc(CRAS_MAX_IONODES * sizeof(*nodes));
+	if (!nodes) {
+		rc = -ENOMEM;
+		goto quit;
+	}
+
+	ndevs = CRAS_MAX_IODEVS;
+	nnodes = CRAS_MAX_IONODES;
+	if (input)
+		rc = cras_client_get_input_devices(client, devs, nodes,
+						&ndevs, &nnodes);
+	else
+		rc = cras_client_get_output_devices(client, devs, nodes,
+						&ndevs, &nnodes);
+	if (rc < 0)
+		goto quit;
+
+	rc = -ENOENT;
+	for (i = 0; i < nnodes; i++) {
+		if (node_id == cras_make_node_id(nodes[i].iodev_idx,
+						 nodes[i].ionode_idx)) {
+			memcpy(node_info, &nodes[i], sizeof(*node_info));
+			rc = 0;
+			break;
+		}
+	}
+
+quit:
+	free(devs);
+	free(nodes);
+	return rc;
+}
+END
         fi
+
+        # Remove SBC dependency
+        sed -e 's/#include <sbc.*//' -i common/cras_sbc_codec.h
+        cat > common/cras_sbc_codec.c <<END
+#include <stdint.h>
+#include <stdlib.h>
+#include "cras_audio_codec.h"
+
+struct cras_audio_codec *cras_sbc_codec_create(uint8_t freq,
+		   uint8_t mode, uint8_t subbands, uint8_t alloc,
+		   uint8_t blocks, uint8_t bitpool) {
+    abort();
+}
+void cras_sbc_codec_destroy(struct cras_audio_codec *codec) {
+    abort();
+}
+END
+        # Drop SBC constants
+        sed -e 's/SBC_[A-Z0-9_]*/0/g' -i tests/cras_test_client.c
 
         # Directory to install CRAS library/binaries
         CRASLIBDIR="/usr/local$archextrapath/lib"
@@ -220,112 +360,9 @@ build_cras() {
         echo "Compiling CRAS (${cras_arch:-native})..." 1>&2
         # Convert Makefile.am to a shell script, and run it.
         {
+            convert_automake
+
             echo '
-                top_srcdir=".."
-                top_builddir=".."
-                SBC_LIBS="'"`PKG_CONFIG_PATH="$pkgconfigpath" \
-                                                pkg-config --libs sbc`"'"
-                SBC_CFLAGS="'"`PKG_CONFIG_PATH="$pkgconfigpath" \
-                                                pkg-config --cflags sbc`"'"
-            '
-            sed -e '
-                # Concatenate lines ending in \
-                : start; /\\$/{N; b start}
-                s/ *\\\n[ \t]*/ /g
-                # Convert automake to shell
-                s/^[^ ]*:/#\0/
-                s/^\t/#\0/
-                s/ *= */=/
-                s/\([^ ]*\) *+= */\1=${\1}\ /
-                s/ /\\ /g
-                y/()/{}/
-            ' 'Makefile.am'
-            echo '
-                # buildsources: Build all source files for target
-                #  $1: target
-                #  $2: additional gcc flags
-                # Prints a list of .o files
-                buildsources() {
-                    local target="$1"
-                    local extragccflags="$2"
-
-                    eval local sources=\"\$${target}_SOURCES\"
-                    eval local cppflags=\"\$${target}_CPPFLAGS\"
-
-                    for dep in $sources; do
-                        if [ "${dep%.c}" != "$dep" ]; then
-                            ofile="${dep%.c}.o"
-                            gcc -c "$dep" -o "$ofile" '"$archgccflags"' \
-                                $cppflags $extragccflags 1>&2 || return $?
-                            echo -n "$ofile "
-                        fi
-                    done
-                }
-
-                # fixlibadd:
-                # Fix list of libraries ($1): replace lib<x>.la by -l<x>
-                fixlibadd() {
-                    for libdep in $*; do
-                        if [ "${libdep%.la}" != "$libdep" ]; then
-                            libdep="${libdep%.la}"
-                            libdep="-l${libdep#lib}"
-                        fi
-                        echo -n "$libdep "
-                    done
-                }
-
-                # buildlib: Build a library
-                #  $1: library name
-                #  $2: additional linker flags
-                buildlib() {
-                    local lib="$1"
-                    local extraflags="$2"
-                    local ofiles
-                    # local eats the return status: separate the 2 statements
-                    ofiles="`buildsources "${lib}_la" "-fPIC -DPIC"`"
-
-                    eval local libadd=\"\$${lib}_la_LIBADD\"
-                    eval local ldflags=\"\$${lib}_la_LDFLAGS\"
-
-                    libadd="`fixlibadd $libadd`"
-
-                    # Detect library version (e.g. 0.0.0)
-                    local fullver="`echo -n "$ldflags" | \
-                      sed -n '\''y/:/./; \
-                                 s/.*-version-info \([0-9.]*\)$/\\1/p'\''`"
-                    local shortver=""
-                    # Get "short" library version (e.g. 0)
-                    if [ -n "$fullver" ]; then
-                        shortver=".${fullver%%.*}"
-                        fullver=".$fullver"
-                    fi
-                    local fullso="$lib.so$fullver"
-                    local shortso="$lib.so$shortver"
-                    gcc -shared -fPIC -DPIC $ofiles $libadd -o "$fullso" \
-                        '"$archgccflags"' $extraflags -Wl,-soname,"$shortso"
-                    if [ -n "$fullver" ]; then
-                        ln -sf "$fullso" "$shortso"
-                        # Needed at link-time only
-                        ln -sf "$shortso" "$lib.so"
-                    fi
-                }
-
-                # buildexe: Build an executable file
-                #  $1: executable file name
-                #  $2: additional linker flags
-                buildexe() {
-                    local exe="$1"
-                    local extraflags="$2"
-                    local ofiles="`buildsources "$exe" ""`"
-
-                    eval local ldadd=\"\$${exe}_LDADD\"
-                    eval local ldflags=\"\$${exe}_LDFLAGS\"
-
-                    ldadd="`fixlibadd $ldadd`"
-
-                    gcc $ofiles $ldadd -o "$exe" '"$archgccflags"' $extraflags
-                }
-
                 buildlib libcras
 
                 # Pass -rpath=$CRASLIBDIR to linker, so we do not need to add

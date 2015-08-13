@@ -1,5 +1,5 @@
 #!/bin/sh
-# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2015 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -7,7 +7,7 @@
 # /etc/crouton/xserverrc-local
 #
 # The file is sourced before invoking the X server with the variable
-# XMETHOD set to x11 or xephyr and the variable XARGS containing the
+# XMETHOD set to xephyr, xiwi, or xorg and the variable XARGS containing the
 # command line arguments that will be passed to the server.
 #
 # Uncoment if fonts look too big on machines with 1366x768 11.6" screen

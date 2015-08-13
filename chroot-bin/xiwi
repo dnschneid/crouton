@@ -1,0 +1,125 @@
+#!/bin/sh -e
+# Copyright (c) 2015 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Runs the specified X11 application in its own X server in Chromium OS.
+
+USAGE="Usage: ${0##*/} [-f] [-F|-T] APPLICATION [PARAMETERS ...]
+Launches a windowed session in Chromium OS for any graphical application.
+Applications launched in this way show in independent windows or tabs.
+All parameters are passed to the specified application.
+
+By default, the app is launched in a window.
+
+Options:
+    -F          Launch the APPLICATION full-screen.
+    -T          Launch the APPLICATION in a tab.
+    -f          Prevent ${0##*/} from quitting automatically. (see NOTE below)
+
+NOTE:
+${0##*/} will normally close when the application returns. Some gui applications
+fork before or during normal operation, which can confuse ${0##*/} and cause it to
+quit prematurely. If your application does not have a parameter that prevents
+it from forking, and crouton is unable to automatically detect the fork, you can
+use -f to prevent ${0##*/} from quitting automatically.
+${0##*/} will quit if you close the Chromium OS window when nothing is displayed.
+
+A default window manager will full-screen all windows, unless APPLICATION begins
+with 'start' or is 'xinit'. You can cycle through multiple windows inside the
+application via Ctrl-Alt-Tab/Ctrl-Alt-Shift-Tab, or close them via
+Ctrl-Alt-Shift-Escape.  If APPLICATION begins with 'start' but you still want to
+use the default window manager, specify the full path of the application."
+
+. "`dirname "$0"`/../installer/functions"
+xiwicmd="`readlink -f "$0"`"
+OPTSTRING='FfTt'
+
+if [ "$#" = 0 ]; then
+    error 2 "$USAGE"
+elif [ "$1" = '/' ]; then
+    shift 1
+    foreground=''
+    while getopts "$OPTSTRING" f; do
+        case "$f" in
+        f) foreground='y';;
+        t|T|F) :;;
+        \?) error 2 "$USAGE";;
+        esac
+    done
+    shift "$((OPTIND-1))"
+    xsetroot -cursor_name left_ptr
+    if [ "$1" != 'xinit' -a "${1#start}" = "$1" ]; then
+        i3 -c "/etc/crouton/xiwi.conf" &
+        # Wait for i3 to launch
+        xprop -spy -root | grep -q _NET_ACTIVE_WINDOW
+        # Launch the window title monitoring daemon
+        # _NET_ACTIVE_WINDOW is more reliable than _NET_CLIENT_LIST_STACKING for
+        # keeping track of the topmost window.
+        xprop -spy -notype -root 0i ' $0\n' '_NET_ACTIVE_WINDOW' 2>/dev/null | {
+            name="`cat /etc/crouton/name`"
+            monpid=''
+            monwid=''
+            while read _ wid; do
+                if [ "$wid" = "$monwid" ]; then
+                    continue
+                fi
+                if [ -n "$monpid" ]; then
+                    kill "$monpid" 2>/dev/null
+                fi
+                monwid="$wid"
+                (xprop -spy -notype -id "$wid" 'WM_NAME' 2>/dev/null || echo) \
+                    | while read _ title; do
+                        title="${title%\"}"
+                        xprop -root -f CROUTON_NAME 8s -set CROUTON_NAME \
+                            "$name/$1${title:+": "}${title#*\"}"
+                        {
+                            echo -n 'C'
+                            croutoncycle l
+                        } | websocketcommand >/dev/null
+                    done &
+                monpid="$!"
+            done
+            if [ -n "$monpid" ]; then
+                kill "$monpid" 2>/dev/null
+            fi
+        } &
+        # Launch user init scripts
+        if [ -f "$HOME/.xiwirc" ]; then
+            /bin/sh "$HOME/.xiwirc" || true
+        fi
+    fi
+    starttime="$(date +%s)"
+    "$@"
+    endtime="$(date +%s)"
+    if [ -n "$foreground" -o "$(($endtime-$starttime))" -le 2 ]; then
+        xprop -spy -notype -root 0i ' $0\n' 'CROUTON_CONNECTED' \
+            | while read _ connected; do
+                if [ "$connected" != 0 ]; then
+                    continue
+                fi
+                # _NET_CLIENT_LIST_STACKING is more reliable than
+                # _NET_ACTIVE_WINDOW for detecting when no windows exist
+                if ! xprop -notype -root '_NET_CLIENT_LIST_STACKING' \
+                            | grep -q '0x'; then
+                    kill "$$"
+                    break
+                fi
+            done
+    fi
+else
+    export XMETHOD='xiwi-window'
+    while getopts "$OPTSTRING" f; do
+        case "$f" in
+        f) :;;
+        F) export XMETHOD='xiwi-fullscreen';;
+        t|T) export XMETHOD='xiwi-tab';;
+        \?) error 2 "$USAGE";;
+        esac
+    done
+    eval "exe=\"\$$OPTIND\""
+    if ! hash "$exe" 2>/dev/null; then
+        error 2 "${0##*/}: $exe: not found"
+    fi
+    exec /usr/local/bin/xinit "$xiwicmd" / "$@"
+fi

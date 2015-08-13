@@ -1,5 +1,5 @@
 #!/bin/sh -e
-# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2015 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -244,7 +244,7 @@ dotranslatewgetpercent() {
     if hash stdbuf 2>/dev/null; then
         stdbuf -oL tr -sc '[:digit:]%' '
 ' | {
-            while read input; do
+            while read -r input; do
                 val="${input%"%"}"
                 if [ "$input" = "$val" ]; then
                     continue

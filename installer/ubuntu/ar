@@ -1,5 +1,5 @@
 #!/bin/sh -e
-# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2015 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -36,14 +36,14 @@ shift 2
 # Read in from $ARCHIVE
 {
     # Check header
-    read magic
+    read -r magic
     if [ ! "$magic" = "!<arch>" ]; then
         echo "$APPLICATION: $ARCHIVE: File format not recognized" 1>&2
         exit 1
     fi
 
     # Process each file
-    while read name modtime owner group mode size magic; do
+    while read -r name modtime owner group mode size magic; do
         # Absorb extra newlines
         if [ -z "$name" ]; then
             continue;

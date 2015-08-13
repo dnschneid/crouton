@@ -1,5 +1,5 @@
 #!/bin/sh -e
-# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2015 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -7,12 +7,12 @@ set -e
 
 APPLICATION="${0##*/}"
 BINDIR="`dirname "\`readlink -f "$0"\`"`"
-CHROOTS="`readlink -f "$BINDIR/../chroots"`"
+CHROOTS="`readlink -m "$BINDIR/../chroots"`"
 CREATE=''
 ENCRYPT=''
 KEYFILE=''
 PRINT=''
-ROOT='/var/run/crouton'
+ROOT="`readlink -m '/var/run/crouton'`"
 MOUNTOPTS='rw,dev,exec,suid'
 
 USAGE="$APPLICATION [options] name [...]
@@ -33,17 +33,17 @@ Options:
 . "$BINDIR/../installer/functions"
 
 # Process arguments
-while getopts 'c:ek:np' f; do
-    case "$f" in
-    c) CHROOTS="`readlink -f "$OPTARG"`";;
+getopts_string='c:ek:np'
+while getopts_nextarg; do
+    case "$getopts_var" in
+    c) CHROOTS="`readlink -m -- "$getopts_arg"`";;
     e) ENCRYPT="$((ENCRYPT+1))";;
-    k) KEYFILE="$OPTARG";;
+    k) KEYFILE="$getopts_arg";;
     n) CREATE='y';;
     p) PRINT='y';;
     \?) error 2 "$USAGE";;
     esac
 done
-shift "$((OPTIND-1))"
 
 # Need at least one chroot listed
 if [ $# = 0 ]; then
@@ -60,33 +60,33 @@ addtrap "stty echo 2>/dev/null"
 
 # Function to prompt the user for a passphrase. Sets $passphrase.
 promptNewPassphrase() {
-    echo -n "Choose an encryption passphrase for $NAME: " 1>&2
+    echo_tty -n "Choose an encryption passphrase for $NAME: "
     [ -t 0 ] && stty -echo
     while [ -z "$passphrase" ]; do
-        read passphrase
+        read -r passphrase
         if [ -z "$passphrase" ]; then
-            echo 1>&2
-            echo -n 'You must specify a passphrase: ' 1>&2
+            echo_tty ''
+            echo_tty -n 'You must specify a passphrase: '
             continue
         fi
-        echo 1>&2
-        echo -n 'Please confirm your passphrase: ' 1>&2
-        read confirmation
+        echo_tty ''
+        echo_tty -n 'Please confirm your passphrase: '
+        read -r confirmation
         if [ ! "$confirmation" = "$passphrase" ]; then
             passphrase=''
-            echo 1>&2
-            echo -n 'Passphrases do not match; try again: ' 1>&2
+            echo_tty ''
+            echo_tty -n 'Passphrases do not match; try again: '
         fi
         confirmation=''
     done
     [ -t 0 ] && stty echo
-    echo 1>&2
+    echo_tty ''
 }
 
 # Mount each chroot
 for NAME in "$@"; do
-    if [ -z "$NAME" ]; then
-        continue
+    if ! validate_name "$NAME"; then
+        error 2 "Invalid chroot name '$NAME'."
     fi
 
     # Check for existence
@@ -139,9 +139,10 @@ for NAME in "$@"; do
         # Ensure that there's a root password set before decrypting the chroot,
         # unless the passphrase was specified via env, which isn't secure anyway
         if [ ! -f '/mnt/stateful_partition/etc/devmode.passwd' ]; then
-            echo 'You must have a root password in Chromium OS to mount encrypted chroots.' 1>&2
+            echo_tty \
+'You must have a root password in Chromium OS to mount encrypted chroots.'
             if [ -z "$CROUTON_PASSPHRASE$CROUTON_NEW_PASSPHRASE" ]; then
-                chromeos-setdevpasswd
+                while ! chromeos-setdevpasswd; do :; done
             fi
         fi
 
@@ -180,8 +181,8 @@ for NAME in "$@"; do
                 random="/dev/urandom"
                 echo 'Generating keys from /dev/urandom...' 1>&2
             fi
-            key="`hexdump -v -n32 -e'"%02x"' "$random"`"
-            fnek="`hexdump -v -n32 -e'"%02x"' "$random"`"
+            key="`hexdump -v -n32 -e'32/1 "%02x"' "$random"`"
+            fnek="`hexdump -v -n32 -e'32/1 "%02x"' "$random"`"
             echo 'done' 1>&2
 
             # Create key file
@@ -200,13 +201,13 @@ $passphrase" | ecryptfs-wrap-passphrase "$wrappedfnek" -
         elif [ ! -f "$KEYFILE" ]; then
             error 1 "Unable to find encryption key file $KEYFILE"
         else
-            echo -n "Enter encryption passphrase for $NAME: " 1>&2
+            echo_tty -n "Enter encryption passphrase for $NAME: "
             [ -t 0 ] && stty -echo
             if [ -z "$passphrase" ]; then
-                read passphrase
+                read -r passphrase
             fi
             [ -t 0 ] && stty echo
-            echo 1>&2
+            echo_tty ''
 
             wrappedkey="`mktemp`"
             wrappedfnek="`mktemp`"
@@ -247,8 +248,8 @@ $passphrase" | ecryptfs-rewrap-passphrase "$wrappedfnek" -
         fi
 
         mnt="ecryptfs_sig=$keysig,ecryptfs_fnek_sig=$fneksig"
-        mnt="$mnt,no_sig_cache,ecryptfs_cipher=aes,ecryptfs_key_bytes=16"
-        mnt="$mnt,ecryptfs_passthrough=n,ecryptfs_unlink_sigs,$MOUNTOPTS"
+        mnt="$mnt,ecryptfs_cipher=aes,ecryptfs_key_bytes=16"
+        mnt="$mnt,ecryptfs_unlink_sigs,$MOUNTOPTS"
 
         if ! mount -i -t ecryptfs -o "$mnt" "$CHROOTSRC" "$CHROOT"; then
             error 1 "Failed to mount $NAME."
@@ -279,7 +280,7 @@ no   -- You don't want to decide one way or another quite yet.
                 response="$CROUTON_MOUNT_RESPONSE"
                 echo "$response" 1>&2
             else
-                read response
+                read -r response
             fi
             break
         fi
@@ -296,12 +297,12 @@ no   -- You don't want to decide one way or another quite yet.
              -not -wholename './.crouton-targets' \
              -exec mkdir -p "$tmp/{}" ';' \
              -exec rmdir "$tmp/{}" ';' \
-             '(' -prune , -exec mv -f '{}' "$tmp/{}" ';' ')' 1>&2
+             '(' -prune , -exec mv -fT '{}' "$tmp/{}" ';' ')' 1>&2
         for tmp in ECRYPTFS_MOVE_STAGING_*; do
             (
                 cd "$tmp"
                 find '!' '(' -type d -exec test -d "$CHROOT/{}" ';' ')' \
-                     '(' -prune , -exec mv -f '{}' "$CHROOT/{}" ';' ')' \
+                     '(' -prune , -exec mv -fT '{}' "$CHROOT/{}" ';' ')' \
                      -exec echo -n . ';' 1>&2
                 find -depth -type d -not -wholename . \
                      -exec test -d "$CHROOT/{}" ';' \
