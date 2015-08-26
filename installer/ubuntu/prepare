@@ -223,11 +223,35 @@ if [ -r /debootstrap ]; then
     # We request a re-mount after bootstrapping, so these mounts will be fixed.
     # We also can't detect the mounts properly due to the chroot, so we have to
     # recursively find mountpoints under /sys, and hardcode /var umounts.
-    find /sys/* -maxdepth 2 -depth -type d \
-        -exec mountpoint -q {} \; -exec umount {} \;
+    # However, if we are in container, debootstrap cannot mount /sys, so don't
+    # unmount it.
+    if [ -z "$container" ]; then
+        find /sys/* -maxdepth 2 -depth -type d \
+            -exec mountpoint -q {} \; -exec umount {} \;
+    else
+        umount '/var/run/crouton-ext'
+    fi
     umount '/var/run/lock' '/var/run'
+    # Create a fake mknod if we are in container.
+    if [ -n "$container" ]; then
+        cp /bin/mknod /bin/mknod.old
+        echo "touch \$1" > /bin/mknod
+    fi
     # Start the bootstrap
     /debootstrap/debootstrap --second-stage
+    if [ -n "$container" ]; then
+        # Mark makedev as installed.
+        awk '
+          BEGIN { matched = 0 }
+          /^Package: makedev$/ { matched = 1 }
+          matched == 1 && /^Status:/ { sub($4, "installed"); matched = 0 }
+          1' /var/lib/dpkg/status > /var/lib/dpkg/status.new
+        mv -f /var/lib/dpkg/status.new /var/lib/dpkg/status
+
+        # Deny all services to start in container.
+        echo exit 101 > /usr/sbin/policy-rc.d
+        chmod +x /usr/sbin/policy-rc.d
+    fi
     # Clean contents of /var/run (since we'll always be mounting over it).
     rm -rf --one-file-system /var/run/*
     # Request a script restart to refresh the mount environment

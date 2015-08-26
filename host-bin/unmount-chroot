@@ -238,10 +238,15 @@ unmount() {
     # point actually ends with ' (deleted)')
     # umount has a bug and may return 0 when many mount points cannot be
     # unmounted, so we call it once per mount point ('-n 1')
+    if [ -n "$container" ]; then
+        arg='-l'
+    else
+        arg=''
+    fi
     while ! sed "s=\\\\040=//=g" /proc/mounts | cut -d' ' -f2 | filter \
               | sed -e 's=//= =g;s/^\(\(.*\) (deleted)\)$/\1\n\2/' \
               | sort -r | xargs --no-run-if-empty -d '
-' -n 1 umount 2>/dev/null; do
+' -n 1 umount "$arg" 2>/dev/null; do
         if [ "$ntries" -eq "$TRIES" ]; then
             # Send signal to all processes running under the chroot
             # ...but confirm first.
@@ -321,7 +326,7 @@ done
 
 # Re-disable USB persistence (the Chromium OS default) if we no longer
 # have chroots running with a root in removable media
-if checkusage "$ROOT/media"; then
+if [ -z "$container" ] && checkusage "$ROOT/media"; then
     for usbp in /sys/bus/usb/devices/*/power/persist; do
         if [ -e "$usbp" ]; then
             echo 0 > "$usbp"

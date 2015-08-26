@@ -127,7 +127,10 @@ for NAME in "$@"; do
     if ! mountpoint -q "$CHROOT"; then
         if [ -z "$ENCRYPT" ]; then
             mount --bind "$CHROOTSRC" "$CHROOT"
-            mount -i -o "remount,$MOUNTOPTS" "$CHROOT"
+            # Cannot remount in container
+            if [ -z "$container" ]; then
+                mount -i -o "remount,$MOUNTOPTS" "$CHROOT"
+            fi
             continue
         fi
 

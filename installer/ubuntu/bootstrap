@@ -42,6 +42,7 @@ if awk '
         sub(/continue 2; fi/, "failed=y")
         t=1
     }
+    /if \[ -d \"\$TARGET\/sys\" \] && \\/ { sub(/if/, "if [ -z \"$container\" ] \&\&") }
     1
     END { if (t != 4) exit 1 }
         ' "$tmp/functions" > "$tmp/functions.new"; then
@@ -64,6 +65,14 @@ tar -czf "$tmp/devices.tar.gz" -T /dev/null
 # the scripts for matching upstream distros to bootstrap the derived distros.
 if [ ! -f "$tmp/scripts/$RELEASE" ]; then
     ln -s "$tmp/scripts/$BOOTSTRAP_RELEASE" "$tmp/scripts/$RELEASE"
+fi
+
+# We are not able to mknod in containers, so make a fake mknod for debootstrap.
+if [ -n "$container" ]; then
+    mkdir "$tmp/bin"
+    echo "touch \$1" > "$tmp/bin/mknod"
+    chmod +x "$tmp/bin/mknod"
+    newpath="$tmp/bin:$newpath"
 fi
 
 # Grab the release and drop it into the subdirectory
