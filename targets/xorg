@@ -55,7 +55,7 @@ if [ "${ARCH#arm}" = "$ARCH" ]; then
     # to support the chipset, we'll need to disable hardware acceleration.
     if grep -q 1 '/sys/module/i915/parameters/i915_enable_fbc' 2>/dev/null; then
         intelhasfbc=y
-        if release -le wheezy -le kali; then
+        if release -le wheezy -le sana; then
             intelfbcsupport=''
         fi
     fi
