@@ -34,9 +34,7 @@ install --minimal i3
 # Compile croutonfbserver
 compile fbserver '-lX11 -lXfixes -lXdamage -lXext -lXtst' \
     libx11-dev libxfixes-dev libxdamage-dev libxext-dev libxtst-dev
-
-# Make croutonfbserver setuid root. See issue #1411; this is way insecure
-chmod u+s /usr/local/bin/croutonfbserver
+compile findnacld ''
 
 ln -sf /etc/crouton/xorg-dummy.conf /etc/X11/
 

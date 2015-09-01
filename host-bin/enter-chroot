@@ -667,6 +667,8 @@ if [ ! "$NOLOGIN" = 1 ] && grep -q '^root:' "$passwd" 2>/dev/null; then
         ) &"
         addtrap "(echo $$ >> '$CROUTONLOCKDIR/frecon') & :"
     fi
+
+    chrootcmd "/usr/local/bin/croutonfindnacld >/dev/null 2>&1 </dev/null &"
 fi
 
 # Start the chroot and any specified command
