@@ -244,18 +244,20 @@ void close_mmap(struct cache_entry* entry) {
     entry->map = NULL;
 }
 
-int recv_pid_fd(int conn, long *pid)
+/* Read the pid of nacl_helper and get shm from findnacl daemon.
+ * The socket fd is passed in and fd of nacl_helper is returned..*/
+int recv_pid_fd(int conn)
 {
     int fd = -1;
-    struct msghdr msg;
+    struct msghdr msg = { 0 };
     struct iovec iov;
     struct cmsghdr *cmsg;
+    long pid;
     char buf[CMSG_SPACE(sizeof(int))];
 
-    memset(&msg, 0, sizeof(struct msghdr));
-    memset(buf, 0, CMSG_SPACE(sizeof(int)));
+    memset(buf, 0, sizeof(buf));
 
-    iov.iov_base = pid;
+    iov.iov_base = &pid;
     iov.iov_len = sizeof(pid);
     msg.msg_iov = &iov;
     msg.msg_iovlen = 1;
@@ -271,7 +273,11 @@ int recv_pid_fd(int conn, long *pid)
     if (cmsg) {
         if (cmsg->cmsg_level == SOL_SOCKET && cmsg->cmsg_type == SCM_RIGHTS) {
             fd = *((int *)CMSG_DATA(cmsg));
+        } else {
+            error("No fd is passed from findnacl daemon.");
         }
+    } else {
+        error("No fd is passed from findnacl daemon.");
     }
     return fd;
 }
@@ -319,30 +325,30 @@ struct cache_entry* find_shm(uint64_t paddr, uint64_t sig, size_t length) {
         }
 
         int sock;
-
-        sock = socket(AF_UNIX, SOCK_STREAM, 0);
         struct sockaddr_un addr;
 
+        sock = socket(AF_UNIX, SOCK_STREAM, 0);
         addr.sun_family = AF_UNIX;
-        strcpy(addr.sun_path, SOCKET_PATH);
+        strncpy(addr.sun_path, SOCKET_PATH, sizeof(addr.sun_path));
 
-        if (connect(sock, (struct sockaddr *)&addr, offsetof(struct sockaddr_un, sun_path) + strlen(SOCKET_PATH) + 1)) {
+        if (connect(sock, (struct sockaddr *)&addr, offsetof(struct sockaddr_un,
+                    sun_path) + strlen(SOCKET_PATH) + 1)) {
             syserror("Cannot connect to findnacl daemon.");
             return NULL;
         }
 
         char args[70];
-        c = snprintf(args, sizeof(args), "%s %s", arg1, arg2);
-        trueorabort(c > 0, "snprintf");
+        int sz = sizeof(args);
+        c = snprintf(args, sz, "%s %s", arg1, arg2);
+        trueorabort(c > 0 && c < sz, "snprintf");
 
         if (write(sock, args, strlen(args)) < 0) {
             syserror("Cannot send arguments.");
             close(sock);
             return NULL;
-	    }
+        }
 
-        long pid;
-        entry->fd = recv_pid_fd(sock, &pid);
+        entry->fd = recv_pid_fd(sock);
         if (entry->fd < 0) {
             error("Cannot open nacl file.");
             return NULL;
