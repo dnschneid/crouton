@@ -1,3 +1,7 @@
+/* Copyright (c) 2015 The crouton Authors. All rights reserved.
+ * Use of this source code is governed by a BSD-style license that can be
+ * found in the LICENSE file.
+ */
 #include "websocket.h"
 #include <unistd.h>
 #include <stdio.h>
@@ -6,6 +10,8 @@
 #include <sys/un.h>
 #include <sys/epoll.h>
 #include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/select.h>
 #include <stddef.h>
 
 #define MAX_EVENTS 100
@@ -20,6 +26,9 @@ int send_pid_fd(int conn, long pid, int fd)
     struct iovec iov;
     char buf[CMSG_SPACE(sizeof(int))]; /* ancillary data buffer */
 
+    /* It is not necessary to sent the pid. However, to pass fd using sendmsg,
+     * at least 1 byte of data must be sent.
+     */
     iov.iov_base = &pid;
     iov.iov_len = sizeof(pid);
 
@@ -50,7 +59,7 @@ int find_nacl(int conn)
     char* cut;
     int idx = 0, c, len;
 
-    if ((len = read(conn, argbuf, 64)) < 0) {
+    if ((len = read(conn, argbuf, sizeof(argbuf)-1)) < 0) {
        syserror("Failed to read arguments");
        return -1;
     }
@@ -66,12 +75,12 @@ int find_nacl(int conn)
     char *cmd = "croutonfindnacl";
     char* args[] = {cmd, argbuf, cut + 1, NULL};
 
-    c = popen2(cmd, args, NULL, 0, outbuf, sizeof(outbuf));
+    c = popen2(cmd, args, NULL, 0, outbuf, sizeof(outbuf)-1);
     if (c <= 0) {
         error("Error running helper");
         return -1;
     }
-    outbuf[c < sizeof(outbuf) ? c : (sizeof(outbuf)-1)] = 0;
+    outbuf[c] = 0;
 
     /* Parse PID:file output */
     cut = strchr(outbuf, ':');
@@ -91,13 +100,14 @@ int find_nacl(int conn)
     char* file = cut+1;
     int ret = 0;
     int fd = -1;
-    if (pid > 0 && (fd = open(file, O_RDWR)) < 0) {
-        syserror("Cannot open file %s", file);
+    if (pid > 0) {
+        if ((fd = open(file, O_RDWR)) < 0)
+            syserror("Cannot open file %s", file);
     }
 
     if (send_pid_fd(conn, pid, fd) < 0) {
         syserror("FD-passing failed.");
-        ret = 1;
+        ret = -1;
     }
 
     close(fd);
@@ -106,25 +116,28 @@ int find_nacl(int conn)
 
 int main()
 {
-    int sock, conn, n, i;
-    int epollfd;
+    int sock, conn, n, i, fd;
+    int maxfd;
     struct sockaddr_un addr;
     struct epoll_event ev, events[MAX_EVENTS];
     char args[64];
+    fd_set readset, recvset;
 
-    if (setegid(1000)) {
-        syserror("Cannot set gid to 1000");
+    /* Set egid to be 27 (video) and change the umask to 007,
+     * so that normal user can also access the socket if they
+     * are in video group.
+     */
+    if (setegid(27) < 0) {
+        syserror("Cannot set gid to 27");
         return -1;
     }
-    if (mkdir(SOCKET_DIR)) {
+    umask(S_IROTH | S_IWOTH | S_IXOTH);
+
+    if (mkdir(SOCKET_DIR, 0770) < 0) {
         if (errno != EEXIST) {
             syserror("Cannot create %s", SOCKET_DIR);
             return -1;
         }
-    }
-    if (chmod(SOCKET_DIR, 0770)) {
-        syserror("Failed to change permission of %s.", SOCKET_DIR);
-        return -1;
     }
 
     if ((sock = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
@@ -134,14 +147,11 @@ int main()
 
     memset(&addr, 0, sizeof(addr));
     addr.sun_family = AF_UNIX;
-    strcpy(addr.sun_path, SOCKET_PATH);
+    strncpy(addr.sun_path, SOCKET_PATH, sizeof(addr.sun_path));
 
-    if (bind(sock, (struct sockaddr *)&addr, offsetof(struct sockaddr_un, sun_path) + strlen(SOCKET_PATH) + 1)) {
+    if (bind(sock, (struct sockaddr *)&addr, offsetof(struct sockaddr_un,
+             sun_path) + strlen(SOCKET_PATH) + 1) < 0) {
         syserror("Failed to bind address: %s.", SOCKET_PATH);
-        return -1;
-    }
-    if (chmod(SOCKET_PATH, 0770) < 0) {
-        syserror("Failed to change permission of %s.", SOCKET_PATH);
         return -1;
     }
 
@@ -150,37 +160,31 @@ int main()
         return -1;
     }
 
+    FD_ZERO(&readset);
+    FD_SET(sock, &readset);
 
-    if ((epollfd = epoll_create1(0)) < 0) {
-        syserror("Failed to create epoll instance.");
-        return -1;
-    }
-
-    ev.events = POLLIN;
-    ev.data.fd = sock;
-    if (epoll_ctl(epollfd, EPOLL_CTL_ADD, sock, &ev) < 0) {
-        syserror("Failed to add new poll event.");
-        return -1;
-    }
+    maxfd = sock;
 
     for (;;) {
-        n = epoll_wait(epollfd, events, MAX_EVENTS, -1);
+        memcpy(&recvset, &readset, sizeof(recvset));
+        n = select(maxfd + 1, &recvset, NULL, NULL, NULL);
 
-        for (i = 0; i < n; i++) {
-            if (events[i].data.fd == sock) {
-                conn = accept(sock, NULL, 0);
-                if (conn < 0) {
-                    syserror("Connection error.");
+        for (fd = 0; fd <= maxfd; fd++) {
+            if (FD_ISSET(fd, &recvset)) {
+                if (fd == sock) {
+                    conn = accept(sock, NULL, 0);
+                    if (conn < 0) {
+                        syserror("Connection error.");
+                    }
+                    if (conn > maxfd)
+                        maxfd = conn;
+                    FD_SET(conn, &readset);
                 }
-                ev.events = EPOLLIN;
-                ev.data.fd = conn;
-                if (epoll_ctl(epollfd, EPOLL_CTL_ADD, conn, &ev) < 0) {
-                    syserror("Failed to add new poll event.");
+                else {
+                    find_nacl(fd);
+                    close(fd);
+                    FD_CLR(fd, &readset);
                 }
-            }
-            else {
-                find_nacl(events[i].data.fd);
-                close(events[i].data.fd);
             }
         }
     }
