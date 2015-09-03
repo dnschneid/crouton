@@ -238,11 +238,7 @@ unmount() {
     # point actually ends with ' (deleted)')
     # umount has a bug and may return 0 when many mount points cannot be
     # unmounted, so we call it once per mount point ('-n 1')
-    if [ -n "$container" ]; then
-        arg='-l'
-    else
-        arg=''
-    fi
+    arg=''
     while ! sed "s=\\\\040=//=g" /proc/mounts | cut -d' ' -f2 | filter \
               | sed -e 's=//= =g;s/^\(\(.*\) (deleted)\)$/\1\n\2/' \
               | sort -r | xargs --no-run-if-empty -d '
@@ -272,6 +268,11 @@ unmount() {
             if [ -z "$printonly" ]; then
                 echo "Sending SIG$SIGNAL to processes under $CHROOTSRC..." 1>&2
             fi
+            # If there is no process running under $CHROOTSRC and we cannot
+            # unmount, then use lazy unmount.
+            # FIXME: This is a hack for running in containers, since we cannot
+            # unmount recursive bindmount in it.
+            arg='-l'
             for root in /proc/*/root; do
                 if [ ! -r "$root" ] \
                         || [ ! "`readlink -f "$root"`" = "$base" ]; then
@@ -285,6 +286,7 @@ unmount() {
                 if [ -z "$printonly" ]; then
                     kill "-$SIGNAL" "$pid" 2>/dev/null || true
                 fi
+                arg=''
             done
 
             # Escalate
@@ -326,10 +328,12 @@ done
 
 # Re-disable USB persistence (the Chromium OS default) if we no longer
 # have chroots running with a root in removable media
-if [ -z "$container" ] && checkusage "$ROOT/media"; then
+if checkusage "$ROOT/media"; then
     for usbp in /sys/bus/usb/devices/*/power/persist; do
         if [ -e "$usbp" ]; then
-            echo 0 > "$usbp"
+            # Don't fail since we don't have permission to write /sys/* if we are in
+            # container.
+            echo 0 > "$usbp" || true
         fi
     done
 fi
