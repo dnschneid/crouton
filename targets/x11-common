@@ -12,7 +12,7 @@ ln -sfT '/etc/crouton/xserverrc' '/etc/X11/xinit/xserverrc'
 echo "$XMETHOD" > '/etc/crouton/xmethod'
 
 # Only apply hack if vgem card exists
-if [ -c '/dev/dri/card1' -o -d '/sys/class/drm/card1/' ]; then
+if [ -d '/sys/class/drm/card1/' ]; then
     # Modify the Xorg executable to *not* poll udev for cards
     offset="`grep -F -m 1 -boa 'card[0-9]*' /usr/bin/Xorg 2>/dev/null || true`"
     if [ -n "$offset" ]; then
