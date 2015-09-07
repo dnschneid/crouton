@@ -230,6 +230,11 @@ if [ -r /debootstrap ]; then
     /debootstrap/debootstrap --second-stage
     # Clean contents of /var/run (since we'll always be mounting over it).
     rm -rf --one-file-system /var/run/*
+    # dpkg will auto start some services when installing, and it will ask
+    # policy-rc.d for permissions. We don't want any service to start, so always
+    # return denies.
+    echo exit 101 > /usr/sbin/policy-rc.d
+    chmod +x /usr/sbin/policy-rc.d
     # Request a script restart to refresh the mount environment
     relaunch_setup
 else
