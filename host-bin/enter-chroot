@@ -423,8 +423,10 @@ WARNING: CRAS not running in Chromium OS. Audio forwarding will not work." 1>&2
 fi
 
 # Bind-mount /media, specifically the removable directory
+# It is possible that /media is not mounted inside containers,so bind-mount it
+# only if /media is a mountpoint.
 destmedia="`fixabslinks '/var/host/media'`"
-if ! mountpoint -q "$destmedia"; then
+if mountpoint -q "/media" && ! mountpoint -q "$destmedia"; then
     mount --make-shared /media
     mkdir -p "$destmedia" "$CHROOT/media"
     ln -sf "/var/host/media/removable" "$CHROOT/media/"
@@ -562,7 +564,9 @@ if [ -z "$NOLOGIN" -a -f "$shares" ]; then
 fi
 
 # Bind-mount /sys recursively, making it a slave in the chroot
-if ! mountpoint -q "$CHROOT/sys"; then
+# It is possible that /sys is not mounted inside containers,so bind-mount it
+# only if /sys is a mountpoint.
+if mountpoint -q "/sys" && ! mountpoint -q "$CHROOT/sys"; then
     mkdir -p "$CHROOT/sys"
     mount --make-rshared /sys
     mount --rbind /sys "$CHROOT/sys"
