@@ -331,16 +331,14 @@ struct cache_entry* find_shm(uint64_t paddr, uint64_t sig, size_t length) {
         addr.sun_family = AF_UNIX;
         strncpy(addr.sun_path, SOCKET_PATH, sizeof(addr.sun_path));
 
-        if (connect(sock, (struct sockaddr *)&addr, offsetof(struct sockaddr_un,
-                    sun_path) + strlen(SOCKET_PATH) + 1)) {
+        if (connect(sock, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
             syserror("Cannot connect to findnacl daemon.");
             return NULL;
         }
 
         char args[70];
-        int sz = sizeof(args);
-        c = snprintf(args, sz, "%s %s", arg1, arg2);
-        trueorabort(c > 0 && c < sz, "snprintf");
+        c = snprintf(args, sizeof(args), "%s %s", arg1, arg2);
+        trueorabort(c > 0 && c < sizeof(args), "snprintf");
 
         if (write(sock, args, strlen(args)) < 0) {
             syserror("Cannot send arguments.");
