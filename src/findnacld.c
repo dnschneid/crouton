@@ -36,7 +36,7 @@ int send_pid_fd(int conn, long pid, int fd)
     msg.msg_iovlen = 1;
     if (fd > 0) {
         msg.msg_control = buf;
-        msg.msg_controllen = CMSG_SPACE(sizeof(int));
+        msg.msg_controllen = sizeof(buf);
 
         cmsg = CMSG_FIRSTHDR(&msg);
         cmsg->cmsg_level = SOL_SOCKET;
@@ -57,13 +57,13 @@ int find_nacl(int conn)
 {
     char argbuf[70], outbuf[256];
     char* cut;
-    int idx = 0, c, len;
+    int idx = 0, c;
 
-    if ((len = read(conn, argbuf, sizeof(argbuf)-1)) < 0) {
+    if ((c = read(conn, argbuf, sizeof(argbuf)-1)) < 0) {
        syserror("Failed to read arguments");
        return -1;
     }
-    argbuf[len] = 0;
+    argbuf[c] = 0;
 
     cut = strchr(argbuf, ' ');
     if (!cut) {
@@ -149,8 +149,7 @@ int main()
     addr.sun_family = AF_UNIX;
     strncpy(addr.sun_path, SOCKET_PATH, sizeof(addr.sun_path));
 
-    if (bind(sock, (struct sockaddr *)&addr, offsetof(struct sockaddr_un,
-             sun_path) + strlen(SOCKET_PATH) + 1) < 0) {
+    if (bind(sock, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
         syserror("Failed to bind address: %s.", SOCKET_PATH);
         return -1;
     }
@@ -175,6 +174,7 @@ int main()
                     conn = accept(sock, NULL, 0);
                     if (conn < 0) {
                         syserror("Connection error.");
+                        continue;
                     }
                     if (conn > maxfd)
                         maxfd = conn;
