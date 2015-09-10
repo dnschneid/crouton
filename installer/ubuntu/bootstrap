@@ -31,7 +31,7 @@ Check your internet connection or proxy settings and try again.'
     fi
 fi
 
-# Patch debootstrap so that it retries downloading packages and not mounting /sys
+# Patch debootstrap so that it retries downloading packages and does not mount /sys
 echo 'Patching debootstrap...' 1>&2
 if awk '
     t == 3 && /warning RETRY/ { print "sleep 1"; t=4 }

@@ -71,11 +71,12 @@ undotrap() {
 # Check if we are able to mknod.
 capmknod() {
     local tmp=`mktemp -d --tmpdir=/tmp 'crouton-mknod.XXX'`
+    local ret=0
     if ! mknod "$tmp/test-mknod" c 0 0; then
-        return 1
+        ret=1
     fi
     rm -rf "$tmp"
-    return 0
+    return $ret
 }
 
 # Check whether $1 is mounted with options $2.
@@ -101,6 +102,7 @@ checkmountopt() {
                 fi;;
          esac
     done
+    return 0
 }
 
 # Works mostly like built-in getopts but silently coalesces positional arguments.
