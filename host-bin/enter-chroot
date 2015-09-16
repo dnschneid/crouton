@@ -530,6 +530,19 @@ if ! mountpoint -q "$CHROOT/sys"; then
     mount --make-rslave "$CHROOT/sys"
 fi
 
+# Modify chroot's /sys/class/drm to avoid vgem
+varrundrm="$(fixabslinks '/var/run/drm')"
+sysclassdrm="$(fixabslinks '/sys/class/drm')"
+if [ ! -d "$varrundrm" -a -d "$sysclassdrm" ]; then
+    cp -Ta "$sysclassdrm" "$varrundrm"
+    for f in "$varrundrm"/*; do
+        if [ -h "$f" ] && readlink "$f" | grep -qF /vgem/; then
+            rm -f "$f"
+        fi
+    done
+    mount --bind "$varrundrm" "$sysclassdrm"
+fi
+
 # Get croutonversion variables
 croutonversion="$CHROOT/usr/local/bin/croutonversion"
 CHROOTRELEASE="unknown"
