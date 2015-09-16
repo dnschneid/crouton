@@ -25,11 +25,6 @@ if [ ! -f "/sys/class/tty/tty0/active" ]; then
             exit 2
         fi
     done
-    # Use the daemon to kill frecon.
-    # FIXME: remove when crbug.com/457075 is resolved
-    if [ -w '/tmp/crouton-lock/frecon' ]; then
-        echo >> '/tmp/crouton-lock/frecon'
-    fi
     # Freon necessitates the preload hack for X to coexist
     X=/usr/bin/Xorg
     logfile="/tmp/Xorg.crouton.$$.log"
