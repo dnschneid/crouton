@@ -10,7 +10,7 @@
 
 # Grab the latest release of debootstrap
 echo 'Downloading latest debootstrap...' 1>&2
-d='http://anonscm.debian.org/gitweb/?p=d-i/debootstrap.git;a=snapshot;h=HEAD;sf=tgz'
+d='https://anonscm.debian.org/gitweb/?p=d-i/debootstrap.git;a=snapshot;h=HEAD;sf=tgz'
 if ! wget -O- --no-verbose --timeout=60 -t2 "$d"  \
         | tar -C "$tmp" --strip-components=1 -zx 2>/dev/null; then
     echo 'Download from Debian gitweb failed. Trying latest release...' 1>&2
