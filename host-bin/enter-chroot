@@ -323,7 +323,32 @@ bindmount() {
     fi
     mkdir -p "$target"
     mount --bind $bindopts "$1" "$target"
-    if [ -n "$3" ]; then
+    # Determine whether we really need to remount or not by checking the existing
+    # mount options. We are doing this since remount is not allowed in containers.
+    if [ -n "$3" ] && ! checkmountopt "$target" "$3"; then
+        mount -i -o "remount,$3" "$target"
+    fi
+}
+
+# Recursively bind-mounts $1 into $CHROOT/${2:-"$1"} if $2 is not already mounted
+# If $3 is specified, remounts with the specified options.
+# If $1 starts with a -, it's considered options to the bind mount, and the rest
+# of the parameters are shifted.
+rbindmount() {
+    bindopts=''
+    if [ ! "${1#"-"}" = "$1" ]; then
+        bindopts="$1"
+        shift
+    fi
+    local target="`fixabslinks "${2:-"$1"}"`"
+    if mountpoint -q "$target"; then
+        return 0
+    fi
+    mkdir -p "$target"
+    mount --rbind $bindopts "$1" "$target"
+    # Determine whether we really need to remount or not by checking the existing
+    # mount options. We are doing this since remount is not allowed in containers.
+    if [ -n "$3" ] && ! checkmountopt "$target" "$3"; then
         mount -i -o "remount,$3" "$target"
     fi
 }
@@ -338,6 +363,18 @@ tmpfsmount() {
     mount -i -t tmpfs -o "rw${2:+,}$2" tmpfs "$target"
 }
 
+# Bind-mounts /dev/$1 into $CHROOT/dev/$1 if it is not already mounted
+devmknod() {
+    local target="`fixabslinks "/dev/$1"`"
+    if mountpoint -q "$target"; then
+        return 0;
+    fi
+    if [ ! -f "$target" ]; then
+        touch $target
+    fi
+    mount --bind "/dev/$1" "$target"
+}
+
 # If /var/run isn't mounted, we know the chroot hasn't been started yet.
 if mountpoint -q "`fixabslinks '/var/run'`"; then
     firstrun=''
@@ -345,9 +382,7 @@ else
     firstrun='y'
 fi
 
-bindmount /dev
-bindmount /dev/pts
-bindmount /dev/shm
+rbindmount /dev
 bindmount /tmp /tmp exec
 bindmount /proc
 tmpfsmount /var/run 'noexec,nosuid,mode=0755,size=10%'
@@ -355,6 +390,10 @@ tmpfsmount /var/run/lock 'noexec,nosuid,nodev,size=5120k'
 bindmount /var/run/dbus /var/host/dbus
 bindmount /var/run/shill /var/host/shill
 bindmount /var/lib/timezone /var/host/timezone
+# If findnacld socket exists, bind-mount it into chroot.
+if [ -S "/var/run/crouton-ext/socket" ]; then
+    bindmount /var/run/crouton-ext
+fi
 for m in /lib/modules/*; do
     if [ -d "$m" ]; then
         bindmount '-o ro' "$m"
@@ -384,8 +423,10 @@ WARNING: CRAS not running in Chromium OS. Audio forwarding will not work." 1>&2
 fi
 
 # Bind-mount /media, specifically the removable directory
+# It is possible that /media is not mounted inside containers,so bind-mount it
+# only if /media is a mountpoint.
 destmedia="`fixabslinks '/var/host/media'`"
-if ! mountpoint -q "$destmedia"; then
+if mountpoint -q "/media" && ! mountpoint -q "$destmedia"; then
     mount --make-shared /media
     mkdir -p "$destmedia" "$CHROOT/media"
     ln -sf "/var/host/media/removable" "$CHROOT/media/"
@@ -523,7 +564,9 @@ if [ -z "$NOLOGIN" -a -f "$shares" ]; then
 fi
 
 # Bind-mount /sys recursively, making it a slave in the chroot
-if ! mountpoint -q "$CHROOT/sys"; then
+# It is possible that /sys is not mounted inside containers,so bind-mount it
+# only if /sys is a mountpoint.
+if mountpoint -q "/sys" && ! mountpoint -q "$CHROOT/sys"; then
     mkdir -p "$CHROOT/sys"
     mount --make-rshared /sys
     mount --rbind /sys "$CHROOT/sys"
@@ -638,13 +681,18 @@ if [ ! "$NOLOGIN" = 1 ] && grep -q '^root:' "$passwd" 2>/dev/null; then
         mkdir -p "$systemd_dir"
 
         # Create systemd cgroup if necessary
+        start_systemd=true
         if ! mountpoint -q "$CHROOT/sys/fs/cgroup/systemd"; then
-            mkdir -p "$CHROOT/sys/fs/cgroup/systemd"
-            mount -t cgroup -o nosuid,noexec,nodev,none,name=systemd systemd \
-                  "$CHROOT/sys/fs/cgroup/systemd"
+            if ! mkdir -p "$CHROOT/sys/fs/cgroup/systemd" || \
+               ! mount -t cgroup -o nosuid,noexec,nodev,none,name=systemd systemd \
+                       "$CHROOT/sys/fs/cgroup/systemd"; then
+                start_systemd=false
+            fi
         fi
-        # systemd-logind doesn't fork
-        chrootcmd "/lib/systemd/systemd-logind >/dev/null 2>&1 </dev/null &"
+        # We cannot create/mount cgroup dirs in containers, so don't start systemd.
+        if $start_systemd; then
+            chrootcmd "/lib/systemd/systemd-logind >/dev/null 2>&1 </dev/null &"
+        fi
     fi
 
     # Launch a daemon that can kill frecon when an X server is launched.
@@ -666,6 +714,11 @@ if [ ! "$NOLOGIN" = 1 ] && grep -q '^root:' "$passwd" 2>/dev/null; then
             done
         ) &"
         addtrap "(echo $$ >> '$CROUTONLOCKDIR/frecon') & :"
+    fi
+
+    # If the socket file does not exist, it means findnacld is not started.
+    if [ ! -S "/var/run/crouton-ext/socket" ]; then
+        chrootcmd "/usr/local/bin/croutonfindnacld >/dev/null 2>&1 </dev/null &"
     fi
 fi
 

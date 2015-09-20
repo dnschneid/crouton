@@ -31,7 +31,7 @@ Check your internet connection or proxy settings and try again.'
     fi
 fi
 
-# Patch debootstrap so that it retries downloading packages
+# Patch debootstrap so that it retries downloading packages and does not mount /sys
 echo 'Patching debootstrap...' 1>&2
 if awk '
     t == 3 && /warning RETRY/ { print "sleep 1"; t=4 }
@@ -42,6 +42,7 @@ if awk '
         sub(/continue 2; fi/, "failed=y")
         t=1
     }
+    /if \[ -d \"\$TARGET\/sys\" \] && \\/ { sub(/if/, "if false \&\&") }
     1
     END { if (t != 4) exit 1 }
         ' "$tmp/functions" > "$tmp/functions.new"; then
@@ -64,6 +65,14 @@ tar -czf "$tmp/devices.tar.gz" -T /dev/null
 # the scripts for matching upstream distros to bootstrap the derived distros.
 if [ ! -f "$tmp/scripts/$RELEASE" ]; then
     ln -s "$tmp/scripts/$BOOTSTRAP_RELEASE" "$tmp/scripts/$RELEASE"
+fi
+
+# Create a fake mknod for debootstrap if we don't have CAP_MKNOD.
+if ! capmknod; then
+    mkdir "$tmp/bin"
+    echo "touch \$1" > "$tmp/bin/mknod"
+    chmod +x "$tmp/bin/mknod"
+    newpath="$tmp/bin:$newpath"
 fi
 
 # Grab the release and drop it into the subdirectory

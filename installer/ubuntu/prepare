@@ -219,15 +219,31 @@ export DEBIAN_FRONTEND=noninteractive
 
 # Run debootstrap second stage if it hasn't already happened
 if [ -r /debootstrap ]; then
-    # Debootstrap doesn't like anything mounted under /sys or /var when it runs
+    # Debootstrap doesn't like anything mounted under /var when it runs.
     # We request a re-mount after bootstrapping, so these mounts will be fixed.
     # We also can't detect the mounts properly due to the chroot, so we have to
-    # recursively find mountpoints under /sys, and hardcode /var umounts.
-    find /sys/* -maxdepth 2 -depth -type d \
-        -exec mountpoint -q {} \; -exec umount {} \;
+    # hardcode /var umounts.
+    if mountpoint -q '/var/run/crouton-ext'; then
+        umount '/var/run/crouton-ext'
+    fi
     umount '/var/run/lock' '/var/run'
+    # Create a fake mknod for debootstrap if we don't have CAP_MKNOD.
+    if ! capmknod; then
+        cp /bin/mknod /bin/mknod.old
+        echo "touch \$1" > /bin/mknod
+    fi
     # Start the bootstrap
     /debootstrap/debootstrap --second-stage
+    # If we cannot mknod, the installation of makedev will fail, so mark it as
+    # installed manually.
+    if ! capmknod; then
+        awk '
+          BEGIN { matched = 0 }
+          /^Package: makedev$/ { matched = 1 }
+          matched == 1 && /^Status:/ { sub($4, "installed"); matched = 0 }
+          1' /var/lib/dpkg/status > /var/lib/dpkg/status.new
+        mv -f /var/lib/dpkg/status.new /var/lib/dpkg/status
+    fi
     # Clean contents of /var/run (since we'll always be mounting over it).
     rm -rf --one-file-system /var/run/*
     # Request a script restart to refresh the mount environment

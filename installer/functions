@@ -68,6 +68,43 @@ undotrap() {
     settrap "$TRAP"
 }
 
+# Check if we are able to mknod.
+capmknod() {
+    local tmp=`mktemp -d --tmpdir=/tmp 'crouton-mknod.XXX'`
+    local ret=0
+    if ! mknod "$tmp/test-mknod" c 0 0; then
+        ret=1
+    fi
+    rm -rf "$tmp"
+    return $ret
+}
+
+# Check whether $1 is mounted with options $2.
+# We check the options of a mount point by inspecting /proc/mounts.
+# For options dev, suid and exec, since they will not show up in /proc/mounts,
+# we check whether their opposite options (nodev, nosuid, noexec) exists.
+checkmountopt() {
+    local opt
+    local opts="$2,"
+    while [ -n "$opts" ]; do
+        opt=${opts%%,*}
+        opts=${opts#*,}
+        case $opt in
+            dev|suid|exec)
+                if ! awk -v dir="$1" -v opt="no$opt(,|$)" \
+                      '$2 == dir && $4 ~ opt { exit 1 }' "/proc/mounts"; then
+                    return 1
+                fi;;
+            *)
+                if ! awk -v dir="$1" -v opt="$opt(,|$)" \
+                      '$2 == dir && $4 !~ opt { exit 1 }' "/proc/mounts"; then
+                    return 1
+                fi;;
+         esac
+    done
+    return 0
+}
+
 # Works mostly like built-in getopts but silently coalesces positional arguments.
 # Does not take parameters. Set getopts_string prior to calling.
 # Sets getopts_var and getopts_arg.
@@ -156,7 +193,9 @@ release() {
 # sure the kernel does not panic (this is the default configuration of a vanilla
 # kernel). See crbug.com/260955 for details.
 disablehungtask() {
-    echo 0 > /proc/sys/kernel/hung_task_panic
+    # Don't fail since we do not have permission to write /proc/sys/* if we are
+    # in container.
+    echo 0 > /proc/sys/kernel/hung_task_panic || true
 }
 
 # Run an awk program, without buffering its output.
