@@ -633,7 +633,7 @@ deduptargets() {
                 continue
             fi
             # Don't add xephyr if system is using Freon
-            if [ "$TARGETSDIR/$TARGET" = "xephyr" -a -f /sbin/frecon ]; then
+            if [ "$TARGET" = "xephyr" -a -f /sbin/frecon ]; then
                 echo "Previously installed target '$TARGET' no longer valid with Freon - removing." 1>&2
                 continue
             fi
