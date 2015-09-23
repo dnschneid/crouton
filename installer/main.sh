@@ -522,7 +522,7 @@ vboot_is_safe() {
     local tmp="`mktemp -d --tmpdir=/tmp 'crouton-rwtest.XXX'`"
     local unmount="umount -l '$tmp' 2>/dev/null; rmdir '$tmp'"
     addtrap "$unmount"
-    mount --bind / "$tmp" >/dev/null
+    mount --bind / "$tmp" >/dev/null 2>&1
     local ret=1
     mount -o remount,rw "$tmp" 2>/dev/null || ret=0
     undotrap

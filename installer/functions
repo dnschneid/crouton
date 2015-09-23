@@ -72,7 +72,7 @@ undotrap() {
 capmknod() {
     local tmp=`mktemp -d --tmpdir=/tmp 'crouton-mknod.XXX'`
     local ret=0
-    if ! mknod "$tmp/test-mknod" c 0 0; then
+    if ! mknod "$tmp/test-mknod" c 0 0 2>/dev/null; then
         ret=1
     fi
     rm -rf "$tmp"
@@ -195,7 +195,7 @@ release() {
 disablehungtask() {
     # Don't fail since we do not have permission to write /proc/sys/* if we are
     # in container.
-    echo 0 > /proc/sys/kernel/hung_task_panic || true
+    echo 0 2>/dev/null > /proc/sys/kernel/hung_task_panic || true
 }
 
 # Run an awk program, without buffering its output.
