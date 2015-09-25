@@ -387,7 +387,7 @@ bindmount /tmp /tmp exec
 bindmount /proc
 tmpfsmount /var/run 'noexec,nosuid,mode=0755,size=10%'
 tmpfsmount /var/run/lock 'noexec,nosuid,nodev,size=5120k'
-bindmount /var/run/dbus /var/host/dbus
+bindmount /var/run/dbus /var/host/dbus 2>/dev/null || true
 bindmount /var/run/shill /var/host/shill
 bindmount /var/lib/timezone /var/host/timezone
 # If findnacld socket exists, bind-mount it into chroot.
