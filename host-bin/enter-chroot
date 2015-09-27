@@ -155,6 +155,14 @@ fi
 # Make sure we always exit with echo on the tty.
 addtrap "stty echo 2>/dev/null"
 
+# Determine whether we're running in a chroot already (i.e. nested enter-chroot)
+if [ ! -d "/var/run/shill" ]; then
+    echo "Already in a chroot..."
+    NESTED_ENTER_CHROOT=1
+else
+    NESTED_ENTER_CHROOT=0
+fi
+
 # Mount the chroot and update our CHROOT path
 CHROOTSRC="$CHROOTS/$NAME"
 if [ -n "$KEYFILE" ]; then
@@ -263,13 +271,21 @@ echo "$NAME" > "$CHROOT/etc/crouton/name"
 mkdir -p "$CHROOT/var/host"
 
 # Copy in the current Chromium OS version for reference
-cp -f '/etc/lsb-release' "$CHROOT/var/host/"
+host_path="/etc"
+if [ $NESTED_ENTER_CHROOT ]; then
+    host_path="/var/host"
+fi
+cp -f "${host_path}/lsb-release" "$CHROOT/var/host/"
 
 # Copy CRAS version into the chroot
 cras_test_client --version 2>/dev/null > "$CHROOT/var/host/cras-version" || true
 
 # Copy the latest Xauthority into the chroot
-if [ -f "${XAUTHORITY:=/home/chronos/.Xauthority}" ]; then
+host_path="/home/chronos/.Xauthority"
+if [ $NESTED_ENTER_CHROOT ]; then
+    host_path="/var/host/Xauthority"
+fi
+if [ -f "${XAUTHORITY:=$host_path}" ]; then
     cp -f "$XAUTHORITY" "$CHROOT/var/host/Xauthority"
     chmod 444 "$CHROOT/var/host/Xauthority"
     # Be backwards-compatible, just in case
@@ -353,8 +369,16 @@ bindmount /proc
 tmpfsmount /var/run 'noexec,nosuid,mode=0755,size=10%'
 tmpfsmount /var/run/lock 'noexec,nosuid,nodev,size=5120k'
 bindmount /var/run/dbus /var/host/dbus
-bindmount /var/run/shill /var/host/shill
-bindmount /var/lib/timezone /var/host/timezone
+host_path="/var/run"
+if [ $NESTED_ENTER_CHROOT ]; then
+    host_path="/var/host"
+fi
+bindmount "${host_path}/shill" /var/host/shill
+host_path="/var/lib"
+if [ $NESTED_ENTER_CHROOT ]; then
+    host_path="/var/host"
+fi
+bindmount "${host_path}/timezone" /var/host/timezone
 for m in /lib/modules/*; do
     if [ -d "$m" ]; then
         bindmount '-o ro' "$m"
@@ -386,7 +410,9 @@ fi
 # Bind-mount /media, specifically the removable directory
 destmedia="`fixabslinks '/var/host/media'`"
 if ! mountpoint -q "$destmedia"; then
-    mount --make-shared /media
+    # Might indeed fail if NESTED_ENTER_CHROOT as /media might not be in /etc/{fs,m}tab
+    mount --make-shared /media || $(exit $((! $NESTED_ENTER_CHROOT)))
+
     mkdir -p "$destmedia" "$CHROOT/media"
     ln -sf "/var/host/media/removable" "$CHROOT/media/"
     mount --rbind /media "$destmedia"
