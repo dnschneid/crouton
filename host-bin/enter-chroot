@@ -272,7 +272,7 @@ mkdir -p "$CHROOT/var/host"
 
 # Copy in the current Chromium OS version for reference
 host_path="/etc"
-if [ $NESTED_ENTER_CHROOT ]; then
+if [ $NESTED_ENTER_CHROOT = 1 ]; then
     host_path="/var/host"
 fi
 cp -f "${host_path}/lsb-release" "$CHROOT/var/host/"
@@ -282,7 +282,7 @@ cras_test_client --version 2>/dev/null > "$CHROOT/var/host/cras-version" || true
 
 # Copy the latest Xauthority into the chroot
 host_path="/home/chronos/.Xauthority"
-if [ $NESTED_ENTER_CHROOT ]; then
+if [ $NESTED_ENTER_CHROOT = 1 ]; then
     host_path="/var/host/Xauthority"
 fi
 if [ -f "${XAUTHORITY:=$host_path}" ]; then
@@ -370,12 +370,12 @@ tmpfsmount /var/run 'noexec,nosuid,mode=0755,size=10%'
 tmpfsmount /var/run/lock 'noexec,nosuid,nodev,size=5120k'
 bindmount /var/run/dbus /var/host/dbus
 host_path="/var/run"
-if [ $NESTED_ENTER_CHROOT ]; then
+if [ $NESTED_ENTER_CHROOT = 1 ]; then
     host_path="/var/host"
 fi
 bindmount "${host_path}/shill" /var/host/shill
 host_path="/var/lib"
-if [ $NESTED_ENTER_CHROOT ]; then
+if [ $NESTED_ENTER_CHROOT = 1 ]; then
     host_path="/var/host"
 fi
 bindmount "${host_path}/timezone" /var/host/timezone
