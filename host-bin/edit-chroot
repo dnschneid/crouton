@@ -58,12 +58,7 @@ Options:
                 If multiple chroots are specified, DEST must be a directory.
                 If you are moving a chroot to a SD card/USB drive, make sure the
                 storage is formatted to ext2/3/4.
-    -u DEST     Copies a chroot. Specify a new name to keep it in the same
-                directory, or an absolute path.
-                DEST can be a directory, in which case it must end in a slash.
-                If multiple chroots are specified, DEST must be a directory.
-                If you are copying a chroot to a SD card/USB drive, make sure the
-                storage is formatted to ext2/3/4.
+    -u DEST     Like -m, but copies instead of moves.
     -r          Restores a chroot from a tarball. The tarball path can be
                 specified with -f or detected from name. If both are specified,
                 restores to that name instead of the one in the tarball.
@@ -172,7 +167,7 @@ if [ $# -gt 1 -a -f "$KEYFILE" -a ! "$KEYFILE" = '-' ]; then
 elif [ $# -gt 1 -a -n "$MOVE" -a "${MOVE%/}" = "$MOVE" ]; then
     error 2 "Multiple chroots specified, but $MOVE is not a directory."
 elif [ $# -gt 1 -a -n "$COPY" -a "${COPY%/}" = "$COPY" ]; then
-      error 2 "Multiple chroots specified, but $COPY is not a directory."
+    error 2 "Multiple chroots specified, but $COPY is not a directory."
 elif [ $# -gt 1 -a -f "$TARBALL" ]; then
     error 2 "Multiple chroots specified, but $TARBALL is not a directory."
 fi
@@ -638,7 +633,7 @@ for NAME in "$@"; do
             error 1 "Unable to create directory for $target"
         fi
         echo "Copying $CHROOT to $target" 1>&2
-        cp -a "$CHROOT" "$target"
+        spinner 200 cp -av --one-file-system "$CHROOT" "$target"
     fi
 done
 
