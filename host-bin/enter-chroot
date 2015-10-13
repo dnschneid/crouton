@@ -659,6 +659,8 @@ if [ ! "$NOLOGIN" = 1 ] && grep -q '^root:' "$passwd" 2>/dev/null; then
         # systemd-logind doesn't fork
         chrootcmd "/lib/systemd/systemd-logind >/dev/null 2>&1 </dev/null &"
     fi
+
+    chrootcmd "/usr/local/bin/croutonfindnacld >/dev/null 2>&1 </dev/null &"
 fi
 
 # Start the chroot and any specified command

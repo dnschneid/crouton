@@ -22,6 +22,9 @@
 #include <X11/extensions/XShm.h>
 #include <X11/extensions/Xdamage.h>
 #include <X11/extensions/Xfixes.h>
+#include <sys/un.h>
+
+const char *SOCKET_PATH = "/var/run/crouton-ext/socket";
 
 /* X11-related variables */
 static Display *dpy;
@@ -241,6 +244,44 @@ void close_mmap(struct cache_entry* entry) {
     entry->map = NULL;
 }
 
+/* Read the pid of nacl_helper and get shm from findnacl daemon.
+ * The socket fd is passed in and fd of nacl_helper is returned..*/
+int recv_pid_fd(int conn)
+{
+    int fd = -1;
+    struct msghdr msg = { 0 };
+    struct iovec iov;
+    struct cmsghdr *cmsg;
+    long pid;
+    char buf[CMSG_SPACE(sizeof(int))];
+
+    memset(buf, 0, sizeof(buf));
+
+    iov.iov_base = &pid;
+    iov.iov_len = sizeof(pid);
+    msg.msg_iov = &iov;
+    msg.msg_iovlen = 1;
+    msg.msg_control = buf;
+    msg.msg_controllen = CMSG_SPACE(sizeof(int));
+
+    if (recvmsg(conn, &msg, 0) < 0) {
+        syserror("Cannot get response from findnacl daemon.");
+        return -1;
+    }
+
+    cmsg = CMSG_FIRSTHDR(&msg);
+    if (cmsg) {
+        if (cmsg->cmsg_level == SOL_SOCKET && cmsg->cmsg_type == SCM_RIGHTS) {
+            fd = *((int *)CMSG_DATA(cmsg));
+        } else {
+            error("No fd is passed from findnacl daemon.");
+        }
+    } else {
+        error("No fd is passed from findnacl daemon.");
+    }
+    return fd;
+}
+
 /* Finds NaCl/Chromium shm memory using external handler.
  * Reply must be in the form PID:file */
 struct cache_entry* find_shm(uint64_t paddr, uint64_t sig, size_t length) {
@@ -283,47 +324,42 @@ struct cache_entry* find_shm(uint64_t paddr, uint64_t sig, size_t length) {
             p += c;
         }
 
-        char* cmd = "croutonfindnacl";
-        char* args[] = {cmd, arg1, arg2, NULL};
-        char buffer[256];
-        log(2, "Running %s %s %s", cmd, arg1, arg2);
-        c = popen2(cmd, args, NULL, 0, buffer, sizeof(buffer));
-        if (c <= 0) {
-            error("Error running helper.");
-            return NULL;
-        }
-        buffer[c < sizeof(buffer) ? c : (sizeof(buffer)-1)] = 0;
-        log(2, "Result: %s", buffer);
+        int sock;
+        struct sockaddr_un addr;
 
-        /* Parse PID:file output */
-        char* cut = strchr(buffer, ':');
-        if (!cut) {
-            error("No ':' in helper reply: %s.", cut);
-            return NULL;
-        }
-        *cut = 0;
+        sock = socket(AF_UNIX, SOCK_STREAM, 0);
+        addr.sun_family = AF_UNIX;
+        strncpy(addr.sun_path, SOCKET_PATH, sizeof(addr.sun_path));
 
-        char* endptr;
-        long pid = strtol(buffer, &endptr, 10);
-        if(buffer == endptr || *endptr != '\0') {
-            error("Invalid pid: %s", buffer);
+        if (connect(sock, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+            syserror("Cannot connect to findnacl daemon.");
             return NULL;
         }
-        char* file = cut+1;
-        log(2, "PID:%ld, FILE:%s", pid, file);
+
+        char args[70];
+        c = snprintf(args, sizeof(args), "%s %s", arg1, arg2);
+        trueorabort(c > 0 && c < sizeof(args), "snprintf");
+
+        if (write(sock, args, strlen(args)) < 0) {
+            syserror("Cannot send arguments.");
+            close(sock);
+            return NULL;
+        }
+
+        entry->fd = recv_pid_fd(sock);
+        if (entry->fd < 0) {
+            error("Cannot open nacl file.");
+            return NULL;
+        }
+        close(sock);
 
         entry->paddr = paddr;
-        entry->fd = open(file, O_RDWR);
-        if (entry->fd < 0) {
-            error("Cannot open file %s\n", file);
-            return NULL;
-        }
 
         entry->length = length;
         entry->map = mmap(NULL, length, PROT_READ|PROT_WRITE, MAP_SHARED,
                           entry->fd, 0);
         if (!entry->map) {
-            error("Cannot mmap %s\n", file);
+            error("Cannot mmap.");
             close(entry->fd);
             return NULL;
         }
