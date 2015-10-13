@@ -217,6 +217,12 @@ install_mirror_package() {
 # Run dpkg in non-interactive mode
 export DEBIAN_FRONTEND=noninteractive
 
+# dpkg will auto start some services when installing, and it will ask
+# policy-rc.d for permissions. We don't want any service to start, so always
+# return denies.
+echo exit 101 > /usr/sbin/policy-rc.d
+chmod +x /usr/sbin/policy-rc.d
+
 # Run debootstrap second stage if it hasn't already happened
 if [ -r /debootstrap ]; then
     # Debootstrap doesn't like anything mounted under /sys or /var when it runs
