@@ -77,6 +77,18 @@ host edit-chroot -y "$release" -m "$release.2"
 host enter-chroot -n "$release.2" true
 fails host enter-chroot -n "$release" true
 
+# Cannot copy a chroot that does not exist
+host edit-chroot -y "$release" -u "$release.3"
+fails host enter-chroot -n "$release.3" true
+
+# Copy a chroot
+host edit-chroot -y "$release.2" -u "$release.3"
+host enter-chroot -n "$release.3" true
+
+# Delete the copy
+host delete-chroot -y "$release.3"
+fails host enter-chroot -n "$release.3" true
+
 # Restore the chroot
 host edit-chroot -y -f "$BACKUPDIR/$release.tar" -r "$release"
 host enter-chroot -n "$release" true
@@ -154,6 +166,23 @@ host delete-chroot "$release" "$release.2" -y -c "$PREFIX/chroots.2"
 fails host enter-chroot -c "$PREFIX/chroots.2" -n "$release" true
 fails host enter-chroot -c "$PREFIX/chroots.2" -n "$release.2" true
 
+# Copy them to a new prefix: destination needs to end with a slash
+fails host edit-chroot -y -u "$PREFIX/chroots.2" "$release" "$release.2"
+host enter-chroot -n "$release" true
+host enter-chroot -n "$release.2" true
+
+host edit-chroot -y -u "$PREFIX/chroots.2/" "$release" "$release.2"
+host enter-chroot -c "$PREFIX/chroots.2" -n "$release" true
+host enter-chroot -c "$PREFIX/chroots.2" -n "$release.2" true
+
+# Delete all four chroots
+host delete-chroot "$release" "$release.2" -y -c "$PREFIX/chroots.2"
+host delete-chroot "$release" "$release.2" -y
+fails host enter-chroot -c "$PREFIX/chroots.2" -n "$release" true
+fails host enter-chroot -c "$PREFIX/chroots.2" -n "$release.2" true
+fails host enter-chroot -n "$release" true
+fails host enter-chroot -n "$release.2" true
+
 OLDCWD="`pwd`"
 
 # Restore both chroots from automatically named tarballs in current directory
@@ -180,6 +209,13 @@ fails ls "$BACKUPDIR"/*
 fails host edit-chroot -y -m "." -- "-$release"
 fails host edit-chroot -y -m ".." -- "-$release"
 fails host edit-chroot -y -m "" -- "-$release"
+host enter-chroot -n "-$release" true
+
+# Check invalid names are also detected in parameter to -u
+# (/ are acceptable in this context, as target directory)
+fails host edit-chroot -y -u "." -- "-$release"
+fails host edit-chroot -y -u ".." -- "-$release"
+fails host edit-chroot -y -u "" -- "-$release"
 host enter-chroot -n "-$release" true
 
 # Delete both chroots
