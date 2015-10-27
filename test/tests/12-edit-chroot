@@ -78,11 +78,11 @@ host enter-chroot -n "$release.2" true
 fails host enter-chroot -n "$release" true
 
 # Cannot copy a chroot that does not exist
-host edit-chroot -y "$release" -u "$release.3"
+host edit-chroot -y "$release" -C "$release.3"
 fails host enter-chroot -n "$release.3" true
 
 # Copy a chroot
-host edit-chroot -y "$release.2" -u "$release.3"
+host edit-chroot -y "$release.2" -C "$release.3"
 host enter-chroot -n "$release.3" true
 
 # Delete the copy
@@ -167,11 +167,11 @@ fails host enter-chroot -c "$PREFIX/chroots.2" -n "$release" true
 fails host enter-chroot -c "$PREFIX/chroots.2" -n "$release.2" true
 
 # Copy them to a new prefix: destination needs to end with a slash
-fails host edit-chroot -y -u "$PREFIX/chroots.2" "$release" "$release.2"
+fails host edit-chroot -y -C "$PREFIX/chroots.2" "$release" "$release.2"
 host enter-chroot -n "$release" true
 host enter-chroot -n "$release.2" true
 
-host edit-chroot -y -u "$PREFIX/chroots.2/" "$release" "$release.2"
+host edit-chroot -y -C "$PREFIX/chroots.2/" "$release" "$release.2"
 host enter-chroot -c "$PREFIX/chroots.2" -n "$release" true
 host enter-chroot -c "$PREFIX/chroots.2" -n "$release.2" true
 
@@ -211,11 +211,11 @@ fails host edit-chroot -y -m ".." -- "-$release"
 fails host edit-chroot -y -m "" -- "-$release"
 host enter-chroot -n "-$release" true
 
-# Check invalid names are also detected in parameter to -u
+# Check invalid names are also detected in parameter to -C
 # (/ are acceptable in this context, as target directory)
-fails host edit-chroot -y -u "." -- "-$release"
-fails host edit-chroot -y -u ".." -- "-$release"
-fails host edit-chroot -y -u "" -- "-$release"
+fails host edit-chroot -y -C "." -- "-$release"
+fails host edit-chroot -y -C ".." -- "-$release"
+fails host edit-chroot -y -C "" -- "-$release"
 host enter-chroot -n "-$release" true
 
 # Delete both chroots

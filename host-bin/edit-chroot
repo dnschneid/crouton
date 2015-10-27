@@ -58,7 +58,7 @@ Options:
                 If multiple chroots are specified, DEST must be a directory.
                 If you are moving a chroot to a SD card/USB drive, make sure the
                 storage is formatted to ext2/3/4.
-    -u DEST     Like -m, but copies instead of moves.
+    -C DEST     Like -m, but copies instead of moves.
     -r          Restores a chroot from a tarball. The tarball path can be
                 specified with -f or detected from name. If both are specified,
                 restores to that name instead of the one in the tarball.
@@ -74,12 +74,13 @@ Options:
 . "$BINDIR/../installer/functions"
 
 # Process arguments
-getopts_string='abc:def:k:lm:rs:u:y'
+getopts_string='abc:C:def:k:lm:rs:y'
 while getopts_nextarg; do
     case "$getopts_var" in
     a) ALLCHROOTS='y';;
     b) BACKUP='y'; NEEDS_UNMOUNT='y';;
     c) CHROOTS="`readlink -m -- "$getopts_arg"`";;
+    C) COPY="$getopts_arg"; NEEDS_UNMOUNT='y';;
     d) DELETE='y'; NEEDS_UNMOUNT='y';;
     e) ENCRYPT='y'; NEEDS_UNMOUNT='y';;
     f) TARBALL="$getopts_arg";;
@@ -88,7 +89,6 @@ while getopts_nextarg; do
     m) MOVE="$getopts_arg"; NEEDS_UNMOUNT='y';;
     r) RESTORE=$(($RESTORE+1)); NEEDS_UNMOUNT='y';;
     s) SPLIT="$getopts_arg";;
-    u) COPY="$getopts_arg"; NEEDS_UNMOUNT='y';;
     y) YES='a'; YESPARAM='-y';;
     \?) error 2 "$USAGE";;
     esac
