@@ -78,8 +78,10 @@ host enter-chroot -n "$release.2" true
 fails host enter-chroot -n "$release" true
 
 # Cannot copy a chroot that does not exist
-host edit-chroot -y "$release" -C "$release.3"
-fails host enter-chroot -n "$release.3" true
+fails host edit-chroot -y "$release" -C "$release.3"
+
+# Cannot copy and move a chroot
+fails host edit-chroot -y "$release" -C "$release.3" -m "$release.4"
 
 # Copy a chroot
 host edit-chroot -y "$release.2" -C "$release.3"
