@@ -366,6 +366,17 @@ addtrap "stty echo 2>/dev/null"
 BIN="$PREFIX/bin"
 CHROOTS="$PREFIX/chroots"
 
+# Check if space requirements have been met
+# if not, check for chrubuntu
+    PART_AVAIL_MIN=2000   # in MB
+    PART_SIZE_MIN=4000    # in MB
+    #PART_AVAIL_MIN=200000 # in MB !!! TEST VALUE
+    #PART_SIZE_MIN=400000  # in MB !!! TEST VALUE
+    if ! check_space "$PART_SIZE_MIN" "$PART_AVAIL_MIN"; then
+        check_chrubuntu
+    #   exit 1 # Don't exit, just spit out out warnings
+    fi
+    
 if [ -z "$RESTOREBIN" ]; then
     # Fix NAME if it was not specified.
     CHROOT="$CHROOTS/${NAME:="${RELEASE:-"$DEFAULTRELEASE"}"}"
