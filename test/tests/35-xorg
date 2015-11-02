@@ -1,11 +1,11 @@
 #!/bin/sh -e
-# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2015 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 # All supported releases should be able to launch an xorg server
 if [ -z "$release" ]; then
-    if grep -q 'SAMSUNG EXYNOS' /proc/cpuinfo; then
+    if grep -q 'SAMSUNG EXYNOS' /proc/cpuinfo && [ ! -f /sbin/frecon ]; then
         log "xorg is not available on Samsung ARM. Skipping test."
     else
         echo "all"

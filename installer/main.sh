@@ -1,5 +1,5 @@
 #!/bin/sh -e
-# Copyright (c) 2014 The crouton Authors. All rights reserved.
+# Copyright (c) 2015 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -389,7 +389,7 @@ if [ -z "$RESTOREBIN$DOWNLOADONLY" ]; then
     # to catch situations where things are bind-mounted over /usr/local
     truechroots="/mnt/stateful_partition/dev_image/chroots"
     if [ -z "$PREFIXSET" -a ! -h "$CHROOTS" ] \
-            && [ "$CHROOTS" -ef "$truechroots" ]; then
+            && ([ ! -e "$CHROOTS" ] || [ "$CHROOTS" -ef "$truechroots" ]); then
         # Detect if chroots are left in the old chroots directory, and move them
         # to the new directory.
         if [ -e "$CHROOTS" ] && ! rmdir "$CHROOTS" 2>/dev/null; then
@@ -630,6 +630,11 @@ deduptargets() {
             fi
             if [ ! -r "$TARGETSDIR/$TARGET" ]; then
                 echo "Previously installed target '$TARGET' no longer exists." 1>&2
+                continue
+            fi
+            # Don't add xephyr if system is using Freon
+            if [ "$TARGET" = "xephyr" -a -f /sbin/frecon ]; then
+                echo "Previously installed target '$TARGET' no longer valid with Freon - removing." 1>&2
                 continue
             fi
             # Add the target

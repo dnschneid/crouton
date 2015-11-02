@@ -1,5 +1,5 @@
 #!/bin/sh -e
-# Copyright (c) 2014 The crouton Authors. All rights reserved.
+# Copyright (c) 2015 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -19,7 +19,7 @@ POLLINTERVAL=10
 # Full sync status at least every x seconds
 LOGUPLOADINTERVAL=60
 # After the end of a test, try to fetch results for x seconds
-FETCHTIMEOUT=300
+FETCHTIMEOUT=1200
 # Archive every hour, files older than 7 days
 ARCHIVEINTERVAL=3600
 ARCHIVEMAXAGE=7
@@ -103,7 +103,8 @@ cat /etc/lsb-release
         return 1
     fi
 
-    sed -n 's/^CHROMEOS_RELEASE_BOARD=//p' "$hostinfo"
+    # Drop freon suffix (Omaha will get us back to freon if needed)
+    sed -n 's/[_-]freon$//;s/^CHROMEOS_RELEASE_BOARD=//p' "$hostinfo"
 }
 
 # Find a release/build name from host, board and channel
@@ -121,7 +122,25 @@ findrelease() {
     local hwid="`sed -n 's/^HWID=//p' "$hostinfo"`"
 
     tee /dev/stderr<<EOF | curl -d @- https://tools.google.com/service/update2 \
-        | sed -n 's/.*<action[^>]*ChromeOSVersion="\([^"]*\)"[^>]*ChromeVersion="\([0-9]*\)\..*/R\2-\1/p'
+            | tee /dev/stderr | awk '
+        BEGIN { RS=" "; FS="=" }
+        $1 == "ChromeOSVersion" {
+            osver=$2; gsub(/"/, "", osver)
+        }
+        $1 == "ChromeVersion" {
+            ver=$2; gsub(/"/, "", ver); gsub(/\..*$/, "", ver)
+        }
+        $2 ~ /-freon_/ { # Freon detection heuristics
+            # If there is already an _ => use -, otherwise _
+            if ("'$board'" ~ /_/)
+                freon="-freon"
+            else
+                freon="_freon"
+        }
+        END {
+            if (length(ver) > 0 && length(osver) > 0)
+                print "cros-version:'$board'" freon "-release/R" ver "-" osver
+        }'
 <?xml version="1.0" encoding="UTF-8"?>
 <request protocol="3.0" version="ChromeOSUpdateEngine-0.1.0.0"
                  updaterversion="ChromeOSUpdateEngine-0.1.0.0">
@@ -220,15 +239,15 @@ log "crouton autotest daemon starting..."
 echo "Fetching latest autotest..." 1>&2
 AUTOTESTROOT="$LOCALROOT/autotest.git"
 if [ -d "$AUTOTESTROOT/.git" ]; then
-    (
-        cd "$AUTOTESTROOT"
-        git fetch
-        git reset --hard origin/master >/dev/null
-    )
+    git -C "$AUTOTESTROOT" fetch
+    git -C "$AUTOTESTROOT" reset --hard origin/master >/dev/null
 else
     rm -rf "$AUTOTESTROOT"
     git clone "$AUTOTESTGIT" "$AUTOTESTROOT"
 fi
+# FIXME: Remove dependency on chromite.lib: See crbug.com/502534
+git -C "$AUTOTESTROOT" revert d188984d9aef5a4ff09d8d459b5b3a6c46789fb0
+
 PATH="$AUTOTESTROOT/cli:$PATH"
 
 echo "Checking if gsutil is installed..." 1>&2
@@ -381,7 +400,7 @@ while sleep "$POLLINTERVAL"; do
                         set -x
                         atest job create -m "$host" -w cautotest \
                             -f "$curtesthostroot/control" \
-                            -d "cros-version:${board}-release/$release" \
+                            -d "$release" \
                             -B always --max_runtime="$MAXTESTRUNTIME" \
                             "$tname-$hostfull"
                     ) > "$curtesthostroot/atest" 2>&1 || ret=$?
@@ -491,7 +510,7 @@ while sleep "$POLLINTERVAL"; do
                         status2="`awk '($1 == "END") && \
                                        ($3 == "platform_Crouton") \
                                            { print $2 }' \
-                                       "$curtesthostresult/status.log"`"
+                                       "$curtesthostresult/status.log" || true`"
                     fi
                     log "$curtest $curtesthost: $status ${status2:="UNKNOWN"}"
                     sed -i -e "s;\$;|Status2=$status2|;" "$statusfile"

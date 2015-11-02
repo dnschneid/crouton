@@ -1,5 +1,5 @@
 #!/bin/sh -e
-# Copyright (c) 2014 The crouton Authors. All rights reserved.
+# Copyright (c) 2015 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -530,6 +530,19 @@ if ! mountpoint -q "$CHROOT/sys"; then
     mount --make-rslave "$CHROOT/sys"
 fi
 
+# Modify chroot's /sys/class/drm to avoid vgem
+varrundrm="$(fixabslinks '/var/run/drm')"
+sysclassdrm="$(fixabslinks '/sys/class/drm')"
+if [ ! -d "$varrundrm" -a -d "$sysclassdrm" ]; then
+    cp -Ta "$sysclassdrm" "$varrundrm"
+    for f in "$varrundrm"/*; do
+        if [ -h "$f" ] && readlink "$f" | grep -qF /vgem/; then
+            rm -f "$f"
+        fi
+    done
+    mount --bind "$varrundrm" "$sysclassdrm"
+fi
+
 # Get croutonversion variables
 croutonversion="$CHROOT/usr/local/bin/croutonversion"
 CHROOTRELEASE="unknown"
@@ -647,26 +660,7 @@ if [ ! "$NOLOGIN" = 1 ] && grep -q '^root:' "$passwd" 2>/dev/null; then
         chrootcmd "/lib/systemd/systemd-logind >/dev/null 2>&1 </dev/null &"
     fi
 
-    # Launch a daemon that can kill frecon when an X server is launched.
-    # FIXME: remove when crbug.com/457075 is resolved
-    if [ -f /sbin/frecon ]; then
-        mkdir -p "$CROUTONLOCKDIR"
-        chmod 777 "$CROUTONLOCKDIR"
-        if [ ! -e "$CROUTONLOCKDIR/frecon" ]; then
-            mkfifo "$CROUTONLOCKDIR/frecon"
-            chmod 622 "$CROUTONLOCKDIR/frecon"
-        fi
-        chrootcmd "(exec >/dev/null 2>&1 </dev/null
-            while read -r cmd <'$CROUTONLOCKDIR/frecon'; do
-                if [ \"\$cmd\" = $$ ]; then
-                    break
-                elif [ -z \"\$cmd\" ]; then
-                    pkill '^frecon\$' || true
-                fi
-            done
-        ) &"
-        addtrap "(echo $$ >> '$CROUTONLOCKDIR/frecon') & :"
-    fi
+    chrootcmd "/usr/local/bin/croutonfindnacld >/dev/null 2>&1 </dev/null &"
 fi
 
 # Start the chroot and any specified command
@@ -684,10 +678,16 @@ if [ -n "$NOLOGIN" ]; then
         fi
     fi
 else
-    # Run rc.local
+    # Check and run rc.local
     if [ -n "$firstrun" -a -x "$CHROOT/etc/rc.local" ]; then
+        ( sleep 10; echo "Still running chroot's rc.local..." 2>&1 ) &
+        noticepid="$!"
+        addtrap "kill '$noticepid' 2>/dev/null"
         chrootcmd 'exec /etc/rc.local >/dev/null 2>/dev/null </dev/null' \
             || ret=$?
+        undotrap
+        kill "$noticepid" 2>/dev/null || true
+        wait "$noticepid" || true
         if [ ! "$ret" = 0 ]; then
             echo "WARNING: /etc/rc.local failed with code $ret" 1>&2
             ret=0

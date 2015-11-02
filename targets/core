@@ -1,5 +1,5 @@
 #!/bin/sh -e
-# Copyright (c) 2014 The crouton Authors. All rights reserved.
+# Copyright (c) 2015 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 REQUIRES=''
@@ -98,7 +98,9 @@ EOF
         fi
     fi
 
-    apt-get -y update
+    # Update the package list.
+    # Ignore failures, as most are due to bad PPAs and are not critical.
+    apt-get -y update || true
 
     echo 'Ensuring system is up-to-date...' 1>&2
     apt-get -y dist-upgrade

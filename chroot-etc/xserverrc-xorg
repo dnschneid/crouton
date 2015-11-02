@@ -1,5 +1,5 @@
 #!/bin/sh -e
-# Copyright (c) 2014 The crouton Authors. All rights reserved.
+# Copyright (c) 2015 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -25,11 +25,6 @@ if [ ! -f "/sys/class/tty/tty0/active" ]; then
             exit 2
         fi
     done
-    # Use the daemon to kill frecon.
-    # FIXME: remove when crbug.com/457075 is resolved
-    if [ -w '/tmp/crouton-lock/frecon' ]; then
-        echo >> '/tmp/crouton-lock/frecon'
-    fi
     # Freon necessitates the preload hack for X to coexist
     X=/usr/bin/Xorg
     logfile="/tmp/Xorg.crouton.$$.log"
@@ -39,7 +34,7 @@ if [ ! -f "/sys/class/tty/tty0/active" ]; then
             logfile="/tmp/Xorg.crouton.$disp.log"
         fi
     done
-    XARGS="-logfile $logfile"
+    XARGS="$XARGS -logfile $logfile"
     export LD_PRELOAD="/usr/local/lib/croutonfreon.so:$LD_PRELOAD"
 fi
 

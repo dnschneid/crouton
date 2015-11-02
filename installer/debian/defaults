@@ -1,5 +1,5 @@
 #!/bin/sh -e
-# Copyright (c) 2014 The crouton Authors. All rights reserved.
+# Copyright (c) 2015 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -13,12 +13,13 @@ fi
 case "$ARCH" in
 x86 | i?86) ARCH="i386";;
 x86_64 | amd64) ARCH="amd64";;
+armel) ARCH="armel";;
 arm*) ARCH="armhf";;
 *) error 2 "Invalid architecture '$ARCH'.";;
 esac
 
 if [ -z "$MIRROR" ]; then
-    MIRROR="${CROUTON_MIRROR_debian:-http://ftp.debian.org/debian/}"
+    MIRROR="${CROUTON_MIRROR_debian:-http://httpredir.debian.org/debian/}"
 fi
 
 if [ -z "$MIRROR2" ]; then

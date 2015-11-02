@@ -37,11 +37,13 @@ static int lockfd = -1;
 
 static int (*orig_ioctl)(int d, int request, void* data);
 static int (*orig_open)(const char *pathname, int flags, mode_t mode);
+static int (*orig_open64)(const char *pathname, int flags, mode_t mode);
 static int (*orig_close)(int fd);
 
 static void preload_init() {
     orig_ioctl = dlsym(RTLD_NEXT, "ioctl");
     orig_open = dlsym(RTLD_NEXT, "open");
+    orig_open64 = dlsym(RTLD_NEXT, "open64");
     orig_close = dlsym(RTLD_NEXT, "close");
 }
 
@@ -152,30 +154,47 @@ int ioctl(int fd, unsigned long int request, ...) {
     return ret;
 }
 
-int open(const char *pathname, int flags, ...) {
-    if (!orig_open) preload_init();
-
-    va_list argp;
-    va_start(argp, flags);
-    int mode = va_arg(argp, int);
-
-    TRACE("open %s\n", pathname);
+static int _open(int (*origfunc)(const char *pathname, int flags, mode_t mode),
+                 const char *origname, const char *pathname, int flags, mode_t mode) {
+    TRACE("%s %s\n", origname, pathname);
     if (!strcmp(pathname, "/dev/tty0")) {
-        tty0fd = orig_open("/dev/null", flags, mode);
+        tty0fd = origfunc("/dev/null", flags, mode);
         return tty0fd;
     } else if (!strcmp(pathname, "/dev/tty7")) {
-        tty7fd = orig_open("/dev/null", flags, mode);
+        tty7fd = origfunc("/dev/null", flags, mode);
         return tty7fd;
     } else {
         const char* event = "/dev/input/event";
-        int fd = orig_open(pathname, flags, mode);
-        TRACE("open %s %d\n", pathname, fd);
+        int fd = origfunc(pathname, flags, mode);
+        TRACE("%s %s %d\n", origname, pathname, fd);
         if (!strncmp(pathname, event, strlen(event))) {
             TRACE("GRAB\n");
             orig_ioctl(fd, EVIOCGRAB, (void *) 1);
         }
         return fd;
     }
+}
+
+int open(const char *pathname, int flags, ...) {
+    if (!orig_open) preload_init();
+
+    va_list argp;
+    va_start(argp, flags);
+    mode_t mode = va_arg(argp, mode_t);
+    va_end(argp);
+
+    return _open(orig_open, "open", pathname, flags, mode);
+}
+
+int open64(const char *pathname, int flags, ...) {
+    if (!orig_open64) preload_init();
+
+    va_list argp;
+    va_start(argp, flags);
+    mode_t mode = va_arg(argp, mode_t);
+    va_end(argp);
+
+    return _open(orig_open64, "open64", pathname, flags, mode);
 }
 
 int close(int fd) {
@@ -189,4 +208,9 @@ int close(int fd) {
         tty7fd = -1;
     }
     return orig_close(fd);
+}
+
+uid_t getuid0(void) {
+    TRACE("getuid0\n");
+    return 0;
 }

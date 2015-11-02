@@ -18,4 +18,6 @@ quantal*
 raring*
 saucy*
 trusty
-utopic*|test
+utopic*
+vivid*|test
+wily*|test

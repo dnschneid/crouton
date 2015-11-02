@@ -1,4 +1,4 @@
-// Copyright (c) 2014 The crouton Authors. All rights reserved.
+// Copyright (c) 2015 The crouton Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 'use strict';
@@ -428,7 +428,7 @@ function websocketMessage(evt) {
         /* URL must be absolute: see RFC 3986 for syntax (section 3.1) */
         if (match = (/^([a-z][a-z0-9+-.]*):/i).exec(payload)) {
             /* FIXME: we could blacklist schemes using match[1] here */
-            window.open(payload, '_blank');
+            chrome.tabs.create({url: payload});
             websocket_.send("UOK");
         } else {
             printLog("Received invalid URL: " + payload, LogLevel.ERROR);

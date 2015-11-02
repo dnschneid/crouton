@@ -1,5 +1,5 @@
 #!/bin/sh -e
-# Copyright (c) 2014 The crouton Authors. All rights reserved.
+# Copyright (c) 2015 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 REQUIRES='gtk-extra'
@@ -9,19 +9,13 @@ CHROOTBIN='crouton-noroot startxfce4'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
-# Ubuntu 12.04 has an old version of Xfce, but there's a PPA for Xfce 4.10.
+# Ubuntu 12.04 no longer has a PPA for Xfce 4.10 - so remove it if found.
 if release -eq precise && [ "$ARCH" = 'amd64' -o "$ARCH" = 'i386' ]; then
-    # Pull in the signing key
-    apt-key adv --keyserver 'keyserver.ubuntu.com' \
-                --recv-keys '07D44A5424C7C12A4BAB1E80EB563F93142986CE'
-    # Add the software source
-    cat > '/etc/apt/sources.list.d/xfce-4.10.list' <<EOF
-# Bring in Xfce 4.10 on Ubuntu 12.04
-deb http://ppa.launchpad.net/xubuntu-dev/xfce-4.10/ubuntu $RELEASE main
-deb-src http://ppa.launchpad.net/xubuntu-dev/xfce-4.10/ubuntu $RELEASE main
-EOF
-    # Update database
-    apt-get update
+    if [ -s /etc/apt/sources.list.d/xfce-4.10.list ]; then
+        rm -f /etc/apt/sources.list.d/xfce-4.10.list*
+        # Update database
+        apt-get update || true
+    fi
 fi
 
 # Fix icons by setting default icon theme to Tango

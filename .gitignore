@@ -3,5 +3,5 @@
 .*.tmp
 nacl_sdk/
 /crouton*
-/tests/run
+/test/run
 /releases/

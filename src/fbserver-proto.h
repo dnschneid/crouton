@@ -1,4 +1,4 @@
-/* Copyright (c) 2014 The crouton Authors. All rights reserved.
+/* Copyright (c) 2015 The crouton Authors. All rights reserved.
  * Use of this source code is governed by a BSD-style license that can be
  * found in the LICENSE file.
  *
@@ -12,7 +12,7 @@
 #include <stdint.h>
 
 /* WebSocket constants */
-#define VERSION "VF2"
+#define VERSION "VF3"
 #define PORT_BASE 30010
 
 /* Request for a frame */
@@ -79,6 +79,12 @@ struct  __attribute__((__packed__)) mousemove {
     char type;  /* 'M' */
     uint16_t x;
     uint16_t y;
+};
+
+/* Send initialization info */
+struct  __attribute__((__packed__)) initinfo {
+    char type; /* I */
+    uint8_t freon; /* 0: not using freon, 1: using freon */
 };
 
 /* Click the mouse */

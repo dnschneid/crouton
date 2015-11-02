@@ -1,5 +1,5 @@
 #!/bin/sh -e
-# Copyright (c) 2014 The crouton Authors. All rights reserved.
+# Copyright (c) 2015 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -11,21 +11,11 @@
 ln -sfT '/etc/crouton/xserverrc' '/etc/X11/xinit/xserverrc'
 echo "$XMETHOD" > '/etc/crouton/xmethod'
 
-# Only apply hack if vgem card exists
-if [ -c '/dev/dri/card1' ]; then
-    # Modify the Xorg executable to *not* poll udev for cards
-    offset="`grep -F -m 1 -boa 'card[0-9]*' /usr/bin/Xorg 2>/dev/null || true`"
-    if [ -n "$offset" ]; then
-        echo -n 'croutonhax' | dd seek="${offset%:*}" bs=1 of=/usr/bin/Xorg \
-            conv=notrunc,nocreat 2>/dev/null
-    fi
-elif grep -q 'croutonhax' '/usr/bin/Xorg'; then
-    # Undo hack since there's no vgem module
-    offset="`grep -F -m 1 -boa 'croutonhax' /usr/bin/Xorg 2>/dev/null || true`"
-    if [ -n "$offset" ]; then
-        echo -n 'card[0-9]*' | dd seek="${offset%:*}" bs=1 of=/usr/bin/Xorg \
-            conv=notrunc,nocreat 2>/dev/null
-    fi
+# Remove old vgem hack
+offset="`grep -F -m 1 -boa 'croutonhax' /usr/bin/Xorg 2>/dev/null || true`"
+if [ -n "$offset" ]; then
+    echo -n 'card[0-9]*' | dd seek="${offset%:*}" bs=1 of=/usr/bin/Xorg \
+        conv=notrunc,nocreat 2>/dev/null
 fi
 
 # Install utility for croutoncycle
