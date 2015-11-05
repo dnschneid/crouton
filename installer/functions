@@ -278,7 +278,7 @@ check_chrubuntu() {
         local unmount="umount -l '$tmp' && rmdir '$tmp'"
     #   addtrap "$unmount"
         mount $chrubuntu_part "$tmp" 2>/dev/null
-        df -m $chrubuntu_part | awk 'FNR == 2 {print $2,$3,$4}' |\
+        df -m "$tmp" | awk 'FNR == 2 {print $2,$3,$4}' |\
         while read -r size used avail; do
             local chrubuntu_size_gb="$((${size}/1000))GB"
             local chrubuntu_used_gb="$((${used}/1000))GB"
