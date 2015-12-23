@@ -8,9 +8,9 @@ HOSTBIN='startkde'
 CHROOTBIN='crouton-noroot startkde'
 . "${TARGETSDIR:="$PWD"}/common"
 if [release -lt vivid]; then 
-    PACKNAME=plasma-desktop 
+    PACKNAME='plasma-desktop'
 else
-    PACKNAME=kde-plasma-desktop
+    PACKNAME='kde-plasma-desktop'
 fi
 ### Append to prepare.sh:
 install --minimal $PACKNAME -- network-manager
