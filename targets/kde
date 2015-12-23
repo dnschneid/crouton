@@ -7,9 +7,13 @@ DESCRIPTION='Installs a minimal KDE desktop environment. (Approx. 600MB)'
 HOSTBIN='startkde'
 CHROOTBIN='crouton-noroot startkde'
 . "${TARGETSDIR:="$PWD"}/common"
-
+if [release -lt vivid]; then 
+    PACKNAME=plasma-desktop 
+else
+    PACKNAME=kde-plasma-desktop
+fi
 ### Append to prepare.sh:
-install --minimal kde-plasma-desktop -- network-manager
+install --minimal $PACKNAME -- network-manager
 
 TIPS="$TIPS
 You can start KDE via the startkde host command: sudo startkde
