@@ -68,10 +68,9 @@ else
 fi
 
 if [ -n "$TIPS" ]; then
-    echo_color "b" \
-"
-Here's some tips:
-$TIPS"
+    echo "
+$(echo_color "b" "Here's some tips:")
+$TIPS" 1>&2
 fi
 
 rm -f "$0"
