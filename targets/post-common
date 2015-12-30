@@ -69,7 +69,7 @@ fi
 
 if [ -n "$TIPS" ]; then
     echo "
-Here's some tips:
+$(echo_color "b" "Here's some tips:")
 $TIPS" 1>&2
 fi
 

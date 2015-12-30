@@ -41,7 +41,11 @@ installscript() {
 error() {
     local ecode="$1"
     shift
-    echo "$*" 1>&2
+    if [ "$ecode" -eq 1 ]; then
+        echo_color "r" "$*" 1>&2
+    else
+        echo "$*" 1>&2
+    fi
     exit "$ecode"
 }
 
@@ -127,18 +131,18 @@ alias getopts_nextarg='getopts_ret=1
 # Example:  release -ge quantal -ge wheezy
 release() {
     if [ "$(($# % 2))" -ne 0 ]; then
-        error 3 "invalid parameters to release(): $*"
+        error 3 "$(echo_color "y" "invalid parameters to release(): $*")"
     fi
     # Load up the list of releases; this will be replaced with a literal list
     local releases="`cat "$DISTRODIR/releases" 2>/dev/null`"
     if [ -z "$releases" ]; then
-        error 3 "list of releases for $DISTRO not found"
+        error 3 "$(echo_color "y" "list of releases for $DISTRO not found")"
     fi
     # End-of-word regex for awk
     local eow='([^a-z]|$)'
     local relnum="`echo "$releases" | awk "/^$RELEASE$eow/ {print NR; exit}"`"
     if [ -z "$relnum" ]; then
-        error 3 "$RELEASE not found in $DISTRO"
+        error 3 "$(echo_color "y" "$RELEASE not found in $DISTRO")"
     fi
     while [ "$#" -ge 2 ]; do
         local cmp="`echo "$releases" | awk "/^$2$eow/ {print NR; exit}"`"
@@ -218,6 +222,46 @@ echo_tty() {
     else
         echo "$@" 1>&2
     fi
+}
+
+# Outputs colored text to stdout
+# usage: echo_color [l][color] [string]
+# Specifying "t" (thick) uses bold text.
+# Color can be red, green, yellow, blue, magenta, cyan.
+# Color can be specified with just the first letter. 
+# example: echo_color "tr" "bold red"
+echo_color() {
+    # If not outputting to a tty print no colors.
+    if [ ! -t 2 ]; then
+        shift
+        echo "$@"
+        return
+    fi
+    printf "\033["
+    local c="$1"
+    if [ "${c#t}" != "$c" ]; then
+        printf "1;"
+        c="${c#t}"
+    else
+        printf "0;"
+    fi
+    case "$c" in
+        r*) printf "31m";;
+        g*) printf "32m";;
+        y*) printf "33m";;
+        b*) printf "34m";;
+        m*) printf "35m";;
+        c*) printf "36m";;
+         *) printf "37m";;
+    esac
+    shift
+    local s='\n'
+    if [ "$1" = '-n' ]; then
+        s=''
+        shift
+    fi
+    echo '-n' "$*"
+    printf "\033[0m$s"
 }
 
 # Websocket interface
