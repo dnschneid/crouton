@@ -14,8 +14,8 @@ INSTALLERDIR="$SCRIPTDIR/installer"
 HOSTBINDIR="$SCRIPTDIR/host-bin"
 TARGETSDIR="$SCRIPTDIR/targets"
 SRCDIR="$SCRIPTDIR/src"
-PART_AVAIL_MIN=2000 # in MB
-PART_SIZE_MIN=4000  # in MB
+AVAILMIN=2000 # in MB
+SIZEMIN=4000  # in MB
 
 ARCH=''
 BOOTSTRAP_RELEASE=''
@@ -369,12 +369,12 @@ BIN="$PREFIX/bin"
 CHROOTS="$PREFIX/chroots"
 
 # Check if space requirements have been met
-# if not, check for chrubuntu
-#PART_AVAIL_MIN=200000 # in MB !!! TEST VALUE
-#PART_SIZE_MIN=400000  # in MB !!! TEST VALUE
-if ! check_space "$PART_SIZE_MIN" "$PART_AVAIL_MIN"; then
-    check_chrubuntu
-#   exit 1 # Don't exit, just spit out out warnings
+# if not, check for dualboot
+if ! check_space "$SIZEMIN" "$AVAILMIN"; then
+    sleep 3
+    if ! check_dualboot; then
+        sleep 2
+    fi
 fi
     
 if [ -z "$RESTOREBIN" ]; then
