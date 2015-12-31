@@ -10,9 +10,9 @@ CHROOTBIN='crouton-noroot startkde'
 
 ### Append to prepare.sh:
 if release -lt vivid then
-    PACKNAME='plasma-desktop'
-else
     PACKNAME='kde-plasma-desktop'
+else
+    PACKNAME='plasma-desktop'
 fi
 install --minimal $PACKNAME -- network-manager
 
