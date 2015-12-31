@@ -277,7 +277,7 @@ check_dualboot() {
         addtrap "$unmount"
         mount -o ro "$dualboot_part" "$tmp" 2>/dev/null
         df -m "$tmp" | awk 'FNR == 2 {print $2,$4}' | {
-            read -r size used avail
+            read -r size avail
                 local dualboot_size_gb="$((${size}/1000))GB"
                 local dualboot_avail_gb="$((${avail}/1000))GB"
                 echo "WARNING: to ${dualboot_size_gb}, with ${dualboot_avail_gb} free."
