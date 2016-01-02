@@ -245,22 +245,23 @@ websocketcommand() {
 # $2: the partition's minimum available space threshold
 check_space() {
     local part="${CHROOTS:-/usr/local}"
-    df -m $part | awk 'FNR == 2 {print $2,$4}' | {
+    df -m "$part" | awk 'FNR == 2 {print $2,$4}' | {
         read -r size avail
-            if [ "$size" -lt "$1" ]; then
-                local size_gb="$((${size}/1000))GB"
-                echo "WARNING: Your CHROOTS partition is rather small (${size_gb})."
-                echo "WARNING: Usually $((${1}/1000))GB or more is recommended. "
-                return 1
-            elif [ "$avail" -lt "$2" ]; then
-                local avail_gb="$((${avail}/1000))GB"
-                echo "WARNING: Your available space for CHROOTS is rather small (${avail_gb})."
-                echo "WARNING: Usually $((${2}/1000))GB or more is recommended. "
-                return 2
-            else
-                echo "Your space requirements for CHROOTS have been met."
-                return 0
-            fi
+        if [ "$size" -lt "$1" ]; then
+            local size_gb="$((${size}/1000))GB"
+            echo -n "WARNING: Your CHROOTS partition is rather small" 1>&2
+            echo " (${size_gb})." 1>&2
+            echo "WARNING: Usually $((${1}/1000))GB or more is recommended." 1>&2
+            return 1
+        elif [ "$avail" -lt "$2" ]; then
+            local avail_gb="$((${avail}/1000))GB"
+            echo -n "WARNING: Your available space for CHROOTS is rather" 1>&2
+            echo " small (${avail_gb})." 1>&2
+            echo "WARNING: Usually $((${2}/1000))GB or more is recommended." 1>&2
+            return 2
+        else
+            return 0
+        fi
     }
 }
 
@@ -269,22 +270,30 @@ check_space() {
 check_dualboot() {
     local disk="$(rootdev -s -d)"
     local dualboot_part="$(rootdev -s | sed 's/.$/7/')"
-    local dualboot_size="$(cgpt show -i7 -s ${disk})"
+    local dualboot_size="$(cgpt show -i7 -s "${disk}")"
     if [ "$dualboot_size" -gt 1 ]; then
-        echo "WARNING: Partiton 7, normally used for dual-boot installs, has been resized"
-        local tmp="`mktemp -d --tmpdir=/tmp 'check-dualboot.XXX'`"
-        local unmount="umount -l '$tmp' 2>/dev/null && rmdir '$tmp'"
-        addtrap "$unmount"
-        mount -o ro "$dualboot_part" "$tmp" 2>/dev/null
+        echo -n "WARNING: Partiton 7, normally used for dual-boot installs" 1>&2
+        echo ", has been resized" 1>&2
+        if grep -q "${dualboot_part}" /proc/mounts; then
+            tmp="$(grep "${dualboot_part}" /proc/mounts | cut -d' ' -f2)"
+            unmount="true"
+        else
+            local tmp="`mktemp -d --tmpdir=/tmp 'check-dualboot.XXX'`"
+            local unmount="umount -l '$tmp' 2>/dev/null && rmdir '$tmp'"
+            addtrap "$unmount"
+            mount -o ro "$dualboot_part" "$tmp" 2>/dev/null
+        fi
         df -m "$tmp" | awk 'FNR == 2 {print $2,$4}' | {
             read -r size avail
-                local dualboot_size_gb="$((${size}/1000))GB"
-                local dualboot_avail_gb="$((${avail}/1000))GB"
-                echo "WARNING: to ${dualboot_size_gb}, with ${dualboot_avail_gb} free."
+            local dualboot_size_gb="$((${size}/1000))GB"
+            local dualboot_avail_gb="$((${avail}/1000))GB"
+            echo -n "WARNING: to ${dualboot_size_gb}, with" 1>&2
+            echo " ${dualboot_avail_gb} free." 1>&2
         }
-        distrib="$(grep 'DISTRIB_DESCRIPTION=' "$tmp/etc/lsb-release" 2>/dev/null | cut -d= -f2)"
+        distrib="$(grep 'DISTRIB_DESCRIPTION=' "$tmp/etc/lsb-release" 2>/dev/null |\
+            cut -d= -f2)"
         if [ -n "$distrib" ]; then
-            echo "WARNING: (It appears to have $distrib installed.)"
+            echo "WARNING: (It appears to have $distrib installed.)" 1>&2
         fi
         undotrap
         eval "$unmount"
