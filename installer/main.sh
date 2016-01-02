@@ -368,13 +368,12 @@ addtrap "stty echo 2>/dev/null"
 BIN="$PREFIX/bin"
 CHROOTS="$PREFIX/chroots"
 
-# Check if space requirements have been met
-# if not, check for dualboot
+# Check if space requirements have been met.
+# If not, check for dualboot.
 if ! check_space "$SIZEMIN" "$AVAILMIN"; then
-    sleep 3
-    if ! check_dualboot; then
-        sleep 2
-    fi
+    if ! check_dualboot; then true; fi
+    echo "Press Ctrl-C to abort; installation will continue in 5 seconds." 1>&2
+    sleep 5
 fi
     
 if [ -z "$RESTOREBIN" ]; then
