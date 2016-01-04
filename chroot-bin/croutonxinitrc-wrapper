@@ -75,15 +75,6 @@ if hash croutonclip 2>/dev/null; then
     croutonclip &
 fi
 
-# Pass through the host cursor and correct mousewheels on xephyr
-if [ "$xmethodtype" = 'xephyr' ]; then
-    host-x11 croutoncursor "$DISPLAY" &
-    if [ -z "$CROUTON_WHEEL_PARAMS" -a -r "$HOME/.croutonwheel" ]; then
-        CROUTON_WHEEL_PARAMS="`head -n1 "$HOME/.croutonwheel"`"
-    fi
-    croutonwheel $CROUTON_WHEEL_PARAMS &
-fi
-
 # Launch system-wide trigger daemon
 croutontriggerd &
 
@@ -121,13 +112,6 @@ if [ "$xmethodtype" != "xiwi" ]; then
         if [ -n "$SYNCLIENT" ]; then
             synclient $SYNCLIENT
         fi
-    fi
-
-    # Make sure tap-to-click is enabled
-    if hash xinput 2>/dev/null; then
-        for id in `host-x11 xinput --list --id-only`; do
-            host-x11 xinput set-prop "$id" 'Tap Paused' 0 2>/dev/null || true
-        done
     fi
 fi
 

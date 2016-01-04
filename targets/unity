@@ -5,8 +5,6 @@
 if [ "${TARGETNOINSTALL:-c}" = 'c' ]; then
     if [ "$DISTRO" != 'ubuntu' ]; then
         error 99 "unity target is only supported on Ubuntu."
-    elif [ "${ARCH#arm}" != "$ARCH" ] && ! release -eq precise; then
-        error 99 "unity target does not work in xephyr in $RELEASE due to missing egl support."
     fi
 fi
 REQUIRES='gtk-extra'

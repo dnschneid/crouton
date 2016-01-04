@@ -15,13 +15,7 @@ VERBOSE=''
 rundisplay() {
     local disp="$1"
     shift
-    (
-        # If display is :0, setup XAUTHORITY
-        if [ "$disp" = ":0" ]; then
-            eval "`host-x11`" 2>/dev/null
-        fi
-        DISPLAY="$disp" "$@"
-    )
+    DISPLAY="$disp" "$@"
 }
 
 copyclip() {
