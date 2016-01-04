@@ -63,6 +63,7 @@ getname() {
 }
 
 # Only let one instance run at a time to avoid nasty race conditions
+# Make sure to release this before running websocket commands
 mkdir -m 775 -p "$CROUTONLOCKDIR"
 exec 3>"$CROUTONLOCKDIR/cycle"
 flock 3
@@ -227,6 +228,8 @@ if [ "${destdisp#:}" = "$destdisp" ]; then
     fi
 
     if [ -n "$xiwiactive" ]; then
+        # Release the croutoncycle lock
+        exec 3>&-
         STATUS="`echo -n "Xcros" | websocketcommand`"
         if [ "$STATUS" != 'XOK' ]; then
             error 1 "${STATUS#?}"
@@ -243,6 +246,8 @@ else
         elif [ "${freonowner:-0}" != 0 ]; then
             kill -USR1 "$freonowner"
         fi
+        # Release the croutoncycle lock
+        exec 3>&-
         STATUS="`echo -n "X${destdisp} ${xmethod#*-}" | websocketcommand`"
         if [ "$STATUS" != 'XOK' ]; then
             error 1 "${STATUS#?}"
