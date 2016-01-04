@@ -3,7 +3,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-. "`dirname "$0"`/../installer/functions"
+. "$(dirname "$0")/../installer/functions"
 
 USAGE="${0##*/} next|prev|cros|list|#
 Cycles through running graphical chroots.
@@ -72,7 +72,7 @@ flock 3
 if [ "$cmd" = 's' ]; then
     echo "$disp" > "$CRIATDISPLAY"
     if [ -s "$CROUTONLOCKDIR/clip" ]; then
-        kill -USR1 "`cat "$CROUTONLOCKDIR/clip"`" || true
+        kill -USR1 "$(cat "$CROUTONLOCKDIR/clip")" || true
     fi
     exit 0
 fi
@@ -110,7 +110,7 @@ if [ ! -f "/sys/class/tty/tty0/active" ]; then
     freonowner="${freonowner:-0}"
     tty=''
 else
-    tty="`cat '/sys/class/tty/tty0/active'`"
+    tty="$(cat '/sys/class/tty/tty0/active')"
 fi
 
 # Determine current display
@@ -118,7 +118,7 @@ if [ "$freonowner" = 0 -o "$tty" = 'tty1' ]; then
     # In Chromium OS or xiwi chroot
     curdisp='cros'
     if [ -n "$xiwiactive" -a -s "$CRIATDISPLAY" ]; then
-        kiwidisp="`cat $CRIATDISPLAY`"
+        kiwidisp="$(cat "$CRIATDISPLAY")"
         if [ "${kiwidisp#:[0-9]}" != "$kiwidisp" ]; then
             curdisp="$kiwidisp"
         fi
@@ -126,7 +126,10 @@ if [ "$freonowner" = 0 -o "$tty" = 'tty1' ]; then
 elif [ -z "$freonowner" ]; then
     # Poll the displays to figure out which one owns this VT
     curdisp="$tty"
-    for disp in ${displist#cros}; do
+    for disp in $displist; do
+        if [ "$disp" = 'cros' ]; then
+            continue
+        fi
         if DISPLAY="$disp" xprop -root 'XFree86_VT' 2>/dev/null \
                 | grep -q " ${tty#tty}\$"; then
             curdisp="$disp"
@@ -230,15 +233,15 @@ if [ "${destdisp#:}" = "$destdisp" ]; then
     if [ -n "$xiwiactive" ]; then
         # Release the croutoncycle lock
         exec 3>&-
-        STATUS="`echo -n "Xcros" | websocketcommand`"
+        STATUS="$(echo -n "Xcros" | websocketcommand)"
         if [ "$STATUS" != 'XOK' ]; then
             error 1 "${STATUS#?}"
         fi
     fi
 else
     export DISPLAY="$destdisp"
-    xmethod="`xprop -root 'CROUTON_XMETHOD' 2>/dev/null \
-              | sed -n 's/^.*\"\(.*\)\"/\1/p'`"
+    xmethod="$(xprop -root 'CROUTON_XMETHOD' 2>/dev/null \
+               | sed -n 's/^.*\"\(.*\)\"/\1/p')"
     if [ "${xmethod%%-*}" = 'xiwi' ]; then
         if [ -z "$freonowner" -a "$tty" != 'tty1' ]; then
             sudo -n chvt 1
@@ -248,12 +251,12 @@ else
         fi
         # Release the croutoncycle lock
         exec 3>&-
-        STATUS="`echo -n "X${destdisp} ${xmethod#*-}" | websocketcommand`"
+        STATUS="$(echo -n "X${destdisp} ${xmethod#*-}" | websocketcommand)"
         if [ "$STATUS" != 'XOK' ]; then
             error 1 "${STATUS#?}"
         fi
     elif [ -z "$freonowner" ]; then
-        dest="`xprop -root 'XFree86_VT' 2>/dev/null`"
+        dest="$(xprop -root 'XFree86_VT' 2>/dev/null)"
         dest="${dest##* }"
         if [ "${dest#[1-9]}" = "$dest" ]; then
             dest='1'
@@ -267,7 +270,7 @@ else
         dest="/tmp/.X${destdisp#:}-lock"
         if [ -f "$dest" ]; then
             # Trigger the target before releasing the current owner
-            kill -USR1 `cat /tmp/.X${destdisp#:}-lock`
+            kill -USR1 "$(cat "/tmp/.X${destdisp#:}-lock")"
         fi
         if [ "${freonowner:-0}" != 0 ]; then
             kill -USR1 "$freonowner"
@@ -276,7 +279,7 @@ else
 fi
 
 if [ -s "$CROUTONLOCKDIR/clip" ]; then
-    kill -USR1 "`cat "$CROUTONLOCKDIR/clip"`" || true
+    kill -USR1 "$(cat "$CROUTONLOCKDIR/clip")" || true
 fi
 
 # Wait a flip and then refresh the display for good measure
