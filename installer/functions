@@ -272,26 +272,21 @@ check_dualboot() {
     local dualboot_part="$(rootdev -s | sed 's/.$/7/')"
     local dualboot_size="$(cgpt show -i7 -s "${disk}")"
     if [ "$dualboot_size" -gt 1 ]; then
-        echo -n "WARNING: Partiton 7, normally used for dual-boot installs" 1>&2
-        echo ", has been resized" 1>&2
-        if grep -q "${dualboot_part}" /proc/mounts; then
-            tmp="$(grep "${dualboot_part}" /proc/mounts | cut -d' ' -f2)"
-            unmount="true"
-        else
-            local tmp="`mktemp -d --tmpdir=/tmp 'check-dualboot.XXX'`"
-            local unmount="umount -l '$tmp' 2>/dev/null && rmdir '$tmp'"
-            addtrap "$unmount"
-            mount -o ro "$dualboot_part" "$tmp" 2>/dev/null
+        echo "WARNING: Partiton 7, normally used for dual-boot installs, has been resized" 1>&2
+        local tmp="`mktemp -d --tmpdir=/tmp 'check-dualboot.XXX'`"
+        local unmount="umount -l '$tmp' 2>/dev/null && rmdir '$tmp'"
+        addtrap "$unmount"
+        if ! mount -o ro "$dualboot_part" "$tmp" 2>/dev/null; then
+            mount "$dualboot_part" "$tmp" 2>/dev/null
         fi
         df -m "$tmp" | awk 'FNR == 2 {print $2,$4}' | {
             read -r size avail
             local dualboot_size_gb="$((${size}/1000))GB"
             local dualboot_avail_gb="$((${avail}/1000))GB"
-            echo -n "WARNING: to ${dualboot_size_gb}, with" 1>&2
-            echo " ${dualboot_avail_gb} free." 1>&2
+            echo "WARNING: to ${dualboot_size_gb} with ${dualboot_avail_gb} free." 1>&2
         }
-        distrib="$(grep 'DISTRIB_DESCRIPTION=' "$tmp/etc/lsb-release" 2>/dev/null |\
-            cut -d= -f2)"
+        distrib="$(awk -F= '/DISTRIB_DESCRIPTION=/ {print $2}' < \
+            "$tmp/etc/lsb-release" 2>/dev/null)"
         if [ -n "$distrib" ]; then
             echo "WARNING: (It appears to have $distrib installed.)" 1>&2
         fi
