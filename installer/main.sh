@@ -371,7 +371,7 @@ CHROOTS="$PREFIX/chroots"
 # Check if space requirements have been met.
 # If not, check for dualboot.
 if ! check_space "$SIZEMIN" "$AVAILMIN"; then
-    if ! check_dualboot; then true; fi
+    check_dualboot || true
     echo "Press Ctrl-C to abort; installation will continue in 5 seconds." 1>&2
     sleep 5
 fi
