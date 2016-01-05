@@ -5,7 +5,7 @@
 
 # A shortcut script to control device brightness.
 # Usage:
-#    brightness [b|k] [up|down|# [instant]]
+#    brightness [b|k] [up|down|get-untruncated|#]
 
 # Choose the device
 device='Screen'
@@ -25,7 +25,8 @@ u*) precmd='Increase';;
 d*) precmd='Decrease';;
 [0-9]*) eval $nokbd;
     precmd='Set'; postcmd="Percent double:$1 int32:${2:-"1"}${2:+"2"}";;
-*) eval $nokbd; precmd='Get'; postcmd='Percent'; print='--print-reply';;
+g*) eval $nokbd; precmd='Get'; postcmd='Percent'; print='--print-reply';;
+*) eval $nokbd; precmd='Get'; postcmd='Percent'; print='--print-reply'; truncate=true;;
 esac
 
 host-dbus dbus-send --system --dest=org.chromium.PowerManager \
@@ -34,7 +35,11 @@ host-dbus dbus-send --system --dest=org.chromium.PowerManager \
     read -r junk
     read -r double percent
     if [ -n "$print" ]; then
-        echo "${percent%.*}"
+        if [ -n "$truncate" ]; then
+            echo "${percent%.*}"
+        else
+	    echo "${percent}"
+        fi
     fi
 }
 

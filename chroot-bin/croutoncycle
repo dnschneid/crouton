@@ -56,6 +56,16 @@ getname() {
     fi
 }
 
+# Nudges brightness down then restores old value, because when
+# chvt-ing back to cros, the brightness is not always correctly restored
+# (host dbus knows the correct value but hardware must be poked)
+nudgebrightness() {
+  local oldbrightness=`brightness get-untruncated`
+  brightness down &
+  sleep 0.2
+  brightness $oldbrightness &
+}
+
 # Only let one instance run at a time to avoid nasty race conditions
 mkdir -m 775 -p "$CROUTONLOCKDIR"
 exec 3>"$CROUTONLOCKDIR/cycle"
@@ -289,7 +299,7 @@ if [ "${destdisp#:}" = "$destdisp" ]; then
         # Raise the right window after chvting, so that it can update
         if [ "$tty" != 'tty1' ]; then
             sudo -n chvt 1
-            sleep .1
+            nudgebrightness
         fi
         croutonwmtools raise "${destdisp%"*"}"
     elif [ "${freonowner:-0}" != 0 ]; then
@@ -309,7 +319,7 @@ else
     if [ "${xmethod%%-*}" = 'xiwi' ]; then
         if [ -z "$freonowner" -a "$tty" != 'tty1' ]; then
             sudo -n chvt 1
-            sleep .1
+            nudgebrightness
         elif [ "${freonowner:-0}" != 0 ]; then
             kill -USR1 "$freonowner"
         fi
