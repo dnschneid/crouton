@@ -245,8 +245,11 @@ else
     rm -rf "$AUTOTESTROOT"
     git clone "$AUTOTESTGIT" "$AUTOTESTROOT"
 fi
-# FIXME: Remove dependency on chromite.lib: See crbug.com/502534
-git -C "$AUTOTESTROOT" revert d188984d9aef5a4ff09d8d459b5b3a6c46789fb0
+# Build external dependencies, see crbug.com/502534
+(
+    cd "$AUTOTESTROOT"
+    ./utils/build_externals.py
+)
 
 PATH="$AUTOTESTROOT/cli:$PATH"
 
