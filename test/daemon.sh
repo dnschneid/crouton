@@ -245,8 +245,11 @@ else
     rm -rf "$AUTOTESTROOT"
     git clone "$AUTOTESTGIT" "$AUTOTESTROOT"
 fi
-# FIXME: Remove dependency on chromite.lib: See crbug.com/502534
-git -C "$AUTOTESTROOT" revert d188984d9aef5a4ff09d8d459b5b3a6c46789fb0
+# Build external dependencies, see crbug.com/502534
+(
+    cd "$AUTOTESTROOT"
+    ./utils/build_externals.py
+)
 
 PATH="$AUTOTESTROOT/cli:$PATH"
 
@@ -507,6 +510,15 @@ while sleep "$POLLINTERVAL"; do
                             gsutil cp "${root}${path}*" "$curtesthostresult" \
                                 > /dev/null 2>&1 || true
                         done
+                        tmpdir="$TMPROOT/$jobid-$user"
+                        rm -rf "$tmpdir"
+                        mkdir -p "$tmpdir"
+                        if gsutil cp "${root}platform_Crouton.tgz" "$tmpdir/" > /dev/null 2>&1; then
+                            tar xf "$tmpdir/platform_Crouton.tgz" -C "$tmpdir/"
+                            mv "$tmpdir/platform_Crouton/debug/platform_Crouton."* "$curtesthostresult" || true
+                            mv "$tmpdir/platform_Crouton/results/"* "$curtesthostresult" || true
+                        fi
+                        rm -rf "$tmpdir"
                         status2="`awk '($1 == "END") && \
                                        ($3 == "platform_Crouton") \
                                            { print $2 }' \
