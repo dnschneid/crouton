@@ -9,21 +9,24 @@
 # from $RELEASE), $ARCH, and $MIRROR.
 
 # Grab the latest release of debootstrap
-echo 'Downloading latest debootstrap...' 1>&2
-d='https://anonscm.debian.org/gitweb/?p=d-i/debootstrap.git;a=snapshot;h=HEAD;sf=tgz'
+# FIXME: Figure out what is wrong with 1.0.76 and revert this change (#2387)
+DEBOOTSTRAPVERSION=1.0.75
+echo 'Downloading debootstrap '"$DEBOOTSTRAPVERSION"'...' 1>&2
+d='https://anonscm.debian.org/gitweb/?p=d-i/debootstrap.git;a=snapshot;h='"$DEBOOTSTRAPVERSION"';sf=tgz'
 if ! wget -O- --no-verbose --timeout=60 -t2 "$d"  \
         | tar -C "$tmp" --strip-components=1 -zx 2>/dev/null; then
     echo 'Download from Debian gitweb failed. Trying latest release...' 1>&2
     d='http://httpredir.debian.org/debian/pool/main/d/debootstrap/'
-    f="`wget -O- --no-verbose --timeout=60 -t2 "$d" \
-            | sed -ne 's ^.*\(debootstrap_[0-9.]*.tar.gz\).*$ \1 p' \
-            | tail -n 1`"
-    if [ -z "$f" ]; then
-        error 1 'Failed to download debootstrap.
-Check your internet connection or proxy settings and try again.'
-    fi
+    #f="`wget -O- --no-verbose --timeout=60 -t2 "$d" \
+    #        | sed -ne 's ^.*\(debootstrap_[0-9.]*.tar.gz\).*$ \1 p' \
+    #        | tail -n 1`"
+    #if [ -z "$f" ]; then
+    #    error 1 'Failed to download debootstrap.
+#Check your internet connection or proxy settings and try again.'
+    #fi
+    f="debootstrap_$DEBOOTSTRAPVERSION.tar.gz"
     v="${f#*_}"
-    v="${v%.tar.xz}"
+    v="${v%.tar.gz}"
     echo "Downloading debootstrap version $v..." 1>&2
     if ! wget -O- --no-verbose --timeout=60 -t2 "$d$f" \
             | tar -C "$tmp" --strip-components=1 -zx 2>/dev/null; then
