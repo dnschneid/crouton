@@ -51,6 +51,9 @@ else
     echo "Unable to patch debootstrap, moving on..." 1>&2
 fi
 
+# Patch debootstrap so that is does not create devices under /dev (issue #2387).
+sed -i -e 's/\(setup_devices () {\)/\1 return 0/' "$tmp/functions"
+
 # Add the necessary debootstrap executables
 newpath="$PATH:$tmp"
 cp "$INSTALLERDIR/$DISTRO/ar" "$INSTALLERDIR/$DISTRO/pkgdetails" "$tmp/"
