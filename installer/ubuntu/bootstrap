@@ -23,7 +23,7 @@ if ! wget -O- --no-verbose --timeout=60 -t2 "$d"  \
 Check your internet connection or proxy settings and try again.'
     fi
     v="${f#*_}"
-    v="${v%.tar.xz}"
+    v="${v%.tar.gz}"
     echo "Downloading debootstrap version $v..." 1>&2
     if ! wget -O- --no-verbose --timeout=60 -t2 "$d$f" \
             | tar -C "$tmp" --strip-components=1 -zx 2>/dev/null; then
@@ -52,7 +52,7 @@ else
 fi
 
 # Patch debootstrap so that is does not create devices under /dev (issue #2387).
-sed -i -e 's/\(setup_devices () {\)/\1 return 0/' "$tmp/functions"
+sed -i -e 's/^setup_devices () {$/\0 return 0/' "$tmp/functions"
 
 # Add the necessary debootstrap executables
 newpath="$PATH:$tmp"
