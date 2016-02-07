@@ -9,22 +9,19 @@
 # from $RELEASE), $ARCH, and $MIRROR.
 
 # Grab the latest release of debootstrap
-# FIXME: Figure out what is wrong with 1.0.76 and revert this change (#2387)
-DEBOOTSTRAPVERSION=1.0.75
-echo 'Downloading debootstrap '"$DEBOOTSTRAPVERSION"'...' 1>&2
-d='https://anonscm.debian.org/gitweb/?p=d-i/debootstrap.git;a=snapshot;h='"$DEBOOTSTRAPVERSION"';sf=tgz'
+echo 'Downloading latest debootstrap...' 1>&2
+d='https://anonscm.debian.org/gitweb/?p=d-i/debootstrap.git;a=snapshot;h=HEAD;sf=tgz'
 if ! wget -O- --no-verbose --timeout=60 -t2 "$d"  \
         | tar -C "$tmp" --strip-components=1 -zx 2>/dev/null; then
     echo 'Download from Debian gitweb failed. Trying latest release...' 1>&2
     d='http://httpredir.debian.org/debian/pool/main/d/debootstrap/'
-    #f="`wget -O- --no-verbose --timeout=60 -t2 "$d" \
-    #        | sed -ne 's ^.*\(debootstrap_[0-9.]*.tar.gz\).*$ \1 p' \
-    #        | tail -n 1`"
-    #if [ -z "$f" ]; then
-    #    error 1 'Failed to download debootstrap.
-#Check your internet connection or proxy settings and try again.'
-    #fi
-    f="debootstrap_$DEBOOTSTRAPVERSION.tar.gz"
+    f="`wget -O- --no-verbose --timeout=60 -t2 "$d" \
+            | sed -ne 's ^.*\(debootstrap_[0-9.]*.tar.gz\).*$ \1 p' \
+            | tail -n 1`"
+    if [ -z "$f" ]; then
+        error 1 'Failed to download debootstrap.
+Check your internet connection or proxy settings and try again.'
+    fi
     v="${f#*_}"
     v="${v%.tar.gz}"
     echo "Downloading debootstrap version $v..." 1>&2
@@ -53,6 +50,9 @@ else
     rm -f "$tmp/functions.new"
     echo "Unable to patch debootstrap, moving on..." 1>&2
 fi
+
+# Patch debootstrap so that is does not create devices under /dev (issue #2387).
+sed -i -e 's/^setup_devices () {$/\0 return 0/' "$tmp/functions"
 
 # Add the necessary debootstrap executables
 newpath="$PATH:$tmp"
