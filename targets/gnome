@@ -9,18 +9,6 @@ CHROOTBIN='crouton-noroot startgnome gnome-session-wrapper'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
-check_distro() 
-{
-    ###list of distros that need gnome-session-fallback
-    set "squeeze" "wheezy" "kali" "trusty" "precise" 
-    name=$(lsb_release -cs)
-    #echo "$name"
-    for i do
-	if [ "$i" = "$name" ]; then
-	   echo "1" #The distro installed needs gnome-session-fallback
-	fi
-    done
-}
 if release -ge wheezy -ge kali -ge trusty; then
     session_package_needed=gnome-session-flashback;
 else
