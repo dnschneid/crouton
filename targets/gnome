@@ -8,9 +8,15 @@ HOSTBIN='startgnome'
 CHROOTBIN='crouton-noroot startgnome gnome-session-wrapper'
 . "${TARGETSDIR:="$PWD"}/common"
 
+if release -ge wheezy -ge kali -ge trusty; then
+  legacy_session_package="gnome-session-flashback"
+else
+  legacy_session_package="gnome-session-fallback"
+fi
+
 ### Append to prepare.sh:
 install --minimal evolution-data-server gnome-control-center \
-        gnome-screensaver gnome-session gnome-session-flashback \
+        gnome-screensaver gnome-session $legacy_session_package \
         gnome-shell gnome-themes-standard gvfs-backends nautilus \
         unzip gtk2-engines-pixbuf
 
