@@ -9,6 +9,7 @@ CHROOTBIN='crouton-noroot startgnome gnome-session-wrapper'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
+<<<<<<< HEAD
 if release -ge wheezy -ge kali -ge trusty; then
     session_package_needed=gnome-session-flashback;
 else
@@ -18,6 +19,34 @@ fi
            gnome-screensaver gnome-session "$session_package_needed" \
            gnome-shell gnome-themes-standard gvfs-backends nautilus \
            unzip gtk2-engines-pixbuf
+=======
+check_distro() 
+{
+    ###list of distros that need gnome-session-fallback
+    set "squeeze" "wheezy" "kali" "trusty" "precise" 
+    name=$(lsb_release -cs)
+    #echo "$name"
+    for i do
+	if [ "$i" = "$name" ]; then
+	   echo "1" #The distro installed needs gnome-session-fallback
+	fi
+    done
+}
+fallback_need=$(check_distro)
+
+
+if [ "$fallback_need" -eq "1" ]; then
+    install --minimal evolution-data-server gnome-control-center \
+           gnome-screensaver gnome-session gnome-session-fallback \
+           gnome-shell gnome-themes-standard gvfs-backends nautilus \
+           unzip gtk2-engines-pixbuf
+else
+    install --minimal evolution-data-server gnome-control-center \
+           gnome-screensaver gnome-session gnome-session-flashback \
+           gnome-shell gnome-themes-standard gvfs-backends nautilus \
+           unzip gtk2-engines-pixbuf
+fi
+>>>>>>> 2990f8da52ec64dc3ba93026198ae7b9a5ec95e6
 TIPS="$TIPS
 You can start GNOME via the startgnome host command: sudo startgnome
 "
