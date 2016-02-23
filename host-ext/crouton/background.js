@@ -49,6 +49,12 @@ var focus_win_ = -1; /* Focused kiwi window. -1 if no kiwi window focused. */
 var notifications_ = {}; /* Map of notification id to function to be called when
                             the notification is clicked. */
 
+/* Check local storage for enabled option and set,
+ * Otherwise default to true */
+chrome.storage.local.get("enabled", function(items){
+    enabled_ = (items.enabled ? items.enabled : true);
+});
+
 /* Set the current status string.
  * active is a boolean, true if the WebSocket connection is established. */
 function setStatus(status, active) {
@@ -162,6 +168,8 @@ function refreshUI() {
                 enablelink.onclick = function() {
                     console.log("Disable click");
                     enabled_ = false;
+                    /* Update local storage to persist enabled_ boolean */
+                    chrome.storage.local.set({enabled: enabled_});
                     if (websocket_ != null)
                         websocket_.close();
                     else
@@ -173,6 +181,8 @@ function refreshUI() {
                 enablelink.onclick = function() {
                     console.log("Enable click");
                     enabled_ = true;
+                    /* Update local storage to persist enabled_ boolean */
+                    chrome.storage.local.set({enabled: enabled_});
                     if (websocket_ == null)
                         websocketConnect();
                     refreshUI();
