@@ -25,6 +25,7 @@
   "permissions": [
     "clipboardRead",
     "clipboardWrite",
-    "notifications"
+    "notifications",
+    "storage"
   ]
 }
