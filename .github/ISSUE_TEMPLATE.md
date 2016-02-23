@@ -1,9 +1,8 @@
-#### Please paste your output of croutonversion from chroot below:
 ```
-Replace this line with your output.
+Please paste the output of the following command here: sudo edit-chroot -all
 ```
 
 #### Please describe your issue:
 
 
-#### Please describe how to reproduce your issue(if known):
+#### If known, describe the steps to reproduce the issue:
