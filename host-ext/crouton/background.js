@@ -52,7 +52,8 @@ var notifications_ = {}; /* Map of notification id to function to be called when
 /* Check local storage for enabled option and set,
  * Otherwise default to true */
 chrome.storage.local.get("enabled", function(items){
-    enabled_ = (items.enabled ? items.enabled : true);
+    enabled_ = (typeof items.enabled == "boolean" ? items.enabled : true);
+    refreshUI();
 });
 
 /* Set the current status string.
