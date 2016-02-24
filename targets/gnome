@@ -9,11 +9,15 @@ CHROOTBIN='crouton-noroot startgnome gnome-session-wrapper'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
-install --minimal evolution-data-server gnome-control-center \
-        gnome-screensaver gnome-session gnome-session-fallback \
-        gnome-shell gnome-themes-standard gvfs-backends nautilus \
-        unzip gtk2-engines-pixbuf
-
+if release -ge wheezy -ge kali -ge trusty; then
+    session_package_needed=gnome-session-flashback;
+else
+    session_package_needed=gnome-session-fallback;
+fi
+    install --minimal evolution-data-server gnome-control-center \
+           gnome-screensaver gnome-session "$session_package_needed" \
+           gnome-shell gnome-themes-standard gvfs-backends nautilus \
+           unzip gtk2-engines-pixbuf
 TIPS="$TIPS
 You can start GNOME via the startgnome host command: sudo startgnome
 "
