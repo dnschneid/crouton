@@ -51,8 +51,9 @@ var notifications_ = {}; /* Map of notification id to function to be called when
 
 /* Check local storage for enabled option and set,
  * Otherwise default to true */
-chrome.storage.local.get("enabled", function(items){
+chrome.storage.local.get(null, function(items){
     enabled_ = (typeof items.enabled == "boolean" ? items.enabled : true);
+    hidpi_ = (typeof items.hidpi == "boolean" ? items.hidpi : false);
     refreshUI();
 });
 
@@ -215,6 +216,8 @@ function refreshUI() {
             if (window.devicePixelRatio > 1) {
                 hidpicheck.onclick = function() {
                     hidpi_ = hidpicheck.checked;
+                    /* Update local storage to persist hidpi_ setting */
+                    chrome.storage.local.set({hidpi: hidpi_});
                     refreshUI();
                     var disps = Object.keys(kiwi_win_);
                     for (var i = 0; i < disps.length; i++) {
