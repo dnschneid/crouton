@@ -49,8 +49,7 @@ var focus_win_ = -1; /* Focused kiwi window. -1 if no kiwi window focused. */
 var notifications_ = {}; /* Map of notification id to function to be called when
                             the notification is clicked. */
 
-/* Check local storage for enabled option and set,
- * Otherwise default to true */
+/* Check local storage for stored options */
 chrome.storage.local.get(null, function(items){
     enabled_ = (typeof items.enabled == "boolean" ? items.enabled : true);
     hidpi_ = (typeof items.hidpi == "boolean" ? items.hidpi : false);
