@@ -51,8 +51,8 @@ var notifications_ = {}; /* Map of notification id to function to be called when
 
 /* Check local storage for stored options */
 chrome.storage.local.get(null, function(items){
-    enabled_ = (typeof items.enabled == "boolean" ? items.enabled : true);
-    hidpi_ = (typeof items.hidpi == "boolean" ? items.hidpi : false);
+    if (typeof items.enabled == "boolean") enabled_ = items.enabled;
+    if (typeof items.hidpi == "boolean") hidpi_ = items.hidpi;
     refreshUI();
 });
 
