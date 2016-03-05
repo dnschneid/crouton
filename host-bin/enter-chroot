@@ -16,6 +16,7 @@ TARGET=''
 USERNAME='1000'
 TMPXMETHOD=''
 NOLOGIN=''
+SYSTEMD=''
 SETUPSCRIPT='/prepare.sh'
 
 USAGE="$APPLICATION [options] [command [args...]]
@@ -37,7 +38,8 @@ Options:
     -X XMETHOD  Override the auto-detected XMETHOD for this session.
     -x          Does not log in, but directly executes the command instead.
                 Note that the environment will be empty (sans TERM).
-                Specify -x a second time to run the $SETUPSCRIPT script."
+                Specify -x a second time to run the $SETUPSCRIPT script.
+    -s          Start systemd inside the chroot. Requires a distribution with systemd support."
 
 # Common functions
 . "$BINDIR/../installer/functions"
@@ -59,7 +61,7 @@ chrootcmd() {
 
 # Process arguments
 prevoptind=1
-while getopts 'bc:k:ln:t:u:X:x' f; do
+while getopts 'bc:k:ln:t:u:X:x:s' f; do
     # Disallow empty string as option argument
     if [ "$((OPTIND-prevoptind))" = 2 -a -z "$OPTARG" ]; then
         error 2 "$USAGE"
@@ -76,6 +78,7 @@ while getopts 'bc:k:ln:t:u:X:x' f; do
     X) TMPXMETHOD="$OPTARG";;
     x) NOLOGIN="$((NOLOGIN+1))"
        [ "$NOLOGIN" -gt 2 ] && NOLOGIN=2;;
+    s) SYSTEMD='y';;
     \?) error 2 "$USAGE";;
     esac
 done
@@ -348,8 +351,10 @@ fi
 bindmount /dev
 bindmount /dev/pts
 bindmount /dev/shm
-bindmount /tmp /tmp exec
-bindmount /proc
+if [ -z "$SYSTEMD" ]; then
+  bindmount /tmp /tmp exec
+  bindmount /proc
+fi
 tmpfsmount /var/run 'noexec,nosuid,mode=0755,size=10%'
 tmpfsmount /var/run/lock 'noexec,nosuid,nodev,size=5120k'
 bindmount /var/run/dbus /var/host/dbus
@@ -610,8 +615,8 @@ fi
 
 ret=0
 
-# Launch the system dbus unless we are entering a basic shell.
-if [ ! "$NOLOGIN" = 1 ] && grep -q '^root:' "$passwd" 2>/dev/null; then
+# Launch the system dbus unless we are entering a basic shell or systemd.
+if [ ! "$NOLOGIN" = 1 ] && [ -z "$SYSTEMD" ] && grep -q '^root:' "$passwd" 2>/dev/null; then
     # Try to detect the dbus user by parsing its configuration file
     # If it fails, or if the user does not exist, `id -un '$dbususer'`
     # will fail, and we fallback on a default user name ("messagebus")
@@ -676,6 +681,23 @@ if [ -n "$NOLOGIN" ]; then
         elif [ ! "$ret" = 0 ]; then
             error "$ret" 'Failed to complete chroot setup.'
         fi
+    fi
+elif [ -n "$SYSTEMD" ]; then
+    [ -e "/run/crouton/$NAME.systemd.pid" ] && \
+        read SYSTEMD_PID < "/run/crouton/$NAME.systemd.pid"
+
+    if [ -z "SYSTEMD_PID" ] || ! pwdx $SYSTEMD_PID >/dev/null 2>&1; then
+        echo "Starting systemd..."
+        /usr/local/bin/jchroot "$CHROOT" /bin/systemd &
+        sleep 1
+        pidof -s systemd > "/run/crouton/$NAME.systemd.pid"
+        read SYSTEMD_PID < "/run/crouton/$NAME.systemd.pid"
+    fi
+    if [ -n "$SYSTEMD_PID" ]; then
+        echo "Entering systemd PID $SYSTEMD_PID..."
+        nsenter -t $SYSTEMD_PID -p -r -w -u -- su - "$USERNAME"
+    else
+        echo "Could not start systemd" >&2
     fi
 else
     # Check and run rc.local
