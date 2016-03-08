@@ -684,18 +684,16 @@ if [ -n "$NOLOGIN" ]; then
     fi
 elif [ -n "$SYSTEMD" ]; then
     [ -e "/run/crouton/$NAME.systemd.pid" ] && \
-        read SYSTEMD_PID < "/run/crouton/$NAME.systemd.pid"
-
+        read -r SYSTEMD_PID < "/run/crouton/$NAME.systemd.pid"
     if [ -z "SYSTEMD_PID" ] || ! pwdx $SYSTEMD_PID >/dev/null 2>&1; then
         echo "Starting systemd..."
-        /usr/local/bin/jchroot "$CHROOT" /bin/systemd &
+        env -i /sbin/minijail0 -C "$CHROOT" -f "/run/crouton/$NAME.systemd.pid" -i -I /bin/bash -c "exec /lib/systemd/systemd"
         sleep 1
-        pidof -s systemd > "/run/crouton/$NAME.systemd.pid"
-        read SYSTEMD_PID < "/run/crouton/$NAME.systemd.pid"
+        read -r SYSTEMD_PID < "/run/crouton/$NAME.systemd.pid"
     fi
     if [ -n "$SYSTEMD_PID" ]; then
         echo "Entering systemd PID $SYSTEMD_PID..."
-        nsenter -t $SYSTEMD_PID -p -r -w -u -- su - "$USERNAME"
+        env -i TERM="$TERM" nsenter -t $SYSTEMD_PID -p -r -w -u -- su - "$USERNAME"
     else
         echo "Could not start systemd" >&2
     fi
