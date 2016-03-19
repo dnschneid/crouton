@@ -687,7 +687,7 @@ elif [ -n "$SYSTEMD" ]; then
         read -r SYSTEMD_PID < "/run/crouton/$NAME.systemd.pid"
     if [ -z "SYSTEMD_PID" ] || ! pwdx $SYSTEMD_PID >/dev/null 2>&1; then
         echo "Starting systemd..."
-        env -i /sbin/minijail0 -C "$CHROOT" -f "/run/crouton/$NAME.systemd.pid" -i -I /bin/bash -c "exec /lib/systemd/systemd"
+        env -i container=1 /sbin/minijail0 -C "$CHROOT" -f "/run/crouton/$NAME.systemd.pid" -i -I /bin/bash -c "exec /lib/systemd/systemd"
         sleep 1
         read -r SYSTEMD_PID < "/run/crouton/$NAME.systemd.pid"
     fi
