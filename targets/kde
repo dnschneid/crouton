@@ -9,7 +9,12 @@ CHROOTBIN='crouton-noroot startkde'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
-install --minimal kde-plasma-desktop -- network-manager
+if release -lt vivid then
+    PACKNAME='kde-plasma-desktop'
+else
+    PACKNAME='plasma-desktop'
+fi
+install --minimal $PACKNAME -- network-manager
 
 TIPS="$TIPS
 You can start KDE via the startkde host command: sudo startkde
