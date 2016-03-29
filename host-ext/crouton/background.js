@@ -49,6 +49,13 @@ var focus_win_ = -1; /* Focused kiwi window. -1 if no kiwi window focused. */
 var notifications_ = {}; /* Map of notification id to function to be called when
                             the notification is clicked. */
 
+/* Check local storage for stored options */
+chrome.storage.local.get(null, function(items){
+    if (typeof items.enabled == "boolean") enabled_ = items.enabled;
+    if (typeof items.hidpi == "boolean") hidpi_ = items.hidpi;
+    refreshUI();
+});
+
 /* Set the current status string.
  * active is a boolean, true if the WebSocket connection is established. */
 function setStatus(status, active) {
@@ -162,6 +169,8 @@ function refreshUI() {
                 enablelink.onclick = function() {
                     console.log("Disable click");
                     enabled_ = false;
+                    /* Update local storage to persist enabled_ boolean */
+                    chrome.storage.local.set({enabled: enabled_});
                     if (websocket_ != null)
                         websocket_.close();
                     else
@@ -173,6 +182,8 @@ function refreshUI() {
                 enablelink.onclick = function() {
                     console.log("Enable click");
                     enabled_ = true;
+                    /* Update local storage to persist enabled_ boolean */
+                    chrome.storage.local.set({enabled: enabled_});
                     if (websocket_ == null)
                         websocketConnect();
                     refreshUI();
@@ -204,6 +215,8 @@ function refreshUI() {
             if (window.devicePixelRatio > 1) {
                 hidpicheck.onclick = function() {
                     hidpi_ = hidpicheck.checked;
+                    /* Update local storage to persist hidpi_ setting */
+                    chrome.storage.local.set({hidpi: hidpi_});
                     refreshUI();
                     var disps = Object.keys(kiwi_win_);
                     for (var i = 0; i < disps.length; i++) {
