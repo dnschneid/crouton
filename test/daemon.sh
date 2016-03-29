@@ -278,7 +278,7 @@ while sleep "$POLLINTERVAL"; do
     # boundaries into pipe characters, and then parse the result.
     # Any line still containing a double-quote after parsing is ignored
     (wget -qO- "$QUEUEURL" && echo) | tail -n"+$lastline" \
-            | sed 's/^"//; s/","/|/g; s/"$//; s/.*".*//' | {
+            | tr '\t' '|' | {
         while IFS='|' read -r date repo branch params run _; do
             if [ -z "$date" ]; then
                 continue
