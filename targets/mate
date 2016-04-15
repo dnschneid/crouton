@@ -1,0 +1,41 @@
+#!/bin/sh -e
+# Copyright (c) 2016 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+if [ "${TARGETNOINSTALL:-c}" = 'c' ]
+   if release -lt trusty; then
+       error 99 "Mate packages are not available for Ubuntu releases prior to trusty."
+   fi
+   if release -lt jessie; then
+       error 99 "Mate packages are not available for Debian releases prior to jessie."
+   fi
+   if release -lt sana; then
+       error 99 "Mate packages are not available for Kali Linux prior to sana."
+   fi
+fi
+
+REQUIRES='x11'
+DESCRIPTION='Installs the mate desktop environment. (Approx. 205MB)'
+HOSTBIN='startmate'
+CHROOTBIN='crouton-noroot startmate'
+. "${TARGETSDIR:="$PWD"}/common"
+
+if release -le precise ; then
+    install software-properties-common
+    sudo apt-add-repository -y "deb http://packages.mate-desktop.org/repo/ubuntu precise main"
+    sudo apt-get update
+fi
+
+if release -eq trusty && [ "$ARCH" = 'amd64' -o "$ARCH" = 'i386' ]; then
+    install software-properties-common
+    sudo apt-add-repository -y ppa:ubuntu-mate-dev/ppa
+    sudo apt-add-repository -y ppa:ubuntu-mate-dev/trusty-mate
+    sudo apt-get update
+fi
+
+install mate-desktop-environment
+
+TIPS="$TIPS
+You can start mate via the startmate host command: sudo startmate
+"
