@@ -190,7 +190,8 @@ if [ -z "$inteldriver" -a -n "$backport" ] && release -eq precise; then
         x11-xserver-utils xauth xinit xfonts-utils xkb-data xorg-docs-core \
         xterm x11-common xinput
 else
-    install xorg $installvideodrivers -- xserver-xorg-video-all$backport
+    install xorg $installvideodrivers -- xserver-xorg-video-all$backport \
+        xserver-xorg-input-vmmouse
 fi
 
 # Remove bad video drivers
