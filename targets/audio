@@ -151,6 +151,8 @@ END
             convert_automake
 
             echo '
+                CFLAGS="$CFLAGS -DCRAS_SOCKET_FILE_DIR=\"/var/run/cras\""
+
                 buildlib libcras
 
                 # Pass -rpath=$CRASLIBDIR to linker, so we do not need to add
