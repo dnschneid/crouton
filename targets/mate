@@ -3,7 +3,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-if [ "${TARGETNOINSTALL:-c}" = 'c' ]
+if [ "${TARGETNOINSTALL:-c}" = 'c' ]; then
    if release -lt trusty; then
        error 99 "Mate packages are not available for Ubuntu releases prior to trusty."
    fi
