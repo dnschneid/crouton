@@ -21,10 +21,19 @@ HOSTBIN='startmate'
 CHROOTBIN='crouton-noroot startmate'
 . "${TARGETSDIR:="$PWD"}/common"
 
+EXTRAPACKAGES=
+
 if release -le precise ; then
     install software-properties-common
     sudo apt-add-repository -y "deb http://packages.mate-desktop.org/repo/ubuntu precise main"
     sudo apt-get update
+fi
+
+if release -ge xenial ; then
+    install software-properties-common
+    sudo apt-add-repository -y ppa:ubuntu-mate-dev/xenial-mate
+    sudo apt-get update
+    EXTRAPACKAGES="${EXTRAPACKAGES} caja-actions ubuntu-mate-artwork"
 fi
 
 if release -eq trusty && [ "$ARCH" = 'amd64' -o "$ARCH" = 'i386' ]; then
@@ -34,7 +43,8 @@ if release -eq trusty && [ "$ARCH" = 'amd64' -o "$ARCH" = 'i386' ]; then
     sudo apt-get update
 fi
 
-install mate-desktop-environment
+
+install mate-desktop-environment ${EXTRAPACKAGES}
 
 TIPS="$TIPS
 You can start mate via the startmate host command: sudo startmate
