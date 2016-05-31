@@ -1,5 +1,5 @@
 #!/bin/sh -e
-# Copyright (c) 2014 The crouton Authors. All rights reserved.
+# Copyright (c) 2016 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -130,7 +130,8 @@ install_pkg() {
 
 
 # install_dummy: Installs a dummy package that resolves dependencies. The
-# parameters are a list of crouton-style package names to "install".
+# parameters are a list of crouton-style package names to "install", optionally
+# followed by -- and the packages it depends on.
 install_dummy() {
     install_dummy_dist `distropkgs "$@"`
 }

@@ -1,5 +1,5 @@
 #!/bin/sh -e
-# Copyright (c) 2014 The crouton Authors. All rights reserved.
+# Copyright (c) 2016 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -15,6 +15,7 @@ ENCRYPT=''
 KEYFILE=''
 LISTDETAILS=''
 MOVE=''
+COPY=''
 NEEDS_UNMOUNT=''
 RESTORE=''
 SPLIT=''
@@ -57,6 +58,7 @@ Options:
                 If multiple chroots are specified, DEST must be a directory.
                 If you are moving a chroot to a SD card/USB drive, make sure the
                 storage is formatted to ext2/3/4.
+    -C DEST     Like -m, but copies instead of moves.
     -r          Restores a chroot from a tarball. The tarball path can be
                 specified with -f or detected from name. If both are specified,
                 restores to that name instead of the one in the tarball.
@@ -72,12 +74,13 @@ Options:
 . "$BINDIR/../installer/functions"
 
 # Process arguments
-getopts_string='abc:def:k:lm:rs:y'
+getopts_string='abc:C:def:k:lm:rs:y'
 while getopts_nextarg; do
     case "$getopts_var" in
     a) ALLCHROOTS='y';;
     b) BACKUP='y'; NEEDS_UNMOUNT='y';;
     c) CHROOTS="`readlink -m -- "$getopts_arg"`";;
+    C) COPY="$getopts_arg"; NEEDS_UNMOUNT='y';;
     d) DELETE='y'; NEEDS_UNMOUNT='y';;
     e) ENCRYPT='y'; NEEDS_UNMOUNT='y';;
     f) TARBALL="$getopts_arg";;
@@ -98,7 +101,7 @@ if [ ! "${APPLICATION#delete}" = "$APPLICATION" ]; then
 fi
 
 # At least one command must be specified
-if [ -z "$ALLCHROOTS$BACKUP$DELETE$ENCRYPT$KEYFILE$LISTDETAILS$MOVE$RESTORE" ]; then
+if [ -z "$ALLCHROOTS$BACKUP$DELETE$ENCRYPT$KEYFILE$LISTDETAILS$MOVE$COPY$RESTORE" ]; then
     error 2 "$USAGE"
 fi
 
@@ -122,8 +125,13 @@ if [ -n "$BACKUP" -a -n "$RESTORE" ]; then
     error 2 "$USAGE"
 fi
 
+# Cannot specify both copy and move.
+if [ -n "$COPY" -a -n "$MOVE" ]; then
+    error 2 "$USAGE"
+fi
+
 # Cannot specify delete with anything else.
-if [ -n "$DELETE" -a -n "$BACKUP$ENCRYPT$KEYFILE$MOVE$RESTORE" ]; then
+if [ -n "$DELETE" -a -n "$BACKUP$ENCRYPT$KEYFILE$MOVE$COPY$RESTORE" ]; then
     error 2 "$USAGE"
 fi
 
@@ -153,11 +161,13 @@ if [ -n "$BACKUP$RESTORE" -a -z "$TARBALL" -a "$PWD" = '/' \
     TARBALL="/home/chronos/user/Downloads/"
 fi
 
-# If multiple chroots are listed, KEYFILE and MOVE must be empty or directories.
+# If multiple chroots are listed, KEYFILE and MOVE and COPY must be empty or directories.
 if [ $# -gt 1 -a -f "$KEYFILE" -a ! "$KEYFILE" = '-' ]; then
     error 2 "Multiple chroots specified, but $KEYFILE is not a directory."
 elif [ $# -gt 1 -a -n "$MOVE" -a "${MOVE%/}" = "$MOVE" ]; then
     error 2 "Multiple chroots specified, but $MOVE is not a directory."
+elif [ $# -gt 1 -a -n "$COPY" -a "${COPY%/}" = "$COPY" ]; then
+    error 2 "Multiple chroots specified, but $COPY is not a directory."
 elif [ $# -gt 1 -a -f "$TARBALL" ]; then
     error 2 "Multiple chroots specified, but $TARBALL is not a directory."
 fi
@@ -166,6 +176,12 @@ fi
 if [ -n "$MOVE" -a "${MOVE#*/}" != "$MOVE" ] && \
         df -T "`getmountpoint "$MOVE"`" | awk '$2~"^ext"{exit 1}'; then
     error 2 "Chroots can only be moved to ext filesystems."
+fi
+
+# Don't allow copying to non-ext filesystems (but don't check if in same directory)
+if [ -n "$COPY" -a "${COPY#*/}" != "$COPY" ] && \
+        df -T "`getmountpoint "$COPY"`" | awk '$2~"^ext"{exit 1}'; then
+    error 2 "Chroots can only be copied to ext filesystems."
 fi
 
 # Don't allow restoring to non-ext filesystems
@@ -240,7 +256,7 @@ Please specify all options before chroot names."
 done
 
 # Display all chroot names if using -a without any other operations.
-if [ -n "$ALLCHROOTS" -a -z "$BACKUP$DELETE$ENCRYPT$KEYFILE$LISTDETAILS$MOVE$RESTORE" ]; then
+if [ -n "$ALLCHROOTS" -a -z "$BACKUP$DELETE$ENCRYPT$KEYFILE$LISTDETAILS$MOVE$COPY$RESTORE" ]; then
     echo "$@"
     exit 0
 fi
@@ -307,7 +323,7 @@ for NAME in "$@"; do
                         -a "$LISTDETAILS" -gt 1 ]; then
                     sh "$BINDIR/mount-chroot" -c "$CHROOTS" -- "$NAME" || true
                 fi
-                if [ -d "/var/run/crouton/$CHROOT" ]; then
+                if mountpoint -q "/var/run/crouton/$CHROOT"; then
                     echo "encrypted: yes, unlocked"
                 else
                     echo "encrypted: yes, locked"
@@ -593,6 +609,31 @@ for NAME in "$@"; do
             echo "Moving $CHROOT to $target" 1>&2
             mv "$CHROOT" "$target"
         fi
+    fi
+
+    # Copy the chroot if requested
+    if [ -n "$COPY" ]; then
+        target="$COPY"
+        if [ "${target##*/}" = "$target" ]; then
+            # No slashes in the path. Assume same directory.
+            if ! validate_name "$target"; then
+                error 2 "Invalid target chroot name '$target'."
+            fi
+            target="$CHROOTS/$target"
+        elif [ ! "${target%/}" = "$target" ]; then
+            # Ends in a slash; append name.
+            target="$target$NAME"
+        fi
+        if [ -e "$target" ]; then
+            # Can't tell if the destination is a directory or a chroot that
+            # already exists; be safe and assume it was a mistake.
+            error 2 "$target already exists"
+        fi
+        if ! mkdir -p "`dirname "$target"`"; then
+            error 1 "Unable to create directory for $target"
+        fi
+        echo "Copying $CHROOT to $target" 1>&2
+        spinner 200 cp -av --one-file-system "$CHROOT" "$target"
     fi
 done
 

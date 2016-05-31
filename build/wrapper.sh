@@ -1,5 +1,5 @@
 #!/bin/sh -e
-# Copyright (c) 2014 The crouton Authors. All rights reserved.
+# Copyright (c) 2016 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file of the source repository, which has been replicated
 # below for convenience of distribution:
@@ -38,8 +38,8 @@ set -e
 
 VERSION='git'
 
-# Minimum Chromium OS version is R35 stable
-CROS_MIN_VERS=5712
+# Minimum Chromium OS version is R39 stable
+CROS_MIN_VERS=6310
 
 if [ "$1" = '-x' -a "$#" -le 2 ]; then
     # Extract to the specified directory.

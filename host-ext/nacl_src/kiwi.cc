@@ -1,4 +1,4 @@
-/* Copyright (c) 2014 The crouton Authors. All rights reserved.
+/* Copyright (c) 2015 The crouton Authors. All rights reserved.
  * Use of this source code is governed by a BSD-style license that can be
  * found in the LICENSE file.
  *
@@ -246,6 +246,16 @@ private:
         return false;
     }
 
+    /* Recieves and processes initialization information */
+    bool SocketParseInitInformation(const char* data, int datalen) {
+        if (!CheckSize(datalen, sizeof(struct initinfo), "Init information"))
+            return false;
+
+        initinfo* info = (struct initinfo*) data;
+        freon_ = info->freon;
+        return true;
+    }
+
     /* Receives and handles a version request */
     bool SocketParseVersion(const char* data, int datalen) {
         if (connected_) {
@@ -257,7 +267,7 @@ private:
 
         if (server_version_ != VERSION) {
             /* TODO: Remove VF1 compatiblity */
-            if (server_version_ == "VF1") {
+            if (server_version_ == "VF1" || server_version_ == "VF2") {
                 WarningMessage() << "Outdated server version ("
                                  << server_version_ << "), expecting " << VERSION
                                  << ". Please update your chroot.";
@@ -432,6 +442,9 @@ private:
             case 'R':  /* Resolution request reply */
                 if (SocketParseResolution(data, datalen)) return;
                 break;
+            case 'I':  /* Init information */
+                if (SocketParseInitInformation(data, datalen)) return;
+                break;
             default:
                 ErrorMessage() << "Invalid request. First char: "
                                << (int)data[0];
@@ -523,40 +536,42 @@ public:
                 return PP_TRUE;
             }
 
-            /* We delay sending Super-L, and only "press" it on mouse clicks and
-             * letter keys (a-z). This way, Home (Search+Left) appears without
-             * modifiers (instead of Super_L+Home) */
-            if (keystr == "OSLeft") {
-                if (down) {
-                    search_state_ = kSearchUpFirst;
-                } else {
-                    if (search_state_ == kSearchUpFirst) {
-                        /* No other key was pressed: press+release */
-                        SendSearchKey(1);
-                        SendSearchKey(0);
-                    } else if (search_state_ == kSearchDown) {
-                        SendSearchKey(0);
+            if (!freon_) {
+                /* We delay sending Super-L, and only "press" it on mouse clicks and
+                 * letter keys (a-z). This way, Home (Search+Left) appears without
+                 * modifiers (instead of Super_L+Home) */
+                if (keystr == "OSLeft") {
+                    if (down) {
+                        search_state_ = kSearchUpFirst;
+                    } else {
+                        if (search_state_ == kSearchUpFirst) {
+                            /* No other key was pressed: press+release */
+                            SendSearchKey(1);
+                            SendSearchKey(0);
+                        } else if (search_state_ == kSearchDown) {
+                            SendSearchKey(0);
+                        }
+                        search_state_ = kSearchInactive;
                     }
-                    search_state_ = kSearchInactive;
+                    return PP_TRUE;  /* Ignore key */
                 }
-                return PP_TRUE;  /* Ignore key */
-            }
 
-            if (jskeycode >= 65 && jskeycode <= 90) {  /* letter */
-                /* Search is active, send Super_L if needed */
-                if (down && (search_state_ == kSearchUpFirst ||
-                             search_state_ == kSearchUp)) {
-                    SendSearchKey(1);
-                    search_state_ = kSearchDown;
-                }
-            } else {  /* non-letter */
-                /* Release Super_L if needed */
-                if (search_state_ == kSearchDown) {
-                    SendSearchKey(0);
-                    search_state_ = kSearchUp;
-                } else if (search_state_ == kSearchUpFirst) {
-                    /* Switch from UpFirst to Up */
-                    search_state_ = kSearchUp;
+                if (jskeycode >= 65 && jskeycode <= 90) {  /* letter */
+                    /* Search is active, send Super_L if needed */
+                    if (down && (search_state_ == kSearchUpFirst ||
+                                 search_state_ == kSearchUp)) {
+                        SendSearchKey(1);
+                        search_state_ = kSearchDown;
+                    }
+                } else {  /* non-letter */
+                    /* Release Super_L if needed */
+                    if (search_state_ == kSearchDown) {
+                        SendSearchKey(0);
+                        search_state_ = kSearchUp;
+                    } else if (search_state_ == kSearchUpFirst) {
+                        /* Switch from UpFirst to Up */
+                        search_state_ = kSearchUp;
+                    }
                 }
             }
             if (server_version_ == "VF1")
@@ -849,10 +864,12 @@ private:
     void SendClick(int button, int down) {
         struct mouseclick* mc;
 
-        if (down && (search_state_ == kSearchUpFirst ||
-                     search_state_ == kSearchUp)) {
-            SendSearchKey(1);
-            search_state_ = kSearchDown;
+        if (!freon_) {
+            if (down && (search_state_ == kSearchUpFirst ||
+                        search_state_ == kSearchUp)) {
+                SendSearchKey(1);
+                search_state_ = kSearchDown;
+            }
         }
 
         pp::VarArrayBuffer array_buffer(sizeof(*mc));
@@ -1051,6 +1068,7 @@ private:
     int retry_ = 0;
     bool connected_ = false;
     std::string server_version_ = "";
+    bool freon_ = false;
     bool screen_flying_ = false;
     pp::Var receive_var_;
     int target_fps_ = kFullFPS;

@@ -1,5 +1,5 @@
 #!/bin/sh -e
-# Copyright (c) 2014 The crouton Authors. All rights reserved.
+# Copyright (c) 2015 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -17,6 +17,17 @@ crouton -f "`bootstrap "$release"`" -e -t core
 for file in "$PREFIX/chroots/$release"/*; do
     test "${file#*/ECRYPTFS}" != "$file"
 done
+
+# Check chroot is encrypted and locked
+host edit-chroot -l "$release" | passes grep "^encrypted: yes, locked"
+
+# Unlocked after mounted
+host mount-chroot "$release"
+host edit-chroot -l "$release" | passes grep "^encrypted: yes, unlocked"
+
+# Locked again if unmounted
+host unmount-chroot "$release"
+host edit-chroot -l "$release" | passes grep "^encrypted: yes, locked"
 
 # Enter encrypted chroot
 host enter-chroot -n "$release" true

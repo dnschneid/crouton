@@ -1,4 +1,4 @@
-# Copyright (c) 2014 The crouton Authors. All rights reserved.
+# Copyright (c) 2016 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -74,7 +74,7 @@ $(LIBSTARGETS): $(patsubst crouton%.so,src/%.c,$@) $($@_DEPS) Makefile
 extension: $(EXTTARGET)
 
 $(CONTRIBUTORS): $(GITHEAD) $(CONTRIBUTORSSED)
-	git shortlog -s | sed -f $(CONTRIBUTORSSED) | sort -u > $(CONTRIBUTORS)
+	git shortlog -s | sed -f $(CONTRIBUTORSSED) | sort -uf > $(CONTRIBUTORS)
 
 contributors: $(CONTRIBUTORS)
 

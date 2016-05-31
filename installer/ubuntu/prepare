@@ -1,5 +1,5 @@
 #!/bin/sh -e
-# Copyright (c) 2014 The crouton Authors. All rights reserved.
+# Copyright (c) 2015 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -62,9 +62,21 @@ install_dummy_dist() {
     local pkgname="crouton-$1" pkgprovides="$1"
     shift
     while [ "$#" != 0 ]; do
+        if [ "$1" = '--' ]; then
+            shift
+            break
+        fi
         pkgprovides="$pkgprovides, $1"
         shift
     done
+    local pkgdepends="$1"
+    if [ "$#" != 0 ]; then
+        shift
+        while [ "$#" != 0 ]; do
+            pkgdepends="$pkgdepends, $1"
+            shift
+        done
+    fi
     local tmp="`mktemp -d crouton.XXXXXX --tmpdir=/tmp`"
     addtrap "rm -rf '$tmp'"
     cat > "$tmp/control" <<EOF
@@ -74,6 +86,7 @@ Architecture: all
 Maintainer: crouton
 Installed-Size: 0
 Provides: $pkgprovides
+Depends: $pkgdepends
 Section: misc
 Priority: optional
 Description: Provides a dummy ${pkgname#*-} for crouton
@@ -84,7 +97,8 @@ EOF
     tar -cf "$tmp/data.tar" -T /dev/null
     ar r "$tmp/$pkgname.deb" \
         "$tmp/debian-binary" "$tmp/control.tar.gz" "$tmp/data.tar"
-    dpkg -i "$tmp/$pkgname.deb"
+    dpkg -i --force-depends "$tmp/$pkgname.deb"
+    apt-get -fy install
 }
 
 
@@ -202,6 +216,12 @@ install_mirror_package() {
 
 # Run dpkg in non-interactive mode
 export DEBIAN_FRONTEND=noninteractive
+
+# dpkg will auto start some services when installing, and it will ask
+# policy-rc.d for permissions. We don't want any service to start, so always
+# return denies.
+echo exit 101 > /usr/sbin/policy-rc.d
+chmod +x /usr/sbin/policy-rc.d
 
 # Run debootstrap second stage if it hasn't already happened
 if [ -r /debootstrap ]; then

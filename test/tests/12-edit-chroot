@@ -1,5 +1,5 @@
 #!/bin/sh -e
-# Copyright (c) 2014 The crouton Authors. All rights reserved.
+# Copyright (c) 2015 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -77,6 +77,21 @@ host edit-chroot -y "$release" -m "$release.2"
 host enter-chroot -n "$release.2" true
 fails host enter-chroot -n "$release" true
 
+# Cannot copy a chroot that does not exist
+fails host edit-chroot -y "$release" -C "$release.3"
+
+# Cannot copy and move a chroot
+fails host edit-chroot -y "$release" -C "$release.3" -m "$release.4"
+
+# Copy a chroot
+host edit-chroot -y "$release.2" -C "$release.3"
+host enter-chroot -n "$release.2" true
+host enter-chroot -n "$release.3" true
+
+# Delete the copy
+host delete-chroot -y "$release.3"
+fails host enter-chroot -n "$release.3" true
+
 # Restore the chroot
 host edit-chroot -y -f "$BACKUPDIR/$release.tar" -r "$release"
 host enter-chroot -n "$release" true
@@ -140,19 +155,33 @@ fails ls "$BACKUPDIR"/*
 # Backup both chroots
 host edit-chroot "$release" -y -f "$BACKUPDIR" -b "$release.2"
 
-# Move them to a new prefix: destination needs to end with a slash
-fails host edit-chroot -y -m "$PREFIX/chroots.2" "$release" "$release.2"
+# Copy them to a new prefix: destination needs to end with a slash
+fails host edit-chroot -y -C "$PREFIX/chroots.2" "$release" "$release.2"
+
+host edit-chroot -y -C "$PREFIX/chroots.2/" "$release" "$release.2"
+host enter-chroot -c "$PREFIX/chroots.2" -n "$release" true
+host enter-chroot -c "$PREFIX/chroots.2" -n "$release.2" true
 host enter-chroot -n "$release" true
 host enter-chroot -n "$release.2" true
 
-host edit-chroot -y -m "$PREFIX/chroots.2/" "$release" "$release.2"
-host enter-chroot -c "$PREFIX/chroots.2" -n "$release" true
-host enter-chroot -c "$PREFIX/chroots.2" -n "$release.2" true
+# Move them to a new prefix: destination needs to end with a slash
+fails host edit-chroot -y -m "$PREFIX/chroots.3" "$release" "$release.2"
+host enter-chroot -n "$release" true
+host enter-chroot -n "$release.2" true
 
-# Delete both chroots
+host edit-chroot -y -m "$PREFIX/chroots.3/" "$release" "$release.2"
+host enter-chroot -c "$PREFIX/chroots.3" -n "$release" true
+host enter-chroot -c "$PREFIX/chroots.3" -n "$release.2" true
+fails host enter-chroot -n "$release" true
+fails host enter-chroot -n "$release.2" true
+
+# Delete all four chroots
 host delete-chroot "$release" "$release.2" -y -c "$PREFIX/chroots.2"
+host delete-chroot "$release" "$release.2" -y -c "$PREFIX/chroots.3"
 fails host enter-chroot -c "$PREFIX/chroots.2" -n "$release" true
 fails host enter-chroot -c "$PREFIX/chroots.2" -n "$release.2" true
+fails host enter-chroot -c "$PREFIX/chroots.3" -n "$release" true
+fails host enter-chroot -c "$PREFIX/chroots.3" -n "$release.2" true
 
 OLDCWD="`pwd`"
 
@@ -180,6 +209,13 @@ fails ls "$BACKUPDIR"/*
 fails host edit-chroot -y -m "." -- "-$release"
 fails host edit-chroot -y -m ".." -- "-$release"
 fails host edit-chroot -y -m "" -- "-$release"
+host enter-chroot -n "-$release" true
+
+# Check invalid names are also detected in parameter to -C
+# (/ are acceptable in this context, as target directory)
+fails host edit-chroot -y -C "." -- "-$release"
+fails host edit-chroot -y -C ".." -- "-$release"
+fails host edit-chroot -y -C "" -- "-$release"
 host enter-chroot -n "-$release" true
 
 # Delete both chroots

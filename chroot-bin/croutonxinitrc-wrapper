@@ -1,5 +1,5 @@
 #!/bin/sh -e
-# Copyright (c) 2014 The crouton Authors. All rights reserved.
+# Copyright (c) 2016 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -87,12 +87,17 @@ fi
 # Launch system-wide trigger daemon
 croutontriggerd &
 
-# Input-related stuff is not needed for kiwi
-if [ "$xmethodtype" != "xiwi" ]; then
+
+# Apply the Chromebook keyboard map. Not needed for non-Freon xiwi.
+if [ "$xmethodtype" != 'xiwi' -o ! -f "/sys/class/tty/tty0/active" ]; then
     # Apply the Chromebook keyboard map if installed.
     if [ -f '/usr/share/X11/xkb/compat/chromebook' ]; then
         setxkbmap -model chromebook
     fi
+fi
+
+# Input-related stuff is not needed for kiwi
+if [ "$xmethodtype" != "xiwi" ]; then
 
     # Launch X-server-local key binding daemon
     xbindkeys -fg /etc/crouton/xbindkeysrc.scm

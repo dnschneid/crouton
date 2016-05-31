@@ -122,7 +122,7 @@ Examples
   2. Run `sh ~/Downloads/crouton -r list` to list the recognized releases and
      which distros they belong to.
 
-### Wasteful rendundancies are wasteful: one clipboard, one browser, one window
+### Wasteful redundancies are wasteful: one clipboard, one browser, one window
   1. Install the [crouton extension](https://goo.gl/OVQOEt) into Chromium OS.
   2. Add the `extension` or `xiwi` version to your chroot.
   3. Try some copy-pasta, or uninstall all your web browsers from the chroot.
@@ -285,7 +285,7 @@ There's a way For Everyone to help!
 
 License
 -------
-crouton (including this eloquently-written README) is copyright &copy; 2014 The
+crouton (including this eloquently-written README) is copyright &copy; 2016 The
 crouton Authors. All rights reserved. Use of the source code included here is
 governed by a BSD-style license that can be found in the LICENSE file in the
 source tree.
