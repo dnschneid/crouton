@@ -42,7 +42,7 @@ if ! grep -q ':1000:' /etc/passwd; then
             echo_tty 'Username must be lowercase letters, numbers, or dashes.'
         fi
         #Prompt for username in blue here
-        echo_tty -n '\033[34mPlease specify a username for the primary user: '
+        echo_tty -n "$(echo_color "b" "Please specify a username for the primaryuser: ")"
         if [ -n "$USERNAME" ]; then
             username="$USERNAME"
             echo "$username" 1>&2
