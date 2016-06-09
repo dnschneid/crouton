@@ -36,7 +36,7 @@ if release -ge xenial ; then
     EXTRAPACKAGES="${EXTRAPACKAGES} caja-actions ubuntu-mate-artwork"
 fi
 
-if release -eq trusty && [ "$ARCH" = 'amd64' -o "$ARCH" = 'i386' ]; then
+if release -eq trusty ; then
     install software-properties-common
     sudo apt-add-repository -y ppa:ubuntu-mate-dev/ppa
     sudo apt-add-repository -y ppa:ubuntu-mate-dev/trusty-mate
