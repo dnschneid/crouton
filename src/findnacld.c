@@ -103,6 +103,8 @@ int find_nacl(int conn)
     if (pid > 0) {
         if ((fd = open(file, O_RDWR)) < 0)
             syserror("Cannot open file %s", file);
+    } else {
+	syserror("Error in helper: %s", file);
     }
 
     if (send_pid_fd(conn, pid, fd) < 0) {
