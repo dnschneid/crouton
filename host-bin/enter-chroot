@@ -528,6 +528,10 @@ if ! mountpoint -q "$CHROOT/sys"; then
     mount --make-rshared /sys
     mount --rbind /sys "$CHROOT/sys"
     mount --make-rslave "$CHROOT/sys"
+    # Remount selinux as ro
+    if [ -d "$CHROOT/sys/fs/selinux" ]; then
+        mount -o remount,ro "$CHROOT/sys/fs/selinux"
+    fi
 fi
 
 # Modify chroot's /sys/class/drm to avoid vgem
