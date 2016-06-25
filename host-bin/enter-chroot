@@ -502,7 +502,7 @@ if [ -z "$NOLOGIN" -a -f "$shares" ]; then
                 continue;;
         esac
         # Expand dest for homedirs
-        if [ "${dest#~}" != "$dest" ]; then
+        if [ "${dest#"~"}" != "$dest" ]; then
             destuser="${dest%%/*}"
             if [ "$destuser" = '~' ]; then
                 if [ -z "$CHROOTHOME" ]; then
@@ -511,7 +511,7 @@ if [ -z "$NOLOGIN" -a -f "$shares" ]; then
                 fi
                 dest="$CHROOTHOME/${dest#*/}"
             else
-                dest="/home/${destuser#~}/${dest#*/}"
+                dest="/home/${destuser#"~"}/${dest#*/}"
             fi
         fi
         # Do the bindmount
