@@ -250,7 +250,7 @@ if [ -z "$DOWNLOADONLY" -a -n "$TARBALL" ]; then
         releasearch="${releasearch%%/*}"
     fi
     if [ "${releasearch#*-}" != "$releasearch" ]; then
-        ARCH="${releasearch#*-}"
+        ARCH="${releasearch##*-}"
         RELEASE="${releasearch%-*}"
     else
         RESTORE='y'
