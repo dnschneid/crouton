@@ -10,8 +10,6 @@
 #   "Timestamp","Repository","Branch","Additional parameters","Run type"
 #   "2013/10/16 8:24:52 PM GMT","dnschneid/crouton","master","","FULL"
 
-set -e
-
 APPLICATION="${0##*/}"
 SCRIPTDIR="`readlink -f "\`dirname "$0"\`/.."`"
 # Poll queue file every x seconds

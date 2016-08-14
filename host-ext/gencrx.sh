@@ -13,8 +13,6 @@
 # This code is loosely based on a script found along the CRX file format
 # specification: http://developer.chrome.com/extensions/crx.html
 
-set -e
-
 EXTNAME="crouton"
 CRIAT_PEXE="$EXTNAME/kiwi.pexe"
 
