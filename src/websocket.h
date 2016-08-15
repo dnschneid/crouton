@@ -12,6 +12,9 @@
  *  - Ping packets
  */
 
+#ifndef WEBSOCKET_H_
+#define WEBSOCKET_H_
+
 #define _GNU_SOURCE /* for ppoll */
 #include <ctype.h>
 #include <errno.h>
@@ -932,3 +935,5 @@ static void socket_server_init(int port_) {
         exit(1);
     }
 }
+
+#endif /* WEBSOCKET_H_ */
