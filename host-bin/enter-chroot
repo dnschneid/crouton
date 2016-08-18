@@ -528,10 +528,10 @@ if ! mountpoint -q "$CHROOT/sys"; then
     mount --make-rshared /sys
     mount --rbind /sys "$CHROOT/sys"
     mount --make-rslave "$CHROOT/sys"
-    # Remount selinux as ro
-    if [ -d "$CHROOT/sys/fs/selinux" ]; then
-        mount -o remount,ro "$CHROOT/sys/fs/selinux"
-    fi
+    # Mounting selinuxfs, remounted as RO or not, causes
+    # ARC / "Google Play for Chrome OS" to crash. The break
+    # is permanent until a clean reboot.
+    umount $CHROOT/sys/fs/selinux
 fi
 
 # Modify chroot's /sys/class/drm to avoid vgem
