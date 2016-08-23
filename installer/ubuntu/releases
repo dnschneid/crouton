@@ -20,6 +20,6 @@ saucy*
 trusty
 utopic*
 vivid*
-wily*
-xenial*
+wily*|test
+xenial*|test
 yakkety*|test
