@@ -12,11 +12,27 @@ l=6
 r=7
 # Do horizontal scrolling by default
 x=1
-# Set the default scaling and constant values
-xs='0.2'
-xc='0.01'
-ys='0.2'
-yc='0.05'
+
+if [ -L /etc/crouton/cmt ]; then
+  # Enable xinput Australian Scrolling
+  xinput --set-prop --type=int --format=8 "Atmel maXTouch Touchpad" "Australian Scrolling" 1
+
+  # Set the default scaling and constant values (tuned for cmt)
+  xs='0.3'
+  xc='0.01'
+  ys='0.3'
+  yc='0.05'
+
+  # make Australian Scrolling compatible with Chrome/Chromium sub-pixel scrolling
+  l=7
+  r=6
+else
+  # Set the default scaling and constant values
+  xs='0.2'
+  xc='0.01'
+  ys='0.2'
+  yc='0.05'
+fi
 
 #
 USAGE="${0##*/} [-x] [-r] [-a #.#] [-b #.#] [-c #.#] [-d #.#]
@@ -46,8 +62,10 @@ if [ $# -ge "$OPTIND" ]; then
     exit 1;
 fi
 
-# Operate on the Chromium OS X11 server
-eval "`host-x11`"
+if [ ! -L /etc/crouton/cmt ]; then
+  # Operate on the Chromium OS X11 server
+  eval "`host-x11`"
+fi
 
 # Only let one instance *really* run at a time
 mkdir -m 775 -p "$CROUTONLOCKDIR"
@@ -64,8 +82,12 @@ flock 3
 {
     croutonxi2event &
     xi="$!"
-    aura="`croutonwmtools list ni | awk '/aura_root/ {print $NF}'`"
-    xev -id "$aura" &
+
+    if [ ! -L /etc/crouton/cmt ]; then
+      aura="`croutonwmtools list ni | awk '/aura_root/ {print $NF}'`"
+      xev -id "$aura" &
+    fi
+
     trap "kill $! $xi 2>/dev/null || true" INT TERM HUP 0
     wait
 } | unbuffered_awk '

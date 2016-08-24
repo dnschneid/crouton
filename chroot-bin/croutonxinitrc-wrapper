@@ -111,15 +111,17 @@ if [ "$xmethodtype" != "xiwi" ]; then
     fi
 
     # Configure trackpad settings if needed
-    if synclient >/dev/null 2>&1; then
-        case "`awk -F= '/_RELEASE_BOARD=/{print $2}' '/var/host/lsb-release'`" in
-            butterfly*|falco*)
-                SYNCLIENT="FingerLow=1 FingerHigh=5 $SYNCLIENT";;
-            parrot*|peppy*|wolf*)
-                SYNCLIENT="FingerLow=5 FingerHigh=10 $SYNCLIENT";;
-        esac
-        if [ -n "$SYNCLIENT" ]; then
-            synclient $SYNCLIENT
+    if [ ! -L /etc/crouton/cmt ]; then
+        if synclient >/dev/null 2>&1; then
+            case "`awk -F= '/_RELEASE_BOARD=/{print $2}' '/var/host/lsb-release'`" in
+                butterfly*|falco*)
+                    SYNCLIENT="FingerLow=1 FingerHigh=5 $SYNCLIENT";;
+                parrot*|peppy*|wolf*)
+                    SYNCLIENT="FingerLow=5 FingerHigh=10 $SYNCLIENT";;
+            esac
+            if [ -n "$SYNCLIENT" ]; then
+                synclient $SYNCLIENT
+            fi
         fi
     fi
 

@@ -282,6 +282,45 @@ fi
 # Soft-link resolv.conf so that updates are automatically propagated
 ln -sf '/var/host/shill/resolv.conf' "$CHROOT/etc/resolv.conf"
 
+# Copy the current cmt driver and required files
+CHROMIUM_CMT=/var/lib/cmt
+if [ -L "$CHROOT/etc/crouton/cmt" ]; then
+  CHROOT_CMT=/etc/crouton/cmt
+
+  # xorg.conf.d cmt config
+  mkdir -p $CHROMIUM_CMT/etc/X11/xorg.conf.d
+  mkdir -p $CHROOT/etc/X11/xorg.conf.d
+  for xorgconf in /etc/X11/xorg.conf.d/*-touchpad-cmt.conf
+  do
+    xorgconffile=$(basename $xorgconf)
+    cp $xorgconf $CHROMIUM_CMT/etc/X11/xorg.conf.d
+    ln -sf $CHROOT_CMT/etc/X11/xorg.conf.d/$xorgconffile $CHROOT/etc/X11/xorg.conf.d/$xorgconfile
+  done
+
+  # cmt driver
+  mkdir -p $CHROMIUM_CMT/usr/lib/xorg/modules/input
+  cp /usr/lib64/xorg/modules/input/cmt_drv.so $CHROMIUM_CMT/usr/lib/xorg/modules/input
+  ln -sfT $CHROOT_CMT/usr/lib/xorg/modules/input/cmt_drv.so $CHROOT/usr/lib/xorg/modules/input/cmt_drv.so
+
+  # libs loaded by cmt driver
+  for lib in libevdev libgestures libjsoncpp
+  do
+    cp /usr/lib64/$lib.so $CHROMIUM_CMT/usr/lib
+    ln -sfT $CHROOT_CMT/usr/lib/$lib.so $CHROOT/usr/lib/$lib.so
+    ln -sfT $CHROOT_CMT/usr/lib/$lib.so $CHROOT/usr/lib/$lib.so.0
+  done
+  for lib in libstdc++
+  do
+    cp /usr/lib64/$lib.so $CHROOT/usr/local/lib
+    ln -rsfT $CHROOT/usr/local/lib/$lib.so $CHROOT/usr/local/lib/$lib.so.6
+  done
+  for lib in libevent-2.0
+  do
+    cp /usr/lib64/$lib.so.5 $CHROMIUM_CMT/usr/lib
+    ln -sfT $CHROOT_CMT/usr/lib/$lib.so.5 $CHROOT/usr/lib/$lib.so.5
+  done
+fi
+
 # Sanity check of the timezone setting
 localtime="$CHROOT/etc/localtime"
 hostlocaltime='/var/host/timezone/localtime'
@@ -355,6 +394,12 @@ tmpfsmount /var/run/lock 'noexec,nosuid,nodev,size=5120k'
 bindmount /var/run/dbus /var/host/dbus
 bindmount /var/run/shill /var/host/shill
 bindmount /var/lib/timezone /var/host/timezone
+
+if [ -L "$CHROOT/etc/crouton/cmt" ]; then
+  # must bind with 'exec' to allow loading of shared objects
+  bindmount $CHROMIUM_CMT /var/host/cmt exec
+fi
+
 for m in /lib/modules/*; do
     if [ -d "$m" ]; then
         bindmount '-o ro' "$m"
