@@ -383,6 +383,15 @@ else
 WARNING: CRAS not running in Chromium OS. Audio forwarding will not work." 1>&2
 fi
 
+if [ -d /var/run/chrome ]; then
+    bindmount /var/run/chrome /var/host/chrome
+    # Add a /var/host/chrome symlink for display clients
+    ln -sfT /var/host/chrome "$(fixabslinks '/var/run')/chrome"
+else
+    echo "\
+WARNING: Chrome not running in Chromium OS. Display forwarding will not work." 1>&2
+fi
+
 # Bind-mount /media, specifically the removable directory
 destmedia="`fixabslinks '/var/host/media'`"
 if ! mountpoint -q "$destmedia"; then
