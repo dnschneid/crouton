@@ -537,9 +537,11 @@ if ! mountpoint -q "$CHROOT/sys"; then
     mount --make-rshared /sys
     mount --rbind /sys "$CHROOT/sys"
     mount --make-rslave "$CHROOT/sys"
-    # Remount selinux as ro
+    # Mounting selinuxfs, remounted as RO or not, causes
+    # ARC / "Google Play for Chrome OS" to crash. The break
+    # is permanent until a clean reboot.
     if [ -d "$CHROOT/sys/fs/selinux" ]; then
-        mount -o remount,ro "$CHROOT/sys/fs/selinux"
+    	umount "$CHROOT/sys/fs/selinux" 2>/dev/null
     fi
 fi
 
