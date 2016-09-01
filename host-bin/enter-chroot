@@ -539,7 +539,7 @@ if ! mountpoint -q "$CHROOT/sys"; then
     mount --make-rslave "$CHROOT/sys"
     # Remount selinux as ro
     if [ -d "$CHROOT/sys/fs/selinux" ]; then
-        mount -o remount,ro "$CHROOT/sys/fs/selinux"
+        mount -o remount,ro,bind "$CHROOT/sys/fs/selinux"
     fi
 fi
 
