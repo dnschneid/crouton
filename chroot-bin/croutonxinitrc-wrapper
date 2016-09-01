@@ -113,7 +113,7 @@ if [ "$xmethodtype" != "xiwi" ]; then
     # Configure trackpad settings if needed
     if synclient >/dev/null 2>&1; then
         case "`awk -F= '/_RELEASE_BOARD=/{print $2}' '/var/host/lsb-release'`" in
-            butterfly*|falco*)
+            butterfly*|falco*|sentry*)
                 SYNCLIENT="FingerLow=1 FingerHigh=5 $SYNCLIENT";;
             parrot*|peppy*|wolf*)
                 SYNCLIENT="FingerLow=5 FingerHigh=10 $SYNCLIENT";;
