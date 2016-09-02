@@ -117,6 +117,11 @@ if [ "$xmethodtype" != "xiwi" ]; then
                 SYNCLIENT="FingerLow=1 FingerHigh=5 $SYNCLIENT";;
             parrot*|peppy*|wolf*)
                 SYNCLIENT="FingerLow=5 FingerHigh=10 $SYNCLIENT";;
+            edgar*)
+                SYNCLIENT="FingerLow=5 FingerHigh=10 LeftEdge=0 RightEdge=3240
+                TopEdge=0 BottomEdge=2352 HorizHysteresis=80 VertHysteresis=80
+                PalmMinWidth=10 PalmMinZ=0 AreaLeftEdge=0 AreaRightEdge=3240
+                $SYNCLIENT";;
         esac
         if [ -n "$SYNCLIENT" ]; then
             synclient $SYNCLIENT
