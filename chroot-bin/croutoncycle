@@ -109,7 +109,7 @@ else
     winlist="`host-x11 croutonwmtools list nim | \
               sort | awk '{ printf $NF " " }'`"
     aurawin="`host-x11 croutonwmtools list ni | \
-              awk '$1 == "aura_root_0" { print $NF; exit }'`"
+              awk '$1 ~ /aura_root_/ { printf $NF " " }'`"
     tty="`cat '/sys/class/tty/tty0/active'`"
 fi
 
@@ -123,7 +123,7 @@ if [ "$freonowner" = 0 -o "$tty" = 'tty1' ]; then
     for disp in $winlist; do
         if [ "${disp%"*"}" != "$disp" ]; then
             curdisp="$disp"
-            if [ -n "$xiwiactive" -a "${disp%"*"}" = "$aurawin" -a \
+            if [ -n "$xiwiactive" -a "$aurawin" != "${aurawin%${curdisp%"*"}*}" -a \
                     -s "$CRIATDISPLAY" ]; then
                 kiwidisp="`cat $CRIATDISPLAY`"
                 if [ "${kiwidisp#:[0-9]}" != "$kiwidisp" ]; then
@@ -185,7 +185,7 @@ if [ "$cmd" = 'l' -o "$cmd" = 'd' ]; then
         if [ "$disp" = "$curdisp" ]; then
             active='*'
             if [ "$cmd" = 'd' ]; then
-                if [ "$line" = 'aura_root_0' ]; then
+                if [ "${line%?}" = 'aura_root_' ]; then
                     echo 'cros'
                 else
                     echo ":$number"
@@ -194,7 +194,7 @@ if [ "$cmd" = 'l' -o "$cmd" = 'd' ]; then
                 break
             fi
         fi
-        if [ "$line" = 'aura_root_0' ]; then
+        if [ "${line%?}" = 'aura_root_' ]; then
             line="$chromiumos"
             display="cros"
             window=''
@@ -296,7 +296,7 @@ if [ "${destdisp#:}" = "$destdisp" ]; then
         kill -USR1 "$freonowner"
     fi
 
-    if [ -n "$xiwiactive" -a "${destdisp%"*"}" = "$aurawin" ]; then
+    if [ -n "$xiwiactive" -a "$aurawin" != "${aurawin%${destdisp%"*"}*}" ]; then
         STATUS="`echo -n "Xcros" | websocketcommand`"
         if [ "$STATUS" != 'XOK' ]; then
             error 1 "${STATUS#?}"
