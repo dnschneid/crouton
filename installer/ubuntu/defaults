@@ -13,7 +13,7 @@ fi
 case "$ARCH" in
 x86 | i?86) ARCH="i386";;
 x86_64 | amd64) ARCH="amd64";;
-arm*) ARCH="armhf";;
+arm* | aarch64) ARCH="armhf";;
 *) error 2 "Invalid architecture '$ARCH'.";;
 esac
 
