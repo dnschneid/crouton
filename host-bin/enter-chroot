@@ -537,9 +537,12 @@ if ! mountpoint -q "$CHROOT/sys"; then
     mount --make-rshared /sys
     mount --rbind /sys "$CHROOT/sys"
     mount --make-rslave "$CHROOT/sys"
-    # Remount selinux as ro
+    # Unmount selinux in the chroot, make a fake entry to set enforce=0
     if mountpoint -q "$CHROOT/sys/fs/selinux"; then
-        mount -o remount,ro,bind "$CHROOT/sys/fs/selinux"
+        umount "$CHROOT/sys/fs/selinux"
+        mount -t tmpfs none "$CHROOT/sys/fs/selinux"
+        echo 0 > "$CHROOT/sys/fs/selinux/enforce"
+        mount -o remount,ro "$CHROOT/sys/fs/selinux"
     fi
 fi
 
