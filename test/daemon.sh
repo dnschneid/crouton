@@ -38,6 +38,8 @@ MIRRORENV=""
 # Maximum test run time (minutes): 24 hours
 MAXTESTRUNTIME="$((24*60))"
 GSAUTOTEST="gs://chromeos-autotest-results"
+# Should autotest dependencies be updated
+AUTOTESTUPDATE='y'
 
 USAGE="$APPLICATION [options] -q QUEUEURL
 
@@ -60,7 +62,7 @@ Options:
 . "$SCRIPTDIR/installer/functions"
 
 # Process arguments
-while getopts 'e:l:q:r:s:u:' f; do
+while getopts 'e:l:q:r:s:u:x' f; do
     case "$f" in
     e) MIRRORENV="$OPTARG;$MIRRORENV";;
     l) LOCALROOT="$OPTARG";;
@@ -236,22 +238,11 @@ mkdir -p "$STATUSROOT"
 
 log "crouton autotest daemon starting..."
 
-echo "Fetching latest autotest..." 1>&2
-AUTOTESTROOT="$LOCALROOT/autotest.git"
-if [ -d "$AUTOTESTROOT/.git" ]; then
-    git -C "$AUTOTESTROOT" fetch
-    git -C "$AUTOTESTROOT" reset --hard origin/master >/dev/null
-else
-    rm -rf "$AUTOTESTROOT"
-    git clone "$AUTOTESTGIT" "$AUTOTESTROOT"
-fi
-# Build external dependencies, see crbug.com/502534
-(
-    cd "$AUTOTESTROOT"
-    ./utils/build_externals.py
-)
-
+AUTOTESTROOT="$HOME/trunk/src/third_party/autotest/files"
 PATH="$AUTOTESTROOT/cli:$PATH"
+
+echo "Checking if atest is present..." 1>&2
+which atest
 
 echo "Checking if gsutil is installed..." 1>&2
 gsutil version
