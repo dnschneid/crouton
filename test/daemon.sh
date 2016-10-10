@@ -19,7 +19,7 @@ POLLINTERVAL=10
 # Full sync status at least every x seconds
 LOGUPLOADINTERVAL=60
 # After the end of a test, try to fetch results for x seconds
-FETCHTIMEOUT=1200
+FETCHTIMEOUT=7200
 # Archive every hour, files older than 7 days
 ARCHIVEINTERVAL=3600
 ARCHIVEMAXAGE=7
