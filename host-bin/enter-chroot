@@ -573,7 +573,7 @@ fi
 gfile="$CHROOT/etc/group"
 if [ -f "$gfile" ]; then
     for group in audio:hwaudio cras:audio cdrom devbroker-access disk floppy \
-                 i2c input lp serial tape tty usb:plugdev uucp video; do
+                 i2c input lp serial tape tty usb:plugdev uucp video wayland; do
         hostgroup="${group%:*}"
         chrootgroup="${group#*:}"
         gid="`awk -F: '$1=="'"$hostgroup"'"{print $3; exit}' '/etc/group'`"
