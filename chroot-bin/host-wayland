@@ -1,0 +1,25 @@
+#!/bin/sh -e
+# Copyright (c) 2016 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Either runs the specified command with the environment set to use the host's
+# wayland server, or prints out the environment changes required.
+
+# If wayland-0 socket does not exit, no Chromium OS wayland server exist
+if [ ! -S "/var/run/chrome/wayland-0" ]; then
+    err="No Chromium OS Wayland server is available."
+    if [ "$#" = 0 ]; then
+        echo "echo '$err' 1>&2"
+    else
+        echo "$err" 1>&2
+        exit 1
+    fi
+else
+    export XDG_RUNTIME_DIR='/var/run/chrome'
+    if [ "$#" = 0 ]; then
+        echo "export XDG_RUNTIME_DIR='$XDG_RUNTIME_DIR'"
+    else
+        exec "$@"
+    fi
+fi
