@@ -20,6 +20,8 @@ POLLINTERVAL=10
 LOGUPLOADINTERVAL=60
 # After the end of a test, try to fetch results for x seconds
 FETCHTIMEOUT=7200
+# After the end of a test, do a second fetch after x seconds
+REFETCHTIME=300
 # Archive every hour, files older than 7 days
 ARCHIVEINTERVAL=3600
 ARCHIVEMAXAGE=7
@@ -474,12 +476,14 @@ while sleep "$POLLINTERVAL"; do
                     # Get user name
                     user="`awk 'BEGIN{ RS="|"; FS="=" }
                                 $1~/^Owner/{print $2}' "$statusfile"`"
+
+                    time="`date '+%s'`"
+
                     # It may take a while for the files to be transfered, retry
                     # for at most FETCHTIMEOUT seconds, as, sometimes, no file
                     # ever appears (Aborted tests, for example)
                     if ! root="`gsutil ls "$GSAUTOTEST/$jobid-$user"`"; then
                         echo "Cannot fetch $jobid-$user..." 1>&2
-                        time="`date '+%s'`"
                         statustimefile="$curtesthostroot/statustime"
                         if [ ! -f "$statustimefile" ]; then
                             echo $time > "$statustimefile"
@@ -491,6 +495,15 @@ while sleep "$POLLINTERVAL"; do
                         fi
                         status2="NO_DATA"
                     else
+                        refetchtimefile="$curtesthostroot/refetchtime"
+                        # Only refetch the results after REFETCHTIME
+                        if [ -f "$refetchtimefile" ]; then
+                            refetchtime="`cat "$refetchtimefile"`"
+                            if [ "$time" -lt "$refetchtime" ]; then
+                                continue
+                            fi
+                        fi
+
                         # Ensure results are fully re-fetched
                         rm -rf "$curtesthostresult" "$curtesthostresult.old"
                         mkdir -p "$curtesthostresult"
@@ -504,12 +517,24 @@ while sleep "$POLLINTERVAL"; do
                         tmpdir="$TMPROOT/$jobid-$user"
                         rm -rf "$tmpdir"
                         mkdir -p "$tmpdir"
+                        gotarchive=''
                         if gsutil cp "${root}platform_Crouton.tgz" "$tmpdir/" > /dev/null 2>&1; then
                             tar xf "$tmpdir/platform_Crouton.tgz" -C "$tmpdir/"
                             mv "$tmpdir/platform_Crouton/debug/platform_Crouton."* "$curtesthostresult" || true
                             mv "$tmpdir/platform_Crouton/results/"* "$curtesthostresult" || true
+                            gotarchive=y
                         fi
                         rm -rf "$tmpdir"
+
+                        # If we got status.log and the archive, no need to refetch:
+                        # this can't race.
+                        if [ ! -f "$curtesthostresult/status.log" || -z "$gotarchive" ]; then
+                            if [ ! -f "$refetchtimefile" ]; then
+                                echo $((time+REFETCHTIME)) > "$refetchtimefile"
+                                continue
+                            fi
+                        fi
+
                         status2="`awk '($1 == "END") && \
                                        ($3 == "platform_Crouton") \
                                            { print $2 }' \
