@@ -3,8 +3,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-USAGE="${0##*/} [-n] URL
+NEWTABPAGE='chrome://newtab'
+USAGE="${0##*/} [-n] [URL]
 Open an URL in Chromium OS (requires crouton extension).
+If no URL is specified, opens $NEWTABPAGE instead.
 Switches back to Chromium OS unless -n is specified."
 
 . "`dirname "$0"`/../installer/functions"
@@ -16,7 +18,9 @@ if [ "$1" = '-n' ]; then
 fi
 
 if [ -z "$*" ]; then
-    error 2 "$USAGE"
+    set -- "$NEWTABPAGE"
+elif [ "$1" = '-h' -o "$1" = '--help' ]; then
+    error 0 "$USAGE"
 fi
 
 STATUS="`echo -n U"$*" | websocketcommand`"
