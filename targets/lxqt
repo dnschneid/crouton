@@ -1,0 +1,29 @@
+#!/bin/sh -e
+# Copyright (c) 2016 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+if [ "${TARGETNOINSTALL:-c}" = 'c' ]; then
+   if release -lt trusty; then
+       error 99 "LXQT packages are not available for Ubuntu releases prior to xenial."
+   fi
+   if release -lt stretch; then
+       error 99 "LXQT packages are not available for Debian releases prior to stretch."
+   fi
+   if release -lt kali-rolling; then
+       error 99 "LXQT packages are not available for Kali Linux prior to kali-rolling."
+   fi
+fi
+
+REQUIRES='x11'
+DESCRIPTION='Installs the LXQT desktop environment. (Approx. 1GB)'
+HOSTBIN='startlxqt'
+CHROOTBIN='crouton-noroot startlxqt'
+. "${TARGETSDIR:="$PWD"}/common"
+
+### Append to prepare.sh:
+install lxqt lxqt-common openbox
+
+TIPS="$TIPS
+You can start LXQT via the startlxqt host command: sudo startlxqt
+"
