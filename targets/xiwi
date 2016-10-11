@@ -31,6 +31,11 @@ fi
 install xorg xserver-xorg-video-dummy$ltspackages
 install --minimal i3
 
+# Remove some unsupported options on old versions of i3
+if release -le precise; then
+     sed '/#.*#.*#.*#/s/ #......$//;/--release/d' /etc/crouton/xiwi.conf
+fi
+
 # Compile croutonfbserver
 compile fbserver '-lX11 -lXfixes -lXdamage -lXext -lXtst' \
     libx11-dev libxfixes-dev libxdamage-dev libxext-dev libxtst-dev
