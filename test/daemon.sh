@@ -19,7 +19,9 @@ POLLINTERVAL=10
 # Full sync status at least every x seconds
 LOGUPLOADINTERVAL=60
 # After the end of a test, try to fetch results for x seconds
-FETCHTIMEOUT=1200
+FETCHTIMEOUT=7200
+# After the end of a test, do a second fetch after x seconds
+REFETCHTIME=300
 # Archive every hour, files older than 7 days
 ARCHIVEINTERVAL=3600
 ARCHIVEMAXAGE=7
@@ -38,6 +40,8 @@ MIRRORENV=""
 # Maximum test run time (minutes): 24 hours
 MAXTESTRUNTIME="$((24*60))"
 GSAUTOTEST="gs://chromeos-autotest-results"
+# Should autotest dependencies be updated
+AUTOTESTUPDATE='y'
 
 USAGE="$APPLICATION [options] -q QUEUEURL
 
@@ -60,7 +64,7 @@ Options:
 . "$SCRIPTDIR/installer/functions"
 
 # Process arguments
-while getopts 'e:l:q:r:s:u:' f; do
+while getopts 'e:l:q:r:s:u:x' f; do
     case "$f" in
     e) MIRRORENV="$OPTARG;$MIRRORENV";;
     l) LOCALROOT="$OPTARG";;
@@ -236,22 +240,11 @@ mkdir -p "$STATUSROOT"
 
 log "crouton autotest daemon starting..."
 
-echo "Fetching latest autotest..." 1>&2
-AUTOTESTROOT="$LOCALROOT/autotest.git"
-if [ -d "$AUTOTESTROOT/.git" ]; then
-    git -C "$AUTOTESTROOT" fetch
-    git -C "$AUTOTESTROOT" reset --hard origin/master >/dev/null
-else
-    rm -rf "$AUTOTESTROOT"
-    git clone "$AUTOTESTGIT" "$AUTOTESTROOT"
-fi
-# Build external dependencies, see crbug.com/502534
-(
-    cd "$AUTOTESTROOT"
-    ./utils/build_externals.py
-)
-
+AUTOTESTROOT="$HOME/trunk/src/third_party/autotest/files"
 PATH="$AUTOTESTROOT/cli:$PATH"
+
+echo "Checking if atest is present..." 1>&2
+which atest
 
 echo "Checking if gsutil is installed..." 1>&2
 gsutil version
@@ -278,7 +271,7 @@ while sleep "$POLLINTERVAL"; do
     # boundaries into pipe characters, and then parse the result.
     # Any line still containing a double-quote after parsing is ignored
     (wget -qO- "$QUEUEURL" && echo) | tail -n"+$lastline" \
-            | sed 's/^"//; s/","/|/g; s/"$//; s/.*".*//' | {
+            | tr '\t' '|' | {
         while IFS='|' read -r date repo branch params run _; do
             if [ -z "$date" ]; then
                 continue
@@ -483,12 +476,14 @@ while sleep "$POLLINTERVAL"; do
                     # Get user name
                     user="`awk 'BEGIN{ RS="|"; FS="=" }
                                 $1~/^Owner/{print $2}' "$statusfile"`"
+
+                    time="`date '+%s'`"
+
                     # It may take a while for the files to be transfered, retry
                     # for at most FETCHTIMEOUT seconds, as, sometimes, no file
                     # ever appears (Aborted tests, for example)
                     if ! root="`gsutil ls "$GSAUTOTEST/$jobid-$user"`"; then
                         echo "Cannot fetch $jobid-$user..." 1>&2
-                        time="`date '+%s'`"
                         statustimefile="$curtesthostroot/statustime"
                         if [ ! -f "$statustimefile" ]; then
                             echo $time > "$statustimefile"
@@ -500,6 +495,15 @@ while sleep "$POLLINTERVAL"; do
                         fi
                         status2="NO_DATA"
                     else
+                        refetchtimefile="$curtesthostroot/refetchtime"
+                        # Only refetch the results after REFETCHTIME
+                        if [ -f "$refetchtimefile" ]; then
+                            refetchtime="`cat "$refetchtimefile"`"
+                            if [ "$time" -lt "$refetchtime" ]; then
+                                continue
+                            fi
+                        fi
+
                         # Ensure results are fully re-fetched
                         rm -rf "$curtesthostresult" "$curtesthostresult.old"
                         mkdir -p "$curtesthostresult"
@@ -513,12 +517,26 @@ while sleep "$POLLINTERVAL"; do
                         tmpdir="$TMPROOT/$jobid-$user"
                         rm -rf "$tmpdir"
                         mkdir -p "$tmpdir"
+                        gotarchive=''
                         if gsutil cp "${root}platform_Crouton.tgz" "$tmpdir/" > /dev/null 2>&1; then
                             tar xf "$tmpdir/platform_Crouton.tgz" -C "$tmpdir/"
                             mv "$tmpdir/platform_Crouton/debug/platform_Crouton."* "$curtesthostresult" || true
                             mv "$tmpdir/platform_Crouton/results/"* "$curtesthostresult" || true
+                            gotarchive=y
                         fi
                         rm -rf "$tmpdir"
+
+                        curtestupdated=y
+
+                        # If we got status.log and the archive, no need to refetch:
+                        # this can't race.
+                        if [ ! -f "$curtesthostresult/status.log" ] || [ -z "$gotarchive" ]; then
+                            if [ ! -f "$refetchtimefile" ]; then
+                                echo $((time+REFETCHTIME)) > "$refetchtimefile"
+                                continue
+                            fi
+                        fi
+
                         status2="`awk '($1 == "END") && \
                                        ($3 == "platform_Crouton") \
                                            { print $2 }' \
@@ -527,7 +545,6 @@ while sleep "$POLLINTERVAL"; do
                     log "$curtest $curtesthost: $status ${status2:="UNKNOWN"}"
                     sed -i -e "s;\$;|Status2=$status2|;" "$statusfile"
                     rm $curtesthostroot/jobid
-                    curtestupdated=y
                 fi
             fi
         done
