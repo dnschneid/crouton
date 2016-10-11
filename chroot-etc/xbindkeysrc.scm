@@ -4,7 +4,7 @@
 
 ;; Run xbindkeys -dg for some example configuration file with explanation
 
-; Cycle chroots. On most systems, this is handled by the triggerhappy daemon.
+; Cycle chroots. On most systems, this is handled by croutontriggerd.
 ; On freon, we have to do it ourselves since we currently grab the event device.
 (if (access? "/sys/class/tty/tty0/active" F_OK) (begin
     (xbindkey '(control shift alt F1) "")
@@ -14,7 +14,7 @@
     (xbindkey '(control shift alt F2) "xte 'keyup F2'; croutoncycle next")
 ))
 
-; Extra bindings that must only be activated in chroot X11/Xephyr
+; Extra bindings that must only be activated in chroot X11
 (if (not (string-null? (getenv "XMETHOD")))
     (begin
         ; Brightness control

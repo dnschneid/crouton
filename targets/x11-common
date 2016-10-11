@@ -18,9 +18,6 @@ if [ -n "$offset" ]; then
         conv=notrunc,nocreat 2>/dev/null
 fi
 
-# Install utility for croutoncycle
-compile wmtools '-lX11' libx11-dev
-
 # Install utilities and links for powerd-poking daemon
 compile xi2event '-lX11 -lXi' libx11-dev libxi-dev
 install --minimal dbus xdg-utils
@@ -30,12 +27,17 @@ ln -sf croutonpowerd /usr/local/bin/xscreensaver-command
 # Install nicer cursors
 install --minimal dmz-cursor-theme
 
-# Install bsdmainutils, xbindkeys and xautomation for shortcuts; kbd for chvt
-install --minimal bsdmainutils xbindkeys xautomation kbd
-# Allow users to run sudo chvt without password, so we don't need to run
-# croutoncycle as root
-echo '%sudo ALL = NOPASSWD:/bin/chvt' > /etc/sudoers.d/chvt
-chmod 440 /etc/sudoers.d/chvt
+# Install bsdmainutils, xbindkeys and xautomation for shortcuts
+install --minimal bsdmainutils xbindkeys xautomation
+
+# We need chvt on freon systems
+if [ -f "/sys/class/tty/tty0/active" ]; then
+    install --minimal kbd
+    # Allow users to run sudo chvt without password, so we don't need to run
+    # croutoncycle as root
+    echo '%sudo ALL = NOPASSWD:/bin/chvt' > /etc/sudoers.d/chvt
+    chmod 440 /etc/sudoers.d/chvt
+fi
 
 # Add a blank Xauthority to all users' home directories
 touch /etc/skel/.Xauthority
@@ -50,6 +52,7 @@ mkdir -p /usr/share/desktop-directories
 # Prevent Upstart from taking over X sessions
 echo > /etc/upstart-xsessions
 
+# FIXME: is this necessary for rootless X11?
 # This makes sure Xephyr, running as user, can write server-*.xkm files to
 # /var/lib/xkb, so it does not conflict with files created by Chromium OS
 # X server in /tmp.
