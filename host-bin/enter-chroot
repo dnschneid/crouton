@@ -582,7 +582,6 @@ if [ -f "$gfile" ]; then
         gid="$(awk -F: '$1=="'"$hostgroup"'"{print $3; exit}' '/etc/group')"
         curgid="$(awk -F: '$1=="'"$chrootgroup"'"{print $3; exit}' "$gfile")"
         if [ -z "$gid" ]; then
-            echo "Couldn't find $hostgroup group in Chromium OS" 1>&2
             if [ -z "$curgid" ]; then
                 echo "Creating unassociated $chrootgroup group..." 1>&2
                 chrootcmd groupadd --system "$chrootgroup"
