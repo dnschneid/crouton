@@ -526,9 +526,11 @@ while sleep "$POLLINTERVAL"; do
                         fi
                         rm -rf "$tmpdir"
 
+                        curtestupdated=y
+
                         # If we got status.log and the archive, no need to refetch:
                         # this can't race.
-                        if [ ! -f "$curtesthostresult/status.log" || -z "$gotarchive" ]; then
+                        if [ ! -f "$curtesthostresult/status.log" ] || [ -z "$gotarchive" ]; then
                             if [ ! -f "$refetchtimefile" ]; then
                                 echo $((time+REFETCHTIME)) > "$refetchtimefile"
                                 continue
@@ -543,7 +545,6 @@ while sleep "$POLLINTERVAL"; do
                     log "$curtest $curtesthost: $status ${status2:="UNKNOWN"}"
                     sed -i -e "s;\$;|Status2=$status2|;" "$statusfile"
                     rm $curtesthostroot/jobid
-                    curtestupdated=y
                 fi
             fi
         done
