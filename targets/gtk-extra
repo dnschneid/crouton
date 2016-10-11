@@ -11,11 +11,12 @@ install_dummy network-manager network-manager-gnome
 install gdebi gksu
 
 for BROWSER in netsurf-gtk dillo hv3 ""; do
-    if install ${BROWSER}; then
-        EXECUTABLE="/usr/bin/${BROWSER}"
+    test -n "$BROWSER"
+    if install "$BROWSER"; then
+        bin="/usr/bin/$BROWSER"
         for link in x-www-browser gnome-www-browser; do
-            if ! update-alternatives --query "$link" | grep -q "$EXECUTABLE"; then
-                update-alternatives --install "/usr/bin/$link" "$link" "$EXECUTABLE" 10
+            if ! update-alternatives --query "$link" | grep -q "$bin"; then
+                update-alternatives --install "/usr/bin/$link" "$link" "$bin" 10
             fi
         done
         break
