@@ -33,7 +33,7 @@ install_dist() {
     if [ -n "$asdeps" ]; then
         pkgsasdeps="`list_uninstalled_dist '' $pkgs`"
     fi
-    apt-get -y $params install $pkgs `list_uninstalled_dist - "$@"`
+    apt-get -y $params install $pkgs `list_uninstalled_dist - "$@"` || return $?
     if [ -n "$pkgsasdeps" ]; then
         apt-mark auto $pkgsasdeps
     fi
@@ -48,7 +48,7 @@ install_pkg_dist() {
         shift
     fi
     if [ ! "$#" = 0 ]; then
-        dpkg --force-depends -i "$@"
+        dpkg --force-depends -i "$@" || return $?
     fi
     apt-get -fy $params install
 }
