@@ -14,6 +14,11 @@ if [ "${TARGETNOINSTALL:-c}" = 'c' -a "${ARCH#arm}" != "$ARCH" ]; then
     TARGET=chromium
     . "${TARGETSDIR:="$PWD"}/$TARGET"
 fi
+if [ "${TARGETNOINSTALL:-c}" = 'c' ] && release -lt saucy -lt jessie; then
+    echo "Google Chrome is not supported on $RELEASE anymore. Installing Chromium instead." 1>&2
+    TARGET=chromium
+    . "${TARGETSDIR:="$PWD"}/$TARGET"
+fi
 if [ "${TARGETNOINSTALL:-c}" = 'c' -a "$TARGET" != 'chrome' ]; then
     # Avoid installing multiple chrome targets
     if grep -q "^chrome\$" "${TARGETDEDUPFILE:-/dev/null}"; then
