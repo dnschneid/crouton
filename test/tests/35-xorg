@@ -5,7 +5,12 @@
 
 # All supported releases should be able to launch an xorg server
 if [ -z "$release" ]; then
-    echo "all"
+    # xorg does not work well on wheezy
+    for rel in $SUPPORTED_RELEASES; do
+        if [ "$rel" != wheezy ]; then
+            echo "$rel"
+        fi
+    done
     exit 0
 fi
 
