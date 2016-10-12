@@ -546,7 +546,7 @@ if ! mountpoint -q "$CHROOT/sys"; then
     fi
 fi
 
-# Modify chroot's /sys/class/drm and /dev/dri to avoid vgem
+# Modify chroot's /sys/class/drm and /dev/dri to avoid vgem/mfgsys
 varrundrm="$(fixabslinks '/var/run/drm')"
 varrundri="$(fixabslinks '/var/run/dri')"
 sysclassdrm="$(fixabslinks '/sys/class/drm')"
@@ -555,7 +555,7 @@ if [ ! -d "$varrundrm" -a -d "$sysclassdrm" ]; then
     cp -Ta "$sysclassdrm" "$varrundrm"
     cp -Ta "$devdri" "$varrundri"
     for f in "$varrundrm"/*; do
-        if [ -h "$f" ] && readlink "$f" | grep -qF /vgem/; then
+        if [ -h "$f" ] && readlink "$f" | grep -qF -e /vgem/ -e mfgsys; then
             rm -f "$f" "$varrundri/${f##*/}"
         fi
     done
