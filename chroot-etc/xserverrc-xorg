@@ -25,6 +25,11 @@ if [ ! -f "/sys/class/tty/tty0/active" ]; then
             exit 2
         fi
     done
+    # Prepare lock file
+    mkdir -p '/tmp/crouton-lock'
+    touch '/tmp/crouton-lock/display'
+    chmod -Rf g+rwX '/tmp/crouton-lock'
+    chgrp -Rf crouton '/tmp/crouton-lock'
     # Freon necessitates the preload hack for X to coexist
     X=/usr/bin/Xorg
     logfile="/tmp/Xorg.crouton.$$.log"

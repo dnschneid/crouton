@@ -118,6 +118,8 @@ current='cros'
 
 mkdir -m 775 -p "$CROUTONLOCKDIR"
 exec 3>>"$CROUTONLOCKDIR/clip"
+chmod -Rf g+rwX "$CROUTONLOCKDIR" || true
+chgrp -Rf crouton "$CROUTONLOCKDIR" || true
 if ! flock -n 3; then
     echo "Another instance of croutonclip running, waiting..."
     flock 3
@@ -136,7 +138,7 @@ addtrap "echo -n > '$CROUTONLOCKDIR/clip' 2>/dev/null"
 
     waitwebsocket
 
-    # Update on VT change (if user types Ctrl-Alt instead of Ctrl-Alt-Shift)	
+    # Update on VT change (if user types Ctrl-Alt instead of Ctrl-Alt-Shift)
     if hash croutonvtmonitor 2>/dev/null; then
        croutonvtmonitor &
        addtrap "kill $! 2>/dev/null"

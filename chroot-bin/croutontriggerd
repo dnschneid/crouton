@@ -39,6 +39,8 @@ EVENT_DEV_POLL=15
 # Only one at a time. xbindkeys lockfile is for legacy compatibility
 mkdir -m 775 -p "$CROUTONLOCKDIR"
 exec 3>>"$CROUTONLOCKDIR/xbindkeys"
+chmod -Rf g+rwX "$CROUTONLOCKDIR" || true
+chgrp -Rf crouton "$CROUTONLOCKDIR" || true
 if ! flock -n 3; then
     echo "Another instance of ${0##*/} running, waiting..."
     flock 3

@@ -35,7 +35,7 @@ if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
 fi
 
 # Add the primary user
-groups='audio,input,video,wayland,sudo,plugdev'
+groups='audio,input,video,wayland,sudo,plugdev,crouton'
 if ! grep -q ':1000:' /etc/passwd; then
     while ! echo "$username" | grep -q '^[a-z][-a-z0-9_]*$'; do
         if [ -n "$username" ]; then

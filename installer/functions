@@ -285,4 +285,6 @@ websocketcommand() {
                   cat '$PIPEDIR/out'" 5>"$PIPEDIR/lock"; then
         echo "EError timeout"
     fi
+    chmod -Rf g+rwX "$PIPEDIR" || true
+    chgrp -Rf crouton "$PIPEDIR" || true
 }
