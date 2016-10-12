@@ -3,15 +3,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 if [ -z "$TARGETNOINSTALL" ]; then
-    if [ -f /sbin/frecon ]; then
-        # Wheezy/Kali are too old to use KMS well
-        if release -le wheezy -le kali; then
-            REQUIRES='xiwi'
-        else
-            REQUIRES='xorg'
-        fi
-    elif grep -q 'SAMSUNG EXYNOS' /proc/cpuinfo; then
-        # Xorg won't work on non-freon Samsung ARM devices
+    # Wheezy/Kali are too old to use KMS well
+    if [ -f /sbin/frecon ] && release -le wheezy -le kali; then
         REQUIRES='xiwi'
     else
         REQUIRES='xorg'

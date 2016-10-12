@@ -546,17 +546,25 @@ if ! mountpoint -q "$CHROOT/sys"; then
     fi
 fi
 
-# Modify chroot's /sys/class/drm to avoid vgem
+# Modify chroot's /sys/class/drm and /dev/dri to avoid vgem/mfgsys
 varrundrm="$(fixabslinks '/var/run/drm')"
+varrundri="$(fixabslinks '/var/run/dri')"
 sysclassdrm="$(fixabslinks '/sys/class/drm')"
+devdri="$(fixabslinks '/dev/dri')"
 if [ ! -d "$varrundrm" -a -d "$sysclassdrm" ]; then
     cp -Ta "$sysclassdrm" "$varrundrm"
+    cp -Ta "$devdri" "$varrundri"
     for f in "$varrundrm"/*; do
-        if [ -h "$f" ] && readlink "$f" | grep -qF /vgem/; then
-            rm -f "$f"
+        if [ -h "$f" ] && readlink "$f" | grep -qF -e /vgem/ -e mfgsys; then
+            rm -f "$f" "$varrundri/${f##*/}"
         fi
     done
+    # Scanning of /dev/dri is done sequentially, so make sure there's a card0
+    for f in "$varrundri/card"*; do
+        [ -e "$varrundri/card0" ] || mv -f "$f" "$varrundri/card0"
+    done
     mount --bind "$varrundrm" "$sysclassdrm"
+    mount --bind "$varrundri" "$devdri"
 fi
 
 # Get croutonversion variables
