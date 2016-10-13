@@ -433,6 +433,9 @@ export CROUTON_MOUNT_RESPONSE='y'
 export CROUTON_UNMOUNT_RESPONSE='y'
 # Test machines lack entropy: Use /dev/urandom instead of /dev/random
 export CROUTON_WEAK_RANDOM='y'
+# HACK: restart debugd when running tests to avoid namespace issues.
+# This will go away when we start using mount namespaces.
+export CROUTON_UNMOUNT_RESTART_DEBUGD='y'
 
 # Prevent powerd from sleeping the system
 sh -e "$SCRIPTDIR/chroot-bin/croutonpowerd" -i &

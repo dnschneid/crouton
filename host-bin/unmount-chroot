@@ -319,6 +319,12 @@ for NAME in "$@"; do
     fi
 done
 
+# HACK: restart debugd when running tests to avoid namespace issues.
+# This will go away when we start using mount namespaces.
+if [ -n "$CROUTON_UNMOUNT_RESTART_DEBUGD" ]; then
+    restart debugd || true
+fi
+
 # Re-disable USB persistence (the Chromium OS default) if we no longer
 # have chroots running with a root in removable media
 if checkusage "$ROOT/media"; then
