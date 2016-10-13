@@ -33,7 +33,7 @@ install --minimal i3
 
 # Remove some unsupported options on old versions of i3
 if release -le precise; then
-     sed '/#.*#.*#.*#/s/ #......$//;/--release/d' /etc/crouton/xiwi.conf
+     sed -i '/#.*#.*#.*#/s/ #......$//;/--release/d' /etc/crouton/xiwi.conf
 fi
 
 # Compile croutonfbserver
