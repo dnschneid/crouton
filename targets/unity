@@ -15,9 +15,12 @@ CHROOTETC='unity-autostart.desktop unity-profiled'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
-install unity unity-2d ubuntu-artwork gnome-session nautilus \
-        ubuntu-settings,ubuntu~precise= \
-        ubuntu-session,ubuntu~precise+ubuntu~quantal+ubuntu~raring+ubuntu~saucy= \
+# Note that whitespace is important for syntax.
+# See distropkgs method in installer/prepare.sh
+install unity ubuntu-artwork gnome-session nautilus \
+        ubuntu~trusty+ubuntu~precise=unity-2d, \
+        ubuntu~precise=,ubuntu-settings \
+        ubuntu~precise+ubuntu~quantal+ubuntu~raring+ubuntu~saucy=,ubuntu-session \
         -- network-manager brasero firefox
 
 # XDG autostart/profile.d additions only needed in saucy and later
