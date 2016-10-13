@@ -33,6 +33,10 @@ if [ "${DESKTOP_SESSION#cinnamon}" != "$DESKTOP_SESSION" ] && \
     SESSION="$CINNAMON_SESSION"
 fi
 
+SESSION_FILE="/usr/share/$SESSION/sessions/$DESKTOP_SESSION.session"
+XDG_CURRENT_DESKTOP="$(awk -F "=" '/DesktopName/ {print $2}' "$SESSION_FILE")"
+export XDG_CURRENT_DESKTOP
+
 if [ -z "$DISPLAY" ]; then
     exec xinit /etc/X11/xinit/xinitrc "$0"
 else

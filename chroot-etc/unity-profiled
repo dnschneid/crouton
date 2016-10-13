@@ -10,7 +10,7 @@
 RELEASE="`/usr/local/bin/croutonversion -r`"
 
 # unity-settings-daemon should run instead of gnome-settings-daemon in trusty
-if [ "$RELEASE" = 'trusty' ]; then
+if [ "$RELEASE" = 'trusty' -o "$RELEASE" = 'xenial' ]; then
     autostartdir="$HOME/.config/autostart"
     mkdir -p "$autostartdir"
     cat > "$autostartdir"/gnome-settings-daemon.desktop <<EOF
