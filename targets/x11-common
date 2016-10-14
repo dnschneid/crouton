@@ -50,7 +50,9 @@ echo 'mode: blank' > /etc/skel/.xscreensaver
 mkdir -p /usr/share/desktop-directories
 
 # Prevent Upstart from taking over X sessions
-echo > /etc/upstart-xsessions
+if release -eq trusty; then
+    echo > /etc/upstart-xsessions
+fi
 
 # FIXME: is this necessary for rootless X11?
 # This makes sure Xephyr, running as user, can write server-*.xkm files to
