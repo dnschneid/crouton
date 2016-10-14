@@ -9,7 +9,12 @@ CHROOTBIN='crouton-noroot startkde'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
-install --minimal kde-plasma-desktop -- network-manager
+install --minimal kde-baseapps kde-runtime plasma-desktop pulseaudio \
+        -- network-manager
+
+if release -lt xenial -lt kali -lt stretch; then
+    install --minimal kde-workspace
+fi
 
 TIPS="$TIPS
 You can start KDE via the startkde host command: sudo startkde
