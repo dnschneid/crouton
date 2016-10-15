@@ -205,8 +205,7 @@ else
 fi
 
 # Fix launching X11 from inside crosh (user doesn't own a TTY)
-sed -i 's/allowed_users=.*/allowed_users=anybody/' \
-    '/etc/X11/Xwrapper.config' || true
+echo 'allowed_users=anybody' > '/etc/X11/Xwrapper.config'
 
 inteldrv='/usr/lib/xorg/modules/drivers/intel_drv.so'
 if [ -n "$freon" -a -e "$inteldrv" ]; then
