@@ -38,8 +38,10 @@ fi
 
 SESSION_FILE="/usr/share/$SESSION/sessions/$DESKTOP_SESSION.session"
 XDG_CURRENT_DESKTOP="$(awk -F "=" '/DesktopName/ {print $2}' "$SESSION_FILE")"
-XDG_SESSION_DESKTOP="$XDG_CURRENT_DESKTOP"
-export XDG_CURRENT_DESKTOP XDG_SESSION_DESKTOP
+if [ -n "$XDG_CURRENT_DESKTOP" ]; then
+    XDG_SESSION_DESKTOP="$XDG_CURRENT_DESKTOP"
+    export XDG_CURRENT_DESKTOP XDG_SESSION_DESKTOP
+fi
 
 if [ -z "$DISPLAY" ]; then
     exec xinit /etc/X11/xinit/xinitrc "$0"
