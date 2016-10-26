@@ -551,7 +551,7 @@ varrundrm="$(fixabslinks '/var/run/drm')"
 varrundri="$(fixabslinks '/var/run/dri')"
 sysclassdrm="$(fixabslinks '/sys/class/drm')"
 devdri="$(fixabslinks '/dev/dri')"
-if [ ! -d "$varrundrm" -a -d "$sysclassdrm" ]; then
+if [ ! -d "$varrundrm" -a -d "$sysclassdrm" -a -d "$devdri" ]; then
     cp -Ta "$sysclassdrm" "$varrundrm"
     cp -Ta "$devdri" "$varrundri"
     for f in "$varrundrm"/*; do
