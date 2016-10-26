@@ -36,7 +36,7 @@ fi
 
 # Use croutonurlhandler as a fallback URL handler
 handler='/usr/local/bin/croutonurlhandler'
-for link in x-www-browser gnome-www-browser; do
+for link in x-www-browser gnome-www-browser www-browser; do
     if ! update-alternatives --query "$link" | grep -q "$handler"; then
         update-alternatives --install "/usr/bin/$link" "$link" "$handler" 15
     fi
