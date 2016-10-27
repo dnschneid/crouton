@@ -723,6 +723,8 @@ done
 
 if [ -f "$PREPARE" ]; then
     # Update .crouton-targets in the unencrypted part of the chroot
+    # First create the file if it is not there
+    touch "$CHROOTSRC/.crouton-targets"
     cp -fT "$TARGETDEDUPFILE" "$CHROOTSRC/.crouton-targets"
 
     chmod 500 "$PREPARE"
