@@ -8,11 +8,17 @@ HOSTBIN='startgnome'
 CHROOTBIN='crouton-noroot startgnome gnome-session-wrapper'
 . "${TARGETSDIR:="$PWD"}/common"
 
+if release -lt jessie -lt sana -lt trusty; then
+  legacy_session_package="gnome-session-fallback"
+else
+  legacy_session_package="gnome-session-flashback"
+fi
+
 ### Append to prepare.sh:
 install --minimal evolution-data-server gnome-control-center \
-        gnome-screensaver gnome-session gnome-session-fallback \
+        gnome-screensaver gnome-session $legacy_session_package \
         gnome-shell gnome-themes-standard gvfs-backends nautilus \
-        unzip gtk2-engines-pixbuf
+        unzip gtk2-engines-pixbuf pulseaudio
 
 TIPS="$TIPS
 You can start GNOME via the startgnome host command: sudo startgnome
