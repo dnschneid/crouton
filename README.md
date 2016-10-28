@@ -74,6 +74,17 @@ If you're just here to use crouton, you can grab the latest release from
 (Ctrl+Alt+T, type `shell` and hit enter), and run `sh ~/Downloads/crouton` to
 see the help text. See the "examples" section for some usage examples.
 
+Also, you can download it directly using shell (Ctrl+Alt+T, type `shell` and hit enter) with the following commands:
+
+```
+# verify if /usr/local/bin/ directory exists; it's created atomatically after running `dev_install` command, otherwise you may create it manually:
+sudo mkdir /usr/local/bin
+# Download the crouton release:
+sudo wget -P /usr/local/bin https://github.com/dnschneid/crouton/raw/master/installer/crouton
+# Set the executable permissions for it:
+sudo chmod +x /usr/local/bin/crouton
+```
+
 If you're modifying crouton, you'll probably want to clone or download the repo
 and then either run `installer/main.sh` directly, or use `make` to build your
 very own `crouton`. You can also download the latest release, cd into the
