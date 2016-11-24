@@ -20,6 +20,8 @@
 #include <unistd.h>
 #include <linux/input.h>
 #include <linux/vt.h>
+#include <xf86drm.h>
+#include <xf86drmMode.h>
 
 #define LOCK_FILE_DIR "/tmp/crouton-lock"
 #define DISPLAY_LOCK_FILE LOCK_FILE_DIR "/display"
@@ -95,6 +97,44 @@ static int set_display_lock(unsigned int pid) {
     return 0;
 }
 
+/* Prevents some glitch if Chromium OS keeps cursor enabled (#2878). */
+static void drm_disable_cursor()
+{
+    int i, fd;
+    drmModeRes* resources;
+
+    if (!orig_open) preload_init();
+
+    fd = orig_open("/dev/dri/card0", O_RDWR, 0);
+
+    TRACE("%s %d\n", __func__, fd);
+
+    if (fd < 0)
+        return;
+
+    resources = drmModeGetResources(fd);
+    if (!resources)
+        goto closefd;
+
+    TRACE("%s res=%p\n", __func__, resources);
+    for (i = 0; i < resources->count_crtcs; i++) {
+        drmModeCrtc* crtc;
+
+        crtc = drmModeGetCrtc(fd, resources->crtcs[i]);
+        TRACE("%s crtc %d %p\n", __func__, i, crtc);
+        if (crtc) {
+            drmModeSetCursor(fd, crtc->crtc_id,
+                             0, 0, 0);
+            drmModeFreeCrtc(crtc);
+        }
+    }
+
+    drmModeFreeResources(resources);
+
+closefd:
+    orig_close(fd);
+}
+
 int ioctl(int fd, unsigned long int request, ...) {
     if (!orig_ioctl) preload_init();
 
@@ -136,6 +176,7 @@ int ioctl(int fd, unsigned long int request, ...) {
                 ERROR("Unable to claim display lock\n");
                 ret = -1;
             }
+            drm_disable_cursor();
         } else {
             ret = 0;
         }
