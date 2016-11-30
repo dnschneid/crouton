@@ -91,7 +91,7 @@ fi
 
 # On Freon, we need crazy xorg hacks
 if [ -n "$freon" ]; then
-    compile freon '-ldl' so
+    compile freon '-ldl -ldrm -I/usr/include/libdrm' so libdrm-dev
 fi
 
 # Pin precise's version of mesa if necessary

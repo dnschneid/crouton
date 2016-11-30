@@ -31,7 +31,7 @@ CFLAGS=-g -Wall -Werror -Os
 
 croutonfbserver_LIBS = -lX11 -lXdamage -lXext -lXfixes -lXtst
 croutonxi2event_LIBS = -lX11 -lXi
-croutonfreon.so_LIBS = -ldl
+croutonfreon.so_LIBS = -ldl -ldrm -I/usr/include/libdrm
 
 croutonwebsocket_DEPS = src/websocket.h
 croutonfbserver_DEPS = src/websocket.h
