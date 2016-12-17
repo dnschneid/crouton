@@ -9,7 +9,7 @@ CHROOTBIN='brightness croutonpowerd croutonversion host-dbus host-wayland'
 
 ### Append to prepare.sh:
 echo 'Preparing environment...' 1>&2
-if [ ! "$VERSION" = '#VERSION#' ]; then
+if [ "$VERSION" != '#VERSION#' ]; then
     sed -e "s ^VERSION=.*\$ VERSION='$VERSION' ;" \
         -e "s ^RELEASE=.*\$ RELEASE='$RELEASE' ;" \
         -e "s ^ARCH=.*\$ ARCH='$ARCH' ;" \
@@ -50,7 +50,7 @@ mv -f "$newenv" "$oldenv"
 
 if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
     echo 'Preparing software sources...' 1>&2
-    if [ ! "$PROXY" = 'unspecified' -a ! "$PROXY" = '#PROXY#' ]; then
+    if [ "$PROXY" != 'unspecified' -a "$PROXY" != '#PROXY#' ]; then
         aptproxy='/etc/apt/apt.conf.d/80croutonproxy'
         if [ -z "$PROXY" ]; then
             rm -f "$aptproxy"

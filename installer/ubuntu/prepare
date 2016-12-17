@@ -12,7 +12,7 @@ DISTROAKA='debian'
 # install_dist: see install() in prepare.sh for details.
 install_dist() {
     local pkgs='' pkgsasdeps='' params='' asdeps=''
-    while [ ! "$#" = 0 ]; do
+    while [ "$#" != 0 ]; do
         if [ "$1" = "--minimal" ]; then
             params='--no-install-recommends'
         elif [ "$1" = "--asdeps" ]; then
@@ -22,7 +22,7 @@ install_dist() {
         fi
         shift
     done
-    while [ ! "$#" = 0 ]; do
+    while [ "$#" != 0 ]; do
         if [ "$1" = '--' ]; then
             shift
             break
@@ -47,7 +47,7 @@ install_pkg_dist() {
         params='--no-install-recommends'
         shift
     fi
-    if [ ! "$#" = 0 ]; then
+    if [ "$#" != 0 ]; then
         dpkg --force-depends -i "$@" || return $?
     fi
     apt-get -fy $params install

@@ -95,7 +95,7 @@ while getopts_nextarg; do
 done
 
 # If the executable name is delete*, assume DELETE.
-if [ ! "${APPLICATION#delete}" = "$APPLICATION" ]; then
+if [ "${APPLICATION#delete}" != "$APPLICATION" ]; then
     DELETE='y'
     NEEDS_UNMOUNT='y'
 fi
@@ -162,7 +162,7 @@ if [ -n "$BACKUP$RESTORE" -a -z "$TARBALL" -a "$PWD" = '/' \
 fi
 
 # If multiple chroots are listed, KEYFILE and MOVE and COPY must be empty or directories.
-if [ $# -gt 1 -a -f "$KEYFILE" -a ! "$KEYFILE" = '-' ]; then
+if [ $# -gt 1 -a -f "$KEYFILE" -a "$KEYFILE" != '-' ]; then
     error 2 "Multiple chroots specified, but $KEYFILE is not a directory."
 elif [ $# -gt 1 -a -n "$MOVE" -a "${MOVE%/}" = "$MOVE" ]; then
     error 2 "Multiple chroots specified, but $MOVE is not a directory."
@@ -197,7 +197,7 @@ if [ -n "$BACKUP" ] && ! df -T "`getmountpoint "${TARBALL:-.}"`" \
 fi
 
 # We need to run as root
-if [ ! "$USER" = root -a ! "$UID" = 0 ]; then
+if [ "$USER" != root -a "$UID" != 0 ]; then
     error 2 "$APPLICATION must be run as root."
 fi
 
@@ -263,7 +263,7 @@ fi
 
 # If TARBALL ends in a slash or we're restoring multiple chroots, make directory
 if [ -n "$TARBALL" ] && \
-        [ $# -ge 2 -o -d "$TARBALL" -o ! "${TARBALL%/}" = "$TARBALL" ]; then
+        [ $# -ge 2 -o -d "$TARBALL" -o "${TARBALL%/}" != "$TARBALL" ]; then
     TARBALL="${TARBALL%/}/"
     mkdir -p "$TARBALL"
 fi
@@ -508,7 +508,7 @@ for NAME in "$@"; do
         if [ "${newkeyfile#/}" = "$newkeyfile" ]; then
             newkeyfile="$PWD/$newkeyfile"
         fi
-        if [ -d "$newkeyfile" -o ! "${newkeyfile%/}" = "$newkeyfile" ]; then
+        if [ -d "$newkeyfile" -o "${newkeyfile%/}" != "$newkeyfile" ]; then
             newkeyfile="${newkeyfile%/}/$NAME"
         fi
         oldkeyfile="`readlink -m -- "$oldkeyfile"`"
@@ -518,7 +518,7 @@ for NAME in "$@"; do
             if [ -z "$ENCRYPT" ]; then
                 error 1 "Old key file not found"
             fi
-        elif [ ! "$oldkeyfile" = "$keyfilecanon" ]; then
+        elif [ "$oldkeyfile" != "$keyfilecanon" ]; then
             chrootecryptfsfile="`readlink -m "$CHROOT/.ecryptfs"`"
             # Don't clobber a file already there
             if [ -e "$newkeyfile" -a "$newkeyfile" != "$chrootecryptfsfile" ]; then
@@ -563,7 +563,7 @@ for NAME in "$@"; do
                 error 2 "Invalid target chroot name '$target'."
             fi
             target="$CHROOTS/$target"
-        elif [ ! "${target%/}" = "$target" ]; then
+        elif [ "${target%/}" != "$target" ]; then
             # Ends in a slash; append name.
             target="$target$NAME"
         fi
@@ -620,7 +620,7 @@ for NAME in "$@"; do
                 error 2 "Invalid target chroot name '$target'."
             fi
             target="$CHROOTS/$target"
-        elif [ ! "${target%/}" = "$target" ]; then
+        elif [ "${target%/}" != "$target" ]; then
             # Ends in a slash; append name.
             target="$target$NAME"
         fi

@@ -88,7 +88,7 @@ if [ "$#" -ge 1 -a -z "$1" ]; then
 fi
 
 # We need to run as root
-if [ ! "$USER" = root -a ! "$UID" = 0 ]; then
+if [ "$USER" != root -a "$UID" != 0 ]; then
     error 2 "$APPLICATION must be run as root."
 fi
 
@@ -99,7 +99,7 @@ fi
 
 # If -x is specified twice, our command is the setup script.
 if [ "$NOLOGIN" = 2 ]; then
-    if [ ! $# = 0 ]; then
+    if [ $# != 0 ]; then
         error 2 "A command cannot be specified with -xx."
     fi
     if [ -n "$BACKGROUND" ]; then
@@ -164,7 +164,7 @@ else
     CHROOT="`sh -e "$BINDIR/mount-chroot" -p -c "$CHROOTS" -- "$NAME"`"
 fi
 
-if [ ! "$NOLOGIN" = 2 ]; then
+if [ "$NOLOGIN" != 2 ]; then
     echo "Entering $CHROOTSRC..." 1>&2
 fi
 
@@ -188,7 +188,7 @@ fi
 
 # If our root is on an external disk we need to ensure USB device persistence is
 # enabled otherwise we will lose the file-system after a suspend event.
-if [ ! "${CHROOTSRC#/media}" = "$CHROOTSRC" ]; then
+if [ "${CHROOTSRC#/media}" != "$CHROOTSRC" ]; then
     for usbp in /sys/bus/usb/devices/*/power/persist; do
         if [ -e "$usbp" ]; then
             echo 1 > "$usbp"
@@ -301,7 +301,7 @@ fi
 fixabslinks() {
     local p="$CHROOT/$1" c
     # Follow and fix dangerous absolute symlinks
-    while c="`readlink -m "$p"`" && [ ! "$c" = "$p" ]; do
+    while c="`readlink -m "$p"`" && [ "$c" != "$p" ]; do
         p="$CHROOT${c#"$CHROOT"}"
     done
     echo "$p"
@@ -313,7 +313,7 @@ fixabslinks() {
 # of the parameters are shifted.
 bindmount() {
     bindopts=''
-    if [ ! "${1#"-"}" = "$1" ]; then
+    if [ "${1#"-"}" != "$1" ]; then
         bindopts="$1"
         shift
     fi
@@ -639,7 +639,7 @@ fi
 ret=0
 
 # Launch the system dbus unless we are entering a basic shell.
-if [ ! "$NOLOGIN" = 1 ] && grep -q '^root:' "$passwd" 2>/dev/null; then
+if [ "$NOLOGIN" != 1 ] && grep -q '^root:' "$passwd" 2>/dev/null; then
     # Try to detect the dbus user by parsing its configuration file
     # If it fails, or if the user does not exist, `id -un '$dbususer'`
     # will fail, and we fallback on a default user name ("messagebus")
@@ -664,7 +664,7 @@ if [ ! "$NOLOGIN" = 1 ] && grep -q '^root:' "$passwd" 2>/dev/null; then
         dbusgrp="`id -gn "$dbususer" 2>/dev/null || echo "messagebus"`"
         chown "$dbususer:$dbusgrp" /var/run/dbus
         exec dbus-daemon --system --fork' || ret=$?
-    if [ ! "$ret" = 0 ]; then
+    if [ "$ret" != 0 ]; then
         echo "WARNING: starting chroot system dbus daemon failed with code $ret" 1>&2
         ret=0
     fi
@@ -701,7 +701,7 @@ if [ -n "$NOLOGIN" ]; then
             sh -e "$BINDIR/unmount-chroot" -yxc "$CHROOTS" -- "$NAME"
             # We don't need to return from this.
             exec sh -e "$BINDIR/enter-chroot" -c "$CHROOTS" -n "$NAME" -xx
-        elif [ ! "$ret" = 0 ]; then
+        elif [ "$ret" != 0 ]; then
             error "$ret" 'Failed to complete chroot setup.'
         fi
     fi
@@ -716,7 +716,7 @@ else
         undotrap
         kill "$noticepid" 2>/dev/null || true
         wait "$noticepid" || true
-        if [ ! "$ret" = 0 ]; then
+        if [ "$ret" != 0 ]; then
             echo "WARNING: /etc/rc.local failed with code $ret" 1>&2
             ret=0
         fi

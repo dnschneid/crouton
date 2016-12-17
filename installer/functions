@@ -15,7 +15,7 @@
 # $3: optional additional commands to pass to sed (passed to -e)
 installscript() {
     local src="$1" dst="$2"
-    if [ -d "$dst" -o ! "${dst%/}" = "$dst" ]; then
+    if [ -d "$dst" -o "${dst%/}" != "$dst" ]; then
         mkdir -p "$dst"
         dst="${dst%/}/${src##*/}"
     fi

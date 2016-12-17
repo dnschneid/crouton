@@ -13,7 +13,7 @@ dash='--'
 for arg in "$@"; do
     if [ -z "$dash" ]; then
         # Check if there's a xserverrc specified.
-        if [ ! "${arg#/}" = "$arg" ]; then
+        if [ "${arg#/}" != "$arg" ]; then
             xserverrc=''
         fi
         break

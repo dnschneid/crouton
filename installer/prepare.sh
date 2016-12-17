@@ -94,7 +94,7 @@ distropkgs() {
             done
         done
         # Print out the result or error out if nothing found
-        if [ ! "$pkgname" = '.' ]; then
+        if [ "$pkgname" != '.' ]; then
             echo -n "$pkgname "
         else
             error 2 "Nothing specified for $DISTRO~$RELEASE in '$descriptor'"

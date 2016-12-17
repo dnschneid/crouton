@@ -25,7 +25,7 @@ fi
 
 STATUS="`echo -n U"$*" | websocketcommand`"
 
-if [ ! "$STATUS" = 'UOK' ]; then
+if [ "$STATUS" != 'UOK' ]; then
     error 1 "${STATUS#?}"
 fi
 

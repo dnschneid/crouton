@@ -63,7 +63,7 @@ while getopts 'acdf:ru' f; do
 done
 
 # No extra parameters
-if [ ! "$#" = "$((OPTIND-1))" ]; then
+if [ "$#" != "$((OPTIND-1))" ]; then
     error 2 "$USAGE"
 fi
 
@@ -119,13 +119,13 @@ elif [ -n "$latest" ]; then
 fi
 
 # Save latest version if requested
-if [ -n "$DOWNLOAD" -a ! "$VERSION" = "$latest" ]; then
+if [ -n "$DOWNLOAD" -a "$VERSION" != "$latest" ]; then
     echo "Saving latest version to $DEST" 1>&2
     mv -f "$tmpdir/$INSTALLER" "$DEST"
 fi
 
 # Launch changelog if requested
-if [ -n "$CHANGES" -a ! "$VERSION" = "$latest" ]; then
+if [ -n "$CHANGES" -a "$VERSION" != "$latest" ]; then
     # Check if changelogs are available from this version / to this branch
     if ! wget "$CHANGESURL$BRANCH" -O/dev/full 2>&1 | grep -q '404 Not Found'; then
         CHANGESURL="$CHANGESURL$BRANCH"
