@@ -78,7 +78,7 @@ static int set_display_lock(unsigned int pid) {
     }
     char buf[11];
     int len;
-    if ((len = snprintf(buf, sizeof(buf), "%d\n", pid)) < 0) {
+    if ((len = snprintf(buf, sizeof(buf), "%u\n", pid)) < 0) {
         ERROR("pid sprintf failed.\n");
         return -1;
     }
