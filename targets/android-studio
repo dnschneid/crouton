@@ -10,7 +10,7 @@ HOSTBIN='startandroidstudio'
 ### Append to prepare.sh:
 # Must create the /etc/bash_completion.d directory on yakkety+
 # in order for umake to properly install
-if [ $RELEASE == "yakkety" || $RELEASE == "zesty" ]; 
+if [ $RELEASE == "yakkety" || $RELEASE == "zesty" ]; then
   mkdir /etc/bash_completion.d
 fi
 if [ $DISTRO != "ubuntu" ]; then
