@@ -8,9 +8,11 @@ DESCRIPTION='Installs Android Studio as a directly launchable xiwi application'
 HOSTBIN='startandroidstudio'
 
 ### Append to prepare.sh:
-# Must create the /etc/bash_completion.d directory
+# Must create the /etc/bash_completion.d directory on yakkety+
 # in order for umake to properly install
-mkdir /etc/bash_completion.d
+if [ $RELEASE == "yakkety" || $RELEASE == "zesty" ]; 
+  mkdir /etc/bash_completion.d
+fi
 if [ $DISTRO != "ubuntu" ]; then
   #Pull in the signing key
   apt-key adv --keyserver 'keyserver.ubuntu.com' \
