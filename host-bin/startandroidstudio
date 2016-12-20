@@ -13,5 +13,4 @@ Wraps enter-chroot to launch Android Studio in an xiwi window.
 By default, it will log into the primary user on the first chroot found.
 Options are directly passed to enter-chroot; run enter-chroot to list them."
 
-exec sh -e "`dirname "\`readlink -f "$0"\`"`/enter-chroot" -t android-studio "$@" "" \
-  exec xiwi -b /opt/google/android/studio/bin/studio.sh
+exec startxiwi -b /opt/google/android/studio/bin/studio.sh
