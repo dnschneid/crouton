@@ -9,7 +9,13 @@ HOSTBIN='startandroidstudio'
 
 ### Append to prepare.sh:
 mkdir /etc/bash-completion.d #Must do this in order to avoid package management error while installing umake
-install ubuntu-make
+if [ $DISTRO != "ubuntu" ]; then
+  echo "deb http://ppa.launchpad.net/ubuntu-desktop/ubuntu-make/ubuntu yakkety main\n\
+     deb-src http://ppa.launchpad.net/ubuntu-desktop/ubuntu-make/ubuntu yakkety main" >> /etc/apt/sources.list
+  install ubuntu-make
+else
+  install ubuntu-make
+fi
 yes 'a' | umake android /opt/google/android/studio
 
 TIPS="$TIPS
