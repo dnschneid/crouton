@@ -4,14 +4,23 @@
 # found in the LICENSE file.
 
 REQUIRES='xiwi gtk-extra'
-DESCRIPTION='Installs Android Studio as an easily launchable xiwi application'
+DESCRIPTION='Installs Android Studio as a directly launchable xiwi application'
 HOSTBIN='startandroidstudio'
 
 ### Append to prepare.sh:
-mkdir /etc/bash-completion.d #Must do this in order to avoid package management error while installing umake
+# Must create the /etc/bash_completion.d directory
+# in order for umake to properly install
+mkdir /etc/bash_completion.d
 if [ $DISTRO != "ubuntu" ]; then
-  echo "deb http://ppa.launchpad.net/ubuntu-desktop/ubuntu-make/ubuntu yakkety main\n\
-     deb-src http://ppa.launchpad.net/ubuntu-desktop/ubuntu-make/ubuntu yakkety main" >> /etc/apt/sources.list
+  #Pull in the signing key
+  apt-key adv --keyserver 'keyserver.ubuntu.com' \
+                --recv-keys '07D44A5424C7C12A4BAB1E80EB563F93142986CE'
+  #Add the software source
+  cat > '/etc/apt/sources.list.d/umake.list' << EOF
+     # Bring in Umake PPA on non-Ubuntu distros
+     deb http://ppa.launchpad.net/ubuntu-desktop/ubuntu-make/ubuntu yakkety main
+     deb-src http://ppa.launchpad.net/ubuntu-desktop/ubuntu-make/ubuntu yakkety main
+  EOF
   install ubuntu-make
 else
   install ubuntu-make
@@ -19,5 +28,6 @@ fi
 yes 'a' | umake android /opt/google/android/studio
 
 TIPS="$TIPS
-You can run Android studio in a Chrome OS window via the startandroidstudio host command: sudo startandroidstudio
+You can run Android studio in a Chrome OS window
+via the startandroidstudio host command: sudo startandroidstudio
 "
