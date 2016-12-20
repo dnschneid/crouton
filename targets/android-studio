@@ -23,10 +23,8 @@ if [ $DISTRO != "ubuntu" ]; then
      deb http://ppa.launchpad.net/ubuntu-desktop/ubuntu-make/ubuntu yakkety main
      deb-src http://ppa.launchpad.net/ubuntu-desktop/ubuntu-make/ubuntu yakkety main
   EOF
-  install ubuntu-make
-else
-  install ubuntu-make
 fi
+install ubuntu-make
 yes 'a' | umake android /opt/google/android/studio
 
 TIPS="$TIPS
