@@ -1,0 +1,17 @@
+#!/bin/sh -e
+# Copyright (c) 2016 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+REQUIRES='xiwi gtk-extra'
+DESCRIPTION='Installs Android Studio as an easily launchable xiwi application'
+HOSTBIN='startandroidstudio'
+
+### Append to prepare.sh:
+mkdir /etc/bash-completion.d #Must do this in order to avoid package management error while installing umake
+install ubuntu-make
+yes 'a' | umake android /opt/google/android/studio
+
+TIPS="$TIPS
+You can run Android studio in a Chrome OS window via the startandroidstudio host command: sudo startandroidstudio
+"
