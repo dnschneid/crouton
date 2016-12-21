@@ -25,7 +25,8 @@ if [ $DISTRO != "ubuntu" ]; then
   EOF
 fi
 install openjdk-8-jre openjdk-8-jdk ubuntu-make
-yes 'a' | umake android /opt/google/android/studio
+yes 'a' | umake android $HOME/Downloads/google/android/studio
+mv $HOME/Downloads/google /opt/
 
 TIPS="$TIPS
 You can run Android studio in a Chrome OS window
