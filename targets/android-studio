@@ -24,7 +24,7 @@ if [ $DISTRO != "ubuntu" ]; then
      deb-src http://ppa.launchpad.net/ubuntu-desktop/ubuntu-make/ubuntu yakkety main
   EOF
 fi
-install ubuntu-make
+install openjdk-8-jre openjdk-8-jre-headless openjdk-8-jdk ubuntu-make
 yes 'a' | umake android /opt/google/android/studio
 
 TIPS="$TIPS
