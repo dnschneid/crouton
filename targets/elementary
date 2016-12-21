@@ -1,0 +1,29 @@
+#!/bin/sh -e
+# Copyright (c) 2016 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# if [ "${TARGETNOINSTALL:-c}" = 'c' ]; then
+#     if [ "$DISTRO" != 'ubuntu' ]; then
+#         error 99 "unity target is only supported on Ubuntu."
+#     fi
+# fi
+REQUIRES='x11'
+DESCRIPTION='Installs the Elementary desktop environment. (Approx. ~small)'
+HOSTBIN='startelementary'
+CHROOTBIN='crouton-noroot startelementary gnome-session-wrapper'
+. "${TARGETSDIR:="$PWD"}/common"
+
+### Append to prepare.sh:
+# Note that whitespace is important for syntax.
+# See distropkgs method in installer/prepare.sh
+install software-properties-common \
+        -- network-manager
+apt-add-repository -y ppa:elementary-os/os-patches
+apt-add-repository -y ppa:elementary-os/stable
+apt-get update
+apt-get install -y elementary-desktop
+
+TIPS="$TIPS
+You can start Elementary OS via the startelementary host command: sudo startelementary
+"
