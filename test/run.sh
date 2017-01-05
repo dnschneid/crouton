@@ -425,7 +425,7 @@ vtlockrun() {
 }
 
 # Default responses to questions
-export CROUTON_USERNAME='test'
+export CROUTON_USERNAME='crouton'
 export CROUTON_PASSPHRASE='hunter2'
 export CROUTON_NEW_PASSPHRASE="$CROUTON_PASSPHRASE"
 export CROUTON_EDIT_RESPONSE='y'
