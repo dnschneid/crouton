@@ -296,7 +296,7 @@ There's a way For Everyone to help!
 
 ## License
 
-crouton (including this eloquently-written README) is copyright &copy; 2016 The
+crouton (including this eloquently-written README) is copyright &copy; 2017 The
 crouton Authors. All rights reserved. Use of the source code included here is
 governed by a BSD-style license that can be found in the LICENSE file in the
 source tree.
