@@ -7,6 +7,9 @@ PROVIDES='x11'
 DESCRIPTION='X.Org X11 backend. Enables GPU acceleration on supported platforms.'
 CHROOTBIN='croutoncycle croutontriggerd croutonxinitrc-wrapper setres xinit'
 CHROOTETC='xbindkeysrc.scm xorg-intel-sna.conf xserverrc xserverrc-xorg xserverrc-local.example'
+if [ -z "$TARGETNOINSTALL" -a -f "/sys/class/tty/tty0/active" ]; then
+    error 99 "xorg target is only supported on Freon-based systems."
+fi
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
@@ -17,12 +20,6 @@ rm -f '/etc/crouton/xserverrc-x11'
 
 
 # Figure out what we need on this system
-
-# Freon?
-freon=''
-if [ ! -f "/sys/class/tty/tty0/active" ]; then
-    freon='y'
-fi
 
 # Pull in backported Xorg when possible on precise to support newer hardware
 backport=''
@@ -40,20 +37,9 @@ fi
 
 # Intel?
 inteldriver=''
-intelhasfbc=''
 pinmesa=''
-intelfbcsupport='y'
 if [ "${ARCH#arm}" = "$ARCH" ]; then
     inteldriver="xserver-xorg-video-intel$backport"
-
-    # If the system has an Intel FBC-capable video card but has too old a driver
-    # to support the chipset, we'll need to disable hardware acceleration.
-    if grep -q 1 '/sys/module/i915/parameters/i915_enable_fbc' 2>/dev/null; then
-        intelhasfbc=y
-        if release -le wheezy -le sana; then
-            intelfbcsupport=''
-        fi
-    fi
 
     # On saucy onwards, if kernel version is 3.4, manually pin down old mesa
     # libraries, as new ones require version >=3.6 (see issue #704).
@@ -62,9 +48,6 @@ if [ "${ARCH#arm}" = "$ARCH" ]; then
             ! grep -q 0xa0 /sys/class/graphics/fb0/device/device; then
         pinmesa='y'
     fi
-
-    # Unhold xserver-xorg-video-intel, modification will be reapplied later.
-    apt-mark unhold "$inteldriver" 2>/dev/null || true
 fi
 
 # Catalog relevant and irrelevant video drivers
@@ -77,28 +60,12 @@ else
     modesetting=''
 fi
 
-installvideodrivers=''
-removevideodrivers=''
-if [ -n "$freon" ]; then
-    installvideodrivers="$modesetting"
-    removevideodrivers="$fbdev"
-else
-    installvideodrivers="$fbdev"
-fi
-if [ -n "$inteldriver" ]; then
-    # If we need SNA (for fbc) but don't have it, don't install intel
-    if [ -z "$intelhasfbc" -o -n "$intelfbcsupport" ]; then
-        installvideodrivers="$installvideodrivers $inteldriver"
-    else
-        removevideodrivers="$removevideodrivers $inteldriver"
-    fi
-fi
+installvideodrivers="$modesetting"
+removevideodrivers="$fbdev $inteldriver"
 
 
-# On Freon, we need crazy xorg hacks
-if [ -n "$freon" ]; then
-    compile freon '-ldl -ldrm -I/usr/include/libdrm' so libdrm-dev
-fi
+# Compile crazy xorg hacks
+compile freon '-ldl -ldrm -I/usr/include/libdrm' so libdrm-dev
 
 # Pin precise's version of mesa if necessary
 pinfile='/etc/apt/preferences.d/precise-mesa-pin'
@@ -207,35 +174,12 @@ if [ -n "$removevideodrivers" ]; then
     remove $removevideodrivers
 fi
 
-# If this is a system with framebuffer compression, we need SNA+tearfree
-xorgconf='/usr/share/X11/xorg.conf.d/20-crouton-intel-sna.conf'
-if [ -n "$intelhasfbc" -a -n "$intelfbcsupport" ]; then
-    mkdir -p "${xorgconf%/*}"
-    ln -sfT /etc/crouton/xorg-intel-sna.conf "$xorgconf"
-else
-    # In case this got moved to a different system, delete the config
-    rm -f "$xorgconf"
-fi
+# Remove old Intel SNA workaround
+rm -f '/usr/share/X11/xorg.conf.d/20-crouton-intel-sna.conf'
 
 # Fix launching X11 from inside crosh (user doesn't own a TTY)
 echo 'allowed_users=anybody' > '/etc/X11/Xwrapper.config'
 
-inteldrv='/usr/lib/xorg/modules/drivers/intel_drv.so'
-if [ -n "$freon" -a -e "$inteldrv" ]; then
-    # Modify the Intel driver to call getuid0 (provided by croutonfreon.so)
-    # instead of geteuid, to force DRM master setting/dropping.
-    offset="`grep -F -m 1 -boa 'geteuid' "$inteldrv" 2>/dev/null || true`"
-    if [ -n "$offset" ]; then
-        echo -n 'getuid0' | dd seek="${offset%:*}" bs=1 of="$inteldrv" \
-                               conv=notrunc,nocreat 2>/dev/null
-    fi
-
-    if grep -F -q -a 'getuid0' "$inteldrv" 2>/dev/null; then
-        # Hold xserver-xorg-video-intel to make sure that the modification
-        # (which may have been made in a previous update) does not get erased.
-        apt-mark hold "$inteldriver"
-    fi
-fi
 
 TIPS="$TIPS
 You can flip through your running chroot desktops and Chromium OS by hitting
