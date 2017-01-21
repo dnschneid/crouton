@@ -77,7 +77,8 @@ fi
 # Install backported xorg instead of the default one
 if [ -n "$backport" ]; then
     # We still install xorg later to pull in its dependencies
-    install --minimal "xserver-xorg$backport" "libgl1-mesa-glx$backport" \
+    install --minimal "xserver-xorg$backport" "xserver-xorg-core$backport" \
+        "libgl1-mesa-glx$backport" \
         "libegl1-mesa$backport" "libgles2-mesa$backport" \
         "xserver-xorg-input-synaptics$backport" $installvideodrivers
 fi
