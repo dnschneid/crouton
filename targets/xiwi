@@ -26,6 +26,11 @@ elif release -eq trusty; then
     backport='-lts-xenial'
 fi
 
+# Avoid issues when jumping backports
+if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' -a -n "$backport" ]; then
+    apt-mark unhold xserver-xorg-video-dummy || true 2>/dev/null
+fi
+
 # Unhold xserver-xorg-video-dummy to make sure deps are pulled in
 if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
     apt-mark unhold xserver-xorg-video-dummy$backport || true 2>/dev/null

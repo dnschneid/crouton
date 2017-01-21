@@ -34,6 +34,11 @@ elif release -eq trusty; then
     backport='-lts-xenial'
 fi
 
+# Avoid issues when jumping backports
+if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' -a -n "$backport" ]; then
+    apt-mark unhold xserver-xorg-video-dummy || true 2>/dev/null
+fi
+
 # Intel?
 inteldriver=''
 if [ "${ARCH#arm}" = "$ARCH" ]; then
