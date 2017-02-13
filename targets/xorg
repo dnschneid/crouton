@@ -68,9 +68,15 @@ if [ "${ARCH#arm}" = "$ARCH" ]; then
 fi
 
 # Catalog relevant and irrelevant video drivers
-# Debian sid has modesetting built into xserver-xorg-core
 fbdev="xserver-xorg-video-fbdev$backport"
-modesetting="xserver-xorg-video-modesetting$backport,debian~sid+ubuntu~vivid="
+
+if release -lt sid -lt kali-rolling -lt vivid; then
+    modesetting="xserver-xorg-video-modesetting$backport"
+else
+    # modesetting is built into xserver-xorg-core
+    modesetting=''
+fi
+
 installvideodrivers=''
 removevideodrivers=''
 if [ -n "$freon" ]; then
