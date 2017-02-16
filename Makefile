@@ -77,7 +77,7 @@ $(CONTRIBUTORS): $(GITHEAD) $(CONTRIBUTORSSED)
 contributors: $(CONTRIBUTORS)
 
 release: $(CONTRIBUTORS) $(TARGET) $(RELEASE)
-	[ ! -d .git ] || git status | grep -q 'working directory clean' || \
+	[ ! -d .git ] || git status | grep -q 'working [a-z]* clean' || \
 		{ echo "There are uncommitted changes. Aborting!" 1>&2; exit 2; }
 	$(RELEASE) $(TARGET)
 
