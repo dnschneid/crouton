@@ -150,10 +150,16 @@ if [ "$xmethodtype" = "xorg" ]; then
     # switching VT (crbug.com/655770). For some unclear reason, running xrandr
     # forces the display to be back on, and this is not needed ever again
     # when switching VTs.
-    # I'm not clear if the sleep is required, but since this is a race, this
-    # should be a little bit safer.
-    sleep 1
-    xrandr --auto
+    # The loop tries to work around a race that is more likely on xenial
+    try=1
+    while xrandr --auto 2>&1 | grep . 1>&2; do
+        echo "Kicking xrandr again" 1>&2
+        if [ "$try" -ge 10 ]; then
+            break
+        fi
+        sleep 1
+        try="$((try+1))"
+    done
 fi
 
 # Only run if no error occured before (e.g. cannot connect to extension)
