@@ -261,15 +261,15 @@ index 2656602..0718e1f 100644
 -    /* Prune the modes marked as invalid */
 -    xf86PruneDriverModes(pScrn);
 +    output->possible_crtcs = 0x7f;
- 
+
 -    if (i == 0 || pScrn->modes == NULL) {
 +    xf86InitialConfiguration(pScrn, TRUE);
 +
 +    if (pScrn->depth > 1) {
-+      	Gamma zeros = {0.0, 0.0, 0.0};
-+        
-+        if (!xf86SetGamma(pScrn, zeros))
-+            return FALSE;
++	Gamma zeros = {0.0, 0.0, 0.0};
++
++	if (!xf86SetGamma(pScrn, zeros))
++	    return FALSE;
 +    }
 +
 +    if (pScrn->modes == NULL) {
@@ -297,14 +297,13 @@ index 2656602..0718e1f 100644
  
      /* If monitor resolution is set on the command line, use it */
      xf86SetDpi(pScrn, 0, 0);
--
-+    
+ 
 +    /* Set monitor size based on DPI */
 +    output->mm_width = pScrn->xDpi > 0 ?
-+    (pScrn->virtualX * 254 / (10*pScrn->xDpi)) : 0;
++        (pScrn->virtualX * 254 / (10*pScrn->xDpi)) : 0;
 +    output->mm_height = pScrn->yDpi > 0 ?
-+    (pScrn->virtualY * 254 / (10*pScrn->yDpi)) : 0;
-+    
++        (pScrn->virtualY * 254 / (10*pScrn->yDpi)) : 0;
++
      if (xf86LoadSubModule(pScrn, "fb") == NULL) {
  	RETURN;
      }
