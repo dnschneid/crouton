@@ -51,7 +51,7 @@ if [ $# = 0 ]; then
 fi
 
 # We need to run as root
-if [ ! "$USER" = root -a ! "$UID" = 0 ]; then
+if [ "$USER" != root -a "$UID" != 0 ]; then
     error 2 "$APPLICATION must be run as root."
 fi
 
@@ -72,7 +72,7 @@ promptNewPassphrase() {
         echo_tty ''
         echo_tty -n 'Please confirm your passphrase: '
         read -r confirmation
-        if [ ! "$confirmation" = "$passphrase" ]; then
+        if [ "$confirmation" != "$passphrase" ]; then
             passphrase=''
             echo_tty ''
             echo_tty -n 'Passphrases do not match; try again: '
@@ -158,7 +158,7 @@ for NAME in "$@"; do
         elif [ "${KEYFILE#/}" = "$KEYFILE" ]; then
             KEYFILE="$PWD/$KEYFILE"
         fi
-        if [ -d "$KEYFILE" -o ! "${KEYFILE%/}" = "$KEYFILE" ]; then
+        if [ -d "$KEYFILE" -o "${KEYFILE%/}" != "$KEYFILE" ]; then
             KEYFILE="${KEYFILE%/}/$NAME"
         fi
         if ! mkdir -p "`dirname "$KEYFILE"`"; then
@@ -262,7 +262,7 @@ $passphrase" | ecryptfs-rewrap-passphrase "$wrappedfnek" -
     fi
     response=y
     for file in "$movesrc/"*; do
-        if [ ! "${file#*/ECRYPTFS_FNEK_ENCRYPTED}" = "$file" ]; then
+        if [ "${file#*/ECRYPTFS_FNEK_ENCRYPTED}" != "$file" ]; then
             echo -n \
 "About to continue encrypting the unencrypted portion of $NAME.
 If this is unexpected, then it could mean that someone's trying to inject files

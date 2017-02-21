@@ -5,7 +5,7 @@
 
 # Outputs a version string with the specified prefix.
 
-if [ ! "$#" = 1 ]; then
+if [ "$#" != 1 ]; then
     echo "Usage: ${0##*/} VERSION" 1>&2
     exit 1
 fi

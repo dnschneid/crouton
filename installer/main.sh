@@ -205,7 +205,7 @@ if [ ! -d "$PREFIX" ]; then
 fi
 
 # There should never be any extra parameters.
-if [ ! $# = 0 ]; then
+if [ $# != 0 ]; then
     error 2 "$USAGE"
 fi
 
@@ -307,7 +307,7 @@ if [ -z "$DOWNLOADONLY" ]; then
                 fi
             done
             exit 2
-        elif [ ! "${TARGET%common}" = "$TARGET" ] || \
+        elif [ "${TARGET%common}" != "$TARGET" ] || \
              [ ! -r "$TARGETSDIR/$TARGET" ] || \
              ! (TARGETNOINSTALL="${UPDATE:-c}"; . "$TARGETSDIR/$TARGET"); then
             error 2 "Invalid target \"$TARGET\"."
@@ -330,7 +330,7 @@ else
     NOEXECTMP=n
 fi
 FAKEROOT=''
-if [ ! "$USER" = root -a ! "$UID" = 0 ]; then
+if [ "$USER" != root -a "$UID" != 0 ]; then
     FAKEROOT=fakeroot
     if [ "$NOEXECTMP" = y -o -z "$DOWNLOADONLY" ] \
             || ! hash "$FAKEROOT" 2>/dev/null; then
@@ -354,7 +354,7 @@ VT, you're gonna have a bad time. Press Ctrl-C at any point to abort." 1>&2
 fi
 
 # Set http_proxy if a proxy is specified.
-if [ ! "$PROXY" = 'unspecified' ]; then
+if [ "$PROXY" != 'unspecified' ]; then
     export http_proxy="$PROXY" https_proxy="$PROXY" ftp_proxy="$PROXY"
 fi
 
@@ -465,7 +465,7 @@ Valid chroots:
     # Sanity-check the release if we're updating
     if [ -n "$UPDATE" -a -n "$RELEASE" ] &&
             [ "`sh "$DISTRODIR/getrelease.sh" -r "$CHROOT"`" != "$RELEASE" ]; then
-        if [ ! "$UPDATE" = 2 ]; then
+        if [ "$UPDATE" != 2 ]; then
             error 1 \
 "Release doesn't match! Please correct the -r option, or specify a second -u to
 change the release, upgrading the chroot (dangerous)."
@@ -541,22 +541,22 @@ elif [ -z "$DOWNLOADONLY" ] && \
     echo "$boot" | {
         read -r usb legacy signed
         suggest=''
-        if [ ! "$usb" = 0 ]; then
+        if [ "$usb" != 0 ]; then
             echo "WARNING: USB booting is enabled; consider disabling it." 1>&2
             suggest="$suggest dev_boot_usb=0"
         fi
-        if [ ! "$legacy" = 0 ]; then
+        if [ "$legacy" != 0 ]; then
             echo "WARNING: Legacy booting is enabled; consider disabling it." 1>&2
             suggest="$suggest dev_boot_legacy=0"
         fi
         if [ -n "$suggest" ]; then
-            if [ ! "$signed" = 1 ]; then
+            if [ "$signed" != 1 ]; then
                 echo "WARNING: Signed boot verification is disabled; consider enabling it." 1>&2
                 suggest="$suggest dev_boot_signed_only=1"
             fi
             echo "You can use the following command: sudo crossystem$suggest" 1>&2
             sleep 5
-        elif [ ! "$signed" = 1 ]; then
+        elif [ "$signed" != 1 ]; then
             # Only enable signed booting if the user hasn't enabled alternate
             # boot options, since those are opt-in.
             echo "WARNING: Signed boot verification is disabled; enabling it for security." 1>&2
@@ -625,7 +625,7 @@ deduptargets() {
             fi
             # Don't put duplicate entries in the targets list
             tlist=",$TARGETS,"
-            if [ ! "${tlist%",$TARGET,"*}" = "$tlist" ]; then
+            if [ "${tlist%",$TARGET,"*}" != "$tlist" ]; then
                 continue
             fi
             if [ ! -r "$TARGETSDIR/$TARGET" ]; then

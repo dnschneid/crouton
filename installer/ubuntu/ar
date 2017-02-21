@@ -37,7 +37,7 @@ shift 2
 {
     # Check header
     read -r magic
-    if [ ! "$magic" = "!<arch>" ]; then
+    if [ "$magic" != "!<arch>" ]; then
         echo "$APPLICATION: $ARCHIVE: File format not recognized" 1>&2
         exit 1
     fi
@@ -49,12 +49,12 @@ shift 2
             continue;
         fi
         # Confirm magic
-        if [ ! "$magic" = '`' ]; then
+        if [ "$magic" != '`' ]; then
             echo "$APPLICATION: $ARCHIVE: Malformed archive" 1>&2
             exit 1
         fi
         # Filter members
-        if [ ! $# = 0 ]; then
+        if [ $# != 0 ]; then
             found='n'
             for member in "$@"; do
                 if [ "$name" = "$member" ]; then

@@ -58,7 +58,7 @@ while getopts_nextarg; do
 done
 
 # Need at least one chroot listed, or -a; not both.
-if [ $# = 0 -a -z "$ALLCHROOTS" ] || [ ! $# = 0 -a -n "$ALLCHROOTS" ]; then
+if [ $# = 0 -a -z "$ALLCHROOTS" ] || [ $# != 0 -a -n "$ALLCHROOTS" ]; then
     error 2 "$USAGE"
 fi
 
@@ -70,7 +70,7 @@ elif [ "$TRIES" -lt -1 ]; then
 fi
 
 # We need to run as root
-if [ ! "$USER" = root -a ! "$UID" = 0 ]; then
+if [ "$USER" != root -a "$UID" != 0 ]; then
     error 2 "$APPLICATION must be run as root."
 fi
 
@@ -135,7 +135,7 @@ fi
 fixabslinks() {
     local p="$CHROOT/$1" c
     # Follow and fix dangerous absolute symlinks
-    while c="`readlink -m "$p"`" && [ ! "$c" = "$p" ]; do
+    while c="`readlink -m "$p"`" && [ "$c" != "$p" ]; do
         p="$CHROOT${c#"$CHROOT"}"
     done
     echo "$p"
@@ -254,9 +254,9 @@ unmount() {
                 else
                     read -r YES
                 fi
-                if [ ! "${YES#[Kk]}" = "$YES" ]; then
+                if [ "${YES#[Kk]}" != "$YES" ]; then
                     SIGNAL='KILL'
-                elif [ ! "${YES#[Pp]}" = "$YES" ]; then
+                elif [ "${YES#[Pp]}" != "$YES" ]; then
                     printonly=y
                 elif [ "${YES#[AaYy]}" = "$YES" ]; then
                     echo "Skipping unmounting of $CHROOTSRC" 1>&2
@@ -283,7 +283,7 @@ unmount() {
             done
 
             # Escalate
-            if [ ! "${YES#[Aa]}" = "$YES" ]; then
+            if [ "${YES#[Aa]}" != "$YES" ]; then
                 SIGNAL='KILL'
             fi
 

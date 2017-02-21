@@ -79,7 +79,7 @@ done
 shift "$((OPTIND-1))"
 
 # We need to run as root
-if [ ! "$USER" = root -a ! "$UID" = 0 ]; then
+if [ "$USER" != root -a "$UID" != 0 ]; then
     error 2 "${0##*/} must be run as root."
 fi
 
