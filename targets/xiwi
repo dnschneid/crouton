@@ -352,11 +352,11 @@ index 2656602..0718e1f 100644
      pScreen->SaveScreen = DUMMYSaveScreen;
 EOF
 
-    # Fake version 0.3.8
+    # Fake version 0.3.9
     package="xf86-video-dummy"
     major='0'
     minor='3'
-    patch='8'
+    patch='9'
     version="$major.$minor.$patch"
 
     sed -e '
