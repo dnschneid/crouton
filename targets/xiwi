@@ -44,7 +44,7 @@ compile findnacld ''
 ln -sf /etc/crouton/xorg-dummy.conf /etc/X11/
 
 # Download the latest xf86-video-dummy package
-urlbase="http://xorg.freedesktop.org/releases/individual/driver/"
+urlbase="https://xorg.freedesktop.org/releases/individual/driver"
 
 DUMMYBUILDTMP="`mktemp -d crouton-cras.XXXXXX --tmpdir=/tmp`"
 
@@ -52,7 +52,13 @@ addtrap "rm -rf --one-file-system '$DUMMYBUILDTMP'"
 
 echo "Download Xorg dummy driver..." 1>&2
 
-wget -O "$DUMMYBUILDTMP/dummy.tar.gz" "$urlbase/xf86-video-dummy-0.3.8.tar.gz"
+superinsecure=''
+if release -le wheezy; then
+     # Wheezy doesn't have the right CA in ca-certificates that validates x.org
+     superinsecure='--no-check-certificate'
+fi
+wget $superinsecure -O "$DUMMYBUILDTMP/dummy.tar.gz" \
+     "$urlbase/xf86-video-dummy-0.3.8.tar.gz"
 
 install --minimal --asdeps patch gcc libc-dev pkg-config \
     xserver-xorg-dev$ltspackages x11proto-xf86dga-dev
