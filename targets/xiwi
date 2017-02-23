@@ -44,7 +44,7 @@ compile findnacld ''
 ln -sf /etc/crouton/xorg-dummy.conf /etc/X11/
 
 # Download the latest xf86-video-dummy package
-urlbase="http://xorg.freedesktop.org/releases/individual/driver"
+urlbase="https://xorg.freedesktop.org/releases/individual/driver"
 
 DUMMYBUILDTMP="`mktemp -d crouton-cras.XXXXXX --tmpdir=/tmp`"
 
