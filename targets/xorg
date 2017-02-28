@@ -181,6 +181,13 @@ if [ -n "$backport" ]; then
         "xserver-xorg-input-synaptics$backport" $installvideodrivers
 fi
 
+if release -lt stretch -lt kali-rolling -lt yakkety; then
+    vmmouse='xserver-xorg-input-vmmouse'
+else
+    # xserver-xorg-input-vmmouse is obsolete
+    vmmouse=''
+fi
+
 # Install xorg, no video drivers
 if [ -z "$inteldriver" -a -n "$backport" ] && release -eq precise; then
     # xorg is packaged wrong on ARM and conflicts with xserver-xorg-lts-quantal
@@ -192,7 +199,7 @@ if [ -z "$inteldriver" -a -n "$backport" ] && release -eq precise; then
         xterm x11-common xinput
 else
     install xorg $installvideodrivers -- xserver-xorg-video-all$backport \
-        xserver-xorg-input-vmmouse
+        $vmmouse
 fi
 
 # Remove bad video drivers
