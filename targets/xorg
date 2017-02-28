@@ -181,7 +181,7 @@ if [ -n "$backport" ]; then
         "xserver-xorg-input-synaptics$backport" $installvideodrivers
 fi
 
-if release -lt sid -lt kali-rolling -lt yakkety; then
+if release -lt stretch -lt kali-rolling -lt yakkety; then
     vmmouse='xserver-xorg-input-vmmouse'
 else
     # xserver-xorg-input-vmmouse is obsolete
