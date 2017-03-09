@@ -18,6 +18,11 @@ arm*) ARCH="armhf";;
 *) error 2 "Invalid architecture '$ARCH'.";;
 esac
 
+# trusty is the first release with arm64
+if [ "$ARCH" = "arm64" ] && release -lt trusty; then
+    ARCH="armhf"
+fi
+
 if [ -z "$MIRROR" ]; then
     if [ "$ARCH" = 'amd64' -o "$ARCH" = 'i386' ]; then
         MIRROR="${CROUTON_MIRROR_ubuntu_x86:-http://archive.ubuntu.com/ubuntu/}"
