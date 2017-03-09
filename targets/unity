@@ -6,6 +6,10 @@ if [ "${TARGETNOINSTALL:-c}" = 'c' ]; then
     if [ "$DISTRO" != 'ubuntu' ]; then
         error 99 "unity target is only supported on Ubuntu."
     fi
+
+    if [ "${ARCH#arm}" != "$ARCH" ] && release -gt precise; then
+        error 99 "unity is unsupported on ARM for releases after precise."
+    fi
 fi
 REQUIRES='gtk-extra'
 DESCRIPTION='Installs the Unity desktop environment. (Approx. 700MB)'
