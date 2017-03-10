@@ -103,8 +103,13 @@ if [ "$xmethodtype" != "xiwi" ]; then
 
     # Configure trackpad settings if needed
     if synclient >/dev/null 2>&1; then
+        # Elan trackpads usually like these settings
+        if grep -q 'Elan Touchpad' /sys/class/input/event*/device/name; then
+            SYNCLIENT="FingerLow=1 FingerHigh=5 $SYNCLIENT"
+        fi
+        # Other special cases
         case "`awk -F= '/_RELEASE_BOARD=/{print $2}' '/var/host/lsb-release'`" in
-            butterfly*|falco*|sentry*|edgar*|chell*|terra*|reks*)
+            butterfly*|falco*)
                 SYNCLIENT="FingerLow=1 FingerHigh=5 $SYNCLIENT";;
             parrot*|peppy*|wolf*)
                 SYNCLIENT="FingerLow=5 FingerHigh=10 $SYNCLIENT";;
