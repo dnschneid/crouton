@@ -32,7 +32,8 @@ PROXY='unspecified'
 RELEASE=''
 RESTORE=''
 RESTOREBIN=''
-DEFAULTRELEASE='precise'
+DEFAULTRELEASE='xenial'
+PREVIOUS_DEFAULT_RELEASES='precise'
 TARBALL=''
 TARGETS=''
 TARGETFILE=''
@@ -370,6 +371,15 @@ CHROOTS="$PREFIX/chroots"
 
 if [ -z "$RESTOREBIN" ]; then
     # Fix NAME if it was not specified.
+    # If updating and name/release weren't specified, check previous defaults
+    if [ -n "$UPDATE" -a -z "$NAME$RELEASE" ]; then
+        for rel in "$DEFAULTRELEASE" $PREVIOUS_DEFAULT_RELEASES; do
+            if [ -d "$CHROOTS/$rel" ]; then
+                DEFAULTRELEASE="$rel"
+                break
+            fi
+        done
+    fi
     CHROOT="$CHROOTS/${NAME:="${RELEASE:-"$DEFAULTRELEASE"}"}"
     CHROOTSRC="$CHROOT"
 fi
