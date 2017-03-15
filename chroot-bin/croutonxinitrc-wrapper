@@ -138,7 +138,7 @@ if [ "$xmethodtype" = 'xiwi' ]; then
         if [ "$try" -ge 10 ]; then
             echo "\
 Unable to start display, make sure the crouton extension is installed
-and enabled, and up to date. (download from http://goo.gl/OVQOEt)" 1>&2
+and enabled, and up to date. (download from https://goo.gl/OVQOEt)" 1>&2
             ret=1
             break
         fi

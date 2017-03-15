@@ -172,7 +172,7 @@ disablehungtask() {
 # - Run the modified awk program.
 # mawk needs '-W interactive' to flush the output properly (fflush does not
 # work as documented, but apparently this behaviour is intentional, see
-# http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=593504).
+# https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=593504).
 # Furthermore, fflush is not POSIX so we cannot use any other awk flavor.
 unbuffered_awk() {
     local cmd

@@ -48,7 +48,7 @@ to the rest of Chromium OS.
 You need a device running Chromium OS that has been switched to developer mode.
 
 For instructions on how to do that, go to [this Chromium OS wiki page]
-(http://www.chromium.org/chromium-os/developer-information-for-chrome-os-devices),
+(https://www.chromium.org/chromium-os/developer-information-for-chrome-os-devices),
 click on your device model and follow the steps in the *Entering Developer Mode*
 section.
 
