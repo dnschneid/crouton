@@ -334,7 +334,8 @@ for NAME in "$@"; do
             fi
             if [ "$getversion" = 'y' ]; then
                 CROUTON_NO_UNMOUNT=1 sh "$BINDIR/enter-chroot" \
-                    -c "$CHROOTS" -n "$NAME" -x /usr/local/bin/croutonversion
+                    -c "$CHROOTS" -n "$NAME" -x /usr/local/bin/croutonversion \
+                    || true
             fi
         fi
         if [ "$RESTORE" = 1 ]; then
