@@ -1,0 +1,80 @@
+#!/bin/sh -e
+# Copyright (c) 2017 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# This is a distro-specific continuation of the prepare.sh script.
+
+DISTROAKA='gentoo'
+
+# install_dist: see install() in prepare.sh for details.
+install_dist() {
+    local pkgs=''
+    while [ "$#" != 0 ]; do
+        if [ "$1" = '--' ]; then
+            shift
+            break
+        fi
+	# We ignore --minimal and --asdeps it does nothing for gentoo
+	if [ ! "$1" = "--minimal" -a ! "$1" = "--asdeps" ]; then
+		pkgs="$pkgs $1";
+	fi
+        shift
+    done
+    emerge -Duv $pkgs
+}
+
+
+# install_pkg_dist: see install_pkg() in prepare.sh for details.
+install_pkg_dist() {
+	echo
+}
+
+
+# install_dummy_dist: see install_dummy() in prepare.sh for details.
+install_dummy_dist() {
+	echo
+}
+
+
+# remove_dist: see remove() in prepare.sh for details.
+remove_dist() {
+	echo
+}
+
+
+# list_uninstalled_dist: see list_uninstalled() in prepare.sh for details.
+# If the package is virtual (e.g. libc-dev), we need to find the binary package
+# corresponding to it (e.g. libc6-dev), so that we can remove it afterwards
+# ("apt-get remove libc-dev" does not remove libc6-dev).
+list_uninstalled_dist() {
+	echo
+}
+
+# detect_mirror
+# Detects the current mirror: Prints the first source that provides the
+# "main" component.
+detect_mirror() {
+	echo
+}
+
+
+# install_mirror_package [--asdeps] package path [regex arch]
+# Fetch and install a package directly from the mirror.
+# This allows to install a package from a different release, when the current
+# release does not provide the required package, or when the version it
+# provides is broken or outdated.
+# --asdeps: Install as dependency
+# package:  Package name (e.g. xserver-xephyr)
+# path:     Mirror path (e.g. pool/universe/x/xorg-server)
+# regex:    Version regex (e.g. '1\.11\.4-0ubuntu[0-9][0-9]\.[0-9]*').
+#           If not specified, match any version (default regex: ".*").
+#           The latest version that matches the regex is selected.
+#           If the package is a dependency of other packages (e.g. a library),
+#           you should select the earliest version that provides the required
+#           features, to prevent breakage during release upgrade.
+# arch:     Additional architecture to install. e.g. i386 installs both i386
+#           and amd64 packages. Defaults to only installing "$ARCH"
+install_mirror_package() {
+	echo
+}

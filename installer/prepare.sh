@@ -198,9 +198,11 @@ compile() {
         shift 1
     fi
     shift 2
-    echo "Installing dependencies for $out..." 1>&2
-    local pkgs="gcc libc6-dev $*"
-    install --minimal --asdeps $pkgs </dev/null
+    if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
+        echo "Installing dependencies for $out..." 1>&2
+        local pkgs="gcc libc6-dev $*"
+        install --minimal --asdeps $pkgs </dev/null
+    fi
     echo "Compiling $out..." 1>&2
     local tmp="`mktemp crouton.XXXXXX --tmpdir=/tmp`"
     addtrap "rm -f '$tmp'"

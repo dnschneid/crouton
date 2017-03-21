@@ -109,15 +109,36 @@ fi
 # On release upgrade, keyboard-configuration might be reconfigured.
 fixkeyboardmode
 
-# Install critical packages
-install --minimal sudo wget ca-certificates apt-transport-https
+# On Gentoo, install some system apps first
+if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
+    install gentoolkit cpuid2cpuflags
+    if [ $ARCH = 'x86' -o $ARCH = 'amd64' ]; then
+        CPUFLAGS=`cpuinfo2cpuflags-x86`;
+        sed -i "s|CPU_FLAGS_X86=.*|${CPUFLAGS}|" ${DIR}/etc/portage/make.conf
+    fi
+fi
 
-# Generate and set default locale
-if [ ! -f '/etc/default/locale' ] && hash locale-gen 2>/dev/null; then
-    echo 'LANG=en_US.UTF-8' > '/etc/default/locale'
-    locale-gen --lang en_US.UTF-8
-    if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
-        dpkg-reconfigure locales
+# Install critical packages
+CORE_pkgs="gentoo=app-admin/sudo,sudo wget ca-certificates"
+if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
+    CORE_pkgs="${CORE_pkgs} apt-transport-https";
+fi
+install --minimal ${CORE_pkgs}
+
+# Gentoo doesn't have a group for sudo, add it now and allow those users to use sudo
+if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
+    groupadd sudo
+    echo "%sudo ALL=(ALL) ALL" >> /etc/sudoers.d/crouton-group
+fi
+
+if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
+    # Generate and set default locale
+    if [ ! -f '/etc/default/locale' ] && hash locale-gen 2>/dev/null; then
+        echo 'LANG=en_US.UTF-8' > '/etc/default/locale'
+        locale-gen --lang en_US.UTF-8
+        if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
+            dpkg-reconfigure locales
+        fi
     fi
 fi
 
