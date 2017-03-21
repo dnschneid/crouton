@@ -3,15 +3,19 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 REQUIRES='core'
-DESCRIPTION='Support audio playback via Chromium OS'\''s audio system.'
+DESCRIPTION='Support audio playback via Chromium OS audio system (CRAS).'
 CHROOTBIN='volume'
 CHROOTETC='pulseaudio-default.pa'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
 
-# Fetch CRAS source
+# If we're on gentoo, make sure that the appropriate use flags are set
+if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
+    set_flags pulseaudio alsa
+fi
 
+# Fetch CRAS source
 CRASBUILDTMP="`mktemp -d crouton-cras.XXXXXX --tmpdir=/tmp`"
 
 addtrap "rm -rf --one-file-system '$CRASBUILDTMP'"
@@ -67,42 +71,52 @@ build_cras() {
     local pkgconfigpath=''
     local archgccflags=''
     if [ -n "$cras_arch" ]; then
-        pkgsuffix=":$cras_arch"
         pkgdepextra='gcc-multilib'
         archextrapath="/$cras_arch-linux-gnu"
         pkgconfigpath="/usr/lib$archextrapath/pkgconfig"
         archgccflags='-m32'
 
         # Add foreign architecture, if necessary
-        if ! dpkg --print-foreign-architectures | grep -q "^$cras_arch$"; then
-            echo "Adding foreign architecture $cras_arch to dpkg..." 1>&2
-            dpkg --add-architecture "$cras_arch"
-            apt-get update || true
-        fi
+        if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
+            pkgsuffix=":$cras_arch"
+            if ! dpkg --print-foreign-architectures | grep -q "^$cras_arch$"; then
+                echo "Adding foreign architecture $cras_arch to dpkg..." 1>&2
+                dpkg --add-architecture "$cras_arch"
+                apt-get update || true
+            fi
+	fi
     fi
 
     # Install CRAS dependencies
     install --minimal alsa-utils \
-        libasound2$pkgsuffix libspeexdsp1$pkgsuffix
+        gentoo=media-libs/alsa-lib,libasound2$pkgsuffix gentoo=speex,libspeexdsp1$pkgsuffix
 
-    install --minimal --asdeps gcc $pkgdepextra libc6-dev$pkgsuffix \
-        pkg-config libspeexdsp-dev$pkgsuffix
+    # Gentoo already has these deps installed
+    if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
+        install --minimal --asdeps gcc $pkgdepextra libc6-dev$pkgsuffix \
+            pkg-config libspeexdsp-dev$pkgsuffix
+    fi
 
     # precise does not allow libasound2-dev and libasound2-dev:i386 to be
     # installed simultaneously
-    if release -le precise && [ -n "$cras_arch" ]; then
-        install --minimal --asdeps libasound2-dev
-        # Manually link .so file
-        libasoundso="/usr/lib$archextrapath/libasound.so"
-        if [ ! -f "$libasoundso" ]; then
-            addtrap "rm -f '$libasoundso' 2>/dev/null"
-            ln -sfT libasound.so.2 "$libasoundso"
+    if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
+        if release -le precise && [ -n "$cras_arch" ]; then
+            install --minimal --asdeps libasound2-dev
+            # Manually link .so file
+            libasoundso="/usr/lib$archextrapath/libasound.so"
+            if [ ! -f "$libasoundso" ]; then
+                addtrap "rm -f '$libasoundso' 2>/dev/null"
+                ln -sfT libasound.so.2 "$libasoundso"
+            fi
+            ALSALIBDIR="/usr/lib$archextrapath/alsa-lib"
+        else
+            install --minimal --asdeps libasound2-dev$pkgsuffix
+            ALSALIBDIR="`PKG_CONFIG_PATH="$pkgconfigpath" \
+                            pkg-config --variable=libdir alsa`/alsa-lib"
         fi
-        ALSALIBDIR="/usr/lib$archextrapath/alsa-lib"
     else
-        install --minimal --asdeps libasound2-dev$pkgsuffix
         ALSALIBDIR="`PKG_CONFIG_PATH="$pkgconfigpath" \
-                                pkg-config --variable=libdir alsa`/alsa-lib"
+                        pkg-config --variable=libdir alsa`/alsa-lib"
     fi
 
     # Start subshell for compilation
