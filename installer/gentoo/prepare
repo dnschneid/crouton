@@ -7,6 +7,18 @@
 
 DISTROAKA='gentoo'
 
+# Set use flags
+set_flags() {
+    while [ "$#" != 0 ]; do
+         local flag=`euse -a $1 | cut -d\[ -f1`;
+	 # If don't already have the flag
+	 if [ -z ${flag} ]; then
+	     euse -E $1 1> /dev/null
+	 fi
+	 shift
+    done
+}
+
 # install_dist: see install() in prepare.sh for details.
 install_dist() {
     local pkgs=''
@@ -21,25 +33,25 @@ install_dist() {
 	fi
         shift
     done
-    emerge -Duv $pkgs
+    emerge -Duv --newuse $pkgs
 }
 
 
 # install_pkg_dist: see install_pkg() in prepare.sh for details.
 install_pkg_dist() {
-	echo
+	echo "FIXME: install_pkg_dist"
 }
 
 
 # install_dummy_dist: see install_dummy() in prepare.sh for details.
 install_dummy_dist() {
-	echo
+	echo "FIXME: install_dummy_dist"
 }
 
 
 # remove_dist: see remove() in prepare.sh for details.
 remove_dist() {
-	echo
+	echo "FIXME: remove_dist"
 }
 
 
@@ -48,14 +60,14 @@ remove_dist() {
 # corresponding to it (e.g. libc6-dev), so that we can remove it afterwards
 # ("apt-get remove libc-dev" does not remove libc6-dev).
 list_uninstalled_dist() {
-	echo
+	echo "FIXME: list_uninstalled_dist"
 }
 
 # detect_mirror
 # Detects the current mirror: Prints the first source that provides the
 # "main" component.
 detect_mirror() {
-	echo
+	echo "FIXME: detect_mirror"
 }
 
 
@@ -76,5 +88,5 @@ detect_mirror() {
 # arch:     Additional architecture to install. e.g. i386 installs both i386
 #           and amd64 packages. Defaults to only installing "$ARCH"
 install_mirror_package() {
-	echo
+	echo "FIXME: install_mirror_package"
 }
