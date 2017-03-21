@@ -126,9 +126,12 @@ fi
 install --minimal ${CORE_pkgs}
 
 # Gentoo doesn't have a group for sudo, add it now and allow those users to use sudo
+# Debian uses GID 28 for sudo
 if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
-    groupadd sudo
-    echo "%sudo ALL=(ALL) ALL" >> /etc/sudoers.d/crouton-group
+    if [ -z `getent group sudo | cut -f1 -d:` ]; then
+        groupadd -g 28 sudo
+    fi
+    echo "%sudo ALL=(ALL) ALL" > /etc/sudoers.d/crouton-group
 fi
 
 if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
