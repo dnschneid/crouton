@@ -8,8 +8,13 @@ HOSTBIN='startcli'
 CHROOTBIN='croutonpowerd'
 . "${TARGETSDIR:="$PWD"}/common"
 
+# Set the use flags on gentoo that we'll need
+if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
+    set_flags dbus
+fi
+
 ### Append to prepare.sh:
-install dbus openssh-client kbd
+install dbus gentoo=openssh,openssh-client kbd
 
 TIPS="$TIPS
 You can start a shell in a new VT via the startcli host command: sudo startcli
