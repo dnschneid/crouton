@@ -15,6 +15,18 @@ XMETHOD="${XMETHOD:-xorg}"
 # Migration from ambiguous XMETHOD
 rm -f '/etc/crouton/xserverrc-x11'
 
+# Set the use flags on gentoo that we'll need for X
+if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
+    set_flags libkms uxa dri3 xvmc opengl
+     
+     # Set VIDEO_CARDS and INPUT_DEVICES
+     # FIXME: Perhaps make this more flexible, right now just pick all of them
+     VIDEO_CARDS=`grep VIDEO_CARDS /etc/portage/make.conf | cut -d= -f1`
+     if [ -z ${VIDEO_CARDS} ]; then
+         echo "VIDEO_CARDS=\"intel fbdev vesa dummy\"" >> /etc/portage/make.conf
+         echo "INPUT_DEVICES=\"keyboard libinput mouse evdev\"" >> /etc/portage/make.conf
+     fi
+fi
 
 # Figure out what we need on this system
 
@@ -44,7 +56,11 @@ intelhasfbc=''
 pinmesa=''
 intelfbcsupport='y'
 if [ "${ARCH#arm}" = "$ARCH" ]; then
-    inteldriver="xserver-xorg-video-intel$backport"
+    if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
+	inteldriver="xf86-video-intel"
+    else
+        inteldriver="xserver-xorg-video-intel$backport"
+    fi
 
     # If the system has an Intel FBC-capable video card but has too old a driver
     # to support the chipset, we'll need to disable hardware acceleration.
@@ -64,11 +80,17 @@ if [ "${ARCH#arm}" = "$ARCH" ]; then
     fi
 
     # Unhold xserver-xorg-video-intel, modification will be reapplied later.
-    apt-mark unhold "$inteldriver" 2>/dev/null || true
+    if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
+        apt-mark unhold "$inteldriver" 2>/dev/null || true
+    fi
 fi
 
 # Catalog relevant and irrelevant video drivers
-fbdev="xserver-xorg-video-fbdev$backport"
+if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
+    fbdev="xf86-video-fbdev"
+else
+    fbdev="xserver-xorg-video-fbdev$backport"
+fi
 
 if release -lt sid -lt kali-rolling -lt vivid; then
     modesetting="xserver-xorg-video-modesetting$backport"
@@ -97,7 +119,7 @@ fi
 
 # On Freon, we need crazy xorg hacks
 if [ -n "$freon" ]; then
-    compile freon '-ldl -ldrm -I/usr/include/libdrm' so libdrm-dev
+    compile freon '-ldl -ldrm -I/usr/include/libdrm' so gentoo=x11-libs/libdrm,libdrm-dev
 fi
 
 # Pin precise's version of mesa if necessary
@@ -197,9 +219,14 @@ if [ -z "$inteldriver" -a -n "$backport" ] && release -eq precise; then
         x11-session-utils x11-utils x11-xfs-utils x11-xkb-utils \
         x11-xserver-utils xauth xinit xfonts-utils xkb-data xorg-docs-core \
         xterm x11-common xinput
+elif [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
+     install xorg-x11 xorg-server ${installvideodrivers}
+
+     # We don't need to remove video drivers
+     removevideodrivers=""
 else
-    install xorg $installvideodrivers -- xserver-xorg-video-all$backport \
-        $vmmouse
+     install xorg $installvideodrivers -- xserver-xorg-video-all$backport \
+         $vmmouse
 fi
 
 # Remove bad video drivers
@@ -233,7 +260,9 @@ if [ -n "$freon" -a -e "$inteldrv" ]; then
     if grep -F -q -a 'getuid0' "$inteldrv" 2>/dev/null; then
         # Hold xserver-xorg-video-intel to make sure that the modification
         # (which may have been made in a previous update) does not get erased.
-        apt-mark hold "$inteldriver"
+        if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
+            apt-mark hold "$inteldriver"
+	fi
     fi
 fi
 

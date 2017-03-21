@@ -18,17 +18,38 @@ if [ -n "$offset" ]; then
         conv=notrunc,nocreat 2>/dev/null
 fi
 
+# Make sure the use flags on gentoo are set that we'll need for X
+if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
+    set_flags X dbus guile networking
+fi
+
 # Install utilities and links for powerd-poking daemon
-compile xi2event '-lX11 -lXi' libx11-dev libxi-dev
-install --minimal dbus xdg-utils
+XILIBS=""
+if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
+    XILIBS="libx11-dev libxi-dev"
+elif [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
+    XILIBS="x11-libs/libXi"
+fi
+compile xi2event '-lX11 -lXi' ${XILIBS}
+
+# On Gentoo, we need to set the text useflag for xdg-utils
+if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
+    echo "app-text/xmlto text" >> /etc/portage/package.use/package.use
+fi
+
+install --minimal gentoo=sys-apps/dbus,dbus xdg-utils
 ln -sf croutonpowerd /usr/local/bin/gnome-screensaver-command
 ln -sf croutonpowerd /usr/local/bin/xscreensaver-command
 
 # Install nicer cursors
-install --minimal dmz-cursor-theme
+install --minimal gentoo=vanilla-dmz-xcursors,dmz-cursor-theme
 
 # Install bsdmainutils, xbindkeys and xautomation for shortcuts
-install --minimal bsdmainutils xbindkeys xautomation
+PKG_SC="xbindkeys xautomation"
+if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
+    PKG_SC="${PKG_SC} bsdmainutils"
+fi
+install --minimal ${PKG_SC}
 
 # We need chvt on freon systems
 if [ -f "/sys/class/tty/tty0/active" ]; then
