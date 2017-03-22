@@ -106,6 +106,20 @@ EOF
     apt-get -y dist-upgrade
 fi
 
+# Update the portage tree for Gentoo, if at least one day has passed
+if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
+    # Get the time of the last sync
+    LAST_SYNC=`cut -f1 -d' ' /usr/portage/metadata/timestamp.x`
+    # Add a day to it, in seconds
+    LAST_SYNC=`expr $LAST_SYNC + 86400`
+    # Get the current epoch time in seconds
+    TIME_SEC=`date +%s`
+    # If at least a day has passed, do the sync
+    if [ $TIME_SEC -gt $LAST_SYNC ]; then
+        emerge --sync
+    fi
+fi
+
 # On release upgrade, keyboard-configuration might be reconfigured.
 fixkeyboardmode
 
@@ -114,7 +128,7 @@ if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
     install gentoolkit cpuid2cpuflags
     if [ $ARCH = 'x86' -o $ARCH = 'amd64' ]; then
         CPUFLAGS=`cpuinfo2cpuflags-x86`;
-        sed -i "s|CPU_FLAGS_X86=.*|${CPUFLAGS}|" ${DIR}/etc/portage/make.conf
+        sed -i "s|CPU_FLAGS_X86=.*|${CPUFLAGS}|" /etc/portage/make.conf
     fi
 fi
 
