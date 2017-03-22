@@ -204,7 +204,9 @@ compile() {
 	pkgs="gcc libc6-dev"
     fi
     pkgs="${pkgs} $*"
-    install --minimal --asdeps $pkgs </dev/null
+    if ! [ -z $pkgs ]; then
+    	install --minimal --asdeps $pkgs </dev/null
+    fi
     echo "Compiling $out..." 1>&2
     local tmp="`mktemp crouton.XXXXXX --tmpdir=/tmp`"
     addtrap "rm -f '$tmp'"
