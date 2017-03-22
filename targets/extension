@@ -19,7 +19,13 @@ fi
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
-install x11-utils xclip
+EXT_APPS=""
+if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
+    EXT_APPS="x11-misc/xclip appres luit xdpyinfo xdriinfo xev xfd xfontsel xkill xlsatoms xlsclients xlsfonts xmessage xprop xvinfo xwininfo"
+else
+    EXT_APPS="xclip x11-utils"
+fi
+install ${EXT_APPS}
 
 compile websocket ''
 
@@ -35,12 +41,14 @@ if [ "$XMETHOD" = 'xorg' ] || grep -q xorg /etc/crouton/targets; then
 fi
 
 # Use croutonurlhandler as a fallback URL handler
-handler='/usr/local/bin/croutonurlhandler'
-for link in x-www-browser gnome-www-browser www-browser; do
-    if ! update-alternatives --query "$link" | grep -q "$handler"; then
-        update-alternatives --install "/usr/bin/$link" "$link" "$handler" 15
-    fi
-done
+if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
+    handler='/usr/local/bin/croutonurlhandler'
+    for link in x-www-browser gnome-www-browser www-browser; do
+        if ! update-alternatives --query "$link" | grep -q "$handler"; then
+            update-alternatives --install "/usr/bin/$link" "$link" "$handler" 15
+        fi
+    done
+fi
 
 if [ "$EXTENSION_INSTALLED" = 'y' ]; then
     TIPS="$TIPS
