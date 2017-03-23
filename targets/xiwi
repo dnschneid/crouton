@@ -28,8 +28,21 @@ if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
     apt-mark unhold xserver-xorg-video-dummy$ltspackages || true 2>/dev/null
 fi
 
-install xorg xserver-xorg-video-dummy$ltspackages
-install --minimal i3
+if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
+    VIDEO_CARDS=`grep VIDEO_CARDS /etc/portage/make.conf | cut -d= -f1`
+    if [ -z ${VIDEO_CARDS} ]; then
+        echo "VIDEO_CARDS=\"dummy\"" >> /etc/portage/make.conf
+        echo "INPUT_DEVICES=\"keyboard libinput mouse evdev\"" >> /etc/portage/make.conf
+    fi
+    
+    set_flags X dbus
+    install xorg-x11 xorg-server
+    set_flags xcb xkb
+    install i3
+else
+    install xorg xserver-xorg-video-dummy$ltspackages
+    install --minimal i3
+fi
 
 # Remove some unsupported options on old versions of i3
 if release -le precise; then
@@ -38,7 +51,9 @@ fi
 
 # Compile croutonfbserver
 compile fbserver '-lX11 -lXfixes -lXdamage -lXext -lXtst' \
-    libx11-dev libxfixes-dev libxdamage-dev libxext-dev libxtst-dev
+    gentoo=x11-libs/libX11,libx11-dev gentoo=x11-libs/libXfixes,libxfixes-dev \
+    gentoo=libXdamage,libxdamage-dev gentoo=libXext,libxext-dev \
+    gentoo=libXtst,libxtst-dev
 compile findnacld ''
 
 ln -sf /etc/crouton/xorg-dummy.conf /etc/X11/
@@ -60,8 +75,12 @@ fi
 wget $superinsecure -O "$DUMMYBUILDTMP/dummy.tar.gz" \
      "$urlbase/xf86-video-dummy-0.3.8.tar.gz"
 
-install --minimal --asdeps patch gcc libc-dev pkg-config \
-    xserver-xorg-dev$ltspackages x11proto-xf86dga-dev
+if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
+    install xf86dgaproto
+else
+    install --minimal --asdeps patch gcc libc-dev pkg-config \
+        xserver-xorg-dev$ltspackages x11proto-xf86dga-dev
+fi
 
 (
     cd "$DUMMYBUILDTMP"
