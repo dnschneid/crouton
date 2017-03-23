@@ -7,7 +7,7 @@
 
 DISTROAKA='gentoo'
 
-# Set use flags
+# Set use flags, separated by a space
 set_flags() {
     while [ "$#" != 0 ]; do
          local flag=`euse -a $1 | cut -d\[ -f1`;
@@ -17,6 +17,52 @@ set_flags() {
 	 fi
 	 shift
     done
+}
+
+# Set unstable keywords for a package
+# Usage: keyword_package <package> <crouton target for comment>
+keyword_package() {
+    # Check if the directory exists
+    if [ ! -d /etc/portage/package.keywords ]; then
+        mkdir /etc/portage/package.keywords
+    fi
+
+    # Check if the package keywords file exists
+    if [ ! -f /etc/portage/package.keywords/crouton ]; then
+        touch /etc/portage/package.keywords/crouton
+    fi
+
+    # Check if the requested package is already in the file
+    UNMASK=`grep -e "^$1[[:space:]]" -e "^$1$" /etc/portage/package.keywords/crouton | cut -f1 -d1`
+
+    # If we didn't match, set it
+    if [ -z "${UNMASK}" ]; then
+        echo "# Added keywords for crouton target $2" >> /etc/portage/package.keywords/crouton
+	echo "$1" >> /etc/portage/package.keywords/crouton
+    fi
+}
+
+# Set a license
+# Usage: accept_license <package> <license> <crouton target for comment>
+accept_license() {
+    # Check if the package license file exists
+    if [ ! -f /etc/portage/package.license ]; then
+        touch /etc/portage/package.license
+    fi
+
+    # Check if the requested package is already in the file
+    LICENSE=`grep "$1[[:space:]]$2" /etc/portage/package.license | cut -f1 -d1`
+
+    # If we didn't match, set it
+    if [ -z "${LICENSE}" ]; then
+        echo "# Added license for crouton target $3" >> /etc/portage/package.license
+	echo "$1 $2" >> /etc/portage/package.license
+    fi
+
+    # Let the user know that we accepted the license for them
+    TIPS="$TIPS
+By installing $3, the license $2 has been enabled.
+"
 }
 
 # install_dist: see install() in prepare.sh for details.
