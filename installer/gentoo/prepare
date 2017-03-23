@@ -19,6 +19,29 @@ set_flags() {
     done
 }
 
+# Set a package specific use flag
+# Usage: set_package_flag <package> <use flag> <crouton target for comment>
+set_package_flag() {
+    # Check if the directory exists
+    if [ ! -d /etc/portage/package.use ]; then
+        mkdir /etc/portage/package.use
+    fi
+
+    # Check if the package use file exists
+    if [ ! -f /etc/portage/package.use/crouton ]; then
+        touch /etc/portage/package.use/crouton
+    fi
+
+    # Check if the requested package/use is already in the file
+    USEFLAG=`grep -e "^$1 $2$" /etc/portage/package.use/crouton | cut -f1 -d1`
+
+    # Set the use flag
+    if [ -z "${USEFLAG}" ]; then
+        echo "# Added flag $2 to $1 for crouton target $3" >> /etc/portage/package.use/crouton
+	echo "$1 $2" >> /etc/portage/package.use/crouton
+    fi
+}
+
 # Set unstable keywords for a package
 # Usage: keyword_package <package> <crouton target for comment>
 keyword_package() {

@@ -35,6 +35,9 @@ if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
         echo "INPUT_DEVICES=\"keyboard libinput mouse evdev\"" >> /etc/portage/make.conf
     fi
     
+    # We remove the suid bit because it breaks LD_PRELOAD'ing libcroutonfreon.so
+    set_package_flag x11-base/xorg-server -suid xorg
+    
     set_flags X dbus
     install xorg-x11 xorg-server
     set_flags xcb xkb

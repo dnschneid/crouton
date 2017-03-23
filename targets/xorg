@@ -18,6 +18,9 @@ rm -f '/etc/crouton/xserverrc-x11'
 # Set the use flags on gentoo that we'll need for X
 if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
     set_flags libkms uxa dri3 xvmc opengl
+   
+    # We remove the suid bit because it breaks LD_PRELOAD'ing libcroutonfreon.so
+    set_package_flag x11-base/xorg-server -suid xorg
      
      # Set VIDEO_CARDS and INPUT_DEVICES
      # FIXME: Perhaps make this more flexible, right now just pick all of them
