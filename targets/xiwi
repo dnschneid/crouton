@@ -29,17 +29,20 @@ if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
 fi
 
 if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
-    VIDEO_CARDS=`grep VIDEO_CARDS /etc/portage/make.conf | cut -d= -f1`
-    if [ -z ${VIDEO_CARDS} ]; then
-        echo "VIDEO_CARDS=\"dummy\"" >> /etc/portage/make.conf
-        echo "INPUT_DEVICES=\"keyboard libinput mouse evdev\"" >> /etc/portage/make.conf
-    fi
+    # Set video card and input devices
+    set_use_expand VIDEO_CARDS dummy
+    set_use_expand INPUT_DEVICES keyboard
+    set_use_expand INPUT_DEVICES libinput
+    set_use_expand INPUT_DEVICES mouse
+    set_use_expand INPUT_DEVICES evdev
     
+    # Set use flags for X
+    set_flags X dbus
     # We remove the suid bit because it breaks LD_PRELOAD'ing libcroutonfreon.so
     set_package_flag x11-base/xorg-server -suid xorg
-    
-    set_flags X dbus
+    # Install xorg
     install xorg-x11 xorg-server
+    # Set the flags for i3 and install it
     set_flags xcb xkb
     install i3
 else

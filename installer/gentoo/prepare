@@ -7,12 +7,12 @@
 
 DISTROAKA='gentoo'
 
-# Set use flags, separated by a space
+# Set global use flags, separated by a space
 set_flags() {
     while [ "$#" != 0 ]; do
          local flag=`euse -a $1 | cut -d\[ -f1`;
 	 # If don't already have the flag
-	 if [ -z ${flag} ]; then
+	 if [ -z "${flag}" ]; then
 	     euse -E $1 1> /dev/null
 	 fi
 	 shift
@@ -86,6 +86,24 @@ accept_license() {
     TIPS="$TIPS
 By installing $3, the license $2 has been enabled.
 "
+}
+
+# Set a use expand flag
+# Usage: set_use_expand <variable to expand> <flag to enable>
+set_use_expand() {
+    # Check if the variable is already present
+    EXPAND=`grep "^$1" /etc/portage/make.conf | cut -f2 -d\"`
+    # If not, add it with the desired flag
+    if [ -z "$EXPAND" ]; then
+        echo "$1=\"$2\"" >> /etc/portage/make.conf
+    # If the variable is already present, check if the flag is already set
+    else
+        FLAG_SET=`echo $EXPAND | grep $2 | cut -f1 -d\"`
+	# Add the flag
+	if [ -z "$FLAG_SET" ]; then
+            sed -i -e "s|$1=\"\(.*\)\"|$1=\"\1 $2\"|" /etc/portage/make.conf
+	fi
+    fi
 }
 
 # install_dist: see install() in prepare.sh for details.

@@ -17,18 +17,17 @@ rm -f '/etc/crouton/xserverrc-x11'
 
 # Set the use flags on gentoo that we'll need for X
 if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
-    set_flags libkms uxa dri3 xvmc opengl
-   
-    # We remove the suid bit because it breaks LD_PRELOAD'ing libcroutonfreon.so
-    set_package_flag x11-base/xorg-server -suid xorg
-     
-     # Set VIDEO_CARDS and INPUT_DEVICES
-     # FIXME: Perhaps make this more flexible, right now just pick all of them
-     VIDEO_CARDS=`grep VIDEO_CARDS /etc/portage/make.conf | cut -d= -f1`
-     if [ -z ${VIDEO_CARDS} ]; then
-         echo "VIDEO_CARDS=\"intel fbdev vesa dummy\"" >> /etc/portage/make.conf
-         echo "INPUT_DEVICES=\"keyboard libinput mouse evdev\"" >> /etc/portage/make.conf
-     fi
+   set_flags libkms uxa dri3 xvmc opengl
+   # We remove the suid bit because it breaks LD_PRELOAD'ing libcroutonfreon.so
+   set_package_flag x11-base/xorg-server -suid xorg
+   # Set video card and input devices
+   # FIXME: ARM, non-intel?
+   set_use_expand VIDEO_CARDS intel
+   set_use_expand INPUT_DEVICES keyboard
+   set_use_expand INPUT_DEVICES libinput
+   set_use_expand INPUT_DEVICES mouse
+   set_use_expand INPUT_DEVICES evdev
+   set_use_expand INPUT_DEVICES synaptics
 fi
 
 # Figure out what we need on this system
