@@ -8,12 +8,11 @@ DESCRIPTION='GTK-based tools including gdebi, gksu, and a simple browser.'
 
 ### Append to prepare.sh:
 if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
-    set_flags gtk gnome-keyring
-    install gksu
+    set_flags gtk gnome-keyring policykit
 else
     install_dummy network-manager network-manager-gnome
-    install gdebi gksu
 fi
+install debian=gdebi, gksu
 
 if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
     install dillo
