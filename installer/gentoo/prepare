@@ -10,76 +10,52 @@ DISTROAKA='gentoo'
 # Set global use flags, separated by a space
 set_flags() {
     while [ "$#" != 0 ]; do
-         local flag=`euse -a $1 | cut -d\[ -f1`;
-	 # If don't already have the flag
-	 if [ -z "${flag}" ]; then
-	     euse -E $1 1> /dev/null
-	 fi
-	 shift
+        # If don't already have the flag
+        if [ -z "$(euse -a $1)" ]; then
+            euse -E "$1" 1> /dev/null
+        fi
+        shift
     done
 }
 
 # Set a package specific use flag
 # Usage: set_package_flag <package> <use flag> <crouton target for comment>
 set_package_flag() {
-    # Check if the directory exists
-    if [ ! -d /etc/portage/package.use ]; then
-        mkdir /etc/portage/package.use
-    fi
+    # Make sure the package.use directory and file exist
+    mkdir -p /etc/portage/package.use
+    touch /etc/portage/package.use/crouton
 
-    # Check if the package use file exists
-    if [ ! -f /etc/portage/package.use/crouton ]; then
-        touch /etc/portage/package.use/crouton
-    fi
-
-    # Check if the requested package/use is already in the file
-    USEFLAG=`grep -e "^$1 $2$" /etc/portage/package.use/crouton | cut -f1 -d1`
-
-    # Set the use flag
-    if [ -z "${USEFLAG}" ]; then
+    # Set the use flag if it's not already set
+    if [ $(grep -c -F -x -e "$1 $2" /etc/portage/package.use/crouton || true) = "0" ]; then
         echo "# Added flag $2 to $1 for crouton target $3" >> /etc/portage/package.use/crouton
-	echo "$1 $2" >> /etc/portage/package.use/crouton
+        echo "$1 $2" >> /etc/portage/package.use/crouton
     fi
 }
 
 # Set unstable keywords for a package
 # Usage: keyword_package <package> <crouton target for comment>
 keyword_package() {
-    # Check if the directory exists
-    if [ ! -d /etc/portage/package.keywords ]; then
-        mkdir /etc/portage/package.keywords
-    fi
+    # Make sure the keywords directory and file exist
+    mkdir -p /etc/portage/package.keywords
+    touch /etc/portage/package.keywords/crouton
 
-    # Check if the package keywords file exists
-    if [ ! -f /etc/portage/package.keywords/crouton ]; then
-        touch /etc/portage/package.keywords/crouton
-    fi
-
-    # Check if the requested package is already in the file
-    UNMASK=`grep -e "^$1[[:space:]]" -e "^$1$" /etc/portage/package.keywords/crouton | cut -f1 -d1`
-
-    # If we didn't match, set it
-    if [ -z "${UNMASK}" ]; then
+    # Check if the keyword is set for this package and if not, set it
+    if [ $(grep -c -e "^$1[[:space:]]" -e "^$1$" /etc/portage/package.keywords/crouton || true) = "0" ]; then
         echo "# Added keywords for crouton target $2" >> /etc/portage/package.keywords/crouton
-	echo "$1" >> /etc/portage/package.keywords/crouton
+        echo "$1" >> /etc/portage/package.keywords/crouton
     fi
 }
 
 # Set a license
 # Usage: accept_license <package> <license> <crouton target for comment>
 accept_license() {
-    # Check if the package license file exists
-    if [ ! -f /etc/portage/package.license ]; then
-        touch /etc/portage/package.license
-    fi
+    # Make sure the package license file exists
+    touch /etc/portage/package.license
 
-    # Check if the requested package is already in the file
-    LICENSE=`grep "$1[[:space:]]$2" /etc/portage/package.license | cut -f1 -d1`
-
-    # If we didn't match, set it
-    if [ -z "${LICENSE}" ]; then
+    # Check if the license is set for this package and if not, set it
+    if [ $(grep -c "$1[[:space:]]$2" /etc/portage/package.license || true) = "0" ]; then
         echo "# Added license for crouton target $3" >> /etc/portage/package.license
-	echo "$1 $2" >> /etc/portage/package.license
+        echo "$1 $2" >> /etc/portage/package.license
     fi
 
     # Let the user know that we accepted the license for them
@@ -91,16 +67,14 @@ By installing $3, the license $2 has been enabled.
 # Set a use expand flag
 # Usage: set_use_expand <variable to expand> <flag to enable>
 set_use_expand() {
-    # Check if the variable is already present
-    EXPAND=`grep "^$1" /etc/portage/make.conf | cut -f2 -d\"`
+    EXPAND=$(grep "^$1=" /etc/portage/make.conf || true)
     # If not, add it with the desired flag
     if [ -z "$EXPAND" ]; then
         echo "$1=\"$2\"" >> /etc/portage/make.conf
     # If the variable is already present, check if the flag is already set
     else
-        FLAG_SET=`echo $EXPAND | grep $2 | cut -f1 -d\"`
 	# Add the flag
-	if [ -z "$FLAG_SET" ]; then
+	if [ $(echo "$EXPAND" | grep -c "$2" || true) = "0" ]; then
             sed -i -e "s|$1=\"\(.*\)\"|$1=\"\1 $2\"|" /etc/portage/make.conf
 	fi
     fi
@@ -116,64 +90,37 @@ install_dist() {
         fi
 	# We ignore --minimal and --asdeps it does nothing for gentoo
 	if [ ! "$1" = "--minimal" -a ! "$1" = "--asdeps" ]; then
-		pkgs="$pkgs $1";
+	    pkgs="$pkgs $1";
 	fi
         shift
     done
-    emerge -Duv --newuse $pkgs
+    if [ ! -z "$pkgs" ]; then
+        emerge -Duv --newuse $pkgs
+    fi
 }
 
 
 # install_pkg_dist: see install_pkg() in prepare.sh for details.
 install_pkg_dist() {
-	echo "FIXME: install_pkg_dist"
+    echo "GENTOO FIXME: install_pkg_dist"
 }
 
 
 # install_dummy_dist: see install_dummy() in prepare.sh for details.
 install_dummy_dist() {
-	echo "FIXME: install_dummy_dist"
+    echo "GENTOO FIXME: install_dummy_dist"
 }
 
 
 # remove_dist: see remove() in prepare.sh for details.
 remove_dist() {
-	echo "FIXME: remove_dist"
+    echo "GENTOO FIXME: remove_dist"
 }
-
 
 # list_uninstalled_dist: see list_uninstalled() in prepare.sh for details.
 # If the package is virtual (e.g. libc-dev), we need to find the binary package
 # corresponding to it (e.g. libc6-dev), so that we can remove it afterwards
 # ("apt-get remove libc-dev" does not remove libc6-dev).
 list_uninstalled_dist() {
-	echo "FIXME: list_uninstalled_dist"
-}
-
-# detect_mirror
-# Detects the current mirror: Prints the first source that provides the
-# "main" component.
-detect_mirror() {
-	echo "FIXME: detect_mirror"
-}
-
-
-# install_mirror_package [--asdeps] package path [regex arch]
-# Fetch and install a package directly from the mirror.
-# This allows to install a package from a different release, when the current
-# release does not provide the required package, or when the version it
-# provides is broken or outdated.
-# --asdeps: Install as dependency
-# package:  Package name (e.g. xserver-xephyr)
-# path:     Mirror path (e.g. pool/universe/x/xorg-server)
-# regex:    Version regex (e.g. '1\.11\.4-0ubuntu[0-9][0-9]\.[0-9]*').
-#           If not specified, match any version (default regex: ".*").
-#           The latest version that matches the regex is selected.
-#           If the package is a dependency of other packages (e.g. a library),
-#           you should select the earliest version that provides the required
-#           features, to prevent breakage during release upgrade.
-# arch:     Additional architecture to install. e.g. i386 installs both i386
-#           and amd64 packages. Defaults to only installing "$ARCH"
-install_mirror_package() {
-	echo "FIXME: install_mirror_package"
+    echo "GENTOO FIXME: list_uninstalled_dist"
 }
