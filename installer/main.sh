@@ -3,8 +3,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-set -e
-
 APPLICATION="${0##*/}"
 SCRIPTDIR="${SCRIPTDIR:-"`dirname "$0"`/.."}"
 CHROOTBINDIR="$SCRIPTDIR/chroot-bin"

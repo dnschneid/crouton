@@ -3,8 +3,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-set -e
-
 # Generates a release in the releases/ directory (which should be a checkout of
 # the releases branch of the same repo) and pushes it.
 
@@ -17,7 +15,7 @@ dir="`readlink -f "$0"`"
 cd "${dir%/*}/.."
 
 # Import common functions
-. installer/functions 
+. installer/functions
 
 if [ "$1" = '-f' ]; then
     FORCE=y

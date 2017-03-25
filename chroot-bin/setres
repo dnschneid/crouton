@@ -11,8 +11,6 @@
 # If XMETHOD is anything else, set a resolution from cvt output.
 # In all cases, outputs the applied resolution.
 
-set -e
-
 if [ "$#" -lt 2 -o "$#" -gt 4 ]; then
     echo "USAGE: ${0##*/} x y [r [output]]" 1>&2
     exit 2

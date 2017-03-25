@@ -17,8 +17,6 @@
 # Numbering within a category is arbitrary and can have overlaps.
 # Tests are always run in alphanumeric order unless specified by parameters.
 
-set -e
-
 APPLICATION="${0##*/}"
 SCRIPTDIR="`readlink -f "\`dirname "$0"\`/.."`"
 # List of all supported (non-*'d) releases

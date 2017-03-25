@@ -3,8 +3,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-set -e
-
 APPLICATION="${0##*/}"
 ENTERCHROOT="$(dirname "$(readlink -f "$0")")/enter-chroot"
 OPTS_ENTER=''
@@ -31,7 +29,7 @@ quit prematurely. If your application does not have a parameter that prevents
 it from forking, and crouton is unable to automatically detect the fork, you can
 use -f to prevent xiwi from quitting automatically.
 xiwi will quit if you close the Chromium OS window when nothing is displayed.
-  
+
 You can cycle through multiple windows inside the application
 via Ctrl-Alt-Tab/Ctrl-Alt-Shift-Tab, or close them via Ctrl-Alt-Shift-Escape.
 If the chroot_app begins with 'start' but you still want to
@@ -51,11 +49,10 @@ while getopts 'bc:k:n:t:u:FTf' OPT; do
 done
 shift "$((OPTIND-1))"
 
-if [ "$#" = "0" ]; then 
+if [ "$#" = "0" ]; then
     echo "$USAGE" 1>&2
     exit 2
 fi
 
 eval "exec sh -e \"\$ENTERCHROOT\" -t xiwi $OPTS_ENTER \
     exec xiwi $OPTS_XIWI \"\$@\""
-    

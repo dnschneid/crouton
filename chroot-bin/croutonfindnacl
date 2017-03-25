@@ -22,8 +22,6 @@
 # On success, prints "pid:filename" and exits with code 0.
 # On error (shm not found, invalid parameters), exits with code >0.
 
-set -e
-
 VERBOSE=
 
 if [ "$#" -lt 2 -o "$#" -gt 3 ]; then
