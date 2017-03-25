@@ -29,6 +29,11 @@ if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
 fi
 
 if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
+    # These flags are common to xiwi and xorg and should be kept in sync
+    # They must be set early, so we can't put them in x11-common
+    set_flags X guile networking
+    set_package_flag app-text/xmlto text x11-common
+
     # Set video card and input devices
     set_use_expand VIDEO_CARDS dummy
     set_use_expand INPUT_DEVICES keyboard
@@ -36,8 +41,6 @@ if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
     set_use_expand INPUT_DEVICES mouse
     set_use_expand INPUT_DEVICES evdev
     
-    # Set use flags for X
-    set_flags X dbus
     # We remove the suid bit because it breaks LD_PRELOAD'ing libcroutonfreon.so
     set_package_flag x11-base/xorg-server -suid xorg
     # Install xorg
@@ -58,8 +61,8 @@ fi
 # Compile croutonfbserver
 compile fbserver '-lX11 -lXfixes -lXdamage -lXext -lXtst' \
     gentoo=x11-libs/libX11,libx11-dev gentoo=x11-libs/libXfixes,libxfixes-dev \
-    gentoo=libXdamage,libxdamage-dev gentoo=libXext,libxext-dev \
-    gentoo=libXtst,libxtst-dev
+    gentoo=x11-libs/libXdamage,libxdamage-dev gentoo=x11-libs/libXext,libxext-dev \
+    gentoo=x11-libs/libXtst,libxtst-dev
 compile findnacld ''
 
 ln -sf /etc/crouton/xorg-dummy.conf /etc/X11/

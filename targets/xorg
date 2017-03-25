@@ -17,17 +17,22 @@ rm -f '/etc/crouton/xserverrc-x11'
 
 # Set the use flags on gentoo that we'll need for X
 if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
-   set_flags libkms uxa dri3 xvmc opengl
-   # We remove the suid bit because it breaks LD_PRELOAD'ing libcroutonfreon.so
-   set_package_flag x11-base/xorg-server -suid xorg
-   # Set video card and input devices
-   # FIXME: ARM, non-intel?
-   set_use_expand VIDEO_CARDS intel
-   set_use_expand INPUT_DEVICES keyboard
-   set_use_expand INPUT_DEVICES libinput
-   set_use_expand INPUT_DEVICES mouse
-   set_use_expand INPUT_DEVICES evdev
-   set_use_expand INPUT_DEVICES synaptics
+    # These flags are common to xiwi and xorg and should be kept in sync
+    # They must be set early, so we can't put them in x11-common
+    set_flags X guile networking
+    set_package_flag app-text/xmlto text x11-common
+
+    set_flags libkms uxa dri3 xvmc opengl
+    # We remove the suid bit because it breaks LD_PRELOAD'ing libcroutonfreon.so
+    set_package_flag x11-base/xorg-server -suid xorg
+    # Set video card and input devices
+    # FIXME: ARM, non-intel?
+    set_use_expand VIDEO_CARDS intel
+    set_use_expand INPUT_DEVICES keyboard
+    set_use_expand INPUT_DEVICES libinput
+    set_use_expand INPUT_DEVICES mouse
+    set_use_expand INPUT_DEVICES evdev
+    set_use_expand INPUT_DEVICES synaptics
 fi
 
 # Figure out what we need on this system
@@ -222,13 +227,13 @@ if [ -z "$inteldriver" -a -n "$backport" ] && release -eq precise; then
         x11-xserver-utils xauth xinit xfonts-utils xkb-data xorg-docs-core \
         xterm x11-common xinput
 elif [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
-     install xorg-x11 xorg-server ${installvideodrivers}
+    install xorg-x11 xorg-server $installvideodrivers
 
-     # We don't need to remove video drivers
-     removevideodrivers=""
+    # We don't need to remove video drivers
+    removevideodrivers=""
 else
-     install xorg $installvideodrivers -- xserver-xorg-video-all$backport \
-         $vmmouse
+    install xorg $installvideodrivers -- xserver-xorg-video-all$backport \
+        $vmmouse
 fi
 
 # Remove bad video drivers
