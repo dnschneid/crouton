@@ -8,8 +8,9 @@ DESCRIPTION='Installs LXDE along with common applications. (Approx. 800MB)'
 
 ### Append to prepare.sh:
 if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
-    install lightdm lxlauncher lxtask galculator gpicview leafpad \
-    	lxappearance-obconf xarchiver libreoffice-bin
+    set_flags icu
+    install lxlauncher lxtask galculator gpicview leafpad \
+    	xarchiver libreoffice-bin
 else
     install ubuntu=lubuntu-desktop,task-lxde-desktop -- network-manager
 fi
