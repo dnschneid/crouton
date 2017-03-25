@@ -89,7 +89,8 @@ build_cras() {
 
     # Install CRAS dependencies
     install --minimal alsa-utils \
-        gentoo=media-libs/alsa-lib,libasound2$pkgsuffix gentoo=speex,libspeexdsp1$pkgsuffix
+        gentoo=media-libs/alsa-lib,libasound2$pkgsuffix \
+	gentoo=speex,libspeexdsp1$pkgsuffix
 
     # Gentoo already has these deps installed
     if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
@@ -99,24 +100,18 @@ build_cras() {
 
     # precise does not allow libasound2-dev and libasound2-dev:i386 to be
     # installed simultaneously
-    if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
-        if release -le precise && [ -n "$cras_arch" ]; then
-            install --minimal --asdeps libasound2-dev
-            # Manually link .so file
-            libasoundso="/usr/lib$archextrapath/libasound.so"
-            if [ ! -f "$libasoundso" ]; then
-                addtrap "rm -f '$libasoundso' 2>/dev/null"
-                ln -sfT libasound.so.2 "$libasoundso"
-            fi
-            ALSALIBDIR="/usr/lib$archextrapath/alsa-lib"
-        else
-            install --minimal --asdeps libasound2-dev$pkgsuffix
-            ALSALIBDIR="`PKG_CONFIG_PATH="$pkgconfigpath" \
-                            pkg-config --variable=libdir alsa`/alsa-lib"
+    if release -le precise && [ -n "$cras_arch" ]; then
+        install --minimal --asdeps libasound2-dev
+        # Manually link .so file
+        libasoundso="/usr/lib$archextrapath/libasound.so"
+        if [ ! -f "$libasoundso" ]; then
+            addtrap "rm -f '$libasoundso' 2>/dev/null"
+            ln -sfT libasound.so.2 "$libasoundso"
         fi
+        ALSALIBDIR="/usr/lib$archextrapath/alsa-lib"
     else
-        ALSALIBDIR="`PKG_CONFIG_PATH="$pkgconfigpath" \
-                        pkg-config --variable=libdir alsa`/alsa-lib"
+        install --minimal --asdeps debian=libasound2-dev$pkgsuffix,
+        ALSALIBDIR="$(PKG_CONFIG_PATH="$pkgconfigpath" pkg-config --variable=libdir alsa)/alsa-lib"
     fi
 
     # Start subshell for compilation
