@@ -19,13 +19,10 @@ fi
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
-EXT_APPS=""
-if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
-    EXT_APPS="x11-misc/xclip appres luit xdpyinfo xdriinfo xev xfd xfontsel xkill xlsatoms xlsclients xlsfonts xmessage xprop xvinfo xwininfo"
-else
-    EXT_APPS="xclip x11-utils"
-fi
-install ${EXT_APPS}
+
+# Note: xdpyinfo, xdriinfo and xprop are in x11-utils for other distros
+install gentoo=x11-misc/xclip,xclip gentoo=xdpyinfo,x11-utils gentoo=xdriinfo, \
+    gentoo=xprop,
 
 compile websocket ''
 
