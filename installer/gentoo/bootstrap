@@ -5,69 +5,40 @@
 
 # This is a distro-specific bootstrap script, sourced from main.sh, and as such
 # has access to all of the variables set by main.sh, namely $tmp (the temporary
-# directory), $INSTALLERDIR/$DISTRO, $RELEASE, $BOOTSTRAP_RELEASE (if different
-# from $RELEASE), $ARCH, and $MIRROR.
+# directory), $INSTALLERDIR/$DISTRO, $RELEASE, $ARCH, and $MIRROR.
 
-# Set the arch if it's not already set
-if [ -z $ARCH ]; then
-    ARCH="amd64";
-fi
+# Grab the latest stage3
+echo 'Finding the latest stage3...' 1>&2
+LATEST_STAGE3="$MIRROR/releases/$ARCH/autobuilds/latest-stage3-$ARCH.txt"
+# Read the latest release, the sed matches the lines that don't start with # 
+# and then removes the size (everything after the space) from the filename
+STAGE3=$(wget -q -O- "$LATEST_STAGE3" | sed -n -e '/^#/! s/ .*//p')
+DIR="$tmp/$RELEASE-$ARCH"
+mkdir -p "$DIR"
 
-# Grab the latest tar file
-echo 'Finding latest stage3...' 1>&2
-d="http://distfiles.gentoo.org/releases/${ARCH}/autobuilds/current-stage3-${ARCH}/"
-f=`curl -s $d | grep -o stage3-${ARCH}-'[0-9]\{8\}'.tar.bz2 | head -n 1`
-DIR="${tmp}/${RELEASE}-${ARCH}"
-mkdir ${DIR}
-
-LOCALFILE=""
-if [ -f "/tmp/$f" ]; then
-    LOCALFILE="/tmp/$f"
-fi
-
-if [ -z $LOCALFILE ]; then
-    echo "Downloading release: ${f}..." 1>&2
-    if ! wget -O- --no-verbose --timeout=60 -t2 "$d$f" | tar -C "${DIR}" --strip-components=1 -jx 2>/dev/null; then
-        error 1 'Failed to download stage3.'
-    fi
-else
-    echo "Using local file in ${LOCALFILE}..." 1>&2
-    if ! cat ${LOCALFILE} | tar -C "${DIR}" --strip-components=1 -jx 2>/dev/null; then
-        error 1 "Failed to unpack stage3 from ${LOCALFILE}"
-    fi
+echo "Downloading release: $STAGE3..." 1>&2
+if ! wget -O- --no-verbose --timeout=60 -t2 "$MIRROR/releases/$ARCH/autobuilds/$STAGE3" | tar -C "$DIR" --strip-components=1 -jx 2>/dev/null; then
+    error 1 'Failed to download stage3.'
 fi
 
 # Fetch the latest portage tree
-p="http://distfiles.gentoo.org/snapshots/portage-latest.tar.bz2"
-pf="portage-latest.tar.bz2"
-mkdir "${DIR}/usr/portage"
+PORTAGE="$MIRROR/snapshots/portage-latest.tar.bz2"
+mkdir -p "$DIR/usr/portage"
 
-LOCALFILE=""
-if [ -f "/tmp/${pf}" ]; then
-    LOCALFILE="/tmp/${pf}"
-fi
-
-if [ -z "${LOCALFILE}" ]; then
-    echo "Fetching the portage tree snapshot..." 1>&2
-    if ! wget -O- --no-verbose --timeout=60 -t2 $p | tar -C "${DIR}/usr/portage" --strip-components=1 -jx 2>/dev/null; then
-        error 1 'Failed to fetch the portage tree.'
-    fi
-else
-    echo "Using the portage tree from ${LOCALFILE}" 1>&2
-    if ! cat ${LOCALFILE} | tar -C "${DIR}/usr/portage" --strip-components=1 -jx; then
-        error 1 'Failed to unpack portage tree from /tmp'
-    fi
+echo "Fetching the portage tree snapshot..." 1>&2
+if ! wget -O- --no-verbose --timeout=60 -t2 "$PORTAGE" | tar -C "$DIR/usr/portage" --strip-components=1 -jx 2>/dev/null; then
+    error 1 'Failed to fetch the portage tree.'
 fi
 
 # If we're using a 64 bit x86 arch, build for both x86 and amd64
-if [ ${ARCH} = 'amd64' ]; then
-    echo 'ABI_X86="32 64"' >> ${DIR}/etc/portage/make.conf
+if [ "$ARCH" = 'amd64' ]; then
+    echo 'ABI_X86="32 64"' >> "$DIR/etc/portage/make.conf"
 fi
 
-# Set beter cflags
-sed -i 's/CFLAGS="-O2 -pipe"/CFLAGS="-O2 -pipe -march=native -mtune=native"/' ${DIR}/etc/portage/make.conf
+# Set beter cflags -- no, not -funroll-loops :)
+sed -i 's/CFLAGS="-O2 -pipe"/CFLAGS="-O2 -pipe -march=native -mtune=native"/' "$DIR/etc/portage/make.conf"
 
 # Set better make opts
-CORE_COUNT=`cat /proc/cpuinfo  | grep processor | wc -l`
-J_COUNT=`expr ${CORE_COUNT} + 1`
-echo "MAKEOPTS=\"-j${J_COUNT}\"" >> ${DIR}/etc/portage/make.conf
+CORE_COUNT=$(grep -c processor /proc/cpuinfo)
+J_COUNT=$((CORE_COUNT + 1))
+echo "MAKEOPTS=\"-j$J_COUNT\"" >> "$DIR/etc/portage/make.conf"
