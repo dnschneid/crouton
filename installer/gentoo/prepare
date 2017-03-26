@@ -10,10 +10,15 @@ DISTROAKA='gentoo'
 # Set global use flags, separated by a space
 set_flags() {
     while [ "$#" != 0 ]; do
-        # If don't already have the flag
-        if [ -z "$(euse -a $1)" ]; then
-            euse -E "$1" 1> /dev/null
-        fi
+        # Check if the flag starts with a -, if so, we're disabling it
+	if [ "${1:0:1}" = "-" ]; then
+	    euse -D "${1#"-"}" 1> /dev/null
+	else
+            # If we haven't already set the flag, we can enable it
+            if [ -z "$(euse -a $1)" ]; then
+                euse -E "$1" 1> /dev/null
+            fi
+	fi
         shift
     done
 }
