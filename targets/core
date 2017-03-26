@@ -118,6 +118,9 @@ if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
     if [ "$TIME_SEC" -gt "$LAST_SYNC" ]; then
         emerge --sync
     fi
+
+    # Make sure that the system is up to date
+    emerge world -Duv --newuse
 fi
 
 # On release upgrade, keyboard-configuration might be reconfigured.
