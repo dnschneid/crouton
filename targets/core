@@ -129,8 +129,8 @@ if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
     # Install cpuid2cpuflags so we can easily set reasonable CFLAGS
     install gentoolkit cpuid2cpuflags
     if [ "$ARCH" = 'x86' -o "$ARCH" = 'amd64' ]; then
-        CPUFLAGS=$(cpuinfo2cpuflags-x86);
-        sed -i "s|CPU_FLAGS_X86=.*|$CPUFLAGS|" /etc/portage/make.conf
+        CPUFLAGS=$(cpuinfo2cpuflags-x86 | cut -d: -f2)
+        sed -i "s|CPU_FLAGS_X86.*|CPU_FLAGS_X86=\"${CPUFLAGS}\"|" /etc/portage/make.conf
     fi
     
     # Set the dbus flag globally
