@@ -40,10 +40,9 @@ if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
 
     # Set video card and input devices
     set_use_expand VIDEO_CARDS dummy
-    set_use_expand INPUT_DEVICES keyboard
-    set_use_expand INPUT_DEVICES libinput
-    set_use_expand INPUT_DEVICES mouse
     set_use_expand INPUT_DEVICES evdev
+    set_use_expand INPUT_DEVICES synaptics
+    set_use_expand INPUT_DEVICES wacom
     
     # We remove the suid bit because it breaks LD_PRELOAD'ing libcroutonfreon.so
     set_package_flag x11-base/xorg-server -suid xorg
