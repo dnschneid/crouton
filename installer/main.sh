@@ -37,6 +37,7 @@ PREVIOUS_DEFAULT_RELEASES='precise'
 TARBALL=''
 TARGETS=''
 TARGETFILE=''
+TMPPATH='/tmp'
 UPDATE=''
 UPDATEIGNOREEXISTING=''
 
@@ -610,15 +611,21 @@ elif [ -z "$RESTOREBIN$RESTORE$UPDATE" ]; then
     echo "Downloading $RELEASE-$ARCH bootstrap to $TARBALL" 1>&2
 fi
 
+# If the size of the temporary directory is under 2GB, use the destination path
+# to store the data instead of /tmp
+if [ "$(df $TMPPATH | awk 'NR == 2 { print $4 }')" -lt 2000000 ]; then
+    TMPPATH="$CHROOTSRC"
+fi
+
 # Download the bootstrap data if appropriate
 if [ -z "$UPDATE$RESTOREBIN" ] && [ -n "$DOWNLOADONLY" -o -z "$TARBALL" ]; then
     # Create the temporary directory and delete it upon exit
-    tmp="`mktemp -d --tmpdir=/tmp "$APPLICATION.XXX"`"
+    tmp="$(mktemp -d --tmpdir="$TMPPATH" "$APPLICATION.XXX")"
     subdir="$RELEASE-$ARCH"
     addtrap "rm -rf --one-file-system '$tmp'"
 
     # Ensure that the temporary directory has exec+dev, or mount a new tmpfs
-    if [ "$NOEXECTMP" = 'y' ]; then
+    if [ "$NOEXECTMP" = 'y' ] && [ "$TMPPATH" = '/tmp' ]; then
         mount -i -t tmpfs -o 'rw,dev,exec' tmpfs "$tmp"
         addtrap "umount -l '$tmp'"
     fi
