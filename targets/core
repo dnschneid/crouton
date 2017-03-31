@@ -147,14 +147,11 @@ fi
 install --minimal gentoo=app-admin/sudo,sudo wget ca-certificates \
     debian=apt-transport-https,
 
-# Gentoo doesn't have a sudo group, add it now and allow those users to use sudo
-# Debian uses GID 28 for sudo
-if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
-    # If the sudo group already exists, we'll assume we already set it up
-    if ! grep -q ^sudo /etc/group; then
-        groupadd -g 28 sudo
-        echo "%sudo ALL=(ALL) ALL" > /etc/sudoers.d/crouton-group
-    fi
+# Create the sudo group (if needed) and allow users in sudo to run all commands
+if ! grep -q ^sudo /etc/group; then
+    # Debian uses GID 28 for sudo and it doesn't overlap with Gentoo, so use it
+    groupadd -g 28 sudo
+    echo "%sudo ALL=(ALL) ALL" > /etc/sudoers.d/crouton-group
 fi
 
 # Generate and set default locale
