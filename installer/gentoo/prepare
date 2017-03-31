@@ -11,14 +11,14 @@ DISTROAKA='gentoo'
 set_flags() {
     while [ "$#" != 0 ]; do
         # Check if the flag starts with a -, if so, we're disabling it
-	if [ "${1:0:1}" = "-" ]; then
-	    euse -D "${1#"-"}" 1> /dev/null
-	else
-            # If we haven't already set the flag, we can enable it
-            if [ -z "$(euse -a $1)" ]; then
+        if [ "${1#-}" != "$1" ]; then
+            euse -D "${1#-}" 1> /dev/null
+        # If we haven't already set the flag, we can enable it
+        else
+            if [ -z "$(euse -a "$1")" ]; then
                 euse -E "$1" 1> /dev/null
             fi
-	fi
+        fi
         shift
     done
 }
@@ -26,41 +26,44 @@ set_flags() {
 # Set a package specific use flag
 # Usage: set_package_flag <package> <use flag> <crouton target for comment>
 set_package_flag() {
+    local PDIR="/etc/portage/package.use"
     # Make sure the package.use directory and file exist
-    mkdir -p /etc/portage/package.use
-    touch /etc/portage/package.use/crouton
+    mkdir -p "$PDIR"
+    touch "$PDIR/crouton"
 
     # Set the use flag if it's not already set
-    if [ $(grep -c -F -x -e "$1 $2" /etc/portage/package.use/crouton || true) = "0" ]; then
-        echo "# Added flag $2 to $1 for crouton target $3" >> /etc/portage/package.use/crouton
-        echo "$1 $2" >> /etc/portage/package.use/crouton
+    if ! grep -q "$1 $2" "$PDIR/crouton"; then
+        echo "# Added flag $2 to $1 for crouton target $3" >> "$PDIR/crouton"
+        echo "$1 $2" >> "$PDIR/crouton"
     fi
 }
 
 # Set unstable keywords for a package
 # Usage: keyword_package <package> <crouton target for comment>
 keyword_package() {
+    local PDIR="/etc/portage/package.keywords"
     # Make sure the keywords directory and file exist
-    mkdir -p /etc/portage/package.keywords
-    touch /etc/portage/package.keywords/crouton
+    mkdir -p "$PDIR"
+    touch "$PDIR/crouton"
 
     # Check if the keyword is set for this package and if not, set it
-    if [ $(grep -c -e "^$1[[:space:]]" -e "^$1$" /etc/portage/package.keywords/crouton || true) = "0" ]; then
-        echo "# Added keywords for crouton target $2" >> /etc/portage/package.keywords/crouton
-        echo "$1" >> /etc/portage/package.keywords/crouton
+    if ! grep -q -e "^$1[[:space:]]" -e "^$1$" "$PDIR/crouton"; then
+        echo "# Added keywords for crouton target $2" >> "$PDIR/crouton"
+        echo "$1" >> "$PDIR/crouton"
     fi
 }
 
 # Set a license
 # Usage: accept_license <package> <license> <crouton target for comment>
 accept_license() {
+    local PF="/etc/portage/package.license"
     # Make sure the package license file exists
-    touch /etc/portage/package.license
+    touch "$PF"
 
     # Check if the license is set for this package and if not, set it
-    if [ $(grep -c "$1[[:space:]]$2" /etc/portage/package.license || true) = "0" ]; then
-        echo "# Added license for crouton target $3" >> /etc/portage/package.license
-        echo "$1 $2" >> /etc/portage/package.license
+    if ! grep -q "$1[[:space:]]$2" "$PF"; then
+        echo "# Added license for crouton target $3" >> "$PF"
+        echo "$1 $2" >> "$PF"
     fi
 
     # Let the user know that we accepted the license for them
@@ -72,16 +75,17 @@ By installing $3, the license $2 has been enabled.
 # Set a use expand flag
 # Usage: set_use_expand <variable to expand> <flag to enable>
 set_use_expand() {
-    EXPAND=$(grep "^$1=" /etc/portage/make.conf || true)
+    local PM="/etc/portage/make.conf"
+    EXPAND="$(grep "^$1=" "$PM" || true)"
     # If not, add it with the desired flag
     if [ -z "$EXPAND" ]; then
-        echo "$1=\"$2\"" >> /etc/portage/make.conf
+        echo "$1=\"$2\"" >> "$PM"
     # If the variable is already present, check if the flag is already set
     else
-	# Add the flag
-	if [ $(echo "$EXPAND" | grep -c "$2" || true) = "0" ]; then
-            sed -i -e "s|$1=\"\(.*\)\"|$1=\"\1 $2\"|" /etc/portage/make.conf
-	fi
+        # Add the flag
+        if ! echo "$EXPAND" | grep -q "$2"; then
+            sed -i -e "s|$1=\"\(.*\)\"|$1=\"\1 $2\"|" "$PM"
+        fi
     fi
 }
 
@@ -93,13 +97,14 @@ install_dist() {
             shift
             break
         fi
-	# We ignore --minimal and --asdeps it does nothing for gentoo
-	if [ ! "$1" = "--minimal" -a ! "$1" = "--asdeps" ]; then
-	    pkgs="$pkgs $1";
-	fi
+        # We ignore --minimal and --asdeps it does nothing for gentoo
+        if [ "$1" != "--minimal" -a "$1" != "--asdeps" ]; then
+            pkgs="$pkgs $1";
+        fi
         shift
     done
-    if [ ! -z "$pkgs" ]; then
+    if [ -n "$pkgs" ]; then
+        # No quotes here, we want the shell to do word splitting
         emerge -Duv --newuse $pkgs
     fi
 }
@@ -107,25 +112,26 @@ install_dist() {
 
 # install_pkg_dist: see install_pkg() in prepare.sh for details.
 install_pkg_dist() {
-    echo "GENTOO FIXME: install_pkg_dist"
+    echo "ERROR: A target called install_pkg_dist() on Gentoo"
+    exit 3
 }
 
 
 # install_dummy_dist: see install_dummy() in prepare.sh for details.
 install_dummy_dist() {
-    echo "GENTOO FIXME: install_dummy_dist"
+    echo "ERROR: A target called install_dummy_dist() on Gentoo"
+    exit 3
 }
 
 
 # remove_dist: see remove() in prepare.sh for details.
 remove_dist() {
-    echo "GENTOO FIXME: remove_dist"
+    echo "ERROR: A target called remove_dist() on Gentoo"
+    exit 3
 }
 
 # list_uninstalled_dist: see list_uninstalled() in prepare.sh for details.
-# If the package is virtual (e.g. libc-dev), we need to find the binary package
-# corresponding to it (e.g. libc6-dev), so that we can remove it afterwards
-# ("apt-get remove libc-dev" does not remove libc6-dev).
 list_uninstalled_dist() {
-    echo "GENTOO FIXME: list_uninstalled_dist"
+    "ERROR: A target called list_uninstalled_dist() on Gentoo"
+    exit 3
 }

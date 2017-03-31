@@ -42,23 +42,24 @@ if [ -n "`list_uninstalled '' "$pkg"`" ]; then
         # Rename google-chrome-stable to google chrome to match the ebuild
         if [ "$CHANNEL" = 'stable' ]; then
             GENTOO_PKG="www-client/google-chrome"
-	else
+        else
             GENTOO_PKG="www-client/$pkg"
-	fi
-	
-	# Keyword Chrome
-	keyword_package $GENTOO_PKG $pkg
+        fi
 
-	# Accept the license
-	accept_license $GENTOO_PKG google-chrome $pkg	
+        # Keyword Chrome
+        keyword_package "$GENTOO_PKG" "$pkg"
 
-	# Install chrome
-	install ${GENTOO_PKG}
+        # Accept the license
+        accept_license "$GENTOO_PKG" google-chrome "$pkg"
 
-	# Install recommended fonts
-	install media-fonts/arphicfonts media-fonts/bitstream-cyberbit \
-	    media-fonts/droid media-fonts/ipamonafont media-fonts/ja-ipafonts \
-	    media-fonts/takao-fonts media-fonts/wqy-microhei media-fonts/wqy-zenhei
+        # Install chrome
+        install "$GENTOO_PKG"
+
+        # Install recommended fonts
+        install media-fonts/arphicfonts media-fonts/bitstream-cyberbit \
+            media-fonts/droid media-fonts/ipamonafont media-fonts/ja-ipafonts \
+            media-fonts/takao-fonts media-fonts/wqy-microhei \
+            media-fonts/wqy-zenhei
     else
         url="https://dl.google.com/linux/direct/${pkg}_current_$ARCH.$PKGEXT"
         tmp="`mktemp crouton.XXXXXX --tmpdir=/tmp`"

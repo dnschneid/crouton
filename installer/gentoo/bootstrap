@@ -7,38 +7,60 @@
 # has access to all of the variables set by main.sh, namely $tmp (the temporary
 # directory), $INSTALLERDIR/$DISTRO, $RELEASE, $ARCH, and $MIRROR.
 
+# 64 bit ARM processors
+if [ "${ARCH#arm}" != "$ARCH" ]; then
+    FETCH_DIR="$MIRROR/releases/arm/autobuilds/"
+    CHOST_ARCH="$ARCH"
+elif [ "$ARCH" = "x86" ]; then
+    FETCH_DIR="$MIRROR/releases/x86/autobuilds/"
+    CHOST_ARCH="i686"
+else
+    FETCH_DIR="$MIRROR/releases/$ARCH/autobuilds/"
+    CHOST_ARCH="$ARCH"
+fi
+
 # Grab the latest stage3
 echo 'Finding the latest stage3...' 1>&2
-LATEST_STAGE3="$MIRROR/releases/$ARCH/autobuilds/latest-stage3-$ARCH.txt"
-# Read the latest release, the sed matches the lines that don't start with # 
+LATEST_STAGE3="$FETCH_DIR/latest-stage3-$CHOST_ARCH.txt"
+# Read the latest release, the sed matches the lines that don't start with #
 # and then removes the size (everything after the space) from the filename
-STAGE3=$(wget -q -O- "$LATEST_STAGE3" | sed -n -e '/^#/! s/ .*//p')
+STAGE3="$(wget -q -O- "$LATEST_STAGE3" | sed -n -e '/^#/! s/ .*//p')"
 DIR="$tmp/$RELEASE-$ARCH"
 mkdir -p "$DIR"
 
+# Download and unpack
 echo "Downloading release: $STAGE3..." 1>&2
-if ! wget -O- --no-verbose --timeout=60 -t2 "$MIRROR/releases/$ARCH/autobuilds/$STAGE3" | tar -C "$DIR" --strip-components=1 -jx 2>/dev/null; then
+# Exclude /var/tmp because the buildhost might have left useless stuff in there
+if ! wget -O- --no-verbose --timeout=60 -t2 "$FETCH_DIR/$STAGE3" \
+    | tar --exclude="./tmp" --exclude="./var/tmp" -C "$DIR" --strip-components=1 -jx 2>/dev/null; then
     error 1 'Failed to download stage3.'
 fi
+# Make sure that the /tmp and /var/tmp directories exist and have sane permisions
+mkdir -p "$DIR/tmp"
+mkdir -p "$DIR/var/tmp"
+chmod 777 "$DIR/tmp"
+chmod 777 "$DIR/var/tmp"
 
 # Fetch the latest portage tree
 PORTAGE="$MIRROR/snapshots/portage-latest.tar.bz2"
 mkdir -p "$DIR/usr/portage"
 
 echo "Fetching the portage tree snapshot..." 1>&2
-if ! wget -O- --no-verbose --timeout=60 -t2 "$PORTAGE" | tar -C "$DIR/usr/portage" --strip-components=1 -jx 2>/dev/null; then
+if ! wget -O- --no-verbose --timeout=60 -t2 "$PORTAGE" \
+    | tar -C "$DIR/usr/portage" --strip-components=1 -jx 2>/dev/null; then
     error 1 'Failed to fetch the portage tree.'
 fi
 
-# If we're using a 64 bit x86 arch, build for both x86 and amd64
+# If we're using a 64 bit x86 arch, build for both 32 and 64 bit
 if [ "$ARCH" = 'amd64' ]; then
     echo 'ABI_X86="32 64"' >> "$DIR/etc/portage/make.conf"
 fi
 
-# Set beter cflags -- no, not -funroll-loops :)
-sed -i 's/CFLAGS="-O2 -pipe"/CFLAGS="-O2 -pipe -march=native -mtune=native"/' "$DIR/etc/portage/make.conf"
+# Set better cflags -- no, not -funroll-loops :)
+sed -i 's/CFLAGS="-O2 -pipe"/CFLAGS="-O2 -pipe -march=native -mtune=native"/'\
+    "$DIR/etc/portage/make.conf"
 
 # Set better make opts
-CORE_COUNT=$(grep -c processor /proc/cpuinfo)
-J_COUNT=$((CORE_COUNT + 1))
+CORE_COUNT="$(grep -c processor /proc/cpuinfo)"
+J_COUNT="$((CORE_COUNT + 1))"
 echo "MAKEOPTS=\"-j$J_COUNT\"" >> "$DIR/etc/portage/make.conf"

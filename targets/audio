@@ -84,13 +84,13 @@ build_cras() {
                 dpkg --add-architecture "$cras_arch"
                 apt-get update || true
             fi
-	fi
+        fi
     fi
 
     # Install CRAS dependencies
     install --minimal alsa-utils \
         gentoo=media-libs/alsa-lib,libasound2$pkgsuffix \
-	gentoo=speex,libspeexdsp1$pkgsuffix
+        gentoo=speex,libspeexdsp1$pkgsuffix
 
     # Gentoo already has these deps installed
     if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then

@@ -64,7 +64,7 @@ pinmesa=''
 intelfbcsupport='y'
 if [ "${ARCH#arm}" = "$ARCH" ]; then
     if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
-	inteldriver="xf86-video-intel"
+        inteldriver="xf86-video-intel"
     else
         inteldriver="xserver-xorg-video-intel$backport"
     fi

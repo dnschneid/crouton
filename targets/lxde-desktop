@@ -10,7 +10,7 @@ DESCRIPTION='Installs LXDE along with common applications. (Approx. 800MB)'
 if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
     set_flags icu
     install lxlauncher lxtask galculator gpicview leafpad \
-    	xarchiver libreoffice-bin
+        xarchiver libreoffice-bin
 else
     install ubuntu=lubuntu-desktop,task-lxde-desktop -- network-manager
 fi

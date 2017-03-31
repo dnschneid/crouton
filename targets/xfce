@@ -39,7 +39,7 @@ if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
     # NOTE: xfce4-notifyd is in here to avoid pulling in the gnome version
     install xfce4-meta xfce4-notifyd xfce4-pulseaudio-plugin tango-icon-theme \
         thunar xfce4-mixer xfce4-power-manager \
-    	xfce4-terminal xfce4-battery-plugin xfce4-xkb-plugin
+        xfce4-terminal xfce4-battery-plugin xfce4-xkb-plugin
 else
     install xfce4 xfce4-goodies ubuntu=shimmer-themes, \
         -- dictionaries-common hddtemp xorg

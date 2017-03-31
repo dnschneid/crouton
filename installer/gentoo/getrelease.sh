@@ -20,11 +20,15 @@ fi
 
 # Get the architecture from the CHOST
 if [ "$1" = '-a' ]; then
+    PM="/etc/portage/make.conf"
     # Get the CHOST architecture, first part of the tuple
-    CHOST=$(sed -n -e 's/^CHOST="\(.*\)*"/\1/p' "${2%/}/etc/portage/make.conf" | cut -d- -f1)
+    CHOST="$(sed -n -e 's/^CHOST="\(.*\)*"/\1/p' "${2%/}$PM" | cut -d- -f1)"
 
     case "$CHOST" in
-    x86_64 | amd64) echo "amd64";;
+    amd64 | x86_64) echo "amd64";;
+    x86 | i?86) echo "x86";;
+    arm64 | aarch64) echo "arm64";;
+    arm*) echo "$CHOST";;
     *) echo "Invalid architecture '$ARCH'."; exit 2;;
     esac
 else

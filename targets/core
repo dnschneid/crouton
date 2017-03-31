@@ -109,11 +109,11 @@ fi
 # Update the portage tree for Gentoo, if at least one day has passed
 if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
     # Get the time of the last sync
-    LAST_SYNC=$(cut -f1 -d' ' /usr/portage/metadata/timestamp.x)
+    LAST_SYNC="$(cut -f1 -d' ' /usr/portage/metadata/timestamp.x)"
     # Add a day to it, in seconds
-    LAST_SYNC=$((LAST_SYNC + 86400))
+    LAST_SYNC="$((LAST_SYNC + 86400))"
     # Get the current epoch time in seconds
-    TIME_SEC=$(date +%s)
+    TIME_SEC="$(date +%s)"
     # If at least a day has passed, do the sync
     if [ "$TIME_SEC" -gt "$LAST_SYNC" ]; then
         emerge --sync
@@ -126,14 +126,16 @@ fi
 # On release upgrade, keyboard-configuration might be reconfigured.
 fixkeyboardmode
 
-# 
 if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
     # Install gentoolkit for euse, so we can set use flags
-    # Install cpuid2cpuflags so we can easily set reasonable CFLAGS
-    install gentoolkit cpuid2cpuflags
+    install gentoolkit
     if [ "$ARCH" = 'x86' -o "$ARCH" = 'amd64' ]; then
-        CPUFLAGS=$(cpuinfo2cpuflags-x86 | cut -d: -f2)
-        sed -i "s|CPU_FLAGS_X86.*|CPU_FLAGS_X86=\"${CPUFLAGS}\"|" /etc/portage/make.conf
+        # Install cpuid2cpuflags so we can easily set reasonable CFLAGS
+        # NOTE: This tool isn't really supported on ARM yet, update this later
+        install cpuid2cpuflags
+        CPUFLAGS="$(cpuinfo2cpuflags-x86 | cut -d: -f2)"
+        sed -i "s|CPU_FLAGS_X86.*|CPU_FLAGS_X86=\"${CPUFLAGS}\"|" \
+            /etc/portage/make.conf
     fi
     
     # Set the dbus flag globally
@@ -142,26 +144,27 @@ fi
 
 
 # Install critical packages
-install --minimal gentoo=app-admin/sudo,sudo wget ca-certificates debian=apt-transport-https,
+install --minimal gentoo=app-admin/sudo,sudo wget ca-certificates \
+    debian=apt-transport-https,
 
-# Gentoo doesn't have a group for sudo, add it now and allow those users to use sudo
+# Gentoo doesn't have a sudo group, add it now and allow those users to use sudo
 # Debian uses GID 28 for sudo
 if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
     # If the sudo group already exists, we'll assume we already set it up
-    if [ -z "$(getent group sudo | cut -f1 -d:)" ]; then
+    if ! grep -q ^sudo /etc/group; then
         groupadd -g 28 sudo
         echo "%sudo ALL=(ALL) ALL" > /etc/sudoers.d/crouton-group
     fi
 fi
 
-if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
-    # Generate and set default locale
+# Generate and set default locale
+if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
+    eselect locale set en_US.UTF-8
+else
     if [ ! -f '/etc/default/locale' ] && hash locale-gen 2>/dev/null; then
         echo 'LANG=en_US.UTF-8' > '/etc/default/locale'
         locale-gen --lang en_US.UTF-8
-        if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
-            dpkg-reconfigure locales
-        fi
+        dpkg-reconfigure locales
     fi
 fi
 
