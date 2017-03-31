@@ -71,7 +71,7 @@ build_cras() {
     local pkgconfigpath=''
     local archgccflags=''
     if [ -n "$cras_arch" ]; then
-        pkgdepextra='gcc-multilib'
+        pkgdepextra='debian=gcc-multilib,'
         archextrapath="/$cras_arch-linux-gnu"
         pkgconfigpath="/usr/lib$archextrapath/pkgconfig"
         archgccflags='-m32'
@@ -93,10 +93,8 @@ build_cras() {
         gentoo=speex,libspeexdsp1$pkgsuffix
 
     # Gentoo already has these deps installed
-    if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
-        install --minimal --asdeps gcc $pkgdepextra libc6-dev$pkgsuffix \
-            pkg-config libspeexdsp-dev$pkgsuffix
-    fi
+    install --minimal --asdeps debian=gcc, $pkgdepextra debian=libc6-dev$pkgsuffix, \
+            debian=pkg-config, debian=libspeexdsp-dev$pkgsuffix,
 
     # precise does not allow libasound2-dev and libasound2-dev:i386 to be
     # installed simultaneously
