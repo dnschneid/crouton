@@ -129,13 +129,19 @@ fixkeyboardmode
 if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
     # Install gentoolkit for euse, so we can set use flags
     install gentoolkit
+    # Install cpuid2cpuflags so we can easily set reasonable CFLAGS
+    # NOTE: This tool isn't really supported on ARM yet, update this later
     if [ "$ARCH" = 'x86' -o "$ARCH" = 'amd64' ]; then
-        # Install cpuid2cpuflags so we can easily set reasonable CFLAGS
-        # NOTE: This tool isn't really supported on ARM yet, update this later
-        install cpuid2cpuflags
-        CPUFLAGS="$(cpuinfo2cpuflags-x86 | cut -d: -f2)"
-        sed -i "s|CPU_FLAGS_X86.*|CPU_FLAGS_X86=\"${CPUFLAGS}\"|" \
-            /etc/portage/make.conf
+        # Unmask at least version 3 and install it
+        keyword_package app-portage/cpuid2cpuflags 'core' '3'
+        install app-portage/cpuid2cpuflags
+
+        CPUFLAGS="$(cpuid2cpuflags)"
+	mkdir -p /etc/portage/package.use
+	echo "*/* $CPUFLAGS" > /etc/portage/package.use/00cpuflags
+
+        # Remove the CPU_FLAGS use expand from make.conf if it already is there
+        sed -i '/CPU_FLAGS_X86/d' /etc/portage/make.conf    
     fi
     
     # Set the dbus flag globally

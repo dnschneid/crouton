@@ -38,8 +38,8 @@ set_package_flag() {
     fi
 }
 
-# Set unstable keywords for a package
-# Usage: keyword_package <package> <crouton target for comment>
+# Set unstable keywords for a package, version is optional
+# Usage: keyword_package <package> <crouton target for comment> <pkg verison>
 keyword_package() {
     local PDIR="/etc/portage/package.keywords"
     # Make sure the keywords directory and file exist
@@ -47,9 +47,13 @@ keyword_package() {
     touch "$PDIR/crouton"
 
     # Check if the keyword is set for this package and if not, set it
-    if ! grep -q -e "^$1[[:space:]]" -e "^$1$" "$PDIR/crouton"; then
+    if ! grep -q -e "^$1[[:space:]]" -e "^$1$" -e "^<=$1-$3" "$PDIR/crouton"; then
         echo "# Added keywords for crouton target $2" >> "$PDIR/crouton"
-        echo "$1" >> "$PDIR/crouton"
+	if [ -z $3 ]; then
+            echo "$1" >> "$PDIR/crouton"
+	else
+            echo "<=$1-$3" >> "$PDIR/crouton"
+	fi
     fi
 }
 
