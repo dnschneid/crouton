@@ -228,10 +228,10 @@ if [ -z "$inteldriver" -a -n "$backport" ] && release -eq precise; then
         xterm x11-common xinput
 elif [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
     # Add use expand flags for the drivers we're installing
-    if echo "$installvideodrivers" | grep -q "$inteldriver"; then
+    if [ "${installvideodrivers#*"$inteldriver"}" != "$installvideodrivers" ]; then
         set_use_expand VIDEO_CARDS intel
     fi
-    if echo "$installvideodrivers" | grep -q "$fbdev"; then
+    if [ "${installvideodrivers#*"$fbdev"}" != "$fbdev" ]; then
         set_use_expand VIDEO_CARDS fbdev
     fi
 
