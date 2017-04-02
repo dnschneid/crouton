@@ -25,10 +25,10 @@ if [ "$1" = '-a' ]; then
     CHOST="$(sed -n -e 's/^CHOST="\(.*\)*"/\1/p' "${2%/}$PM" | cut -d- -f1)"
 
     case "$CHOST" in
-    amd64 | x86_64) echo "amd64";;
-    x86 | i?86) echo "x86";;
-    arm64 | aarch64) echo "arm64";;
-    arm*) echo "$CHOST";;
+    x86_64) echo "amd64";;
+    i?86) echo "x86";;
+    aarch64) echo "arm64";;
+    arm*) echo "arm";;
     *) echo "Invalid architecture '$ARCH'."; exit 2;;
     esac
 else

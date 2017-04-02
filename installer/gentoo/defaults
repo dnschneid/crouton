@@ -11,12 +11,40 @@ if [ -z "$ARCH" ]; then
 fi
 
 case "$ARCH" in
-amd64 | x86_64) ARCH="amd64";;
-x86 | i?86) ARCH="x86";;
-armv7a_hardfloat | armv7hl) ARCH="armv7a_hardfloat";;
-armv7a | armv7l) ARCH="armv7a";;
-arm64 | aarch64) ARCH="arm64";;
-*) error 2 "Invalid architecture '$ARCH'.";;
+amd64 | x86_64) 
+    INSTALL_ARCH="amd64"
+    ARCH="amd64";;
+x86 | i?86)
+    X86V="${ARCH:1:1}"
+    case "$X86V" in
+        4) INSTALL_ARCH="i486";;
+	*) INSTALL_ARCH="i686";;
+    esac
+    ARCH="x86";;
+armv*_hardfloat | armv*_hardfp | armv?hl | armhf)
+    ARMV="${ARCH:4:1}"
+    case "$ARMV" in
+	# Use the v# to get the install arch
+        6) INSTALL_ARCH="armv6j_hardfp";;
+	# Default to armv7a_hardfp
+	*) INSTALL_ARCH="armv7a_hardfp";;
+    esac
+    ARCH="arm64";;
+armv* | armel)
+    ARMV="${ARCH:4:1}"
+    case "$ARMV" in
+	# Use the v# to get the install arch
+	4) INSTALL_ARCH="armv4tl";;
+	5) INSTALL_ARCH="armv5tel";;
+	6) INSTALL_ARCH="armv6j";;
+	# Default to armv7a if we were passed anything else
+	*) INSTALL_ARCH="armv7a";;
+    esac
+    ARCH="arm";;
+arm64 | aarch64)
+    INSTALL_ARCH="arm64"
+    ARCH="arm64";;
+*) error 2 "Invalid architecture: '$ARCH'.";;
 esac
 
 # Set a default mirror

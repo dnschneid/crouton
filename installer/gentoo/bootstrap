@@ -7,21 +7,11 @@
 # has access to all of the variables set by main.sh, namely $tmp (the temporary
 # directory), $INSTALLERDIR/$DISTRO, $RELEASE, $ARCH, and $MIRROR.
 
-# 64 bit ARM processors
-if [ "${ARCH#arm}" != "$ARCH" ]; then
-    FETCH_DIR="$MIRROR/releases/arm/autobuilds/"
-    CHOST_ARCH="$ARCH"
-elif [ "$ARCH" = "x86" ]; then
-    FETCH_DIR="$MIRROR/releases/x86/autobuilds/"
-    CHOST_ARCH="i686"
-else
-    FETCH_DIR="$MIRROR/releases/$ARCH/autobuilds/"
-    CHOST_ARCH="$ARCH"
-fi
+FETCH_DIR="$MIRROR/releases/$ARCH/autobuilds"
 
 # Grab the latest stage3
 echo 'Finding the latest stage3...' 1>&2
-LATEST_STAGE3="$FETCH_DIR/latest-stage3-$CHOST_ARCH.txt"
+LATEST_STAGE3="$FETCH_DIR/latest-stage3-$INSTALL_ARCH.txt"
 # Read the latest release, the sed matches the lines that don't start with #
 # and then removes the size (everything after the space) from the filename
 STAGE3="$(wget -q -O- "$LATEST_STAGE3" | sed -n -e '/^#/! s/ .*//p')"
@@ -56,9 +46,11 @@ if [ "$ARCH" = 'amd64' ]; then
     echo 'ABI_X86="32 64"' >> "$DIR/etc/portage/make.conf"
 fi
 
-# Set better cflags -- no, not -funroll-loops :)
-sed -i 's/CFLAGS="-O2 -pipe"/CFLAGS="-O2 -pipe -march=native -mtune=native"/'\
-    "$DIR/etc/portage/make.conf"
+# Set better cflags on amd64 -- no, not -funroll-loops :)
+if [ "$ARCH" = 'amd64' ]; then 
+    sed -i 's/CFLAGS="-O2 -pipe"/CFLAGS="-O2 -pipe -march=native -mtune=native"/'\
+        "$DIR/etc/portage/make.conf"
+fi
 
 # Set better make opts
 CORE_COUNT="$(grep -c processor /proc/cpuinfo)"
