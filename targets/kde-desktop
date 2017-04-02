@@ -7,4 +7,10 @@ DESCRIPTION='Installs KDE along with common applications. (Approx. 1000MB)'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
-install ubuntu=kubuntu-desktop,task-kde-desktop -- network-manager
+if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
+    TIPS="
+On Gentoo, the kde-desktop target does not add any additional packages.
+"
+else
+    install ubuntu=kubuntu-desktop,task-kde-desktop -- network-manager
+fi

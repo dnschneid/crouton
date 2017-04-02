@@ -10,5 +10,11 @@ DESCRIPTION='Installs GNOME along with common applications. (Approx. 1100MB)'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
-install ubuntu=ubuntu-gnome-desktop,task-gnome-desktop \
+if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
+    TIPS="
+On Gentoo, the gnome-desktop target does not add any additional packages.
+"
+else
+    install ubuntu=ubuntu-gnome-desktop,task-gnome-desktop \
         -- network-manager xorg ubuntu~xenial=xserver-xorg-legacy,
+fi

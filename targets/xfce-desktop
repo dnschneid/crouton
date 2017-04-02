@@ -1,5 +1,5 @@
 #!/bin/sh -e
-# Copyright (c) 2016 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2017 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 REQUIRES='xfce'
@@ -7,21 +7,10 @@ DESCRIPTION='Installs Xfce along with common applications. (Approx. 1200MB)'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
-
 if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
-    # Use this target to install the rest of the xfce4 packages and more
-    install orage mousepad ristretto squeeze thunar-archive-plugin \
-        thunar-media-tags-plugin xfburn xfce4-clipman-plugin \
-        xfce4-cpufreq-plugin xfce4-cpugraph-plugin xfce4-datetime-plugin \
-        xfce4-dict xfce4-diskperf-plugin xfce4-embed-plugin \
-        xfce4-fsguard-plugin xfce4-genmon-plugin xfce4-indicator-plugin \
-        xfce4-mailwatch-plugin xfce4-mixer xfce4-mount-plugin \
-        xfce4-netload-plugin xfce4-notes-plugin xfce4-places-plugin \
-        xfce4-quicklauncher-plugin xfce4-screenshooter xfce4-sensors-plugin \
-        xfce4-smartbookmark-plugin xfce4-systemload-plugin xfce4-taskmanager \
-        xfce4-timer-plugin xfce4-verve-plugin xfce4-volumed \
-        xfce4-volumed-pulse xfce4-wavelan-plugin xfce4-weather-plugin \
-        epdfview gstreamer libreoffice-bin quodlibet vlc
+    TIPS="
+On Gentoo, the xfce-desktop target does not add any additional packages.
+"
 else
     # Avoid /etc/skel/.xscreensaver conflicts
     xsvr='/etc/skel/.xscreensaver'
