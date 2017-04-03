@@ -26,7 +26,7 @@ if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
     set_flags X guile networking
     set_package_flag app-text/xmlto text x11-common
 
-    set_flags libkms uxa dri3 xvmc opengl
+    set_flags libkms uxa dri3 xvmc opengl vulkan
     # We remove the suid bit because it breaks LD_PRELOAD'ing libcroutonfreon.so
     set_package_flag x11-base/xorg-server -suid xorg
     # Set the input devices
@@ -230,6 +230,11 @@ elif [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
     # Add use expand flags for the drivers we're installing
     if [ "${installvideodrivers#*"$inteldriver"}" != "$installvideodrivers" ]; then
         set_use_expand VIDEO_CARDS intel
+        set_use_expand VIDEO_CARDS i915
+        set_use_expand VIDEO_CARDS i965
+
+	# We'll also need the glamor use flag for intel
+	set_flags glamor
     fi
     if [ "${installvideodrivers#*"$fbdev"}" != "$fbdev" ]; then
         set_use_expand VIDEO_CARDS fbdev

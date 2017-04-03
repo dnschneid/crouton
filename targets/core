@@ -144,8 +144,8 @@ if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
         sed -i '/CPU_FLAGS_X86/d' /etc/portage/make.conf    
     fi
     
-    # Set the dbus flag globally
-    set_flags dbus
+    # Set some use flags globally to prevent rebuilding later
+    set_flags dbus python udev -bindist
 fi
 
 
