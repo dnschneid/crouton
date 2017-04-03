@@ -1,0 +1,15 @@
+#!/bin/sh -e
+# Copyright (c) 2017 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+DESCRIPTION='Installs the XBMC media player. (Approx. 140MB)'
+HOSTBIN='startxbmc'
+. "${TARGETSDIR:="$PWD"}/kodi-common"
+
+if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
+    error 99 "XBMC is now Kodi, please use the kodi target instead."
+fi
+
+### Append to prepare.sh:
+KODI_NAME='xmbc'
+### append kodi-common
