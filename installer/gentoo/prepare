@@ -49,7 +49,7 @@ keyword_package() {
     # Check if the keyword is set for this package and if not, set it
     if ! grep -q -e "^$1[[:space:]]" -e "^$1$" -e "^<=$1-$3" "$PDIR/crouton"; then
         echo "# Added keywords for crouton target $2" >> "$PDIR/crouton"
-	if [ -z $3 ]; then
+	if [ -z "$3" ]; then
             echo "$1" >> "$PDIR/crouton"
 	else
             echo "<=$1-$3" >> "$PDIR/crouton"
@@ -91,6 +91,20 @@ set_use_expand() {
             sed -i -e "s|$1=\"\(.*\)\"|$1=\"\1 $2\"|" "$PM"
         fi
     fi
+}
+
+# Switch the system profile
+# Usage: set_profile <profile keyword to search for, can include regex>
+set_profile() {
+    # Get the profile number to switch to
+    local NEW_PROFILE="$(eselect profile list | awk '{ print $2 }' | grep "$1")"
+    if [ -z "$NEW_PROFILE" ]; then
+       echo "ERROR: Unable to find a profile that matches $1." 2>&1
+       exit 99
+    fi
+
+    # Set the profile
+    eselect profile set "$NEW_PROFILE"
 }
 
 # install_dist: see install() in prepare.sh for details.
