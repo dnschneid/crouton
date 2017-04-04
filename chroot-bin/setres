@@ -35,8 +35,81 @@ if [ "${xmethod%%-*}" != "xiwi" ]; then
         mode="${mode%\"}"
         xrandr --newmode "$mode" $data 2>/dev/null || true
         xrandr --addmode "$o" "$mode"
-        xrandr --output "$o" --mode "$mode"
-        echo "$mode"
+
+        if [ "$XDG_CURRENT_DESKTOP" = "GNOME" ]; then
+
+            # GNOME bug 747750: Gnome instantly reverts resolution change if
+            # made directly via xrandr and resolution is 'custom'. We work
+            # around this by modifying monitors.xml to show the resolution
+            # we want, changing it, waiting a couple of seconds, and reverting
+            # monitors.xml back to its original condition.
+
+            # Fun fact: when fed strange resolutions, cvt sometimes doesn't
+            # come back with exactly the same resolution you asked for, e.g.
+            # 1900x1280_60 will come back as 1904x1280_60. We need to use the
+            # new x/y/r instead of the originals in order for this to work.
+
+            oldIFS=$IFS
+            IFS=\n
+
+            x=$(echo $mode | cut -dx -f1)
+            y=$(echo $mode | cut -dx -f2 | cut -d_ -f1)
+            r=$(echo $mode | cut -d_ -f2 | cut -d. -f1)
+
+            cp ~/.config/monitors.xml ~/.config/monitors.xml.bak
+            rm ~/.config/monitors.xml
+
+            while read LINE  #from monitors.xml.bak
+            do
+                indent=$(echo "$LINE" | cut -d\< -f1)
+                content="<"$(echo "$LINE" | cut -d\< -f2-)
+
+                if [ " $content" = " <output name=\"$o\">" ]; then
+                    monitor=$o
+                fi
+
+                if [ " $content" = " </output>" ]; then
+                    monitor=""
+                fi
+
+                if [ " $monitor" = " " ]; then
+                    echo "$LINE" >> ~/.config/monitors.xml
+                    continue
+                fi
+
+                if [ "$(echo $content | tr -d 0123456789)" = "<width></width>" ]; then
+                    echo "$indent<width>$x</width>" >> ~/.config/monitors.xml
+                    continue
+                fi
+
+                if [ "$(echo $content | tr -d 0123456789)" = "<height></height>" ]; then
+                    echo "$indent<height>$y</height>" >> ~/.config/monitors.xml
+                    continue
+                fi
+
+                if [ "$(echo $content | tr -d 0123456789)" = "<rate></rate>" ]; then
+                    echo "$indent<rate>$r</rate>" >> ~/.config/monitors.xml
+                    continue
+                fi
+
+                echo "$LINE" >> ~/.config/monitors.xml
+
+            done < ~/.config/monitors.xml.bak
+
+            xrandr --output "$o" --mode "$mode"
+
+            sleep 3 && cp ~/.config/monitors.xml.bak ~/.config/monitors.xml &
+
+            echo "$mode"
+
+            IFS=$oldIFS
+
+        else
+
+            xrandr --output "$o" --mode "$mode"
+            echo "$mode"
+
+        fi
     }
     exit 0
 fi
