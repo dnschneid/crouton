@@ -1,0 +1,18 @@
+#!/bin/sh -e
+# Copyright (c) 2016 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+##if [ "${TARGETNOINSTALL:-c}" = 'c' ] && release -lt jessie -eq kali; then
+##    error 99 "e17 target is not supported on wheezy/kali."
+##fi
+REQUIRES='x11'
+DESCRIPTION='Installs the spectrwm window manager (Approx. 50MB)'
+HOSTBIN='startspectrwm'
+. "${TARGETSDIR:="$PWD"}/common"
+
+### Append to prepare.sh:
+install spectrwm
+
+TIPS="$TIPS
+You can start spectrwm via the startspectrwm host command: sudo startspectrwm
+"
