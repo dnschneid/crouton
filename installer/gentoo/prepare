@@ -10,14 +10,17 @@ DISTROAKA='gentoo'
 # Set global use flags, separated by a space
 set_flags() {
     while [ "$#" != 0 ]; do
+	# Remove the flag first to make sure it's not overriden anywhere
+	# Add the true to keep this from halting prepare.sh if the flag isn't set
+        euse -R "${1#-}" > /dev/null 2>&1 || true
+
         # Check if the flag starts with a -, if so, we're disabling it
         if [ "${1#-}" != "$1" ]; then
+	    # Now turn it off
             euse -D "${1#-}" 1> /dev/null
-        # If we haven't already set the flag, we can enable it
+        # Otherwise, we can enable it
         else
-            if [ -z "$(euse -a "$1")" ]; then
-                euse -E "$1" 1> /dev/null
-            fi
+            euse -E "$1" 1> /dev/null
         fi
         shift
     done
