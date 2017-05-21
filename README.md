@@ -117,7 +117,7 @@ start\* commands. Ta-da! That was easy.
      SD card) when you create the chroot. Beware that if you lose this file,
      your chroot will not be decryptable. That's kind of the point, of course.
 
-### Hey now, Ubuntu 12.04 is pretty old; I'm young and hip
+### Hey now, Ubuntu 16.04 is pretty old; I'm young and hip
 
   1. The `-r` parameter specifies which distro release you want to use.
   2. Run `sh ~/Downloads/crouton -r list` to list the recognized releases and
