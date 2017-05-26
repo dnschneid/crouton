@@ -20,6 +20,8 @@
 #              Space-separated list of PIDs to scan for.
 #
 # On success, prints "pid:filename" and exits with code 0.
+# On error (flie not found, duplicate files found),
+#    prints "-1:cause" and exits with code 0.
 # On error (shm not found, invalid parameters), exits with code >0.
 
 set -e
@@ -61,8 +63,9 @@ for pid in $PIDS; do
             if [ "$pattern" = "$PATTERN" ]; then
                 # Second match? This should never happen
                 if [ -n "$MATCH" ]; then
+		    # Return with invalid pid.
                     echo -n "-1:ambiguous"
-                    exit 1
+                    exit 0
                 fi
                 MATCH="$pid:$fd"
             fi
@@ -74,6 +77,7 @@ if [ -n "$MATCH" ]; then
     echo -n "$MATCH"
     exit 0
 else
+    # Return with invalid pid.
     echo -n "-1:no match"
-    exit 1
+    exit 0
 fi
