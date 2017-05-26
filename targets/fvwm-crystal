@@ -1,0 +1,14 @@
+#!/bin/sh -e
+# Copyright (c) 2015 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+REQUIRES='fvwm'
+DESCRIPTION='Installs fvwm-crystal environment uses 200mb'
+HOSTBIN='Startfvwm'
+CHROOTBIN='crouton-noroot startfvwm'
+. "${TARGETSDIR:="$PWD"}/common"
+### Append to prepare.sh:
+install fvwm-crystal --chromium browser nano network-manager
+
+TIPS="$TIPS
+can start fvwm via the startfvwm host command: sudo startfvwm"
