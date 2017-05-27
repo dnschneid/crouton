@@ -247,6 +247,8 @@ $passphrase" | ecryptfs-rewrap-passphrase "$wrappedfnek" -
             error 1 "Failed to decrypt $NAME."
         fi
 
+        keyctl link @u @s
+
         mnt="ecryptfs_sig=$keysig,ecryptfs_fnek_sig=$fneksig"
         mnt="$mnt,ecryptfs_cipher=aes,ecryptfs_key_bytes=16"
         mnt="$mnt,ecryptfs_unlink_sigs,$MOUNTOPTS"
