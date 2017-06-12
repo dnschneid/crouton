@@ -158,8 +158,8 @@ int ioctl(int fd, unsigned long int request, ...) {
             stat->v_active = 0;
         }
 
-        if ((request == VT_RELDISP && (long)data == 1) ||
-            (request == VT_ACTIVATE && (long)data == 0)) {
+        if ((request == VT_RELDISP && (uintptr_t)data == 1) ||
+            (request == VT_ACTIVATE && (uintptr_t)data == 0)) {
             if (lockfd != -1) {
                 TRACE("Telling Chromium OS to regain control\n");
                 ret = FREON_DBUS_METHOD_CALL(TakeDisplayOwnership);
@@ -167,8 +167,8 @@ int ioctl(int fd, unsigned long int request, ...) {
                     ERROR("Failed to release display lock\n");
                 }
             }
-        } else if ((request == VT_RELDISP && (long)data == 2) ||
-                   (request == VT_ACTIVATE && (long)data == 7)) {
+        } else if ((request == VT_RELDISP && (uintptr_t)data == 2) ||
+                   (request == VT_ACTIVATE && (uintptr_t)data == 7)) {
             if (set_display_lock(getpid()) == 0) {
                 TRACE("Telling Chromium OS to drop control\n");
                 ret = FREON_DBUS_METHOD_CALL(ReleaseDisplayOwnership);
