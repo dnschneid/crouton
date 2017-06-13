@@ -47,8 +47,7 @@ to the rest of Chromium OS.
 
 You need a device running Chromium OS that has been switched to developer mode.
 
-For instructions on how to do that, go to [this Chromium OS wiki page]
-(https://www.chromium.org/chromium-os/developer-information-for-chrome-os-devices),
+For instructions on how to do that, go to [this Chromium OS wiki page](https://www.chromium.org/chromium-os/developer-information-for-chrome-os-devices),
 click on your device model and follow the steps in the *Entering Developer Mode*
 section.
 
@@ -57,8 +56,7 @@ insecure*, so don't expect a password in your chroot to keep anyone from your
 data. crouton does support encrypting chroots, but the encryption is only as
 strong as the quality of your passphrase. Consider this your warning.
 
-It's also highly recommended that you install the [crouton extension]
-(https://goo.gl/OVQOEt), which, when combined with the `extension` or `xiwi`
+It's also highly recommended that you install the [crouton extension](https://goo.gl/OVQOEt), which, when combined with the `extension` or `xiwi`
 targets, provides much improved integration with Chromium OS.
 
 That's it! Surprised?
