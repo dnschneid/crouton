@@ -13,7 +13,7 @@
 set -e
 
 APPLICATION="${0##*/}"
-SCRIPTDIR="`readlink -f "\`dirname "$0"\`/.."`"
+SCRIPTDIR="`readlink -f -- "\`dirname "$0"\`/.."`"
 # Poll queue file every x seconds
 POLLINTERVAL=10
 # Full sync status at least every x seconds

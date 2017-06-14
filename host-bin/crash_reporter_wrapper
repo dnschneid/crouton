@@ -12,7 +12,7 @@ fi
 APPLICATION="${0##*/}"
 CORE_PATTERN_PARAMS='%p %s %u %g %e %h %t %E'
 CORE_PATTERN_PARAMS_COUNT=8
-CORE_PATTERN="|`readlink -f "$0"` $CORE_PATTERN_PARAMS"
+CORE_PATTERN="|`readlink -f -- "$0"` $CORE_PATTERN_PARAMS"
 CORE_PATTERN_FILE='/var/run/crw/core_pattern'
 CORE_PATTERN_PROC='/proc/sys/kernel/core_pattern'
 DEFAULT_CHROOT_PATTERN=''
@@ -197,7 +197,7 @@ if [ "${file#/}" = "$file" ]; then
 fi
 
 # Canonicalize within the chroot and escape the filename to work within quotes
-file="`chroot "$root" readlink -m "/${file%/*}"`/${file##*/}"
+file="`chroot "$root" readlink -m -- "/${file%/*}"`/${file##*/}"
 file="`echo -n "$file" | escape`"
 
 # Prepare the command to run inside the chroot as the appropriate user

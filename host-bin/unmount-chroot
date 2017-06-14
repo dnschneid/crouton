@@ -7,8 +7,8 @@ set -e
 
 APPLICATION="${0##*/}"
 ALLCHROOTS=''
-BINDIR="`dirname "\`readlink -f "$0"\`"`"
-CHROOTS="`readlink -m "$BINDIR/../chroots"`"
+BINDIR="`dirname "\`readlink -f -- "$0"\`"`"
+CHROOTS="`readlink -m -- "$BINDIR/../chroots"`"
 EXCLUDEROOT=''
 FORCE=''
 PRINT=''
@@ -92,7 +92,7 @@ checkusage() {
         if [ ! -r "$root" ]; then
             continue
         fi
-        rootdir="`readlink -f "$root"`"
+        rootdir="`readlink -f -- "$root"`"
         rootdir="${rootdir%/}/"
         if [ "${rootdir#"$b"}" = "$rootdir" ]; then
             continue
@@ -105,7 +105,7 @@ checkusage() {
         fi
         proot="/proc/$ppid/root"
         if [ -r "$proot" ]; then
-            prootdir="`readlink -f "$proot"`"
+            prootdir="`readlink -f -- "$proot"`"
             if [ "${prootdir%/}/" = "$rootdir" ]; then
                 continue
             fi
@@ -135,7 +135,7 @@ fi
 fixabslinks() {
     local p="$CHROOT/$1" c
     # Follow and fix dangerous absolute symlinks
-    while c="`readlink -m "$p"`" && [ "$c" != "$p" ]; do
+    while c="`readlink -m -- "$p"`" && [ "$c" != "$p" ]; do
         p="$CHROOT${c#"$CHROOT"}"
     done
     echo "$p"
@@ -182,7 +182,7 @@ unmount() {
         fi
     fi
 
-    base="`readlink -f "$CHROOT"`"
+    base="`readlink -f -- "$CHROOT"`"
 
     if ! checkusage "$base"; then
         echo "Not unmounting $CHROOTSRC as another instance is using it." 1>&2
@@ -269,7 +269,7 @@ unmount() {
             fi
             for root in /proc/*/root; do
                 if [ ! -r "$root" ] \
-                        || [ ! "`readlink -f "$root"`" = "$base" ]; then
+                        || [ ! "`readlink -f -- "$root"`" = "$base" ]; then
                     continue
                 fi
                 pid="${root#/proc/}"
