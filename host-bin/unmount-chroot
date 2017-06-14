@@ -15,7 +15,7 @@ PRINT=''
 SIGNAL='TERM'
 TRIES=5
 YES=''
-ROOT="`readlink -m '/var/run/crouton'`"
+ROOT="`readlink -m -- '/var/run/crouton'`"
 
 USAGE="$APPLICATION [options] name [...]
 

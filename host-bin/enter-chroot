@@ -286,7 +286,7 @@ ln -sf '/var/host/shill/resolv.conf' "$CHROOT/etc/resolv.conf"
 localtime="$CHROOT/etc/localtime"
 hostlocaltime='/var/host/timezone/localtime'
 if [ -h "$localtime" ] && [ "`readlink -- "$localtime"`" = "$hostlocaltime" ]; then
-    timezone="`readlink -m /var/lib/timezone/localtime || true`"
+    timezone="`readlink -m -- /var/lib/timezone/localtime || true`"
     if [ -z "$timezone" -o ! -e "$CHROOT$LOCALTIME" ]; then
         echo "\
 WARNING: the timezone selected in Chromium OS does not exist inside the chroot.
