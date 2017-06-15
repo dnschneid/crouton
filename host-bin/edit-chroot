@@ -403,7 +403,7 @@ for NAME in "$@"; do
             tardest="$dest"
             splitpid=''
         fi
-        echo -n "  Backing up $CHROOT to $dest..." 1>&2
+        echo -n "  Backing up $CHROOT to $(readlink -m -- "$dest")..." 1>&2
         addtrap "echo 'Deleting partial archive.' 1>&2; \
                  kill '$splitpid' 2>/dev/null; rm -f '$dest' '$dest.part-'*"
         ret=0
