@@ -1,0 +1,50 @@
+#!/bin/sh -e
+# Copyright (c) 2016 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+REQUIRES='x11'
+DESCRIPTION='Installs the KODI media player. (Approx. 140MB)'
+HOSTBIN='startkodi'
+CHROOTETC='kodi-keyboard.xml kodi-cycle.py'
+. "${TARGETSDIR:="$PWD"}/common"
+
+### Append to prepare.sh:
+if [ "$DISTRO" = 'debian' ]; then
+    echo "deb http://http.debian.net/debian jessie-backports main" | sudo tee /etc/apt/sources.list.d/kodi.list
+fi
+
+if [ "$DISTRO" = 'ubuntu' ]; then
+    sudo apt-get install -y software-properties-common
+    sudo add-apt-repository -y ppa:team-xbmc/ppa
+fi
+
+if [ "$DISTRO" = 'kali' ]; then
+    error 99 "Kodi not supported on Kali Linux"
+fi
+
+sudo apt-get update
+
+install kodi pulseaudio
+
+# Configure keymaps kodi for the hotkeys ctr-shift-alt F1/F2 to
+# cycle through chroots/chromeos. We use ~/.kodi/userdata/keymaps/keyboard.xml
+# for this purpose, but the main user may not have been created yet, so we 
+# add a script in /etc/profile.d to link ~/.kodi/userdata/keymaps/keyboard.xml
+# to /etc/crouton/kodi-keyboard.xml
+
+profiledsh='/etc/profile.d/crouton-kodi-keymaps.sh'
+# Make sure symbolic link is setup on login
+echo '#!/bin/sh
+
+keyboardxmldir="$HOME/.kodi/userdata/keymaps"
+# Do not install if user is root, or $HOME does not exist
+if [ "`id -u`" -ne 0 -a -d "$HOME" -a ! -e "$keyboardxmldir/keyboard.xml" ]; then
+    mkdir -p "$keyboardxmldir"
+    ln -sfT /etc/crouton/kodi-keyboard.xml "$keyboardxmldir/keyboard.xml"
+fi' > "$profiledsh"
+
+chmod 755 "$profiledsh"
+
+TIPS="$TIPS
+You can start KODI via the startkodi host command: sudo startkodi
+"
