@@ -8,8 +8,8 @@ set -e
 APPLICATION="${0##*/}"
 ALLCHROOTS=''
 BACKUP=''
-BINDIR="`dirname "\`readlink -f "$0"\`"`"
-CHROOTS="`readlink -m "$BINDIR/../chroots"`"
+BINDIR="`dirname "\`readlink -f -- "$0"\`"`"
+CHROOTS="`readlink -m -- "$BINDIR/../chroots"`"
 DELETE=''
 ENCRYPT=''
 KEYFILE=''
@@ -520,7 +520,7 @@ for NAME in "$@"; do
                 error 1 "Old key file not found"
             fi
         elif [ "$oldkeyfile" != "$keyfilecanon" ]; then
-            chrootecryptfsfile="`readlink -m "$CHROOT/.ecryptfs"`"
+            chrootecryptfsfile="`readlink -m -- "$CHROOT/.ecryptfs"`"
             # Don't clobber a file already there
             if [ -e "$newkeyfile" -a "$newkeyfile" != "$chrootecryptfsfile" ]; then
                 error 1 "Encryption key file $newkeyfile already exists. Refusing to overwrite!"

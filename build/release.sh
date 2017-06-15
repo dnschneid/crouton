@@ -13,7 +13,7 @@ USAGE="Usage: ${0##*/} [-f] bundle [..]
 FORCE=''
 
 # CD into the repo's root directory
-dir="`readlink -f "$0"`"
+dir="`readlink -f -- "$0"`"
 cd "${dir%/*}/.."
 
 # Import common functions

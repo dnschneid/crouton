@@ -6,13 +6,13 @@
 set -e
 
 APPLICATION="${0##*/}"
-BINDIR="`dirname "\`readlink -f "$0"\`"`"
-CHROOTS="`readlink -m "$BINDIR/../chroots"`"
+BINDIR="`dirname "\`readlink -f -- "$0"\`"`"
+CHROOTS="`readlink -m -- "$BINDIR/../chroots"`"
 CREATE=''
 ENCRYPT=''
 KEYFILE=''
 PRINT=''
-ROOT="`readlink -m '/var/run/crouton'`"
+ROOT="`readlink -m -- '/var/run/crouton'`"
 MOUNTOPTS='rw,dev,exec,suid'
 
 USAGE="$APPLICATION [options] name [...]

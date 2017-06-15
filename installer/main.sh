@@ -348,7 +348,7 @@ fi
 
 # Check if we're running from a tty, which does not interact well with X11
 if [ -z "$DOWNLOADONLY" ] && \
-        readlink -f "/proc/$$/fd/0" | grep -q '^/dev/tty'; then
+        readlink -f -- "/proc/$$/fd/0" | grep -q '^/dev/tty'; then
     echo \
 "WARNING: It is highly recommended that you run $APPLICATION from a crosh shell
 (Ctrl+Alt+T in Chromium OS), not from a VT. If you continue to run this from a

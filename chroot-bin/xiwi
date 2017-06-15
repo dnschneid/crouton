@@ -32,7 +32,7 @@ Ctrl-Alt-Shift-Escape.  If APPLICATION begins with 'start' but you still want to
 use the default window manager, specify the full path of the application."
 
 . "`dirname "$0"`/../installer/functions"
-xiwicmd="`readlink -f "$0"`"
+xiwicmd="`readlink -f -- "$0"`"
 OPTSTRING='FfTt'
 
 if [ "$#" = 0 ]; then
