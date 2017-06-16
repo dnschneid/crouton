@@ -37,10 +37,8 @@ host enter-chroot -n "$release" sh -c '
     croutonversion -r
     echo -n "uname:"
     uname -a
-    echo -n "vendor:"
-    cat /sys/class/graphics/fb0/device/vendor
-    echo -n "device:"
-    cat /sys/class/graphics/fb0/device/device
+    echo "vendor: $(cat /sys/class/drm/card0/device/vendor)"
+    echo "device: $(cat /sys/class/drm/card0/device/device)"
     echo -n "xdriinfo:"
     cat /home/tmp/xdriinfo.out
     echo "==glxinfo"
