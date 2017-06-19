@@ -20,7 +20,7 @@
 set -e
 
 APPLICATION="${0##*/}"
-SCRIPTDIR="`readlink -f "\`dirname "$0"\`/.."`"
+SCRIPTDIR="`readlink -f -- "\`dirname "$0"\`/.."`"
 # List of all supported (non-*'d) releases
 SUPPORTED_RELEASES="`awk -F'|' '
     ($1 ~ /[a-z]$/ && $2 !~ /(^|,)notest($|,)/) || $2 ~ /(^|,)test($|,)/ \
