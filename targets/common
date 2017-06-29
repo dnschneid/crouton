@@ -27,10 +27,12 @@ if [ -z "$TARGET" ]; then
 fi
 
 if [ "$TARGETS" = 'help' ]; then
-    echo "$TARGET"
-    echo "	$DESCRIPTION"
-    if [ -n "$REQUIRES" ]; then
-        echo "	Requires: $REQUIRES"
+    if [ -n "$DESCRIPTION" ]; then
+        echo "$TARGET"
+        echo "	$DESCRIPTION"
+        if [ -n "$REQUIRES" ]; then
+            echo "	Requires: $REQUIRES"
+        fi
     fi
 elif [ "$TARGETNOINSTALL" = "p" ]; then
     # This will check the provides from /etc/crouton/targets and targets
