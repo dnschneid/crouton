@@ -5,26 +5,18 @@
 if [ "${TARGETNOINSTALL:-c}" = 'c' ]; then
     if [ "$DISTRO" = 'kali' ]; then
         error 99 "Kodi not supported on Kali Linux."
+    elif [ "$DISTRO" = 'debian' ]; then
+        error 99 "Kodi not supported on Debian."
     fi
 fi
 REQUIRES='x11'
 PROVIDES='xbmc'
-DESCRIPTION='Installs the KODI media player. (Approx. 140MB)'
+DESCRIPTION='Installs the KODI media player. Ubuntu Only. (Approx. 140MB)'
 HOSTBIN='startkodi'
 CHROOTETC='kodi-keyboard.xml kodi-cycle.py'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
-
-# Kodi wiki recommends using the Jessie Backports repository
-if release -le jessie; then
-    cat > '/etc/apt/sources.list.d/kodi.list' <<EOF
-# Bring in Jessie Backports for newer Kodi
-deb http://http.debian.net/debian jessie-backports main
-EOF
-    # Update database
-    apt-get update || true
-fi
 
 # Kodi has an official ppa for the latest stable version
 if [ "$DISTRO" = 'ubuntu' ]; then    
