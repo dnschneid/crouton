@@ -4,5 +4,6 @@
 # found in the LICENSE file.
 REQUIRES='kodi'
 DESCRIPTION=''
+. "${TARGETSDIR:="$PWD"}/common"
 
 # This placeholder target is here to provide a migration path from xbmc to kodi.
