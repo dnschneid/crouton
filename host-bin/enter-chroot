@@ -7,8 +7,8 @@ set -e
 
 APPLICATION="${0##*/}"
 BACKGROUND=''
-BINDIR="`dirname "\`readlink -f "$0"\`"`"
-CHROOTS="`readlink -m "$BINDIR/../chroots"`"
+BINDIR="`dirname "\`readlink -f -- "$0"\`"`"
+CHROOTS="`readlink -m -- "$BINDIR/../chroots"`"
 KEYFILE=''
 LOGIN=''
 NAME=''
@@ -285,8 +285,8 @@ ln -sf '/var/host/shill/resolv.conf' "$CHROOT/etc/resolv.conf"
 # Sanity check of the timezone setting
 localtime="$CHROOT/etc/localtime"
 hostlocaltime='/var/host/timezone/localtime'
-if [ -h "$localtime" ] && [ "`readlink "$localtime"`" = "$hostlocaltime" ]; then
-    timezone="`readlink -m /var/lib/timezone/localtime || true`"
+if [ -h "$localtime" ] && [ "`readlink -- "$localtime"`" = "$hostlocaltime" ]; then
+    timezone="`readlink -m -- /var/lib/timezone/localtime || true`"
     if [ -z "$timezone" -o ! -e "$CHROOT$LOCALTIME" ]; then
         echo "\
 WARNING: the timezone selected in Chromium OS does not exist inside the chroot.
@@ -301,7 +301,7 @@ fi
 fixabslinks() {
     local p="$CHROOT/$1" c
     # Follow and fix dangerous absolute symlinks
-    while c="`readlink -m "$p"`" && [ "$c" != "$p" ]; do
+    while c="`readlink -m -- "$p"`" && [ "$c" != "$p" ]; do
         p="$CHROOT${c#"$CHROOT"}"
     done
     echo "$p"
@@ -555,7 +555,7 @@ if [ ! -d "$varrundrm" -a -d "$sysclassdrm" -a -d "$devdri" ]; then
     cp -Ta "$sysclassdrm" "$varrundrm"
     cp -Ta "$devdri" "$varrundri"
     for f in "$varrundrm"/*; do
-        if [ -h "$f" ] && readlink "$f" | grep -qF -e /vgem/ -e mfgsys; then
+        if [ -h "$f" ] && readlink -- "$f" | grep -qF -e /vgem/ -e mfgsys; then
             rm -f "$f" "$varrundri/${f##*/}"
         fi
     done
@@ -584,8 +584,8 @@ fi
 gfile="$CHROOT/etc/group"
 if [ -f "$gfile" ]; then
     for group in audio:hwaudio cras:audio cdrom chronos-access:crouton \
-                 devbroker-access disk floppy i2c input lp serial tape tty \
-                 usb:plugdev uucp video wayland; do
+                 devbroker-access dialout disk floppy i2c input lp serial \
+                 tape tty usb:plugdev uucp video wayland; do
         hostgroup="${group%:*}"
         chrootgroup="${group#*:}"
         gid="$(awk -F: '$1=="'"$hostgroup"'"{print $3; exit}' '/etc/group')"

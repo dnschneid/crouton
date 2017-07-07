@@ -22,5 +22,5 @@ else
 fi
 
 export TERM='linux'
-exec sh -e "`dirname "\`readlink -f "$0"\`"`/enter-chroot" -t cli-extra -l \
+exec sh -e "`dirname "\`readlink -f -- "$0"\`"`/enter-chroot" -t cli-extra -l \
     "$@" "" $openvt

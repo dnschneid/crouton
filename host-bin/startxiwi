@@ -6,7 +6,7 @@
 set -e
 
 APPLICATION="${0##*/}"
-ENTERCHROOT="$(dirname "$(readlink -f "$0")")/enter-chroot"
+ENTERCHROOT="$(dirname "$(readlink -f -- "$0")")/enter-chroot"
 OPTS_ENTER=''
 OPTS_XIWI=''
 
