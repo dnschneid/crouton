@@ -6,13 +6,13 @@
 set -e
 
 APPLICATION="${0##*/}"
-BINDIR="`dirname "\`readlink -f "$0"\`"`"
-CHROOTS="`readlink -m "$BINDIR/../chroots"`"
+BINDIR="`dirname "\`readlink -f -- "$0"\`"`"
+CHROOTS="`readlink -m -- "$BINDIR/../chroots"`"
 CREATE=''
 ENCRYPT=''
 KEYFILE=''
 PRINT=''
-ROOT="`readlink -m '/var/run/crouton'`"
+ROOT="`readlink -m -- '/var/run/crouton'`"
 MOUNTOPTS='rw,dev,exec,suid'
 
 USAGE="$APPLICATION [options] name [...]
@@ -246,6 +246,11 @@ $passphrase" | ecryptfs-rewrap-passphrase "$wrappedfnek" -
         if [ -z "$keysig" -o -z "$fneksig" ]; then
             error 1 "Failed to decrypt $NAME."
         fi
+
+        # Create a new session, and link user keyring to that session,
+        # as required by ecryptfs.
+        keyctl new_session >/dev/null
+        keyctl link @u @s
 
         mnt="ecryptfs_sig=$keysig,ecryptfs_fnek_sig=$fneksig"
         mnt="$mnt,ecryptfs_cipher=aes,ecryptfs_key_bytes=16"
