@@ -8,8 +8,8 @@ if [ -z "$release" ]; then
     exit 0
 fi
 
-target="xbmc"
-startcmd="startxbmc"
+target="kodi"
+startcmd="startkodi"
 xte=""
 
 # Run common file
