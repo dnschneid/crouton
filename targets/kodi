@@ -20,7 +20,7 @@ CHROOTETC='kodi-keyboard.xml kodi-cycle.py'
 
 ## Debian Overrides
 # Kodi wiki recommends using the Jessie Backports repository
-if release = jessie; then
+if release -eq jessie; then
     cat > '/etc/apt/sources.list.d/kodi.list' <<EOF
 # Bring in Jessie Backports for newer Kodi
 deb http://http.debian.net/debian jessie-backports main
@@ -31,7 +31,7 @@ fi
 
 ## Ubuntu Overrides
 # Kodi has an official ppa for the latest stable version
-if [ "$DISTRO" = 'ubuntu' ]; then    
+if [ "$DISTRO" -eq 'ubuntu' ]; then    
     # Pull in the signing key
     apt-key adv --keyserver 'keyserver.ubuntu.com' \
                 --recv-keys '91E7EE5E'
