@@ -5,14 +5,13 @@
 if [ "${TARGETNOINSTALL:-c}" = 'c' ]; then
     if release -le wheezy; then
         error 99 "Kodi not supported on Debian Wheezy or older."
-    fi
-    if release = precise; then
+    elif release -eq precise; then
         error 99 "Kodi not supported on Precise Ubuntu."
     fi
 fi
 REQUIRES='x11'
 PROVIDES='xbmc'
-DESCRIPTION='Installs the KODI media player. Ubuntu Only. (Approx. 140MB)'
+DESCRIPTION='Installs the KODI media player. (Approx. 140MB)'
 HOSTBIN='startkodi'
 CHROOTETC='kodi-keyboard.xml kodi-cycle.py'
 . "${TARGETSDIR:="$PWD"}/common"
@@ -28,11 +27,6 @@ deb http://http.debian.net/debian jessie-backports main
 EOF
     # Update database
     apt-get update || true
-fi
-
-# Get rid of disruptive xserver-xorg-legacy package
-if release = stretch || release = sid || release = kali-rolling; then
-    remove xserver-xorg-legacy
 fi
 
 ## Ubuntu Overrides
