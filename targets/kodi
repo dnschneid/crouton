@@ -31,7 +31,7 @@ fi
 
 ## Ubuntu Overrides
 # Kodi has an official ppa for the latest stable version
-if [ "$DISTRO" -eq 'ubuntu' ]; then    
+if [ "$DISTRO" = 'ubuntu' ]; then    
     # Pull in the signing key
     apt-key adv --keyserver 'keyserver.ubuntu.com' \
                 --recv-keys '91E7EE5E'
