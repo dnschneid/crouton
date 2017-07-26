@@ -85,8 +85,8 @@ build_cras() {
     install --minimal alsa-utils \
         libasound2$pkgsuffix libspeexdsp1$pkgsuffix
 
-    install --minimal --asdeps gcc $pkgdepextra libc6-dev$pkgsuffix \
-        pkg-config libspeexdsp-dev$pkgsuffix
+    install --minimal --asdeps gcc $pkgdepextra opensuse=glibc-devel,libc6-dev$pkgsuffix \
+        pkg-config opensuse=speexdsp-devel,libspeexdsp-dev$pkgsuffix
 
     # precise does not allow libasound2-dev and libasound2-dev:i386 to be
     # installed simultaneously
@@ -99,6 +99,13 @@ build_cras() {
             ln -sfT libasound.so.2 "$libasoundso"
         fi
         ALSALIBDIR="/usr/lib$archextrapath/alsa-lib"
+    elif [ "$DISTROAKA" = "opensuse" ]; then
+        install --minimal --asdeps alsa-devel
+        if [ "$ARCH" = "arm64" -o "$ARCH" = "x86_64"]; then
+            ALSALIBDIR="/usr/lib64/alsa-lib"
+        else
+            ALSALIBDIR="/usr/lib/alsa-lib"
+        fi
     else
         install --minimal --asdeps libasound2-dev$pkgsuffix
         ALSALIBDIR="`PKG_CONFIG_PATH="$pkgconfigpath" \
