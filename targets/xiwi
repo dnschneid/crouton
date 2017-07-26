@@ -28,7 +28,8 @@ if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
     apt-mark unhold xserver-xorg-video-dummy$ltspackages || true 2>/dev/null
 fi
 
-install xorg xserver-xorg-video-dummy$ltspackages
+install opensuse=xinit, opensuse=xorg-x11-server,xorg \
+    opensuse=xf86-video-dummy,xserver-xorg-video-dummy$ltspackages
 install --minimal i3
 
 # Remove some unsupported options on old versions of i3
@@ -38,7 +39,8 @@ fi
 
 # Compile croutonfbserver
 compile fbserver '-lX11 -lXfixes -lXdamage -lXext -lXtst' \
-    libx11-dev libxfixes-dev libxdamage-dev libxext-dev libxtst-dev
+    opensuse=libX11-devel,libx11-dev opensuse=libXfixes-devel,libxfixes-dev opensuse=libXdamage-devel,libxdamage-dev \
+    opensuse=libXext-devel,libxext-dev opensuse=libXtst-devel,libxtst-dev
 compile findnacld ''
 
 ln -sf /etc/crouton/xorg-dummy.conf /etc/X11/
@@ -60,8 +62,8 @@ fi
 wget $superinsecure -O "$DUMMYBUILDTMP/dummy.tar.gz" \
      "$urlbase/xf86-video-dummy-0.3.8.tar.gz"
 
-install --minimal --asdeps patch gcc libc-dev pkg-config \
-    xserver-xorg-dev$ltspackages x11proto-xf86dga-dev
+install --minimal --asdeps patch gcc opensuse=glibc-devel,libc-dev pkg-config \
+    opensuse=xorg-x11-server-sdk,xserver-xorg-dev$ltspackages opensuse=xf86dgaproto-devel,x11proto-xf86dga-dev
 
 (
     cd "$DUMMYBUILDTMP"
@@ -398,9 +400,15 @@ EOF
     echo "Installing Xorg dummy driver..." 1>&2
 
     DRIVERDIR="/usr/lib/xorg/modules/drivers"
+    if [ "${DISTROAKA:-"$DISTRO"}" = 'opensuse' ]; then
+        if [ "${ARCH}" = "arm64" -o "${ARCH}" = "x86_64" ]; then
+            DRIVERDIR="/usr/lib64/xorg/modules/drivers"
+        fi
+    fi
     mkdir -p "$DRIVERDIR/"
     /usr/bin/install -s dummy_drv.so "$DRIVERDIR/"
 ) # End compilation subshell
+
 
 if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
     # Hold xserver-xorg-video-dummy to make sure the driver does not get erased
