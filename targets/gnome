@@ -16,9 +16,9 @@ fi
 
 ### Append to prepare.sh:
 install --minimal evolution-data-server gnome-control-center \
-        gnome-screensaver gnome-session $legacy_session_package \
-        gnome-shell gnome-themes-standard gvfs-backends nautilus \
-        unzip gtk2-engines-pixbuf pulseaudio
+        opensuse=,gnome-screensaver gnome-session $legacy_session_package \
+        gnome-shell opensuse=gnome-themes,gnome-themes-standard gvfs-backends \
+        nautilus unzip opensuse=gtk2-engines,gtk2-engines-pixbuf pulseaudio
 
 TIPS="$TIPS
 You can start GNOME via the startgnome host command: sudo startgnome
