@@ -68,7 +68,7 @@ if [ "${ARCH#arm}" = "$ARCH" ]; then
 fi
 
 # Catalog relevant and irrelevant video drivers
-fbdev="xserver-xorg-video-fbdev$backport"
+fbdev="opensuse=xf86-video-fbdev,xserver-xorg-video-fbdev$backport"
 
 if release -lt sid -lt kali-rolling -lt vivid; then
     modesetting="xserver-xorg-video-modesetting$backport"
@@ -97,7 +97,7 @@ fi
 
 # On Freon, we need crazy xorg hacks
 if [ -n "$freon" ]; then
-    compile freon '-ldl -ldrm -I/usr/include/libdrm' so libdrm-dev
+    compile freon '-ldl -ldrm -I/usr/include/libdrm' so opensuse=libdrm-devel,libdrm-dev
 fi
 
 # Pin precise's version of mesa if necessary
@@ -183,6 +183,8 @@ fi
 
 if release -lt stretch -lt kali-rolling -lt yakkety; then
     vmmouse='xserver-xorg-input-vmmouse'
+elif [ "$DISTROAKA" = "opensuse" ]; then
+    vmmouse='xorg-x11-driver-input'
 else
     # xserver-xorg-input-vmmouse is obsolete
     vmmouse=''
@@ -194,11 +196,12 @@ if [ -z "$inteldriver" -a -n "$backport" ] && release -eq precise; then
     # so replace it with something not broken
     install_dummy xorg -- xserver-xorg$backport libgl1-mesa-glx$backport \
         libgl1-mesa-dri$backport libglu1-mesa xfonts-base x11-apps \
-        x11-session-utils x11-utils x11-xfs-utils x11-xkb-utils \
+        x11-session-utils opensuse=xprop,x11-utils x11-xfs-utils x11-xkb-utils \
         x11-xserver-utils xauth xinit xfonts-utils xkb-data xorg-docs-core \
         xterm x11-common xinput
 else
-    install xorg $installvideodrivers -- xserver-xorg-video-all$backport \
+    install opensuse=xorg-x11-server,xorg $installvideodrivers \
+        -- opensuse=xorg-x11-driver-video,xserver-xorg-video-all$backport \
         $vmmouse
 fi
 
