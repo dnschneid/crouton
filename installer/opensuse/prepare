@@ -1,0 +1,130 @@
+#!/bin/sh -e
+# Copyright (c) 2016 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# This is a distro-specific continuation of the prepare.sh script.
+
+PKGEXT='rpm'
+DISTROAKA='opensuse'
+
+
+# install_dist: see install() in prepare.sh for details.
+install_dist() {
+    local pkgs='' params='' asdeps=''
+    while [ "$#" != 0 ]; do
+        if [ "$1" = "--minimal" ]; then
+            params='--no-recommends'
+        elif [ "$1" = "--asdeps" ]; then
+            shift
+            continue
+        else
+            break
+        fi
+        shift
+    done
+    while [ "$#" != 0 ]; do
+        if [ "$1" = '--' ]; then
+            shift
+            break
+        fi
+        pkgs="$pkgs $1"
+        shift
+    done
+    zypper -q install -y $params $pkgs $(list_uninstalled_dist - "$@") || return $?
+}
+
+
+# install_pkg_dist: see install_pkg() in prepare.sh for details.
+install_pkg_dist() {
+    local params=''
+    if [ "$1" = '--minimal' ]; then
+        params='--no-recommends'
+        shift
+    fi
+    if [ "$#" != 0 ]; then
+        zypper -q install -y $params "$@" || return $?
+    fi
+}
+
+
+# install_dummy_dist: see install_dummy() in prepare.sh for details.
+install_dummy_dist() {
+    if [ "$#" = 0 ]; then
+        return
+    fi
+    local pkgname="crouton-$1" pkgprovides="$1" requires=""
+    shift
+    while [ "$#" != 0 ]; do
+        if [ "$1" = '--' ]; then
+            shift
+            break
+        fi
+        pkgprovides="$pkgprovides, $1"
+        shift
+    done
+    local pkgdepends="$1"
+    if [ "$#" != 0 ]; then
+        shift
+        while [ "$#" != 0 ]; do
+            pkgdepends="$pkgdepends, $1"
+            shift
+        done
+    fi
+
+    if [ -n "$pkgdepends" ]; then
+        requires="Requires: ${pkgdepends}"
+    fi
+
+    local tmp="$(mktemp -d crouton.XXXXXX --tmpdir=/tmp)"
+    addtrap "rm -rf '$tmp'"
+    cat > "$tmp/dummy.spec" <<EOF
+Name: $pkgname
+Version: 1.0.0
+Release: 1.0.0
+Group: dummy
+Vendor: dummy
+License: %{vendor}
+Provides: $pkgprovides
+$requires
+Summary: Provides a dummy ${pkgname#*-} for crouton
+BuildRoot: %{_tmppath}/%{name}-%{version}-build
+
+%description
+%{summary}
+
+%files
+EOF
+    rpmbuild --define='_rpmdir "$tmp"' -bb "$tmp/dummy.spec" > "$tmp/build.log"
+    if [ $? != 0 ]; then
+        echo "ERROR: Could not build dummy rpm!"
+	exit 1
+    fi
+    pkg="$(awk '/^wrote:/ { print $2 }' < "$tmp/build.log")"
+    rm "$tmp/build.log"
+    zypper -q install -y --force-resolution "$pkg"
+}
+
+
+# remove_dist: see remove() in prepare.sh for details.
+remove_dist() {
+    zypper -q remove --clean-deps -y "$@"
+}
+
+
+# list_uninstalled_dist: see list_uninstalled() in prepare.sh for details.
+list_uninstalled_dist() {
+    local suffix="$1" pkg
+    shift
+    for pkg in "$@"; do
+        if ! zypper se -i "$pkg" 2>/dev/null | grep -q '^i'; then
+            echo -n "$pkg$suffix "
+        fi
+    done
+}
+
+# enable network ping for all users
+chmod u+s /usr/bin/ping
+
+# add rpmbuild for dummy packages
+install rpmbuild
