@@ -8,17 +8,19 @@ DESCRIPTION='GTK-based tools including gdebi, gksu, and a simple browser.'
 
 ### Append to prepare.sh:
 install_dummy network-manager network-manager-gnome
-install gdebi gksu
+install opensuse=,gdebi opensuse=libgnomesu,gksu
 
-for BROWSER in netsurf-gtk dillo hv3 ""; do
-    test -n "$BROWSER"
-    if install "$BROWSER"; then
-        bin="/usr/bin/$BROWSER"
-        for link in x-www-browser gnome-www-browser; do
-            if ! update-alternatives --query "$link" | grep -q "$bin"; then
-                update-alternatives --install "/usr/bin/$link" "$link" "$bin" 10
-            fi
-        done
-        break
-    fi
-done
+if [ "$DISTROAKA" != "opensuse" ]; then
+    for BROWSER in netsurf-gtk dillo hv3 ""; do
+        test -n "$BROWSER"
+        if install "$BROWSER"; then
+            bin="/usr/bin/$BROWSER"
+            for link in x-www-browser gnome-www-browser; do
+                if ! update-alternatives --query "$link" | grep -q "$bin"; then
+                    update-alternatives --install "/usr/bin/$link" "$link" "$bin" 10
+                fi
+            done
+            break
+        fi
+    done
+fi
