@@ -110,7 +110,7 @@ fi
 fixkeyboardmode
 
 # Install critical packages
-install --minimal sudo wget ca-certificates apt-transport-https
+install --minimal sudo wget ca-certificates opensuse=,apt-transport-https
 
 # Generate and set default locale
 if [ ! -f '/etc/default/locale' ] && hash locale-gen 2>/dev/null; then
