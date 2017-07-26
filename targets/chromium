@@ -5,7 +5,7 @@
 if [ "${TARGETNOINSTALL:-c}" = 'c' ] &&
         [ "$DISTRO" = 'debian' -o "$DISTRO" = 'kali' ] &&
         [ "${ARCH#arm}" != "$ARCH" ]; then
-    error 99 "chromium target is not supported on Debian/ARM."
+    error 99 "chromium target is not supported on $DISTRO on ARM."
 fi
 REQUIRES='x11'
 DESCRIPTION="Chromium browser. Uses the distro's version, which may be old."
