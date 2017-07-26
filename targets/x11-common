@@ -23,16 +23,16 @@ if [ -n "$offset" ]; then
 fi
 
 # Install utilities and links for powerd-poking daemon
-compile xi2event '-lX11 -lXi' libx11-dev libxi-dev
-install --minimal dbus xdg-utils
+compile xi2event '-lX11 -lXi' opensuse=libX11-devel,libx11-dev opensuse=libXi-devel,libxi-dev
+install --minimal opensuse=dbus-1,dbus xdg-utils
 ln -sf croutonpowerd /usr/local/bin/gnome-screensaver-command
 ln -sf croutonpowerd /usr/local/bin/xscreensaver-command
 
 # Install nicer cursors
-install --minimal dmz-cursor-theme
+install --minimal opensuse=dmz-icon-theme-cursors,dmz-cursor-theme
 
 # Install bsdmainutils, xbindkeys and xautomation for shortcuts
-install --minimal bsdmainutils xbindkeys xautomation
+install --minimal opensuse=,bsdmainutils xbindkeys xautomation
 
 # We need chvt on freon systems
 if [ -f "/sys/class/tty/tty0/active" ]; then
