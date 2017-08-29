@@ -1,0 +1,53 @@
+#!/bin/sh -e
+# Copyright (c) 2017 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# This file is sourced from main.sh to update distro-specific defaults.
+# It must set at least ARCH and MIRROR if not already specified.
+
+if [ -z "$ARCH" ]; then
+    ARCH="$(uname -m)"
+fi
+
+case "$ARCH" in
+amd64 | x86_64) 
+    INSTALL_ARCH="amd64"
+    ARCH="amd64";;
+x86 | i?86)
+    X86V="${ARCH:1:1}"
+    case "$X86V" in
+        4) INSTALL_ARCH="i486";;
+	*) INSTALL_ARCH="i686";;
+    esac
+    ARCH="x86";;
+armv*_hardfloat | armv*_hardfp | armv?hl | armhf)
+    ARMV="${ARCH:4:1}"
+    case "$ARMV" in
+	# Use the v# to get the install arch
+        6) INSTALL_ARCH="armv6j_hardfp";;
+	# Default to armv7a_hardfp
+	*) INSTALL_ARCH="armv7a_hardfp";;
+    esac
+    ARCH="arm64";;
+armv* | armel)
+    ARMV="${ARCH:4:1}"
+    case "$ARMV" in
+	# Use the v# to get the install arch
+	4) INSTALL_ARCH="armv4tl";;
+	5) INSTALL_ARCH="armv5tel";;
+	6) INSTALL_ARCH="armv6j";;
+	# Default to armv7a if we were passed anything else
+	*) INSTALL_ARCH="armv7a";;
+    esac
+    ARCH="arm";;
+arm64 | aarch64)
+    INSTALL_ARCH="arm64"
+    ARCH="arm64";;
+*) error 2 "Invalid architecture: '$ARCH'.";;
+esac
+
+# Set a default mirror
+if [ -z "$MIRROR" ]; then
+    MIRROR="${CROUTON_MIRROR_gentoo:-http://distfiles.gentoo.org/}"
+fi

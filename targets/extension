@@ -1,5 +1,5 @@
 #!/bin/sh -e
-# Copyright (c) 2016 The crouton Authors. All rights reserved.
+# Copyright (c) 2017 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 REQUIRES='x11'
@@ -19,7 +19,10 @@ fi
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
-install x11-utils xclip
+
+# Note: xdpyinfo, xdriinfo and xprop are in x11-utils for other distros
+install gentoo=x11-misc/xclip,xclip gentoo=xdpyinfo,x11-utils gentoo=xdriinfo, \
+    gentoo=xprop,
 
 compile websocket ''
 
@@ -35,12 +38,14 @@ if [ "$XMETHOD" = 'xorg' ] || grep -q xorg /etc/crouton/targets; then
 fi
 
 # Use croutonurlhandler as a fallback URL handler
-handler='/usr/local/bin/croutonurlhandler'
-for link in x-www-browser gnome-www-browser www-browser; do
-    if ! update-alternatives --query "$link" | grep -q "$handler"; then
-        update-alternatives --install "/usr/bin/$link" "$link" "$handler" 15
-    fi
-done
+if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
+    handler='/usr/local/bin/croutonurlhandler'
+    for link in x-www-browser gnome-www-browser www-browser; do
+        if ! update-alternatives --query "$link" | grep -q "$handler"; then
+            update-alternatives --install "/usr/bin/$link" "$link" "$handler" 15
+        fi
+    done
+fi
 
 if [ "$EXTENSION_INSTALLED" = 'y' ]; then
     TIPS="$TIPS

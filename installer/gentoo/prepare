@@ -1,0 +1,158 @@
+#!/bin/sh -e
+# Copyright (c) 2017 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# This is a distro-specific continuation of the prepare.sh script.
+
+DISTROAKA='gentoo'
+
+# Set global use flags, separated by a space
+set_flags() {
+    while [ "$#" != 0 ]; do
+	# Remove the flag first to make sure it's not overriden anywhere
+	# Add the true to keep this from halting prepare.sh if the flag isn't set
+        euse -R "${1#-}" > /dev/null 2>&1 || true
+
+        # Check if the flag starts with a -, if so, we're disabling it
+        if [ "${1#-}" != "$1" ]; then
+	    # Now turn it off
+            euse -D "${1#-}" 1> /dev/null
+        # Otherwise, we can enable it
+        else
+            euse -E "$1" 1> /dev/null
+        fi
+        shift
+    done
+}
+
+# Set a package specific use flag
+# Usage: set_package_flag <package> <use flag> <crouton target for comment>
+set_package_flag() {
+    local PDIR="/etc/portage/package.use"
+    # Make sure the package.use directory and file exist
+    mkdir -p "$PDIR"
+    touch "$PDIR/crouton"
+
+    # Set the use flag if it's not already set
+    if ! grep -q "$1 $2" "$PDIR/crouton"; then
+        echo "# Added flag $2 to $1 for crouton target $3" >> "$PDIR/crouton"
+        echo "$1 $2" >> "$PDIR/crouton"
+    fi
+}
+
+# Set unstable keywords for a package, version is optional
+# Usage: keyword_package <package> <crouton target for comment> <pkg verison>
+keyword_package() {
+    local PDIR="/etc/portage/package.keywords"
+    # Make sure the keywords directory and file exist
+    mkdir -p "$PDIR"
+    touch "$PDIR/crouton"
+
+    # Check if the keyword is set for this package and if not, set it
+    if ! grep -q -e "^$1[[:space:]]" -e "^$1$" -e "^<=$1-$3" "$PDIR/crouton"; then
+        echo "# Added keywords for crouton target $2" >> "$PDIR/crouton"
+	if [ -z "$3" ]; then
+            echo "$1" >> "$PDIR/crouton"
+	else
+            echo "<=$1-$3" >> "$PDIR/crouton"
+	fi
+    fi
+}
+
+# Set a license
+# Usage: accept_license <package> <license> <crouton target for comment>
+accept_license() {
+    local PF="/etc/portage/package.license"
+    # Make sure the package license file exists
+    touch "$PF"
+
+    # Check if the license is set for this package and if not, set it
+    if ! grep -q "$1[[:space:]]$2" "$PF"; then
+        echo "# Added license for crouton target $3" >> "$PF"
+        echo "$1 $2" >> "$PF"
+    fi
+
+    # Let the user know that we accepted the license for them
+    TIPS="$TIPS
+By installing $3, the license $2 has been enabled.
+"
+}
+
+# Set a use expand flag
+# Usage: set_use_expand <variable to expand> <flag to enable>
+set_use_expand() {
+    local PM="/etc/portage/make.conf"
+    EXPAND="$(grep "^$1=" "$PM" || true)"
+    # If not, add it with the desired flag
+    if [ -z "$EXPAND" ]; then
+        echo "$1=\"$2\"" >> "$PM"
+    # If the variable is already present, check if the flag is already set
+    else
+        # Add the flag
+        if ! echo "$EXPAND" | grep -q "$2"; then
+            sed -i -e "s|$1=\"\(.*\)\"|$1=\"\1 $2\"|" "$PM"
+        fi
+    fi
+}
+
+# Switch the system profile
+# Usage: set_profile <profile keyword to search for, can include regex>
+set_profile() {
+    # Get the profile number to switch to
+    local NEW_PROFILE="$(eselect profile list | awk '{ print $2 }' | grep "$1")"
+    if [ -z "$NEW_PROFILE" ]; then
+       echo "ERROR: Unable to find a profile that matches $1." 2>&1
+       exit 99
+    fi
+
+    # Set the profile
+    eselect profile set "$NEW_PROFILE"
+}
+
+# install_dist: see install() in prepare.sh for details.
+install_dist() {
+    local pkgs=''
+    while [ "$#" != 0 ]; do
+        if [ "$1" = '--' ]; then
+            shift
+            break
+        fi
+        # We ignore --minimal and --asdeps it does nothing for gentoo
+        if [ "$1" != "--minimal" -a "$1" != "--asdeps" ]; then
+            pkgs="$pkgs $1";
+        fi
+        shift
+    done
+    if [ -n "$pkgs" ]; then
+        # No quotes here, we want the shell to do word splitting
+        emerge -Duv --newuse $pkgs
+    fi
+}
+
+
+# install_pkg_dist: see install_pkg() in prepare.sh for details.
+install_pkg_dist() {
+    echo "ERROR: A target called install_pkg_dist() on Gentoo"
+    exit 3
+}
+
+
+# install_dummy_dist: see install_dummy() in prepare.sh for details.
+install_dummy_dist() {
+    echo "ERROR: A target called install_dummy_dist() on Gentoo"
+    exit 3
+}
+
+
+# remove_dist: see remove() in prepare.sh for details.
+remove_dist() {
+    echo "ERROR: A target called remove_dist() on Gentoo"
+    exit 3
+}
+
+# list_uninstalled_dist: see list_uninstalled() in prepare.sh for details.
+list_uninstalled_dist() {
+    "ERROR: A target called list_uninstalled_dist() on Gentoo"
+    exit 3
+}

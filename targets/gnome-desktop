@@ -1,5 +1,5 @@
 #!/bin/sh -e
-# Copyright (c) 2016 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2017 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 if [ "${TARGETNOINSTALL:-c}" = 'c' ] && release -lt quantal; then
@@ -10,5 +10,11 @@ DESCRIPTION='Installs GNOME along with common applications. (Approx. 1100MB)'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
-install ubuntu=ubuntu-gnome-desktop,task-gnome-desktop \
+if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
+    TIPS="
+On Gentoo, the gnome-desktop target does not add any additional packages.
+"
+else
+    install ubuntu=ubuntu-gnome-desktop,task-gnome-desktop \
         -- network-manager xorg ubuntu~xenial=xserver-xorg-legacy,
+fi

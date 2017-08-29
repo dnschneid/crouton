@@ -1,0 +1,58 @@
+#!/bin/sh -e
+# Copyright (c) 2017 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# This is a distro-specific bootstrap script, sourced from main.sh, and as such
+# has access to all of the variables set by main.sh, namely $tmp (the temporary
+# directory), $INSTALLERDIR/$DISTRO, $RELEASE, $ARCH, and $MIRROR.
+
+FETCH_DIR="$MIRROR/releases/$ARCH/autobuilds"
+
+# Grab the latest stage3
+echo 'Finding the latest stage3...' 1>&2
+LATEST_STAGE3="$FETCH_DIR/latest-stage3-$INSTALL_ARCH.txt"
+# Read the latest release, the sed matches the lines that don't start with #
+# and then removes the size (everything after the space) from the filename
+STAGE3="$(wget -q -O- "$LATEST_STAGE3" | sed -n -e '/^#/! s/ .*//p')"
+DIR="$tmp/$RELEASE-$ARCH"
+mkdir -p "$DIR"
+
+# Download and unpack
+echo "Downloading release: $STAGE3..." 1>&2
+# Exclude /var/tmp because the buildhost might have left useless stuff in there
+if ! wget -O- --no-verbose --timeout=60 -t2 "$FETCH_DIR/$STAGE3" \
+    | tar --exclude="./tmp" --exclude="./var/tmp" -C "$DIR" --strip-components=1 -jx 2>/dev/null; then
+    error 1 'Failed to download stage3.'
+fi
+# Make sure that the /tmp and /var/tmp directories exist and have sane permisions
+mkdir -p "$DIR/tmp"
+mkdir -p "$DIR/var/tmp"
+chmod 777 "$DIR/tmp"
+chmod 777 "$DIR/var/tmp"
+
+# Fetch the latest portage tree
+PORTAGE="$MIRROR/snapshots/portage-latest.tar.bz2"
+mkdir -p "$DIR/usr/portage"
+
+echo "Fetching the portage tree snapshot..." 1>&2
+if ! wget -O- --no-verbose --timeout=60 -t2 "$PORTAGE" \
+    | tar -C "$DIR/usr/portage" --strip-components=1 -jx 2>/dev/null; then
+    error 1 'Failed to fetch the portage tree.'
+fi
+
+# If we're using a 64 bit x86 arch, build for both 32 and 64 bit
+if [ "$ARCH" = 'amd64' ]; then
+    echo 'ABI_X86="32 64"' >> "$DIR/etc/portage/make.conf"
+fi
+
+# Set better cflags on amd64 -- no, not -funroll-loops :)
+if [ "$ARCH" = 'amd64' ]; then 
+    sed -i 's/CFLAGS="-O2 -pipe"/CFLAGS="-O2 -pipe -march=native -mtune=native"/'\
+        "$DIR/etc/portage/make.conf"
+fi
+
+# Set better make opts
+CORE_COUNT="$(grep -c processor /proc/cpuinfo)"
+J_COUNT="$((CORE_COUNT + 1))"
+echo "MAKEOPTS=\"-j$J_COUNT\"" >> "$DIR/etc/portage/make.conf"

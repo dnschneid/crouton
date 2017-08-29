@@ -1,5 +1,5 @@
 #!/bin/sh -e
-# Copyright (c) 2016 The crouton Authors. All rights reserved.
+# Copyright (c) 2017 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -199,8 +199,7 @@ compile() {
     fi
     shift 2
     echo "Installing dependencies for $out..." 1>&2
-    local pkgs="gcc libc6-dev $*"
-    install --minimal --asdeps $pkgs </dev/null
+    install --minimal --asdeps debian=gcc, debian=libc6-dev, $* </dev/null
     echo "Compiling $out..." 1>&2
     local tmp="`mktemp crouton.XXXXXX --tmpdir=/tmp`"
     addtrap "rm -f '$tmp'"

@@ -1,0 +1,39 @@
+diff --git a/src/intel_device.c b/src/intel_device.c
+index 140e153..56ef7ef 100644
+--- a/src/intel_device.c
++++ b/src/intel_device.c
+@@ -579,7 +579,7 @@ int intel_open_device(int entity_num,
+ 		master_count++;
+ 
+ 	/* Non-root user holding MASTER, don't let go */
+-	if (geteuid() && is_master(fd))
++	if (0 && is_master(fd))
+ 		master_count++;
+ 
+ 	if (pci)
+diff --git a/src/legacy/i810/xvmc/I810XvMC.c b/src/legacy/i810/xvmc/I810XvMC.c
+index e6b63d3..c4ff9e3 100644
+--- a/src/legacy/i810/xvmc/I810XvMC.c
++++ b/src/legacy/i810/xvmc/I810XvMC.c
+@@ -146,7 +146,7 @@ _X_EXPORT Status XvMCCreateContext(Display *display, XvPortID port,
+   }
+ 
+   /* Limit use to root for now */
+-  if(geteuid()) {
++  if(0) {
+     printf("Use of XvMC on i810 is currently limited to root\n");
+     return BadAccess;
+   }
+diff --git a/src/sna/sna_accel.c b/src/sna/sna_accel.c
+index baf5f60..cc830c1 100644
+--- a/src/sna/sna_accel.c
++++ b/src/sna/sna_accel.c
+@@ -17966,7 +17966,7 @@ void sna_accel_leave(struct sna *sna)
+ 	DBG(("%s\n", __FUNCTION__));
+ 
+ 	/* as root we always have permission to render */
+-	if (geteuid() == 0)
++	if (1)
+ 		return;
+ 
+ 	/* as a user, we can only render now if we have a rendernode */

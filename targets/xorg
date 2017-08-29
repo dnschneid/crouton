@@ -1,12 +1,12 @@
 #!/bin/sh -e
-# Copyright (c) 2016 The crouton Authors. All rights reserved.
+# Copyright (c) 2017 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 REQUIRES='audio'
 PROVIDES='x11'
 DESCRIPTION='X.Org X11 backend. Enables GPU acceleration on supported platforms.'
 CHROOTBIN='croutoncycle croutontriggerd croutonxinitrc-wrapper setres xinit'
-CHROOTETC='xbindkeysrc.scm xorg-intel-sna.conf xserverrc xserverrc-xorg xserverrc-local.example'
+CHROOTETC='xbindkeysrc.scm xorg-intel-sna.conf xserverrc xserverrc-xorg xserverrc-local.example intel-geteuid.patch'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
@@ -15,6 +15,25 @@ XMETHOD="${XMETHOD:-xorg}"
 # Migration from ambiguous XMETHOD
 rm -f '/etc/crouton/xserverrc-x11'
 
+# Set the use flags on gentoo that we'll need for X
+if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
+    # Set up the patches for intel video cards
+    mkdir -p /etc/portage/patches/x11-drivers/xf86-video-intel
+    ln -sf /etc/crouton/intel-geteuid.patch /etc/portage/patches/x11-drivers/xf86-video-intel/intel-geteuid.patch
+
+    # These flags are common to xiwi and xorg and should be kept in sync
+    # They must be set early, so we can't put them in x11-common
+    set_flags X guile networking
+    set_package_flag app-text/xmlto text x11-common
+
+    set_flags libkms uxa dri3 xvmc opengl vulkan
+    # We remove the suid bit because it breaks LD_PRELOAD'ing libcroutonfreon.so
+    set_package_flag x11-base/xorg-server -suid xorg
+    # Set the input devices
+    set_use_expand INPUT_DEVICES evdev
+    set_use_expand INPUT_DEVICES synaptics
+    set_use_expand INPUT_DEVICES wacom
+fi
 
 # Figure out what we need on this system
 
@@ -44,7 +63,11 @@ intelhasfbc=''
 pinmesa=''
 intelfbcsupport='y'
 if [ "${ARCH#arm}" = "$ARCH" ]; then
-    inteldriver="xserver-xorg-video-intel$backport"
+    if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
+        inteldriver="xf86-video-intel"
+    else
+        inteldriver="xserver-xorg-video-intel$backport"
+    fi
 
     # If the system has an Intel FBC-capable video card but has too old a driver
     # to support the chipset, we'll need to disable hardware acceleration.
@@ -64,11 +87,17 @@ if [ "${ARCH#arm}" = "$ARCH" ]; then
     fi
 
     # Unhold xserver-xorg-video-intel, modification will be reapplied later.
-    apt-mark unhold "$inteldriver" 2>/dev/null || true
+    if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
+        apt-mark unhold "$inteldriver" 2>/dev/null || true
+    fi
 fi
 
 # Catalog relevant and irrelevant video drivers
-fbdev="xserver-xorg-video-fbdev$backport"
+if [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
+    fbdev="xf86-video-fbdev"
+else
+    fbdev="xserver-xorg-video-fbdev$backport"
+fi
 
 if release -lt sid -lt kali-rolling -lt vivid; then
     modesetting="xserver-xorg-video-modesetting$backport"
@@ -97,7 +126,7 @@ fi
 
 # On Freon, we need crazy xorg hacks
 if [ -n "$freon" ]; then
-    compile freon '-ldl -ldrm -I/usr/include/libdrm' so libdrm-dev
+    compile freon '-ldl -ldrm -I/usr/include/libdrm' so gentoo=x11-libs/libdrm,libdrm-dev
 fi
 
 # Pin precise's version of mesa if necessary
@@ -197,6 +226,24 @@ if [ -z "$inteldriver" -a -n "$backport" ] && release -eq precise; then
         x11-session-utils x11-utils x11-xfs-utils x11-xkb-utils \
         x11-xserver-utils xauth xinit xfonts-utils xkb-data xorg-docs-core \
         xterm x11-common xinput
+elif [ "${DISTROAKA:-"$DISTRO"}" = 'gentoo' ]; then
+    # Add use expand flags for the drivers we're installing
+    if [ "${installvideodrivers#*"$inteldriver"}" != "$installvideodrivers" ]; then
+        set_use_expand VIDEO_CARDS intel
+        set_use_expand VIDEO_CARDS i915
+        set_use_expand VIDEO_CARDS i965
+
+	# We'll also need the glamor use flag for intel
+	set_flags glamor
+    fi
+    if [ "${installvideodrivers#*"$fbdev"}" != "$fbdev" ]; then
+        set_use_expand VIDEO_CARDS fbdev
+    fi
+
+    install xorg-x11 xorg-server $installvideodrivers
+
+    # We don't need to remove video drivers
+    removevideodrivers=""
 else
     install xorg $installvideodrivers -- xserver-xorg-video-all$backport \
         $vmmouse
@@ -220,20 +267,23 @@ fi
 # Fix launching X11 from inside crosh (user doesn't own a TTY)
 echo 'allowed_users=anybody' > '/etc/X11/Xwrapper.config'
 
-inteldrv='/usr/lib/xorg/modules/drivers/intel_drv.so'
-if [ -n "$freon" -a -e "$inteldrv" ]; then
-    # Modify the Intel driver to call getuid0 (provided by croutonfreon.so)
-    # instead of geteuid, to force DRM master setting/dropping.
-    offset="`grep -F -m 1 -boa 'geteuid' "$inteldrv" 2>/dev/null || true`"
-    if [ -n "$offset" ]; then
-        echo -n 'getuid0' | dd seek="${offset%:*}" bs=1 of="$inteldrv" \
+# Gentoo has already applied this when building the package
+if [ "${DISTROAKA:-"$DISTRO"}" != 'gentoo' ]; then
+    inteldrv='/usr/lib/xorg/modules/drivers/intel_drv.so'
+    if [ -n "$freon" -a -e "$inteldrv" ]; then
+        # Modify the Intel driver to call getuid0 (provided by croutonfreon.so)
+        # instead of geteuid, to force DRM master setting/dropping.
+        offset="`grep -F -m 1 -boa 'geteuid' "$inteldrv" 2>/dev/null || true`"
+        if [ -n "$offset" ]; then
+            echo -n 'getuid0' | dd seek="${offset%:*}" bs=1 of="$inteldrv" \
                                conv=notrunc,nocreat 2>/dev/null
-    fi
+        fi
 
-    if grep -F -q -a 'getuid0' "$inteldrv" 2>/dev/null; then
-        # Hold xserver-xorg-video-intel to make sure that the modification
-        # (which may have been made in a previous update) does not get erased.
-        apt-mark hold "$inteldriver"
+        if grep -F -q -a 'getuid0' "$inteldrv" 2>/dev/null; then
+            # Hold xserver-xorg-video-intel to make sure that the modification
+            # (which may have been made in a previous update) does not get erased.
+            apt-mark hold "$inteldriver"
+        fi
     fi
 fi
 
