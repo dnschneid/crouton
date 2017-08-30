@@ -151,7 +151,7 @@ END
             convert_automake
 
             echo '
-                CFLAGS="$CFLAGS -DCRAS_SOCKET_FILE_DIR=\"/var/run/cras\""
+                CFLAGS="$CFLAGS -Wno-int-in-bool-context -DCRAS_SOCKET_FILE_DIR=\"/var/run/cras\""
 
                 buildlib libcras
 
