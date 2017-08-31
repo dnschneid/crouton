@@ -9,10 +9,10 @@ APPLICATION="${0##*/}"
 
 USAGE="$APPLICATION [options]
 
-Wraps enter-chroot to start an XBMC session.
+Wraps enter-chroot to start an KODI session.
 By default, it will log into the primary user on the first chroot found.
 
 Options are directly passed to enter-chroot; run enter-chroot to list them."
 
-exec sh -e "`dirname "\`readlink -f -- "$0"\`"`/enter-chroot" -t xbmc "$@" "" \
-    exec xinit /usr/bin/xbmc
+exec sh -e "`dirname "\`readlink -f -- "$0"\`"`/enter-chroot" -t kodi "$@" "" \
+    exec croutonpowerd -i xinit /usr/bin/kodi --standalone

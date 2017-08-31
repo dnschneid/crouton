@@ -4,7 +4,7 @@
 # found in the LICENSE file.
 #
 # Python script to call croutoncycle. This is needed to let the 
-# hotkeys ctr-shift-alt F1/F2 work when xbmc is in fullscreen.
+# hotkeys ctr-shift-alt F1/F2 work when kodi is in fullscreen.
 import subprocess
 import sys
 
