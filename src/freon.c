@@ -29,6 +29,10 @@
     system("host-dbus dbus-send --system --dest=org.chromium.LibCrosService " \
            "--type=method_call --print-reply /org/chromium/LibCrosService " \
            "org.chromium.LibCrosServiceInterface." #function)
+#define FREON_DBUS_METHOD_CALL_NEW(function) \
+    system("host-dbus dbus-send --system --dest=org.chromium.DisplayService " \
+           "--type=method_call --print-reply /org/chromium/DisplayService " \
+           "org.chromium.DisplayServiceInterface." #function)
 
 #define TRACE(...) /* fprintf(stderr, __VA_ARGS__) */
 #define ERROR(...) fprintf(stderr, __VA_ARGS__)
@@ -163,6 +167,9 @@ int ioctl(int fd, unsigned long int request, ...) {
             if (lockfd != -1) {
                 TRACE("Telling Chromium OS to regain control\n");
                 ret = FREON_DBUS_METHOD_CALL(TakeDisplayOwnership);
+                if (WEXITSTATUS(ret) == 1) {
+                    ret = FREON_DBUS_METHOD_CALL_NEW(TakeOwnership);
+                }
                 if (set_display_lock(0) < 0) {
                     ERROR("Failed to release display lock\n");
                 }
@@ -172,6 +179,9 @@ int ioctl(int fd, unsigned long int request, ...) {
             if (set_display_lock(getpid()) == 0) {
                 TRACE("Telling Chromium OS to drop control\n");
                 ret = FREON_DBUS_METHOD_CALL(ReleaseDisplayOwnership);
+                if (WEXITSTATUS(ret) == 1) {
+                    ret = FREON_DBUS_METHOD_CALL_NEW(ReleaseOwnership);
+                }
             } else {
                 ERROR("Unable to claim display lock\n");
                 ret = -1;
