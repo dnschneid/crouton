@@ -301,6 +301,9 @@ document.addEventListener('DOMContentLoaded', function() {
     document.addEventListener('visibilitychange', handleFocusBlur);
     chrome.runtime.onMessage.addListener(handleRequest);
 
+    // Display confirmation message before closing the tab
+    window.onbeforeunload = function () { return true; };
+
     infodiv_ = document.getElementById('info');
     statusdiv_ = document.getElementById('status');
     warningdiv_ = document.getElementById('warning');
