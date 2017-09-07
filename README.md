@@ -155,7 +155,7 @@ graphical sessions as Chromium OS windows.*
 
   1. Add 'xiwi' or any other target to an existing chroot with the '-u' option using: `sudo sh ~/Downloads/crouton -t xiwi -u -n chrootname`
 
-  This will also make 'xiwi' xmethod the default xmethod.
+  This will also make 'xiwi' the default xmethod.
 
   2. If you want to keep the 'xorg' xmethod as the default then enter it first using: `sudo sh ~/Downloads/crouton -t xorg,xiwi -u -n chrootname`
 
