@@ -151,6 +151,14 @@ graphical sessions as Chromium OS windows.*
   2. Exit the chroot and run `sudo sh ~/Downloads/crouton -u -n chrootname`.
      It will update all installed targets.
 
+### I want to open my desktop in a window or a tab but I don't have the 'xiwi' target/xmethod.
+
+  1. Add 'xiwi' or any other target to an existing chroot with the '-u' option using: `sudo sh ~/Downloads/crouton -t xiwi -u -n chrootname`
+
+  This will also make 'xiwi' xmethod the default xmethod.
+
+  2. If you want to keep the 'xorg' xmethod as the default then enter it first using: `sudo sh ~/Downloads/crouton -t xorg,xiwi -u -n chrootname`
+
 ### A backup a day keeps the price-gouging data restoration services away
 
   1. `sudo edit-chroot -b chrootname` backs up your chroot to a timestamped
