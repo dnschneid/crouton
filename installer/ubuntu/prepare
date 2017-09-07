@@ -86,9 +86,11 @@ Architecture: all
 Maintainer: crouton
 Installed-Size: 0
 Provides: $pkgprovides
+Conflicts: $pkgprovides
+Replaces: $pkgprovides
 Depends: $pkgdepends
 Section: misc
-Priority: optional
+Priority: Required
 Description: Provides a dummy ${pkgname#*-} for crouton
 EOF
     touch "$tmp/md5sums"
