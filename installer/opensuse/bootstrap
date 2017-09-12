@@ -15,6 +15,7 @@ url_tumbleweed_aarch64="http://download.opensuse.org/ports/aarch64/tumbleweed/im
 # Leap
 url_leap_42_2_armv7hl="http://download.opensuse.org/ports/armv7hl/distribution/leap/42.2/appliances/openSUSE-Leap42.2-ARM-JeOS.armv7-rootfs.armv7l.tbz"
 url_leap_42_2_aarch64="http://download.opensuse.org/ports/aarch64/distribution/leap/42.2/appliances/openSUSE-Leap42.2-ARM-JeOS.aarch64-rootfs.aarch64.tbz"
+url_leap_42_3_aarch64="http://download.opensuse.org/ports/aarch64/distribution/leap/42.3/appliances/openSUSE-Leap42.3-ARM-JeOS.aarch64-rootfs.aarch64.tbz"
 
 BOOTSTRAP_ARCH="$ARCH"
 BOOTSTRAP_RELEASE="$RELEASE"
