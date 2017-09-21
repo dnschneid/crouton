@@ -13,7 +13,7 @@ lucid!
 maverick!
 natty!
 oneiric!
-precise
+precise!
 quantal!
 raring!
 saucy!
@@ -22,6 +22,6 @@ utopic!
 vivid!
 wily!
 xenial
-yakkety*|test
+yakkety!
 zesty*|test
 artful*|test
