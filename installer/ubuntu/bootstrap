@@ -73,6 +73,6 @@ fi
 # Grab the release and drop it into the subdirectory
 echo 'Downloading bootstrap files...' 1>&2
 PATH="$newpath" DEBOOTSTRAP_DIR="$tmp" $FAKEROOT \
-    "$tmp/debootstrap" --foreign --arch="$ARCH" \
+    "$tmp/debootstrap" --foreign --extractor='ar' --arch="$ARCH" \
     "$RELEASE" "$tmp/$subdir" "$MIRROR" 1>&2
 
