@@ -17,7 +17,7 @@ Options are directly passed to enter-chroot; run enter-chroot to list them."
 # Forward ports needed to browse smb shares
 MYIP=$(ip route get 1 | awk -F 'src ' '{ split($2,a," ");print a[1];exit}')
 
-if test -n $MYIP; then
+if test $MYIP; then
 	iptables -I INPUT 1 -p udp \
 	--source $MYIP/255.255.255.0 \
 	--dport 1025:65535 -j ACCEPT
