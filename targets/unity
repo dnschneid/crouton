@@ -8,7 +8,7 @@ if [ "${TARGETNOINSTALL:-c}" = 'c' ]; then
     fi
 
     if [ "${ARCH#arm}" != "$ARCH" ] && release -gt precise; then
-        error 99 "unity is unsupported on ARM for releases after precise."
+        error 99 "unity is unsupported on ARM"
     fi
 fi
 REQUIRES='gtk-extra'
