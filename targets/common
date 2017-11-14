@@ -89,6 +89,11 @@ elif [ -z "$TARGETNOINSTALL" -o -n "$RESTOREHOSTBIN" ]; then
         $SIMULATE cp -fP "$src" "$CHROOT/etc/crouton/"
         [ ! -h "$src" ] && $SIMULATE chmod 644 "$CHROOT/etc/crouton/$f"
     done
+
+    # Copy all the source files to chroot
+    $SIMULATE rm -rf "$CHROOT/usr/src/crouton"
+    $SIMULATE cp -afP "${SRCDIR:-../src}" "$CHROOT/usr/src/crouton"
+
     # Print out the target file below the ### line.
     # This avoids having to escape everything like with cat<<EOF
     # All ### lines are ignored.
@@ -113,28 +118,10 @@ elif [ -z "$TARGETNOINSTALL" -o -n "$RESTOREHOSTBIN" ]; then
             next;
         }
         ok && /^ *compile / {
-            src = "'"${SRCDIR:-$TARGETSDIR/../src}"'/" $2 ".c";
+            src = $2 ".c";
         }
         src && $NF != substr("\\\\", 1, 1) {
-            print $0 " <<EOF"
-            while ((getline line < src) > 0) {
-               if (line ~ /^#include \".*\.h\"$/) {
-                   include = line
-                   sub(/^#include \"/, "", include)
-                   sub(/\"$/, "", include)
-                   include = "'"${SRCDIR:-$TARGETSDIR/../src}"'/" include;
-                   print "// BEGIN " include
-                   while ((getline line < include) > 0) {
-                       print line
-                   }
-                   close(include)
-                   print "// END " include
-               } else {
-                   print line
-               }
-            }
-            close(src)
-            print "EOF"
+            print $0 " < /usr/src/crouton/" src
             src = "";
             next
         }
