@@ -30,7 +30,7 @@ installscript() {
     fi
     {
         # Find the line sourcing the functions file
-        line=$(grep -n '^\. .*/installer/functions' "$src" | cut -d : -f 1)
+        line="$(grep -n '^\. .*/installer/functions' "$src" | cut -d : -f 1)"
         if [ -n "$line" ]; then
             head -n $((line - 1)) "$src"
             awk 'ok; !ok && /^###/ {ok=1}' "$thisfile"
