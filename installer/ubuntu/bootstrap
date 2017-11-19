@@ -11,12 +11,12 @@
 # Grab the latest release of debootstrap
 echo 'Downloading latest debootstrap...' 1>&2
 d='https://anonscm.debian.org/gitweb/?p=d-i/debootstrap.git;a=snapshot;h=HEAD;sf=tgz'
-if ! curl --connect-timeout 60 --retry 2 "$d"  \
+if ! curl -# -L --connect-timeout 60 --retry 2 "$d"  \
         | tar -C "$tmp" --strip-components=1 -zx 2>/dev/null; then
     echo 'Download from Debian gitweb failed. Trying latest release...' 1>&2
     d='http://httpredir.debian.org/debian/pool/main/d/debootstrap/'
     d_api='https://sources.debian.net/api/src/debootstrap/'
-    f="$(curl --connect-timeout 60 --retry 2 --output - "$d_api" \
+    f="$(curl -# -L --connect-timeout 60 --retry 2 "$d_api" \
             | sed -ne 's ^.*\"version\":\ \"\([0-9.]*\)\".*$ debootstrap_\1.tar.gz p' \
             | sort -V | tail -n 1)"
     if [ -z "$f" ]; then
@@ -26,7 +26,7 @@ Check your internet connection or proxy settings and try again.'
     v="${f#*_}"
     v="${v%.tar.gz}"
     echo "Downloading debootstrap version $v..." 1>&2
-    if ! curl --connect-timeout 60 --retry 2 --output - "$d$f" \
+    if ! curl -# -L --connect-timeout 60 --retry 2 "$d$f" \
             | tar -C "$tmp" --strip-components=1 -zx 2>/dev/null; then
         error 1 'Failed to download debootstrap.'
     fi
@@ -58,7 +58,7 @@ sed -i -e 's/^setup_devices () {$/\0 return 0/' "$tmp/functions"
 # Patch debootstrap to use curl instead of wget
 # Note that we do not translate other parameter, and lose the progress bar, but
 # we do not use these anyway.
-sed -i -e 's/wgetprogress\(.*\) -O "$dest"/curl\1 -o "$dest"/' "$tmp/functions"
+sed -i -e 's/wgetprogress\(.*\) -O "$dest"/curl\1 -L -o "$dest"/' "$tmp/functions"
 
 # Add the necessary debootstrap executables
 newpath="$PATH:$tmp"
