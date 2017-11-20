@@ -485,8 +485,9 @@ if [ -z "$NOLOGIN" -a -f "$shares" ]; then
             }
         }
         /./ {
+            print "error"
             print "Invalid syntax in /etc/crouton/shares on line " NR ":\n  " \
-                  $0 > "/dev/stderr"
+                  $0
         }
     ' "$shares" | while read -r src && read -r dest && read -r opts; do
         line="\n  \"$src\" \"$dest\" $opts"
@@ -506,6 +507,11 @@ if [ -z "$NOLOGIN" -a -f "$shares" ]; then
                 src="$localencrypted/${src#*/}";;
             share|shares|shared)
                 src="$localshare/${src#*/}";;
+            error)
+                # Print the error message from awk script.
+                echo "$dest" 1>&2
+                echo "$opts" 1>&2
+                continue;;
             *)
                 echo "Invalid share:$line" 1>&2
                 continue;;

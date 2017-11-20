@@ -28,11 +28,17 @@ installscript() {
         # This should never happen.
         error 1 "Unable to find common functions file."
     fi
-    awk '/^\. .*\/installer\/functions/ {
-        system("'"awk 'ok; !ok && /^###/ {ok=1}' '$thisfile'"'");
-        next
-    }
-    1' "$src" | sed -e "${3:-;}" > "$dst"
+    {
+        # Find the line sourcing the functions file
+        line="$(grep -n '^\. .*/installer/functions' "$src" | cut -d : -f 1)"
+        if [ -n "$line" ]; then
+            head -n $((line - 1)) "$src"
+            awk 'ok; !ok && /^###/ {ok=1}' "$thisfile"
+            tail -n +$((line + 1)) "$src"
+        else
+            cat "$src"
+        fi
+    } | sed -e "${3:-;}" > "$dst"
 }
 
 ### Everything after this line will be statically inserted into scripts.
