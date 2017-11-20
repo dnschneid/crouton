@@ -42,7 +42,7 @@ copyclip() {
             # Check if display is still running
             if rundisplay "$current" xdpyinfo >/dev/null 2>&1; then
                 echo -n 'R'
-                rundisplay "$current" xclip -o -sel clip
+                rundisplay "$current" xsel -ob
             else
                 echo -n "EUnable to open display '$current'."
             fi
@@ -71,9 +71,9 @@ copyclip() {
             trap "rm -f '$cliptmp'" 0
             cat > $cliptmp
 
-            if ! rundisplay "$next" xclip -o -sel clip \
+            if ! rundisplay "$next" xsel -ob \
                     | diff -q - "$cliptmp" > /dev/null; then
-                cat "$cliptmp" | rundisplay "$next" xclip -i -sel clip
+                rundisplay "$next" xsel -ib < "$cliptmp"
             fi
         fi
     ) && current="$next"
@@ -158,7 +158,7 @@ addtrap "echo -n > '$CROUTONLOCKDIR/clip' 2>/dev/null"
         :
     done
 ) | (
-    # Do not hold the lock in this subshell and children (especially xclip)
+    # Do not hold the lock in this subshell and children (especially xsel)
     exec 3>/dev/null
     while read -r line; do
         display="`croutoncycle display`"

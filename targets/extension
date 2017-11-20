@@ -19,7 +19,7 @@ fi
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
-install x11-utils xclip
+install x11-utils xsel
 
 compile websocket ''
 
