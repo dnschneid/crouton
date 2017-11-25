@@ -457,7 +457,8 @@ fi
 if [ -z "$NOLOGIN" -a -f "$shares" ]; then
     if [ "$activeuser" != "Default" ]; then
         localdownloads=$(jq -r ".profile.info_cache | to_entries[] | select(.value.user_name == \"$activeuser\") | \"/home/chronos/\(.key)/Downloads\"" /home/chronos/Local\ State)
-    else
+    fi
+    if [ -z "$localdownloads" ]; then
         localdownloads='/home/chronos/user/Downloads'
     fi
     if [ ! -d "$localdownloads" ]; then
