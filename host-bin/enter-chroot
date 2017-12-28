@@ -456,7 +456,9 @@ fi
 # Bind-mount the stuff in $CHROOT/etc/crouton/shares, unless NOLOGIN is set
 if [ -z "$NOLOGIN" -a -f "$shares" ]; then
     if [ "$activeuser" != "Default" ]; then
-        localdownloads="$(jq -r '.profile.info_cache | to_entries[] | select(.value.user_name == "'$activeuser'") | "/home/chronos/\(.key)/Downloads"' '/home/chronos/Local State')"
+        localdownloads="$(jq -r '.profile.info_cache | to_entries[]
+          | select(.value.user_name == "'$activeuser'")
+          | "/home/chronos/\(.key)/Downloads"' '/home/chronos/Local State')"
     fi
     if [ -z "$localdownloads" ]; then
         localdownloads='/home/chronos/user/Downloads'
