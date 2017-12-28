@@ -338,15 +338,6 @@ tmpfsmount() {
     mount -i -t tmpfs -o "rw${2:+,}$2" tmpfs "$target"
 }
 
-# Determines currently-logged in user
-getactiveuser() {
-    local activeuser="Default"
-    if [ -x "/usr/bin/jq" ]; then
-        activeuser="$(jq -r .LastActiveUser '/home/chronos/Local State')"
-    fi
-    echo $activeuser
-}
-
 # If /var/run isn't mounted, we know the chroot hasn't been started yet.
 if mountpoint -q "`fixabslinks '/var/run'`"; then
     firstrun=''
@@ -446,16 +437,13 @@ downloads ~/Downloads
 EOF
 fi
 
-activeuser=$(getactiveuser)
-if [ -n "$firstrun" ]; then
-    # Store the active user for possible use in other scripts, etc.
-    activeuserfile="$(fixabslinks '/etc/crouton/user')"
-    echo "$activeuser" > $activeuserfile
-fi
-
 # Bind-mount the stuff in $CHROOT/etc/crouton/shares, unless NOLOGIN is set
 if [ -z "$NOLOGIN" -a -f "$shares" ]; then
-    if [ "$activeuser" != "Default" ]; then
+    activeuser=''
+    if [ -x "/usr/bin/jq" ]; then
+        activeuser="$(jq -r .LastActiveUser '/home/chronos/Local State')"
+    fi
+    if [ -n "$activeuser" ]; then
         localdownloads="$(jq -r '.profile.info_cache | to_entries[]
           | select(.value.user_name == "'$activeuser'")
           | "/home/chronos/\(.key)/Downloads"' '/home/chronos/Local State')"
