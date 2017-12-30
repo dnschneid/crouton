@@ -109,7 +109,7 @@ if [ "$xmethodtype" != "xiwi" ]; then
         fi
         # Other special cases
         case "`awk -F= '/_RELEASE_BOARD=/{print $2}' '/var/host/lsb-release'`" in
-            butterfly*|falco*)
+            butterfly*|eve*|falco*)
                 SYNCLIENT="FingerLow=1 FingerHigh=5 $SYNCLIENT";;
             parrot*|peppy*|wolf*)
                 SYNCLIENT="FingerLow=5 FingerHigh=10 $SYNCLIENT";;
