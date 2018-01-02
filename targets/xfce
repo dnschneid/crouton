@@ -34,8 +34,8 @@ if release -lt xenial && [ "$ARCH" = 'arm64' ]; then
     install_dummy xfce4-battery-plugin
 fi
 
-install xfce4 xfce4-goodies ubuntu=shimmer-themes, \
-        -- dictionaries-common hddtemp xorg
+install opensuse=pattern:xfce_basis,xfce4 opensuse=,xfce4-goodies ubuntu=shimmer-themes, \
+        -- opensuse=,dictionaries-common hddtemp opensuse=xorg-x11-server,xorg
 
 TIPS="$TIPS
 You can start Xfce via the startxfce4 host command: sudo startxfce4

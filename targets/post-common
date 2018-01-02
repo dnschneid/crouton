@@ -34,8 +34,15 @@ if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
     apt-get clean
 fi
 
+groups='audio,input,video,wayland,plugdev,crouton'
+
 # Add the primary user
-groups='audio,input,video,wayland,sudo,plugdev,crouton'
+if [ "${DISTROAKA:-"$DISTRO"}" = 'opensuse' ]; then
+    groups=$groups',root'
+else
+    groups=$groups',sudo'
+fi
+
 if ! grep -q ':1000:' /etc/passwd; then
     while ! echo "$username" | grep -q '^[a-z][-a-z0-9_]*$'; do
         if [ -n "$username" ]; then

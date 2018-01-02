@@ -1,0 +1,46 @@
+#!/bin/sh -e
+# Copyright (c) 2016 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# This is a distro-specific bootstrap script, sourced from main.sh, and as such
+# has access to all of the variables set by main.sh, namely $tmp (the temporary
+# directory), $INSTALLERDIR/$DISTRO, $RELEASE, $BOOTSTRAP_RELEASE (if different
+# from $RELEASE), $ARCH, and $MIRROR.
+
+# Tumbleweed
+url_tumbleweed_armv7hl="http://download.opensuse.org/ports/armv7hl/tumbleweed/images/openSUSE-Tumbleweed-ARM-JeOS.armv7hl-rootfs.armv7l-Current.tbz"
+url_tumbleweed_aarch64="http://download.opensuse.org/ports/aarch64/tumbleweed/images/openSUSE-Tumbleweed-ARM-JeOS.aarch64-rootfs.aarch64-Current.tbz"
+
+# Leap
+url_leap_42_2_armv7hl="http://download.opensuse.org/ports/armv7hl/distribution/leap/42.2/appliances/openSUSE-Leap42.2-ARM-JeOS.armv7-rootfs.armv7l.tbz"
+url_leap_42_2_aarch64="http://download.opensuse.org/ports/aarch64/distribution/leap/42.2/appliances/openSUSE-Leap42.2-ARM-JeOS.aarch64-rootfs.aarch64.tbz"
+url_leap_42_3_aarch64="http://download.opensuse.org/ports/aarch64/distribution/leap/42.3/appliances/openSUSE-Leap42.3-ARM-JeOS.aarch64-rootfs.aarch64.tbz"
+
+BOOTSTRAP_ARCH="$ARCH"
+BOOTSTRAP_RELEASE="$RELEASE"
+
+# Rename factory to tumbleweed
+if [ "$RELEASE" = "factory" ]; then
+    BOOTSTRAP_RELEASE=tumbleweed
+elif [ "${RELEASE#leap}" != "$RELEASE" ]; then
+     BOOTSTRAP_RELEASE=$(echo "$RELEASE" | tr - _ | tr . _)
+     echo $BOOTSTRAP_RELEASE
+fi
+
+# fix up the good old toolchain/kernel naming conflict
+if [ "$ARCH" = "arm64" ]; then
+     BOOTSTRAP_ARCH=aarch64
+fi
+
+eval "URL=\"\${url_${BOOTSTRAP_RELEASE}_${BOOTSTRAP_ARCH}-}\""
+
+if [ -z "$URL" ]; then
+    echo "Unknown Distribution / Architecture: $BOOTSTRAP_RELEASE $BOOTSTRAP_ARCH" >&2
+    exit 1
+fi
+
+mkdir -p "$tmp/$subdir"
+curl -# -L --connect-timeout 60 --retry 2 "$URL" | tar -jx -C "$tmp/$subdir"
+
+rm -rf "$tmp/$subdir/dev/"*
