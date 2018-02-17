@@ -9,7 +9,7 @@ DESCRIPTION='GTK-based tools including gdebi and a simple browser.'
 ### Append to prepare.sh:
 install_dummy network-manager network-manager-gnome
 install gdebi
-if release -lt buster -lt kali-rolling; then
+if release -lt buster -lt kali-rolling -lt artful; then
   install gksu
 fi
 
