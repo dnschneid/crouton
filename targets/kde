@@ -9,7 +9,7 @@ CHROOTBIN='crouton-noroot startkde'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
-install --minimal kde-baseapps kde-runtime plasma-desktop pulseaudio \
+install --minimal kde-baseapps kde-runtime plasma-desktop pulseaudio kwin \
         -- network-manager
 
 if release -lt xenial -lt kali -lt stretch; then
