@@ -110,7 +110,14 @@ start\* commands. Ta-da! That was easy.
 
   1. Add the `-e` parameter when you run crouton to create an encrypted chroot
      or encrypt a non-encrypted chroot.
-  2. You can get some extra protection on your chroot by storing the decryption
+  2. If you want to use encryption, you must have the root password set by using
+     `sudo chromeos-setdevpasswd`. You can tell the root password is not set if
+     you see the following in your install:
+     ```
+     You must have a root password in Chromium OS to mount encrypted chroots.
+     openssl: symbol lookup error: openssl: undefined symbol: RC5_32_set_key
+     ```
+  3. You can get some extra protection on your chroot by storing the decryption
      key separately from the place the chroot is stored. Use the `-k` parameter
      to specify a file or directory to store the keys in (such as a USB drive or
      SD card) when you create the chroot. Beware that if you lose this file,
