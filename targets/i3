@@ -5,13 +5,13 @@
 if [ "${TARGETNOINSTALL:-c}" = 'c' ] && release -lt jessie -eq kali; then
     error 99 "e17 target is not supported on wheezy/kali."
 fi
-#REQUIRES='gtk-extra'
+#REQUIRES='dbar i3status'
 DESCRIPTION='Installs the i3 desktop environment.'
 HOSTBIN='starti3'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
-install i3
+install i3 dbar i3status
 
 TIPS="$TIPS
 You can start i3 via the starti3 host command: sudo starti3
