@@ -259,6 +259,19 @@ $passphrase" | ecryptfs-rewrap-passphrase "$wrappedfnek" -
         if ! mount -i -t ecryptfs -o "$mnt" "$CHROOTSRC" "$CHROOT"; then
             error 1 "Failed to mount $NAME."
         fi
+
+        # As of 67, symlinks and fifos are blocked in stateful partitions.
+        # Add exceptions for this chroot.
+        if mount -n -t securityfs -o nodev,noexec,nosuid securityfs \
+                /sys/kernel/security; then
+            policies=/sys/kernel/security/chromiumos/inode_security_policies
+            if [ -d "$policies" ]; then
+                for policy in "$policies/allow_"*; do
+                    printf "$CHROOT" > "$policy"
+                done
+            fi
+            umount /sys/kernel/security
+        fi
     fi
 
     # Perform the move
