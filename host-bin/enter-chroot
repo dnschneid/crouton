@@ -280,7 +280,7 @@ fi
 
 # Prepare chroot filesystem
 # Soft-link resolv.conf so that updates are automatically propagated
-ln -sf '/var/host/shill/resolv.conf' "$CHROOT/etc/resolv.conf"
+ln -sfT '/var/host/shill/resolv.conf' "$CHROOT/etc/resolv.conf"
 
 # Sanity check of the timezone setting
 localtime="$CHROOT/etc/localtime"
@@ -397,7 +397,7 @@ destmedia="`fixabslinks '/var/host/media'`"
 if ! mountpoint -q "$destmedia"; then
     mount --make-shared /media
     mkdir -p "$destmedia" "$CHROOT/media"
-    ln -sf "/var/host/media/removable" "$CHROOT/media/"
+    ln -sfT "/var/host/media/removable" "$CHROOT/media/removable"
     mount --rbind /media "$destmedia"
 fi
 
