@@ -8,28 +8,22 @@
 # directory), $INSTALLERDIR/$DISTRO, $RELEASE, $BOOTSTRAP_RELEASE (if different
 # from $RELEASE), $ARCH, and $MIRROR.
 
-# Grab the latest release of debootstrap
-echo 'Downloading latest debootstrap...' 1>&2
-d='https://anonscm.debian.org/gitweb/?p=d-i/debootstrap.git;a=snapshot;h=HEAD;sf=tgz'
-if ! curl -f -# -L --connect-timeout 60 --retry 2 "$d"  \
+# Grab a known good release of debootstrap
+# TODO(#3713): Figure out why >= 1.0.92~bpo9+1 is broken
+debootstrap_version="1.0.92~bpo9+1"
+
+echo "Downloading debootstrap ${debootstrap_version}..." 1>&2
+if [ "${debootstrap_version}" = "HEAD" ]; then
+    d='https://anonscm.debian.org/gitweb/?p=d-i/debootstrap.git;a=snapshot;h=HEAD;sf=tgz'
+else
+    base='http://httpredir.debian.org/debian/pool/main/d/debootstrap'
+    d="${base}/debootstrap_${debootstrap_version}.tar.gz"
+fi
+
+if ! curl -f -# -L --connect-timeout 60 --retry 2 "$d" \
         | tar -C "$tmp" --strip-components=1 -zx 2>/dev/null; then
-    echo 'Download from Debian gitweb failed. Trying latest release...' 1>&2
-    d='http://httpredir.debian.org/debian/pool/main/d/debootstrap/'
-    d_api='https://sources.debian.net/api/src/debootstrap/'
-    f="$(curl -f -# -L --connect-timeout 60 --retry 2 "$d_api" \
-            | sed -ne 's ^.*\"version\":\ \"\([0-9.]*\)\".*$ debootstrap_\1.tar.gz p' \
-            | sort -V | tail -n 1)"
-    if [ -z "$f" ]; then
-        error 1 'Failed to download debootstrap.
+    error 1 'Failed to download debootstrap.
 Check your internet connection or proxy settings and try again.'
-    fi
-    v="${f#*_}"
-    v="${v%.tar.gz}"
-    echo "Downloading debootstrap version $v..." 1>&2
-    if ! curl -f -# -L --connect-timeout 60 --retry 2 "$d$f" \
-            | tar -C "$tmp" --strip-components=1 -zx 2>/dev/null; then
-        error 1 'Failed to download debootstrap.'
-    fi
 fi
 
 # Patch debootstrap so that it retries downloading packages
