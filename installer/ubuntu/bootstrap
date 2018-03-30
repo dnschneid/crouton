@@ -71,7 +71,11 @@ fi
 
 # Grab the release and drop it into the subdirectory
 echo 'Downloading bootstrap files...' 1>&2
-PATH="$newpath" DEBOOTSTRAP_DIR="$tmp" $FAKEROOT \
-    "$tmp/debootstrap" --foreign --extractor='ar' --arch="$ARCH" \
-    "$RELEASE" "$tmp/$subdir" "$MIRROR" 1>&2
+if ! PATH="$newpath" DEBOOTSTRAP_DIR="$tmp" $FAKEROOT \
+        "$tmp/debootstrap" --foreign --extractor='ar' --arch="$ARCH" \
+        "$RELEASE" "$tmp/$subdir" "$MIRROR" 1>&2; then
+    echo "debootstrap error log:" 1>&2
+    tail -n 3 "$tmp/$subdir/debootstrap/debootstrap.log" 1>&2 || true
+    error 1 'Failed to run debootstrap.'
+fi
 
