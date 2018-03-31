@@ -75,6 +75,16 @@ if [ -n "$RELEASE" ]; then
         ln -s "$tmp/scripts/$BOOTSTRAP_RELEASE" "$tmp/scripts/$RELEASE"
     fi
 
+    # bionic/buster onwards does not require installing apt-transport-https (apt
+    # provides it). In theory, there is a transitional package, but debootstrap
+    # does not find it on bionic. Somewhat relevant bug:
+    #   https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=879755
+    #
+    # TODO: Drop this when debootstrap handles this case properly
+    if ! release -le artful -le stretch -le kali; then
+        sed -e 's/ apt-transport-https / /' -i "$tmp/scripts/$RELEASE"
+    fi
+
     # Add the necessary debootstrap executables
     newpath="$PATH:$tmp"
     cp "$INSTALLERDIR/$DISTRO/ar" "$INSTALLERDIR/$DISTRO/pkgdetails" "$tmp/"
