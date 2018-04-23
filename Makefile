@@ -89,4 +89,7 @@ all: $(TARGET) $(SRCTARGETS) $(LIBSTARGETS) $(EXTTARGET)
 clean:
 	rm -f $(TARGET) $(EXTTARGET) $(SRCTARGETS) $(LIBSTARGETS)
 
+install:
+	chmod 755 crouton && sudo mv crouton /usr/local/bin/crouton
+
 .PHONY: all clean contributors extension release force-release
