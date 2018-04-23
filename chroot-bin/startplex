@@ -1,0 +1,11 @@
+#!/bin/sh -e
+# Copyright (c) 2016 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Launches Plex Media Server;
+export PLEX_MEDIA_SERVER_HOME=/usr/lib/plexmediaserver
+export PLEX_MEDIA_SERVER_MAX_PLUGIN_PROCS=6
+export PLEX_MEDIA_SERVER_TMPDIR=/tmp
+
+LD_LIBRARY_PATH=${PLEX_MEDIA_SERVER_HOME} /usr/lib/plexmediaserver/Plex\ Media\ Server
