@@ -8,7 +8,7 @@ set -e
 APPLICATION="${0##*/}"
 
 USAGE="$APPLICATION [options]
-Wraps enter-chroot to start an KODI session.
+Wraps enter-chroot to start a Plex session.
 By default, it will log into the primary user on the first chroot found.
 
 Options are directly passed to enter-chroot; run enter-chroot to list them."
