@@ -22,4 +22,6 @@ install plexmediaserver
 
 TIPS="$TIPS
 You can start plex media server via the startplex host command: sudo startplex
+
+Plex management interface: http://localhost:32400/manage
 "
