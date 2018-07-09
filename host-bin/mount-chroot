@@ -149,6 +149,7 @@ for NAME in "$@"; do
         if [ -z "$ENCRYPT" ]; then
             mount --bind "$CHROOTSRC" "$CHROOT"
             mount -i -o "remount,$MOUNTOPTS" "$CHROOT"
+            mount --make-private "$CHROOT"
             whitelist "$CHROOT"
             continue
         fi
