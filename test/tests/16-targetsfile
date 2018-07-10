@@ -15,7 +15,7 @@ fi
 checktargetlist() {
     # Target list must include core only
     test "$(host enter-chroot -n "$release" \
-        sed -e 's/,$//;s/^,//' /etc/crouton/targets)" = 'core'
+        tr -d ',\n' /etc/crouton/targets)" = 'core'
 }
 
 # Release-independent.
