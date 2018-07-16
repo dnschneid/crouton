@@ -46,6 +46,7 @@ sed -i -e 's/wgetprogress "$CHECKCERTIF" "$CERTIFICATE" "$PRIVATEKEY"'\
 # Note that we do not translate other parameter, and lose the progress bar, but
 # we do not use these anyway.
 sed -i -e 's/wgetprogress\(.*\) -O "$dest"/curl\1 -f -L -o "$dest"/' "$tmp/functions"
+sed -i -e 's/in_path wget/in_path curl/' "$tmp/debootstrap"
 
 # Add the necessary debootstrap executables
 newpath="$PATH:$tmp"
