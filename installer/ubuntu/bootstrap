@@ -8,16 +8,8 @@
 # directory), $INSTALLERDIR/$DISTRO, $RELEASE, $BOOTSTRAP_RELEASE (if different
 # from $RELEASE), $ARCH, and $MIRROR.
 
-# Grab a known good release of debootstrap
-debootstrap_version="1.0.101"
-
-echo "Downloading debootstrap ${debootstrap_version}..." 1>&2
-if [ "${debootstrap_version}" = "HEAD" ]; then
-    d='https://anonscm.debian.org/gitweb/?p=d-i/debootstrap.git;a=snapshot;h=HEAD;sf=tgz'
-else
-    base='http://httpredir.debian.org/debian/pool/main/d/debootstrap'
-    d="${base}/debootstrap_${debootstrap_version}.tar.gz"
-fi
+# Grab the latest version from gitweb
+d="https://salsa.debian.org/installer-team/debootstrap/-/archive/master/debootstrap-master.tar.gz"
 
 if ! curl -f -# -L --connect-timeout 60 --retry 2 "$d" \
         | tar -C "$tmp" --strip-components=1 -zx 2>/dev/null; then
