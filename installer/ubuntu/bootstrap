@@ -9,7 +9,7 @@
 # from $RELEASE), $ARCH, and $MIRROR.
 
 # Grab the latest version from gitweb
-d="https://salsa.debian.org/installer-team/debootstrap/-/archive/master/debootstrap-master.tar.gz"
+d="https://salsa.debian.org/installer-team/debootstrap/-/archive/1.0.101/debootstrap-1.0.101.tar.gz"
 
 if ! curl -f -# -L --connect-timeout 60 --retry 2 "$d" \
         | tar -C "$tmp" --strip-components=1 -zx 2>/dev/null; then
