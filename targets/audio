@@ -141,6 +141,14 @@ END
         # Drop SBC constants
         sed -e 's/SBC_[A-Z0-9_]*/0/g' -i tests/cras_test_client.c
 
+	# FIXME(crbug.com/864815) Remove when fixed upstream
+	if [ "$cras_arch" = "i386" ]; then
+	    sed -i -e 's/Dumping AEC info to %s, stream %lu/Dumping AEC info to %s, stream %llu/' \
+		tests/cras_test_client.c
+	fi
+	sed -i -e 's/cras_stream_id_t stream_id;/cras_stream_id_t stream_id = 0;/' \
+	    tests/cras_test_client.c
+
         # Directory to install CRAS library/binaries
         CRASLIBDIR="/usr/local$archextrapath/lib"
         CRASBINDIR="/usr/local$archextrapath/bin"
@@ -151,7 +159,7 @@ END
             convert_automake
 
             echo '
-                CFLAGS="$CFLAGS -Wno-int-in-bool-context -DCRAS_SOCKET_FILE_DIR=\"/var/run/cras\""
+                CFLAGS="$CFLAGS -DCRAS_SOCKET_FILE_DIR=\"/var/run/cras\""
 
                 buildlib libcras
 
