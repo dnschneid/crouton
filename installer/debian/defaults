@@ -8,6 +8,10 @@
 
 if [ -z "$ARCH" ]; then
     ARCH="`uname -m`"
+    if [ "$RELEASE" = 'wheezy' ] \
+            && [ "$ARCH" = 'arm64' -o "$ARCH" = 'aarch64' ]; then
+        ARCH='armhf'
+    fi
 fi
 
 case "$ARCH" in
