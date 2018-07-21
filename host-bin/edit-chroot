@@ -43,6 +43,7 @@ Options:
                 When used with -r, specifies the tarball to restore from.
                 If TARBALL is a directory, automatic naming is still used.
                 If multiple chroots are specified, TARBALL must be a directory.
+                If TARBALL is a dash - it will be written to stdout.
     -k KEYFILE  File or directory to store the (encrypted) encryption keys in.
                 If unspecified, the keys will be stored in the chroot if doing a
                 first encryption, or left in place on existing chroots.
@@ -122,6 +123,11 @@ fi
 
 # Cannot specify both backup and restore.
 if [ -n "$BACKUP" -a -n "$RESTORE" ]; then
+    error 2 "$USAGE"
+fi
+
+# Cannot specify stdout backup with anything else.
+if [ "$TARBALL" = "-" -a -n "$DELETE$ENCRYPT$KEYFILE$MOVE$COPY$RESTORE" ]; then
     error 2 "$USAGE"
 fi
 
@@ -377,8 +383,21 @@ for NAME in "$@"; do
         continue
     fi
 
+    # Backup the chroot to stdout
+    if [ -n "$BACKUP" ] && [ "$TARBALL" = "-" ]; then
+        echo "  Backing up $CHROOT to stdout..." 1>&2
+        ret=0
+        tar --one-file-system -V "crouton:backup.${date%-*}${date#*-}-$NAME" \
+            -ca -C "$CHROOTS" "$NAME" || ret="$?"
+        if [ "$ret" -ne 0 ]; then
+            echo "Unable to backup $CHROOT." 1>&2
+            exit "$ret"
+        fi
+        echo "Finished backing up $CHROOT to stdout" 1>&2
+    fi
+
     # Backup the chroot
-    if [ -n "$BACKUP" ]; then
+    if [ -n "$BACKUP" ] && [ "$TARBALL" != "-" ]; then
         dest="$TARBALL"
         date="`date '+%Y%m%d-%H%M'`"
         if [ -z "$dest" -o -d "$TARBALL" ]; then
