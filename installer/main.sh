@@ -143,7 +143,7 @@ if ! awk -F= '/_RELEASE_BUILD_NUMBER=/ { exit int($2) < '"${CROS_MIN_VERS:-0}"' 
     error 2 "Your version of Chromium OS is extraordinarily old.
 If there are updates pending, please reboot and try again.
 Otherwise, you may not be getting automatic updates, in which case you should
-post your update_engine.log from chrome://system to http://crbug.com/296768 and
+post your update_engine.log from chrome://system to http://crbug.com/new and
 restore your device using a recovery USB: https://goo.gl/AZ74hj"
 fi
 
