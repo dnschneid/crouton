@@ -1,0 +1,27 @@
+#!/bin/sh -e
+# Copyright (c) 2016 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+REQUIRES='core'
+DESCRIPTION='Installs plex media server'
+HOSTBIN='startplex'
+CHROOTBIN='startplex'
+. "${TARGETSDIR:="$PWD"}/common"
+
+### Append to prepare.sh:
+# Add the software source
+ cat > '/etc/apt/sources.list.d/plexmediaserver.list' <<EOF
+# Bring in Plex PPA Repository
+deb https://downloads.plex.tv/repo/deb ./public main
+EOF
+wget -O - https://downloads.plex.tv/plex-keys/PlexSign.key | sudo apt-key add -
+# Update database
+apt-get update || true
+
+install plexmediaserver
+
+TIPS="$TIPS
+You can start plex media server via the startplex host command: sudo startplex
+
+Plex management interface: http://localhost:32400/manage
+"

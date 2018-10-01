@@ -102,4 +102,7 @@ clean:
 	rm -f $(TARGET) $(EXTTARGET) $(SRCTARGETS) $(LIBSTARGETS)
 	rm -rf $(BUILDDIR)
 
+install:
+	chmod 755 crouton && sudo mv crouton /usr/local/bin/crouton
+
 .PHONY: all clean contributors extension release force-release
