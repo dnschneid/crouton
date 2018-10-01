@@ -43,6 +43,28 @@ to the rest of Chromium OS.
 ...but hey, you can run [TuxRacer](https://en.wikipedia.org/wiki/Tux_Racer)!
 
 
+### What about dem crostinis though?
+
+[Crostini](https://chromium.googlesource.com/chromiumos/docs/+/master/containers_and_vms.md)
+is an official project within Chromium OS to bring the Linux shell and apps to
+the platform *in verified mode* with clean integration, multi-layered security,
+and all the polish you expect from Chromium OS proper.
+
+That means compared to crouton, Crostini has official support, competent
+engineers, and code that looks a little less like ramen.  crouton, in its
+defense, has wider device compatibility, enables direct hardware access, and is
+named after an objectively tastier bread-based food item.
+
+There's a solid community on [Reddit](https://www.reddit.com/r/Crostini/) if
+you'd like to try Crostini out.  If it works for you -- great!  No hard
+feelings.  If in the end you decide that crouton suits you better, read on!
+
+Note: you can't get the best of both worlds by installing crouton inside of
+Crostini.  The technology (and life itself) just doesn't work that way.  Not to
+mention a crouton Crostini would look ridiculous and be impossible to eat
+without getting bits everywhere.
+
+
 ## Prerequisites
 
 You need a device running Chromium OS that has been switched to developer mode.
