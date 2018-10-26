@@ -26,7 +26,7 @@ BUILDDIR = crouton.build
 GENVERSION = build/genversion.sh
 CONTRIBUTORSSED = build/CONTRIBUTORS.sed
 RELEASE = build/release.sh
-VERSION = 1
+VERSION = 1.05
 TARPARAMS ?= -j
 
 CFLAGS=-g -Wall -Werror -Os
