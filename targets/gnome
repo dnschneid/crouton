@@ -15,10 +15,32 @@ else
 fi
 
 ### Append to prepare.sh:
-install --minimal evolution-data-server gnome-control-center \
-        gnome-screensaver gnome-session $legacy_session_package \
-        gnome-shell gnome-themes-standard gvfs-backends nautilus \
-        unzip gtk2-engines-pixbuf pulseaudio
+install --minimal \
+  $legacy_session_package \
+  dconf-tools \
+  evolution-data-server \
+  gnome-control-center \
+  gnome-screensaver \
+  gnome-session \
+  gnome-shell \
+  gnome-themes-standard \
+  gtk2-engines-pixbuf \
+  gvfs-backends \
+  nautilus \
+  pulseaudio \
+  unzip
+
+mkdir -p /etc/dconf/profile
+mkdir -p /etc/dconf/db/local.d
+cat << EOF > /etc/dconf/profile/user
+user-db:user
+system-db:local
+EOF
+cat << EOF > /etc/dconf/db/local.d/01-always_show_logout
+[org/gnome/shell]
+always-show-log-out=true
+EOF
+dconf update
 
 TIPS="$TIPS
 You can start GNOME via the startgnome host command: sudo startgnome
