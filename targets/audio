@@ -3,7 +3,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 REQUIRES='core'
-DESCRIPTION='Support audio playback via Chromium OS'\''s audio system.'
+DESCRIPTION="Support audio playback via Chromium OS's audio system."
 CHROOTBIN='volume'
 CHROOTETC='pulseaudio-default.pa'
 . "${TARGETSDIR:="$PWD"}/common"
@@ -197,7 +197,15 @@ fi
 # Build CRAS for native architecture
 build_cras
 
-cat > /usr/share/alsa/alsa.conf.d/10-cras.conf <<EOF
+alsaconf='/etc/alsa/conf.d'
+if [ ! -d "$alsaconf" ]; then
+    alsaconf='/usr/share/alsa/alsa.conf.d'
+    if [ ! -d "$alsaconf" ]; then
+        echo "Unable to find correct ALSA configuration directory." >&2
+        alsaconf='/tmp'
+    fi
+fi
+cat > "$alsaconf/10-cras.conf" <<EOF
 pcm.cras {
     type cras
     hint {
