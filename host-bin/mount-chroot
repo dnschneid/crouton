@@ -237,10 +237,10 @@ $passphrase" | ecryptfs-wrap-passphrase "$wrappedfnek" -
             addtrap "rm -f '$wrappedkey' '$wrappedfnek'"
 
             # Extract wrapped keys from keyfile
-            wrappedtotal="`expr $(cat "$KEYFILE" | wc -c) - $(head -n 1 "$KEYFILE" | wc -c)`"
-            wrappedsize="`expr $wrappedtotal / 2`"
-            tail -c $wrappedtotal "$KEYFILE" | head -c $wrappedsize > "$wrappedkey"
-            tail -c $wrappedsize "$KEYFILE" > "$wrappedfnek"
+            wrappedtotal="$(($(wc -c < "$KEYFILE") - $(head -n 1 "$KEYFILE" | wc -c)))"
+            wrappedsize="$((wrappedtotal / 2))"
+            tail -c "$wrappedtotal" "$KEYFILE" | head -c "$wrappedsize" > "$wrappedkey"
+            tail -c "$wrappedsize" "$KEYFILE" > "$wrappedfnek"
 
             # Change the passphrase if requested
             if [ "${ENCRYPT:-0}" -ge 2 ]; then
