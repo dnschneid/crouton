@@ -113,7 +113,7 @@ fixkeyboardmode
 install --minimal sudo wget ca-certificates apt-transport-https
 
 # Generate and set default locale
-if [ ! -f '/etc/default/locale' ] && hash locale-gen 2>/dev/null; then
+if ! grep -q '^[^#]*LANG=' /etc/default/locale 2>/dev/null && hash locale-gen 2>/dev/null; then
     echo 'LANG=en_US.UTF-8' > '/etc/default/locale'
     locale-gen --lang en_US.UTF-8
     if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
