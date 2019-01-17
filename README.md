@@ -293,7 +293,8 @@ some suggestions:
   * Discovered a bug lurking within the scripts, or a papercut that bothers you
     just enough to make you want to actually do something about it? You guessed
     it: fork crouton, fix everything, and create a pull request.
-  * Are most bugs too high-level for you to defeat? Grind up some EXP by using
+  * Are most bugs too high-level for you to defeat? Grind up some
+    [EXP](https://en.wikipedia.org/wiki/Experience_point) by using
     your fork to eat [pie](https://github.com/dnschneid/crouton/labels/pie).
 
 
