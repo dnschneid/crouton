@@ -107,8 +107,7 @@ cat /etc/lsb-release
         return 1
     fi
 
-    # Drop freon suffix (Omaha will get us back to freon if needed)
-    sed -n 's/[_-]freon$//;s/^CHROMEOS_RELEASE_BOARD=//p' "$hostinfo"
+    sed -n 's/^CHROMEOS_RELEASE_BOARD=//p' "$hostinfo"
 }
 
 # Find a release/build name from host, board and channel
@@ -134,23 +133,16 @@ findrelease() {
         $1 == "ChromeVersion" {
             ver=$2; gsub(/"/, "", ver); gsub(/\..*$/, "", ver)
         }
-        $2 ~ /-freon_/ { # Freon detection heuristics
-            # If there is already an _ => use -, otherwise _
-            if ("'$board'" ~ /_/)
-                freon="-freon"
-            else
-                freon="_freon"
-        }
         END {
             if (length(ver) > 0 && length(osver) > 0)
-                print "cros-version:'$board'" freon "-release/R" ver "-" osver
+                print "cros-version:'$board'-release/R" ver "-" osver
         }'
 <?xml version="1.0" encoding="UTF-8"?>
 <request protocol="3.0" version="ChromeOSUpdateEngine-0.1.0.0"
                  updaterversion="ChromeOSUpdateEngine-0.1.0.0">
     <os version="Indy" platform="Chrome OS"></os>
     <app appid="${appid}" version="0.0.0" track="${channel}-channel"
-         lang="en-US" board="${board}" hardware_class="${hwid}"
+         lang="en-US" board="${board}-signed-mp" hardware_class="${hwid}"
          delta_okay="false" fw_version="" ec_version="" installdate="2800" >
         <updatecheck targetversionprefix=""></updatecheck>
         <event eventtype="3" eventresult="2" previousversion=""></event>
