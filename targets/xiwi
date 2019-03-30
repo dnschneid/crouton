@@ -29,7 +29,7 @@ if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
 fi
 
 install xorg xserver-xorg-video-dummy$ltspackages
-install --minimal i3
+install --minimal i3-wm
 
 # Remove some unsupported options on old versions of i3
 if release -le precise; then
