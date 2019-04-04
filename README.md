@@ -6,6 +6,26 @@ supported (using debootstrap behind the scenes), but "Chromium OS Debian,
 Ubuntu, and Probably Other Distros Eventually Chroot Environment" doesn't
 acronymize as well (crodupodece is admittedly pretty fun to say, though).
 
+## But first...
+
+:warning: **Steps to install crouton have changed!**  :warning:
+
+Due to improved security within Chromium OS ([yay!](https://chromium.googlesource.com/chromiumos/docs/+/master/security/noexec_shell_scripts.md)),
+the steps needed to launch the crouton installer, and the steps to run crouton
+from SD cards have to change a little.
+
+Please read the relevant sections of this README carefully, and reach out to
+your favorite weblogger/tutorialer/videotuber to update their guides if they're
+behind the times. If you're successful, brag about your accomplishments in [the
+issue tracker](https://github.com/dnschneid/crouton/issues/4026) and earn the
+personal gratitude of the crouton authors\*!
+
+<sup>\* limit one (1) gratitude per commenter</sup>
+
+*WHOA*
+
+Ok, back to business.
+
 
 ## "crouton"...an acronym?
 
@@ -79,8 +99,8 @@ data. crouton does support encrypting chroots, but the encryption is only as
 strong as the quality of your passphrase. Consider this your warning.
 
 It's also highly recommended that you install the [crouton extension](https://goo.gl/OVQOEt),
-which, when combined with the `extension` or `xiwi`
-targets, provides much improved integration with Chromium OS.
+which, when combined with the `extension` or `xiwi` targets, provides much 
+improved integration with Chromium OS.
 
 That's it! Surprised?
 
@@ -92,14 +112,18 @@ is as simple as possible by design.
 
 If you're just here to use crouton, you can grab the latest release from
 [https://goo.gl/fd3zc](https://goo.gl/fd3zc). Download it, pop open a shell
-(Ctrl+Alt+T, type `shell` and hit enter), and run `sh ~/Downloads/crouton` to
-see the help text. See the "examples" section for some usage examples.
+(Ctrl+Alt+T, type `shell` and hit enter), make the installer executable with
+`sudo install -Dt /usr/local/bin -m 755 ~/Downloads/crouton`, then launch it
+with `sudo crouton` to see the help text. See the "examples" section for some
+usage examples.
 
 If you're modifying crouton, you'll probably want to clone or download the repo
-and then either run `installer/main.sh` directly, or use `make` to build your
-very own `crouton`. You can also download the latest release, cd into the
-Downloads folder, and run `sh crouton -x` to extract out the juicy scripts
-contained within, but you'll be missing build-time stuff like the Makefile.
+into a subdirectory of `/usr/local` and then either run `installer/main.sh`
+directly, or use `make` to build your very own `crouton`. You can also download
+the latest release, install it as above and run `crouton -x` to extract out the
+juicy scripts contained within, but you'll be missing build-time stuff like the
+Makefile. You also need to remember to place the unbundled scripts somewhere in
+`/usr/local` in order to be able to execute them.
 
 crouton uses the concept of "targets" to decide what to install. While you will
 have apt-get in your chroot, some targets may need minor hacks to avoid issues
@@ -107,7 +131,7 @@ when running in the chrooted environment. As such, if you expect to want
 something that is fulfilled by a target, install that target when you make the
 chroot and you'll have an easier time.  Don't worry if you forget to include a
 target; you can always update the chroot later and add it. You can see the list
-of available targets by running `sh ~/Downloads/crouton -t help`.
+of available targets by running `crouton -t help`.
 
 Once you've set up your chroot, you can easily enter it using the
 newly-installed `enter-chroot` command, or one of the target-specific
@@ -119,14 +143,16 @@ start\* commands. Ta-da! That was easy.
 ### The easy way (assuming you want an Ubuntu LTS with Xfce)
 
   1. Download `crouton`
-  2. Open a shell (Ctrl+Alt+T, type `shell` and hit enter) and run
-     `sudo sh ~/Downloads/crouton -t xfce`
-  3. Wait patiently and answer the prompts like a good person.
-  4. Done! You can jump straight to your Xfce session by running
+  2. Open a shell (Ctrl+Alt+T, type `shell` and hit enter)
+  3. Copy the installer to an executable location by running
+     `sudo install -Dt /usr/local/bin -m 755 ~/Downloads/crouton`
+  4. Now that it's executable, run the installer itself: `sudo crouton -t xfce`
+  5. Wait patiently and answer the prompts like a good person.
+  6. Done! You can jump straight to your Xfce session by running
      `sudo enter-chroot startxfce4` or, as a special shortcut, `sudo startxfce4`
-  5. Cycle through Chromium OS and your running graphical chroots using
+  7. Cycle through Chromium OS and your running graphical chroots using
      Ctrl+Alt+Shift+Back and Ctrl+Alt+Shift+Forward.
-  6. Exit the chroot by logging out of Xfce.
+  8. Exit the chroot by logging out of Xfce.
 
 ### With encryption!
 
@@ -141,8 +167,8 @@ start\* commands. Ta-da! That was easy.
 ### Hey now, Ubuntu 16.04 is pretty old; I'm young and hip
 
   1. The `-r` parameter specifies which distro release you want to use.
-  2. Run `sh ~/Downloads/crouton -r list` to list the recognized releases and
-     which distros they belong to.
+  2. Run `crouton -r list` to list the recognized releases and which distros
+     they belong to.
 
 ### Wasteful redundancies are wasteful: one clipboard, one browser, one window
 
@@ -167,19 +193,21 @@ graphical sessions as Chromium OS windows.*
 
 ### A new version of crouton came out; my chroot is therefore obsolete and sad
 
-  1. Check for updates, download the latest version, and see what's new by
-     running `croutonversion -u -d -c` from the chroot (run `croutonversion -h`
-     to see what those parameters actually do).
-  2. Exit the chroot and run `sudo sh ~/Downloads/crouton -u -n chrootname`.
-     It will update all installed targets.
+  1. Exit the chroot if you have it open.
+  2. If you haven't already, download `crouton`, and copy it so it works:
+     `sudo install -Dt /usr/local/bin -m 755 ~/Downloads/crouton`
+  3. Update your chroot with `sudo crouton -u -n chrootname`. It will update
+     all installed targets.
 
 ### I want to open my desktop in a window or a tab but I don't have the 'xiwi' target/xmethod.
 
-  1. Add 'xiwi' or any other target to an existing chroot with the '-u' option using: `sudo sh ~/Downloads/crouton -t xiwi -u -n chrootname`
+  1. Add 'xiwi' or any other target to an existing chroot with the `-u` option:
+     `sudo crouton -t xiwi -u -n chrootname`
 
   This will also make 'xiwi' the default xmethod.
 
-  2. If you want to keep the 'xorg' xmethod as the default then enter it first using: `sudo sh ~/Downloads/crouton -t xorg,xiwi -u -n chrootname`
+  2. If you want to keep the 'xorg' xmethod as the default then pick it first:
+     `sudo sh crouton -t xorg,xiwi -u -n chrootname`
 
 ### A backup a day keeps the price-gouging data restoration services away
 
@@ -190,7 +218,7 @@ graphical sessions as Chromium OS windows.*
      timestamped tarball. You can explicitly specify the tarball with `-f`
   3. If your machine is new, powerwashed, or held upside-down and shaken, you
      can use the crouton installer to restore a chroot and relevant scripts:
-     `sudo sh ~/Downloads/crouton -f mybackup.tar.gz`
+     `sudo crouton -f mybackup.tar.gz`
 
 *Unlike with Chromium OS, the data in your chroot isn't synced to the cloud.*
 
@@ -205,20 +233,33 @@ graphical sessions as Chromium OS windows.*
 
   1. Use `-p` to specify the directory in which to install the chroot and
      scripts. Be sure to quote or escape spaces.
-  2. When entering the chroot, either specify the full path of the enter-chroot
-     or start* scripts (i.e. `sudo sh /path/to/enter-chroot`), or use the
-     `-c` parameter to explicitly specify the chroots directory.
+  2. When entering the chroot for the first time each boot, you will first need
+     to ensure the place you've installed the scripts is in a place that allows
+     executables to run. Determine the mountpoint by running
+     `df --output=target /path/to/enter-chroot`, then mark the mount exec with
+     `sudo mount -o remount,exec /path/to/mountpoint`.
+  3. You can then launch the chroot by specifying the full path of any of the
+     enter-chroot or start* scripts (i.e. `sudo /path/to/enter-chroot`), or use
+     the `-c` parameter to explicitly specify the chroots directory.
+
+*If for some reason you have to run the installer without touching the local
+disk, you can (for the time being) run
+`curl -fL https://goo.gl/fd3zc | sudo sh -s -- options_for_crouton_installer`.
+Note that this will definitely break in the near future, so don't depend on it.*
 
 ### Downloading bootstrap files over and over again is a waste of time
 
   1. Download `crouton`
-  2. Open a shell (Ctrl+Alt+T, type `shell` and hit enter) and run
-     `sudo sh ~/Downloads/crouton -d -f ~/Downloads/mybootstrap.tar.bz2`
-  3. Include the `-r` parameter if you want to specify for which release to
+  2. Open a shell (Ctrl+Alt+T, type `shell` and hit enter)
+  3. Copy the installer to an executable location by running
+     `sudo install -Dt /usr/local/bin -m 755 ~/Downloads/crouton`
+  4. Now that it's executable, use the installer to build a bootstrap tarball:
+     `sudo crouton -d -f ~/Downloads/mybootstrap.tar.bz2`
+  5. Include the `-r` parameter if you want to specify for which release to
      prepare a bootstrap.
-  4. You can then create chroots using the tarball by running
-     `sudo sh ~/Downloads/crouton -f ~/Downloads/mybootstrap.tar.bz2`. Make sure
-      you also specify the target environment with `-t`.
+  6. You can then create chroots using the tarball by running
+     `sudo crouton -f ~/Downloads/mybootstrap.tar.bz2`. Make sure you also
+     specify the target environment with `-t`.
 
 *This is the quickest way to create multiple chroots at once, since you won't
 have to determine and download the bootstrap files every time.*
