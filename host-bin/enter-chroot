@@ -412,7 +412,7 @@ elif [ ! -f "$shares" ]; then
 # subdirectories of those mounts.
 # The only directories that can be mapped from outside of the chroot are
 # subdirectories of the following locations:
-#  downloads: ~/Downloads
+#  myfiles: ~/MyFiles
 #  shared: /mnt/stateful_partition/crouton/shared
 #  encrypted: ~/crouton/shared
 # Inside the chroot, any absolute or user-relative path (~/x or ~user/x) is OK.
@@ -432,15 +432,15 @@ elif [ ! -f "$shares" ]; then
 #  Share a noexec path that has spaces, and a specific user home directory
 #   "encrypted/stupid example" "~omg/Why are you even doing this?" noexec
 
-# Share the downloads folder of the current user's profile
-downloads ~/Downloads
+# Share the MyFiles folder of the current user's profile
+myfiles ~/MyFiles
 EOF
 fi
 # Bind-mount the stuff in $CHROOT/etc/crouton/shares, unless NOLOGIN is set
 if [ -z "$NOLOGIN" -a -f "$shares" ]; then
-    localdownloads='/home/chronos/user/Downloads'
-    if [ ! -d "$localdownloads" ]; then
-        localdownloads=''
+    localmyfiles='/home/chronos/user/MyFiles'
+    if [ ! -d "$localmyfiles" ]; then
+        localmyfiles=''
     fi
     localencrypted='/home/chronos/user/crouton/shared'
     if [ ! -d "/home/chronos/user" ]; then
@@ -493,12 +493,12 @@ if [ -z "$NOLOGIN" -a -f "$shares" ]; then
         line="\n  \"$src\" \"$dest\" $opts"
         # Expand src
         case "${src%%/*}" in
-            download|downloads)
-                if [ -z "$localdownloads" ]; then
+            myfile|myfiles)
+                if [ -z "$localmyfiles" ]; then
                     echo "Not mounting share (no Chromium OS user):$line" 1>&2
                     continue
                 fi
-                src="$localdownloads/${src#*/}";;
+                src="$localmyfiles/${src#*/}";;
             encrypt|encrypted)
                 if [ -z "$localencrypted" ]; then
                     echo "Not mounting share (no Chromium OS user):$line" 1>&2
