@@ -17,7 +17,7 @@ fi
 ### Append to prepare.sh:
 install --minimal \
   $legacy_session_package \
-  dconf-tools \
+  dconf-cli \
   evolution-data-server \
   gnome-control-center \
   gnome-screensaver \
