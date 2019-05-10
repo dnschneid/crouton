@@ -17,7 +17,7 @@ precise!
 quantal!
 raring!
 saucy!
-trusty
+trusty!
 utopic!
 vivid!
 wily!
@@ -26,3 +26,6 @@ yakkety!
 zesty!
 artful*|test
 bionic*|test
+cosmic!
+disco*|test
+eoan*|test
