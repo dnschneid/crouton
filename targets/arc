@@ -1,0 +1,22 @@
+#!/bin/sh -e
+# Copyright (c) 2016 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+REQUIRES=''
+DESCRIPTION='Enable access to the Virtual SDcard used in ARC (App Runtime for Chrome.) Will only work if Google Play is enabled and /run/arc/sdcard/ exists.'
+. "${TARGETSDIR:="$PWD"}/common"
+if [ ! -d "/run/arc/sdcard/" ]; then
+    error 99 "Error: /run/arc/sdcard does not exist! Aborting install..."
+fi
+### Append to prepare.sh:
+#Make an SDcard directory. Lets assume host exists and create the directory directly.
+echo "Creating directories..."
+mkdir -p /var/host/sdcard/write
+mkdir -p /var/host/sdcard/read
+#Add the arc group to the chroot. This does a cheaky bypass to allow the user access to the SDCard by matching the GID (Thank you Linux Security.)
+echo "Creating arc-group."
+groupadd -g 665357 arc-group
+
+TIPS="$TIPS
+ARC Virtual SDCard: You can access your 'Play Files' from /var/host/sdcard/
+"
