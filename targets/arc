@@ -15,7 +15,7 @@ mkdir -p /var/host/sdcard/write
 mkdir -p /var/host/sdcard/read
 #Add the arc group to the chroot. This does a cheaky bypass to allow the user access to the SDCard by matching the GID (Thank you Linux Security.)
 echo "Creating arc-group."
-groupadd -g 665357 arc-group
+groupadd -f -g 665357 arc-group # -f forces sucessfull exit despite error.
 
 TIPS="$TIPS
 ARC Virtual SDCard: You can access your 'Play Files' from /var/host/sdcard/
