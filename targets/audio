@@ -202,9 +202,14 @@ if [ ! -d "$alsaconf" ]; then
     alsaconf='/usr/share/alsa/alsa.conf.d'
     if [ ! -d "$alsaconf" ]; then
         echo "Unable to find correct ALSA configuration directory." >&2
-        alsaconf='/tmp'
+	echo "This might be your first time installing. So we will create the directory for you."
+	echo "Default is /usr/share/alsa/alsa.conf.d + Symlink from /etc/alsa/conf.d to said default, but feel free to move it as needed."
+        mkdir -p /usr/share/alsa/alsa.conf.d
+        mkdir -p /etc/alsa/conf.d
+        ln -s /usr/share/alsa/alsa.conf.d/10-cras.conf /etc/alsa/conf.d/10-cras.conf # Create non-existant shortcut for now.
     fi
 fi
+
 cat > "$alsaconf/10-cras.conf" <<EOF
 pcm.cras {
     type cras
