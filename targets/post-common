@@ -35,11 +35,11 @@ if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
 fi
 
 # Add the primary user
-if ! grep -q "arc" "/.crouton-targets" > /dev/null 2>&1; then
-  groups='audio,input,video,wayland,sudo,plugdev,crouton'
-else
-  groups='audio,input,video,wayland,sudo,plugdev,crouton,arc-group'
+groups='audio,input,video,wayland,sudo,plugdev,crouton'
+if grep -q "arc" "/.crouton-targets" > /dev/null 2>&1; then
+  groups='$groups,arc-group'
 fi
+
 if ! grep -q ':1000:' /etc/passwd; then
     while ! echo "$username" | grep -q '^[a-z][-a-z0-9_]*$'; do
         if [ -n "$username" ]; then
