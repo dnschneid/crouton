@@ -140,6 +140,11 @@ for NAME in "$@"; do
     chown root:root "$ROOT"
     chmod 700 "$ROOT"
 
+    # Extraordinarily vague usage stat; see https://crbug.com/989219
+    if [ -z "${CROUTON_DISABLE_STATS-}" ]; then
+        touch '/run/metrics/external/crouton/crouton-started' || true
+    fi
+
     if [ -n "$PRINT" ]; then
         echo "$CHROOT"
     fi
