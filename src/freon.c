@@ -160,7 +160,9 @@ static void drm_reset_props()
             continue;
 
         /* Reset color matrix to identity and gamma/degamma LUTs to pass through,
-         * ignore errors in case they are not supported. */
+         * ignore errors in case they are not supported.
+         * ref: https://chromium.googlesource.com/chromiumos/platform/frecon/+/master/drm.c
+         */
         crtc_set_prop(fd, crtc_id, crtc_props, "CTM", 0);
         crtc_set_prop(fd, crtc_id, crtc_props, "DEGAMMA_LUT", 0);
         crtc_set_prop(fd, crtc_id, crtc_props, "GAMMA_LUT", 0);
