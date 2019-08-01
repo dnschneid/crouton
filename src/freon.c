@@ -3,7 +3,7 @@
  * found in the LICENSE file.
  *
  * LD_PRELOAD hack to make Xorg happy in a system without VT-switching.
- * gcc -shared -fPIC  -ldl -Wall -O2 freon.c -o croutonfreon.so
+ * gcc -shared -fPIC -ldrm -ldl -I/usr/include/libdrm -Wall -O2 freon.c -o croutonfreon.so
  *
  * Powered by black magic.
  */
@@ -101,6 +101,79 @@ static int set_display_lock(unsigned int pid) {
     return 0;
 }
 
+static int32_t crtc_set_prop(int fd, uint32_t crtc_id,
+			     drmModeObjectPropertiesPtr props,
+			     const char *name, uint64_t value)
+{
+    uint32_t u;
+    int32_t ret;
+    drmModePropertyPtr prop;
+
+    for (u = 0; u < props->count_props; u++) {
+        prop = drmModeGetProperty(fd, props->props[u]);
+	if (!prop)
+	    continue;
+	if (strcmp(prop->name, name)) {
+	    drmModeFreeProperty(prop);
+	    continue;
+	}
+	ret = drmModeObjectSetProperty(fd, crtc_id, DRM_MODE_OBJECT_CRTC,
+                                       props->props[u], value);
+	if (ret < 0)
+	    TRACE("setting property %s failed with %d\n", name, ret);
+	else
+	    ret = 0;
+	drmModeFreeProperty(prop);
+	return ret;
+    }
+    TRACE("could not find property %s\n", name);
+    return -1;
+}
+
+/* Reset CTM/GAMMA properties to avoid artifacts (#3791). */
+static void drm_reset_props()
+{
+    int i, fd;
+    drmModeRes* resources;
+
+    if (!orig_open) preload_init();
+
+    fd = orig_open("/dev/dri/card0", O_RDWR, 0);
+
+    TRACE("%s %d\n", __func__, fd);
+
+    if (fd < 0)
+        return;
+
+    resources = drmModeGetResources(fd);
+    TRACE("%s res=%p\n", __func__, resources);
+    if (!resources)
+        goto closefd;
+
+    for (i = 0; i < resources->count_crtcs; i++) {
+        drmModeObjectPropertiesPtr crtc_props;
+	uint32_t crtc_id = resources->crtcs[i];
+
+	crtc_props = drmModeObjectGetProperties(fd, crtc_id, DRM_MODE_OBJECT_CRTC);
+	TRACE("%s crtc %d %p\n", __func__, i, crtc_props);
+	if (!crtc_props)
+            continue;
+
+        /* Reset color matrix to identity and gamma/degamma LUTs to pass through,
+         * ignore errors in case they are not supported. */
+        crtc_set_prop(fd, crtc_id, crtc_props, "CTM", 0);
+        crtc_set_prop(fd, crtc_id, crtc_props, "DEGAMMA_LUT", 0);
+        crtc_set_prop(fd, crtc_id, crtc_props, "GAMMA_LUT", 0);
+
+        drmModeFreeObjectProperties(crtc_props);
+    }
+
+    drmModeFreeResources(resources);
+
+closefd:
+    orig_close(fd);
+}
+
 /* Prevents some glitch if Chromium OS keeps cursor enabled (#2878). */
 static void drm_disable_cursor()
 {
@@ -165,6 +238,7 @@ int ioctl(int fd, unsigned long int request, ...) {
         if ((request == VT_RELDISP && (uintptr_t)data == 1) ||
             (request == VT_ACTIVATE && (uintptr_t)data == 0)) {
             if (lockfd != -1) {
+                drm_reset_props();
                 TRACE("Telling Chromium OS to regain control\n");
                 ret = LIBCROSSERVICE_METHOD_CALL(TakeDisplayOwnership);
                 if (WEXITSTATUS(ret) == 1) {
