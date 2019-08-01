@@ -24,7 +24,7 @@ wily!
 xenial
 yakkety!
 zesty!
-artful*|test
+artful!
 bionic*|test
 cosmic!
 disco*|test
