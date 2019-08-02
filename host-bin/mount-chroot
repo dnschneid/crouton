@@ -14,6 +14,7 @@ KEYFILE=''
 PRINT=''
 ROOT="`readlink -m -- '/var/run/crouton'`"
 MOUNTOPTS='rw,dev,exec,suid'
+METRICSDIR='/run/metrics/external/crouton'
 
 USAGE="$APPLICATION [options] name [...]
 
@@ -141,9 +142,12 @@ for NAME in "$@"; do
     chmod 700 "$ROOT"
 
     # Extraordinarily vague usage stat; see https://crbug.com/989219
-    if [ -z "${CROUTON_DISABLE_STATS-}" ]; then
-        touch '/run/metrics/external/crouton/crouton-started' || true
-    fi
+    if [ -z "${CROUTON_DISABLE_STATS-}" -a -d "${METRICSDIR%/*}" ]; then
+        mkdir -p -m 0777 "$METRICSDIR"
+        chown root:root "$METRICSDIR"
+        chmod 777 "$METRICSDIR"
+        touch "$METRICSDIR/crouton-started"
+    fi || true
 
     if [ -n "$PRINT" ]; then
         echo "$CHROOT"
