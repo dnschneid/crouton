@@ -138,16 +138,24 @@ void cras_sbc_codec_destroy(struct cras_audio_codec *codec) {
     abort();
 }
 END
+
+        # Find the cras test client
+        cras_test_client='tools/cras_test_client/cras_test_client.c'
+        # FIXME: remove when 12334.0.0 (R77) becomes minimum target
+        if [ ! -f "$cras_test_client" ]; then
+            cras_test_client='tests/cras_test_client.c'
+        fi
+
         # Drop SBC constants
-        sed -e 's/SBC_[A-Z0-9_]*/0/g' -i tests/cras_test_client.c
+        sed -e 's/SBC_[A-Z0-9_]*/0/g' -i "$cras_test_client"
 
 	# FIXME(crbug.com/864815) Remove when fixed upstream
 	if [ "$cras_arch" = "i386" ]; then
 	    sed -i -e 's/Dumping AEC info to %s, stream %lu/Dumping AEC info to %s, stream %llu/' \
-		tests/cras_test_client.c
+		"$cras_test_client"
 	fi
 	sed -i -e 's/cras_stream_id_t stream_id;/cras_stream_id_t stream_id = 0;/' \
-	    tests/cras_test_client.c
+	    "$cras_test_client"
 
         # Directory to install CRAS library/binaries
         CRASLIBDIR="/usr/local$archextrapath/lib"
