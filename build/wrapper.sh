@@ -47,7 +47,13 @@ if [ "$1" = '-x' -a "$#" -le 2 ]; then
     mkdir -p "$SCRIPTDIR"
 else
     # Make a temporary directory and auto-remove it when the script ends.
-    SCRIPTDIR="`mktemp -d --tmpdir=/tmp "${0##*/}.XXX"`"
+    SCRIPTDIR='/tmp'
+    # If we're running from a directory in /tmp, make the temporary directory a
+    # subdirectory of it.
+    if [ "${0#/tmp/}" != "$0" ]; then
+        SCRIPTDIR="${0%/*}"
+    fi
+    SCRIPTDIR="`mktemp -d --tmpdir="$SCRIPTDIR" "${0##*/}.XXX"`"
     TRAP="rm -rf --one-file-system '$SCRIPTDIR';$TRAP"
     trap "$TRAP" INT HUP 0
 fi
