@@ -157,9 +157,11 @@ END
 	sed -i -e 's/cras_stream_id_t stream_id;/cras_stream_id_t stream_id = 0;/' \
 	    "$cras_test_client"
 
-	# FIXME(http://crrev.com/c/1759370): Remove when fixed upstream
+	# FIXME(http://crrev.com/c/1759370): Remove when R78 becomes minimum target
 	sed -i -e 's/\(strncpy.*sizeof(info.name)\));/\1 - 1); info.name[sizeof(info.name) - 1] = '"'"'\\0'"'"';/' \
 		common/cras_shm.c
+	sed -i -e 's/^struct \([^_]\)/struct __attribute__((__packed__)) \1/' \
+		common/cras_messages.h
 
         # Directory to install CRAS library/binaries
         CRASLIBDIR="/usr/local$archextrapath/lib"
