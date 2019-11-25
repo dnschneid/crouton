@@ -113,7 +113,7 @@ is as simple as possible by design.
 If you're just here to use crouton, you can grab the latest release from
 [https://goo.gl/fd3zc](https://goo.gl/fd3zc). Download it, pop open a shell
 (Ctrl+Alt+T, type `shell` and hit enter), make the installer executable with
-`sudo install -Dt /usr/local/bin -m 755 ~/Downloads/crouton`, then launch it
+`sudo install -Dt /usr/local/bin ~/Downloads/crouton`, then launch it
 with `sudo crouton` to see the help text. See the "examples" section for some
 usage examples.
 
@@ -145,7 +145,7 @@ start\* commands. Ta-da! That was easy.
   1. Download `crouton`
   2. Open a shell (Ctrl+Alt+T, type `shell` and hit enter)
   3. Copy the installer to an executable location by running
-     `sudo install -Dt /usr/local/bin -m 755 ~/Downloads/crouton`
+     `sudo install -Dt /usr/local/bin ~/Downloads/crouton`
   4. Now that it's executable, run the installer itself: `sudo crouton -t xfce`
   5. Wait patiently and answer the prompts like a good person.
   6. Done! You can jump straight to your Xfce session by running
@@ -195,7 +195,7 @@ graphical sessions as Chromium OS windows.*
 
   1. Exit the chroot if you have it open.
   2. If you haven't already, download `crouton`, and copy it so it works:
-     `sudo install -Dt /usr/local/bin -m 755 ~/Downloads/crouton`
+     `sudo install -Dt /usr/local/bin ~/Downloads/crouton`
   3. Update your chroot with `sudo crouton -u -n chrootname`. It will update
      all installed targets.
 
@@ -252,7 +252,7 @@ Note that this will definitely break in the near future, so don't depend on it.*
   1. Download `crouton`
   2. Open a shell (Ctrl+Alt+T, type `shell` and hit enter)
   3. Copy the installer to an executable location by running
-     `sudo install -Dt /usr/local/bin -m 755 ~/Downloads/crouton`
+     `sudo install -Dt /usr/local/bin ~/Downloads/crouton`
   4. Now that it's executable, use the installer to build a bootstrap tarball:
      `sudo crouton -d -f ~/Downloads/mybootstrap.tar.bz2`
   5. Include the `-r` parameter if you want to specify for which release to
