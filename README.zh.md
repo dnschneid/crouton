@@ -72,7 +72,7 @@
 2. 使用`sudo enter-chroot`进入chroot环境
 3. 使用[Crosh Window插件](https://goo.gl/eczLT)，防止chroot命令行环境导致的快捷键失效
 
-**升级Chroot环境**
+**升级chroot环境**
 
 ​	使用`sudo crouton -u -n chrootname`来升级chroot环境中的系统。
 
