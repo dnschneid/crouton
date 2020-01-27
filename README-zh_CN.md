@@ -1,6 +1,6 @@
 # Crouton中文版教程
 
-> 基于crouton项目的英文版进行汉化，部分内容没有进行汉化,建议有能力者优先阅读英文版本，项目地址：[Chromium OS Universal Chroot Environment](https://github.com/dnschneid/crouton)
+> 基于crouton项目的英文版进行汉化，部分内容没有进行汉化,建议有能力者优先阅读英文版本
 
 ## 简介
 
