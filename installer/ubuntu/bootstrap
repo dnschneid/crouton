@@ -13,7 +13,7 @@
 # $tmp; the contents of which will be moved into $INSTALLERDIR/.. in the bundle
 
 # Grab debootstrap
-d="https://salsa.debian.org/installer-team/debootstrap/-/archive/1.0.115/debootstrap-1.0.115.tar.gz"
+d="https://salsa.debian.org/installer-team/debootstrap/-/archive/1.0.123/debootstrap-1.0.123.tar.gz"
 
 # Download and patch if it's not bundled already
 if [ -n "${INSTALLERDIR-}" -a -d "$INSTALLERDIR/../debootstrap" ]; then
@@ -34,12 +34,12 @@ Check your internet connection or proxy settings and try again.'
     # Patch debootstrap so that it retries downloading packages
     echo 'Patching debootstrap...' 1>&2
     if awk '
-        t == 4 && /-z \"\$checksum\"/ { sub(/\$checksum/, "$checksum$failed"); t=5 }
-        t == 3 && /\"\$checksum\" != \"\"/ { sub(/ \];/, " -a -z \"$failed\" ];"); t=4 }
-        t == 2 && /if ! just_get \"\$from\" \"\$dest2\"; then continue 2; fi/ {
+        t == 4 && /-z "\$checksum"/ { sub(/\$checksum/, "$checksum$failed"); t=5 }
+        t == 3 && /"\$checksum" != ""/ { sub(/ \];/, " -a -z \"$failed\" ];"); t=4 }
+        t == 2 && /if ! just_get "\$from" "\$dest2"; then continue 2; fi/ {
             sub(/continue 2; fi/, "failed=y; fi"); t=3 }
         t == 1 && /info RETRIEVING/ { print "failed=\"\""; t=2 }
-        /\"\$iters\" -lt 10/ { sub(/10/, "3"); t=1 }
+        /"\$iters" -lt 10/ { sub(/10/, "3"); t=1 }
         1
         END { if (t != 5) exit 1 }
             ' "$tmp/functions" > "$tmp/functions.new"; then
