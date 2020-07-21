@@ -234,6 +234,9 @@ if [ -r /debootstrap ]; then
         | sed -e 's=//= =g;s/^\(\(.*\) (deleted)\)$/\1\n\2/' \
         | sort -r | xargs --no-run-if-empty -d '
 ' -n 1 umount || true
+    # Workaround for some kernel versions where debootstrap second stage
+    # crashes when attempting to generate /etc/machine-id (issue #4016).
+    date -Ins | md5sum | cut -f1 -d' ' > /etc/machine-id
     # Start the bootstrap
     /debootstrap/debootstrap --second-stage
     # Clean contents of /var/run (since we'll always be mounting over it).
