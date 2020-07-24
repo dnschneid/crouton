@@ -435,8 +435,6 @@ elif [ ! -f "$shares" ]; then
 
 # Share the downloads folder of the current user's profile
 downloads ~/Downloads
-# Share the "My Files" folder of the current user's profile
-myfiles ~/MyFiles
 EOF
 fi
 # Bind-mount the stuff in $CHROOT/etc/crouton/shares, unless NOLOGIN is set
