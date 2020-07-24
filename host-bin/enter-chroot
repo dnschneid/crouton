@@ -412,6 +412,7 @@ elif [ ! -f "$shares" ]; then
 # subdirectories of those mounts.
 # The only directories that can be mapped from outside of the chroot are
 # subdirectories of the following locations:
+#  myfiles: ~/MyFiles
 #  downloads: ~/Downloads
 #  shared: /mnt/stateful_partition/crouton/shared
 #  encrypted: ~/crouton/shared
@@ -438,6 +439,10 @@ EOF
 fi
 # Bind-mount the stuff in $CHROOT/etc/crouton/shares, unless NOLOGIN is set
 if [ -z "$NOLOGIN" -a -f "$shares" ]; then
+    localmyfiles='/home/chronos/user/MyFiles'
+    if [ ! -d "$localmyfiles" ]; then
+        localmyfiles=''
+    fi
     localdownloads='/home/chronos/user/Downloads'
     if [ ! -d "$localdownloads" ]; then
         localdownloads=''
@@ -493,6 +498,12 @@ if [ -z "$NOLOGIN" -a -f "$shares" ]; then
         line="\n  \"$src\" \"$dest\" $opts"
         # Expand src
         case "${src%%/*}" in
+            myfile|myfiles)
+                if [ -z "$localmyfiles" ]; then
+                    echo "Not mounting share (no Chromium OS user):$line" 1>&2
+                    continue
+                fi
+                src="$localmyfiles/${src#*/}";;
             download|downloads)
                 if [ -z "$localdownloads" ]; then
                     echo "Not mounting share (no Chromium OS user):$line" 1>&2
