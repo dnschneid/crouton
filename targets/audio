@@ -172,8 +172,10 @@ END
         {
             convert_automake
 
+            # Note: -Wno-int-in-bool-context is necessary for building CRAS on
+            # older ChromeOS versions (issue #3352).
             echo '
-                CFLAGS="$CFLAGS -DCRAS_SOCKET_FILE_DIR=\"/var/run/cras\""
+                CFLAGS="$CFLAGS -Wno-int-in-bool-context -DCRAS_SOCKET_FILE_DIR=\"/var/run/cras\""
 
                 buildlib libcras
 
