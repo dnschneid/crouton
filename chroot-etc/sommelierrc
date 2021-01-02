@@ -1,0 +1,13 @@
+#!/bin/sh
+
+set -e
+
+if which xsetroot > /dev/null 2>&1; then
+  xsetroot -cursor_name left_ptr
+fi
+
+if [ -f ~/.xwlrc ]; then
+  . ~/.xwlrc
+fi
+
+exit 0

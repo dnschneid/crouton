@@ -1,0 +1,48 @@
+#!/bin/sh -e
+# Copyright (c) 2020 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+set -e
+
+APPLICATION="${0##*/}"
+ENTERCHROOT="$(dirname "$(readlink -f -- "$0")")/enter-chroot"
+OPTS_ENTER=''
+OPTS_SOMM=''
+
+USAGE="$APPLICATION [options] chroot_app [parameters]
+
+Wraps enter-chroot to launch a window in Chromium OS for any graphical application.
+Applications launched in this way show as independent windows.
+
+By default, it will use the primary user on the first sommelier-enabled chroot found and launch
+the chroot_app in a window.
+
+Options:
+$("$ENTERCHROOT" -h 2>&1 | grep -e ' -[bckntu]')
+
+You should be able to use normal keys inside the application. To use
+ChromeOS keys you may need to hit Search first.
+"
+
+while getopts 'bc:k:n:t:u:FTf' OPT; do
+    case "$OPT" in
+      b) OPTS_ENTER="$OPTS_ENTER -$OPT";;
+      c|k|n|t|u)
+         OPTARG="$(echo -n "$OPTARG" | sed -e "s/'/'\\\\\\''/g")"
+         OPTS_ENTER="$OPTS_ENTER -$OPT '$OPTARG'";;
+      f) OPTS_SOMM="$OPTS_SOMM -$OPT";;
+      \?) echo "$USAGE" 1>&2
+          exit 2;;
+    esac
+done
+shift "$((OPTIND-1))"
+
+if [ "$#" = "0" ]; then 
+    echo "$USAGE" 1>&2
+    exit 2
+fi
+
+eval "exec sh -e \"\$ENTERCHROOT\" $OPTS_ENTER \
+    exec runsommelier \"\$@\""
+    

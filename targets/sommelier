@@ -1,0 +1,67 @@
+#!/bin/sh -e -v -x
+# Copyright (c) 2016 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+DESCRIPTION='Wayland backend running unaccelerated(?) in a Chromium OS window.'
+HOSTBIN='startsommelier'
+CHROOTBIN='runsommelier'
+CHROOTETC='sommelierrc'
+. "${TARGETSDIR:="$PWD"}/common"
+
+### Append to prepare.sh:
+XMETHOD="${XMETHOD:-sommelier}"
+
+# Download the latest sommelier
+urlbase="https://chromium.googlesource.com/chromiumos/platform2/+archive/HEAD/vm_tools"
+
+# Download the corresponding virtwl.h
+urlvirtwl="https://chromium.googlesource.com/chromiumos/third_party/kernel/+/refs/heads/master/include/uapi/linux/virtwl.h?format=TEXT" 
+
+DUMMYBUILDTMP="`mktemp -d crouton-cras.XXXXXX --tmpdir=/tmp`"
+
+addtrap "rm -rf --one-file-system '$DUMMYBUILDTMP'"
+
+echo "Download sommelier..." 1>&2
+
+superinsecure=''
+if release -le wheezy; then
+     # Wheezy doesn't have the right CA in ca-certificates that validates x.org
+     superinsecure='--no-check-certificate'
+fi
+wget $superinsecure -O "$DUMMYBUILDTMP/dummy.tar.gz" \
+     "$urlbase/sommelier.tar.gz"
+
+mkdir $DUMMYBUILDTMP/linux
+wget $superinsecure -O- "$urlvirtwl" \
+    | base64 --decode> $DUMMYBUILDTMP/linux/virtwl.h
+
+install xwayland weston xorg
+
+install --minimal --asdeps pkg-config libwayland-dev libgbm-dev gcc libx11-xcb-dev libsystemd-dev libxcb-composite0-dev libxkbcommon-dev libxrender-dev libxtst-dev libpixman-1-dev ninja-build meson cmake libdrm-dev build-essential
+
+# Compilation subshell
+(
+    cd "$DUMMYBUILDTMP"
+    # -m prevents "time stamp is in the future" spam
+    tar -xzmf dummy.tar.gz
+
+    echo "Compiling sommelier..." 1>&2
+
+    meson build
+    ninja -C build
+
+    echo "Installing sommelier..." 1>&2
+
+    BINDIR="/usr/local/bin"
+    mkdir -p "$BINDIR/"
+    /usr/bin/install -s build/sommelier "$BINDIR/"
+
+) # End compilation subshell
+
+TIPS="$TIPS"'
+You can launch individual apps in ChromeOS windows by using the
+"runsommelier" command in the chroot shell. Use startsommelier to launch
+directly from the host shell.  Use the startsommelier parameter -b to
+run in the background.  Example: sudo startsommelier -b xterm
+'
+

@@ -1,0 +1,37 @@
+#!/bin/sh
+GDK_BACKEND=x11
+CLUTTER_BACKEND=wayland
+XDG_RUNTIME_DIR=/var/run/chrome
+WAYLAND_DISPLAY=wayland-0
+DISPLAY=:0
+SCALE=1
+export GDK_BACKEND CLUTTER_BACKEND XDG_RUNTIME_DIR WAYLAND_DISPLAY DISPLAY SCALE
+
+SOMMELIER_ACCELERATORS="Super_L,<Control>space,<Alt>space,<Alt>bracketleft,<Alt>bracketright,<Alt>minus,<Alt>equal"
+
+SOMM=$(pidof sommelier 2> /dev/null)
+if [ -z "$SOMM" ]; then
+    sommelier -X --x-display=$DISPLAY --scale=$SCALE \
+       --glamor --drm-device=/dev/dri/renderD128  \
+       --virtwl-device=/dev/null --shm-driver=noop \
+       --data-driver=noop --display=$WAYLAND_DISPLAY \
+       --xwayland-path=/usr/bin/Xwayland \
+       --accelerators=$SOMMELIER_ACCELERATORS \
+       --no-exit-with-child \
+       /bin/sh -c "/usr/local/etc/sommelierrc" > /tmp/sommelier.log 2>&1 &
+    sleep 3
+fi
+
+SOMM=$(pidof sommelier 2> /dev/null)
+if [ ! -z "$SOMM" ]; then
+  echo "sommelier process $SOMM is running"
+else
+  echo "sommelier failed to start"
+  exit 1
+fi
+
+if [ "$1" ]; then
+    exec "$@" >> /tmp/sommelier.log 2>&1
+fi
+
+exit 0
