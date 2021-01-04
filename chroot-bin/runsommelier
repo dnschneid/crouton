@@ -9,6 +9,9 @@ export GDK_BACKEND CLUTTER_BACKEND XDG_RUNTIME_DIR WAYLAND_DISPLAY DISPLAY SCALE
 
 SOMMELIER_ACCELERATORS="Super_L,<Control>space,<Alt>space,<Alt>bracketleft,<Alt>bracketright,<Alt>minus,<Alt>equal"
 
+# Find the architecture specific libgl1-mesa-dri library location
+GL_DRIVER_PATH=$(grep '\/dri$' "/var/lib/dpkg/info/libgl1-mesa-dri*list" | head -1 )
+
 SOMM=$(pidof sommelier 2> /dev/null)
 if [ -z "$SOMM" ]; then
     sommelier -X --x-display=$DISPLAY --scale=$SCALE \
@@ -17,7 +20,7 @@ if [ -z "$SOMM" ]; then
        --data-driver=noop --display=$WAYLAND_DISPLAY \
        --xwayland-path=/usr/bin/Xwayland \
        --accelerators=$SOMMELIER_ACCELERATORS \
-       --xwayland-gl-driver-path=/usr/lib/x86_64-linux-gnu/dri/ \
+       --xwayland-gl-driver-path=$GL_DRIVER_PATH \
        --no-exit-with-child \
        /bin/sh -c "/usr/local/etc/sommelierrc" > /tmp/sommelier.log 2>&1 &
     sleep 3
