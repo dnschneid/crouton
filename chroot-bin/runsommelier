@@ -17,6 +17,7 @@ if [ -z "$SOMM" ]; then
        --data-driver=noop --display=$WAYLAND_DISPLAY \
        --xwayland-path=/usr/bin/Xwayland \
        --accelerators=$SOMMELIER_ACCELERATORS \
+       --xwayland-gl-driver-path=/usr/lib/x86_64-linux-gnu/dri/ \
        --no-exit-with-child \
        /bin/sh -c "/usr/local/etc/sommelierrc" > /tmp/sommelier.log 2>&1 &
     sleep 3
