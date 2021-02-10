@@ -1,11 +1,16 @@
-#!/bin/sh
-GDK_BACKEND=x11
+#!/bin/sh -eu
 CLUTTER_BACKEND=wayland
-XDG_RUNTIME_DIR=/var/run/chrome
-WAYLAND_DISPLAY=wayland-0
 DISPLAY=:0
+GDK_BACKEND=x11
 SCALE=1
-export GDK_BACKEND CLUTTER_BACKEND XDG_RUNTIME_DIR WAYLAND_DISPLAY DISPLAY SCALE
+WAYLAND_DISPLAY=wayland-0
+XDG_RUNTIME_DIR=/var/run/chrome
+
+export CLUTTER_BACKEND
+export DISPLAY SCALE
+export GDK_BACKEND
+export WAYLAND_DISPLAY
+export XDG_RUNTIME_DIR
 
 SOMMELIER_ACCELERATORS="Super_L,<Control>space,<Alt>space,<Alt>bracketleft,<Alt>bracketright,<Alt>minus,<Alt>equal"
 
