@@ -19,14 +19,12 @@ export XDG_RUNTIME_DIR
 # Allow user to define their own variables
 # SOMMELIER_ACCELERATORS and GL_DRIVER_PATH
 
-if [ -z "$SOMMELIER_ACCELERATORS" ]; then
-    SOMMELIER_ACCELERATORS="Super_L,<Control>space,<Alt>space,<Alt>bracketleft,<Alt>bracketright,<Alt>minus,<Alt>equal"
-if
+DEFAULT_SOMMELIER_ACCELERATORS="Super_L,<Control>space,<Alt>space,<Alt>bracketleft,<Alt>bracketright,<Alt>minus,<Alt>equal"
+SOMMELIER_ACCELERATORS="${SOMMELIER_ACCELERATORS:=$DEFAULT_SOMMELIER_ACCELERATORS}"
 
-if [ -z "$GL_DRIVER_PATH" ]; then
-    # Find the architecture specific libgl1-mesa-dri library location
-    GL_DRIVER_PATH="$(grep '\/dri$' /var/lib/dpkg/info/libgl1-mesa-dri*list | head -1 )"
-if
+# Find the architecture specific libgl1-mesa-dri library location
+FOUND_DRIVER_PATH="$(grep '\/dri$' /var/lib/dpkg/info/libgl1-mesa-dri*list | head -1 )"
+GL_DRIVER_PATH="${GL_DRIVER_PATH:=$FOUND_DRIVER_PATH}"
 
 SOMMELIER="$(pidof sommelier 2> /dev/null)"
 if [ -z "$SOMMELIER" ]; then
