@@ -17,7 +17,7 @@ if [ -z "$SOMMELIER_ACCELERATORS" ]; then
 if
 
 # Find the architecture specific libgl1-mesa-dri library location
-GL_DRIVER_PATH=$(grep '\/dri$' "/var/lib/dpkg/info/libgl1-mesa-dri*list" | head -1 )
+GL_DRIVER_PATH=$(grep '\/dri$' /var/lib/dpkg/info/libgl1-mesa-dri*list | head -1 )
 
 SOMM=$(pidof sommelier 2> /dev/null)
 if [ -z "$SOMM" ]; then
