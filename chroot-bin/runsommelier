@@ -21,26 +21,26 @@ if
 
 if [ -z "$GL_DRIVER_PATH" ]; then
     # Find the architecture specific libgl1-mesa-dri library location
-    GL_DRIVER_PATH=$(grep '\/dri$' /var/lib/dpkg/info/libgl1-mesa-dri*list | head -1 )
+    GL_DRIVER_PATH="$(grep '\/dri$' /var/lib/dpkg/info/libgl1-mesa-dri*list | head -1 )"
 if
 
-SOMM=$(pidof sommelier 2> /dev/null)
-if [ -z "$SOMM" ]; then
-    sommelier -X --x-display=$DISPLAY --scale=$SCALE \
+SOMMELIER="$(pidof sommelier 2> /dev/null)"
+if [ -z "$SOMMELIER" ]; then
+    sommelier -X --x-display="$DISPLAY" --scale="$SCALE" \
        --glamor --drm-device=/dev/dri/renderD128  \
        --virtwl-device=/dev/null --shm-driver=noop \
-       --data-driver=noop --display=$WAYLAND_DISPLAY \
+       --data-driver=noop --display="$WAYLAND_DISPLAY" \
        --xwayland-path=/usr/bin/Xwayland \
-       --accelerators=$SOMMELIER_ACCELERATORS \
-       --xwayland-gl-driver-path=$GL_DRIVER_PATH \
+       --accelerators="$SOMMELIER_ACCELERATORS" \
+       --xwayland-gl-driver-path="$GL_DRIVER_PATH" \
        --no-exit-with-child \
        /bin/sh -c "/usr/local/etc/sommelierrc" > /tmp/sommelier.log 2>&1 &
     sleep 3
 fi
 
-SOMM=$(pidof sommelier 2> /dev/null)
-if [ ! -z "$SOMM" ]; then
-  echo "sommelier process $SOMM is running"
+SOMMELIER="$(pidof sommelier 2> /dev/null)"
+if [ ! -z "$SOMMELIER" ]; then
+  echo "sommelier process $SOMMELIER is running"
 else
   echo "sommelier failed to start"
   exit 1
