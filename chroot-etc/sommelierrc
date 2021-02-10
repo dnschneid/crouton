@@ -1,8 +1,11 @@
-#!/bin/sh
+#!/bin/sh -e
+# Copyright (c) 2021 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
 
-set -e
+# Based on https://chromium.googlesource.com/chromiumos/containers/sommelier/+/refs/heads/master/sommelierrc
 
-if which xsetroot > /dev/null 2>&1; then
+if hash xsetroot > /dev/null 2>&1; then
   xsetroot -cursor_name left_ptr
 fi
 
