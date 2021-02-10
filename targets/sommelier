@@ -21,33 +21,36 @@ urlbase="https://chromium.googlesource.com/chromiumos/platform2/+archive/$sommel
 kernel_version="7f7629cc680bf3c22d547fb5333e521af58c6c9e"
 urlvirtwl="https://chromium.googlesource.com/chromiumos/third_party/kernel/+/$kernel_version/include/uapi/linux/virtwl.h?format=TEXT" 
 
-DUMMYBUILDTMP="`mktemp -d crouton-cras.XXXXXX --tmpdir=/tmp`"
+DUMMYBUILDTMP="`mktemp -d crouton-sommelier.XXXXXX --tmpdir=/tmp`"
 
 addtrap "rm -rf --one-file-system '$DUMMYBUILDTMP'"
 
-echo "Download sommelier..." 1>&2
+echo "Download ..." 1>&2
 
 superinsecure=''
 if release -le wheezy; then
      # Wheezy doesn't have the right CA in ca-certificates that validates x.org
      superinsecure='--no-check-certificate'
 fi
-wget $superinsecure -O "$DUMMYBUILDTMP/dummy.tar.gz" \
+wget $superinsecure -O "$SOMMELIERBUILDTMP/sommelier.tar.gz" \
      "$urlbase/sommelier.tar.gz"
 
-mkdir $DUMMYBUILDTMP/linux
+mkdir "$SOMMELIERBUILDTMP/linux"
 wget $superinsecure -O- "$urlvirtwl" \
-    | base64 --decode> $DUMMYBUILDTMP/linux/virtwl.h
+    | base64 --decode > "$SOMMELIERBUILDTMP/linux/virtwl.h"
 
 install xwayland weston xorg
 
-install --minimal --asdeps pkg-config libwayland-dev libgbm-dev gcc libx11-xcb-dev libsystemd-dev libxcb-composite0-dev libxkbcommon-dev libxrender-dev libxtst-dev libpixman-1-dev ninja-build meson cmake libdrm-dev build-essential
+install --minimal --asdeps pkg-config libwayland-dev libgbm-dev gcc \
+    libx11-xcb-dev libsystemd-dev libxcb-composite0-dev \
+    libxkbcommon-dev libxrender-dev libxtst-dev libpixman-1-dev \
+    ninja-build meson cmake libdrm-dev build-essential
 
 # Compilation subshell
 (
-    cd "$DUMMYBUILDTMP"
+    cd "$SOMMELIERBUILDTMP"
     # -m prevents "time stamp is in the future" spam
-    tar -xzmf dummy.tar.gz
+    tar -xzmf sommelier.tar.gz
 
     echo "Compiling sommelier..." 1>&2
 
