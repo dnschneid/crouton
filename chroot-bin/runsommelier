@@ -38,7 +38,7 @@ if [ -z "$SOMMELIER" ]; then
        --accelerators="$SOMMELIER_ACCELERATORS" \
        --xwayland-gl-driver-path="$GL_DRIVER_PATH" \
        --no-exit-with-child \
-       /bin/sh -c "/usr/local/etc/sommelierrc" > /tmp/crouton-sommelier.log 2>&1 &
+       /bin/sh -c "/etc/crouton/sommelierrc" > /tmp/crouton-sommelier.log 2>&1 &
     sleep 3
 fi
 
