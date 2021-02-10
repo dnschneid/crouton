@@ -13,11 +13,13 @@ CHROOTETC='sommelierrc'
 ### Append to prepare.sh:
 XMETHOD="${XMETHOD:-sommelier}"
 
-# Download the latest sommelier
-urlbase="https://chromium.googlesource.com/chromiumos/platform2/+archive/fef7f012df0e5ec865f94255c10503ec24d9a370/vm_tools"
+# Download the versioned sommelier
+sommelier_version="fef7f012df0e5ec865f94255c10503ec24d9a370"
+urlbase="https://chromium.googlesource.com/chromiumos/platform2/+archive/$sommelier_version/vm_tools"
 
 # Download the corresponding virtwl.h
-urlvirtwl="https://chromium.googlesource.com/chromiumos/third_party/kernel/+/7f7629cc680bf3c22d547fb5333e521af58c6c9e/include/uapi/linux/virtwl.h?format=TEXT" 
+kernel_version="7f7629cc680bf3c22d547fb5333e521af58c6c9e"
+urlvirtwl="https://chromium.googlesource.com/chromiumos/third_party/kernel/+/$kernel_version/include/uapi/linux/virtwl.h?format=TEXT" 
 
 DUMMYBUILDTMP="`mktemp -d crouton-cras.XXXXXX --tmpdir=/tmp`"
 
