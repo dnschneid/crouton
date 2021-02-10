@@ -48,7 +48,7 @@ else
   exit 1
 fi
 
-if [ "$1" ]; then
+if [ "$#" -gt 0 ]; then
     exec "$@" >> /tmp/crouton-sommelier.log 2>&1
 fi
 
