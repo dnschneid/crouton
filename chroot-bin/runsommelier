@@ -3,18 +3,12 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-CLUTTER_BACKEND=wayland
-DISPLAY=:0
-GDK_BACKEND=x11
-SCALE=1
-WAYLAND_DISPLAY=wayland-0
-XDG_RUNTIME_DIR=/var/run/chrome
-
-export CLUTTER_BACKEND
-export DISPLAY SCALE
-export GDK_BACKEND
-export WAYLAND_DISPLAY
-export XDG_RUNTIME_DIR
+export CLUTTER_BACKEND=wayland
+export DISPLAY=:0
+export GDK_BACKEND=x11
+export SCALE=1
+export WAYLAND_DISPLAY=wayland-0
+export XDG_RUNTIME_DIR=/var/run/chrome
 
 # Allow user to define their own variables
 # SOMMELIER_ACCELERATORS and GL_DRIVER_PATH
