@@ -7,7 +7,6 @@ PROVIDES='x11'
 DESCRIPTION='Wayland backend running in a Chromium OS window.'
 HOSTBIN='startsommelier'
 CHROOTBIN='runsommelier'
-CHROOTETC='sommelierrc'
 . "${TARGETSDIR:="$PWD"}/common"
 
 ### Append to prepare.sh:
@@ -20,6 +19,10 @@ urlbase="https://chromium.googlesource.com/chromiumos/platform2/+archive/$sommel
 # Download the corresponding virtwl.h
 kernel_version="7f7629cc680bf3c22d547fb5333e521af58c6c9e"
 urlvirtwl="https://chromium.googlesource.com/chromiumos/third_party/kernel/+/$kernel_version/include/uapi/linux/virtwl.h?format=TEXT" 
+
+# Download suitable sommelierrc
+cros_sommelier_version="4329a11adc890173f2385848e7b1bcc89fbd150d"
+urlrc="https://chromium.googlesource.com/chromiumos/containers/cros-container-guest-tools/+/$cros_sommelier_version/cros-sommelier/sommelierrc?format=TEXT"
 
 SOMMELIERBUILDTMP="`mktemp -d crouton-sommelier.XXXXXX --tmpdir=/tmp`"
 
@@ -39,7 +42,11 @@ mkdir "$SOMMELIERBUILDTMP/linux"
 wget $superinsecure -O- "$urlvirtwl" \
     | base64 --decode > "$SOMMELIERBUILDTMP/linux/virtwl.h"
 
-install xwayland weston xorg
+mkdir "$SOMMELIERBUILDTMP/etc"
+wget $superinsecure -O- "$urlrc" \
+    | base64 --decode > "$SOMMELIERBUILDTMP/etc/sommelierrc"
+
+install xwayland weston xorg x11-utils x11-server-utils
 
 install --minimal --asdeps pkg-config libwayland-dev libgbm-dev gcc \
     libx11-xcb-dev libsystemd-dev libxcb-composite0-dev \
@@ -62,6 +69,10 @@ install --minimal --asdeps pkg-config libwayland-dev libgbm-dev gcc \
     BINDIR="/usr/local/bin"
     mkdir -p "$BINDIR/"
     /usr/bin/install -s build/sommelier "$BINDIR/"
+
+    ETCDIR="/etc/crouton"
+    mkdir -p "$ETCDIR"
+    /usr/bin/install  etc/sommelierrc "$ETCDIR/"
 
 ) # End compilation subshell
 
