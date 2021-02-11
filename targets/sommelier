@@ -21,9 +21,9 @@ urlbase="https://chromium.googlesource.com/chromiumos/platform2/+archive/$sommel
 kernel_version="7f7629cc680bf3c22d547fb5333e521af58c6c9e"
 urlvirtwl="https://chromium.googlesource.com/chromiumos/third_party/kernel/+/$kernel_version/include/uapi/linux/virtwl.h?format=TEXT" 
 
-DUMMYBUILDTMP="`mktemp -d crouton-sommelier.XXXXXX --tmpdir=/tmp`"
+SOMMELIERBUILDTMP="`mktemp -d crouton-sommelier.XXXXXX --tmpdir=/tmp`"
 
-addtrap "rm -rf --one-file-system '$DUMMYBUILDTMP'"
+addtrap "rm -rf --one-file-system '$SOMMELIERBUILDTMP'"
 
 echo "Download ..." 1>&2
 
