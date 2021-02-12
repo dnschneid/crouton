@@ -8,6 +8,18 @@ DESCRIPTION='Wayland backend running in a Chromium OS window.'
 HOSTBIN='startsommelier'
 CHROOTBIN='runsommelier'
 . "${TARGETSDIR:="$PWD"}/common"
+# Minimum version of ChromiumOS that supports wayland.
+CROS_MIN_VERS=7834
+
+# Check that the ChromiumOS version supports wayland.
+if ! awk -F= '/_RELEASE_BUILD_NUMBER=/ { exit int($2) < '"${CROS_MIN_VERS:-0}"' }' \
+        '/etc/lsb-release' 2>/dev/null; then
+    error 2 "Your version of Chromium OS is too old for 'sommelier'.
+If there are updates pending, please reboot and try again.
+Otherwise, you may not be getting automatic updates, in which case you should
+post your update_engine.log from chrome://system to http://crbug.com/new and
+restore your device using a recovery USB: https://goo.gl/AZ74hj"
+fi
 
 ### Append to prepare.sh:
 XMETHOD="${XMETHOD:-sommelier}"
