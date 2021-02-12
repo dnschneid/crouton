@@ -6,7 +6,7 @@ REQUIRES='core'
 PROVIDES='x11'
 DESCRIPTION='Wayland backend running in a Chromium OS window.'
 HOSTBIN='startsommelier'
-CHROOTBIN='runsommelier'
+CHROOTBIN='sommelier'
 . "${TARGETSDIR:="$PWD"}/common"
 # Minimum version of ChromiumOS that supports wayland.
 CROS_MIN_VERS=7834
