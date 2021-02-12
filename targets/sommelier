@@ -84,7 +84,7 @@ install --minimal --asdeps pkg-config libwayland-dev libgbm-dev gcc \
 
     ETCDIR="/etc/crouton"
     mkdir -p "$ETCDIR"
-    /usr/bin/install  etc/sommelierrc "$ETCDIR/"
+    /usr/bin/install -b --suffix='.old' etc/sommelierrc "$ETCDIR/"
 
 ) # End compilation subshell
 
