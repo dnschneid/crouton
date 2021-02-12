@@ -20,9 +20,9 @@ SOMMELIER_ACCELERATORS="${SOMMELIER_ACCELERATORS:=$DEFAULT_SOMMELIER_ACCELERATOR
 FOUND_DRIVER_PATH="$(grep '\/dri$' /var/lib/dpkg/info/libgl1-mesa-dri*list | head -1 )"
 GL_DRIVER_PATH="${GL_DRIVER_PATH:=$FOUND_DRIVER_PATH}"
 
-SOMMELIER="$(pidof sommelier 2> /dev/null || true)"
+SOMMELIER="$(pidof sommelier.real 2> /dev/null || true)"
 if [ -z "$SOMMELIER" ]; then
-    sommelier -X --x-display="$DISPLAY" --scale="$SCALE" \
+    /usr/local/lib/sommelier.real -X --x-display="$DISPLAY" --scale="$SCALE" \
        --glamor --drm-device=/dev/dri/renderD128  \
        --virtwl-device=/dev/null --shm-driver=noop \
        --data-driver=noop --display="$WAYLAND_DISPLAY" \
@@ -34,7 +34,7 @@ if [ -z "$SOMMELIER" ]; then
     sleep 3
 fi
 
-SOMMELIER="$(pidof sommelier 2> /dev/null || true)"
+SOMMELIER="$(pidof sommelier.real 2> /dev/null || true)"
 if [ ! -z "$SOMMELIER" ]; then
   echo "sommelier process $SOMMELIER is running"
 else

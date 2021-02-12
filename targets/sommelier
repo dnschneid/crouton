@@ -78,9 +78,9 @@ install --minimal --asdeps pkg-config libwayland-dev libgbm-dev gcc \
 
     echo "Installing sommelier..." 1>&2
 
-    BINDIR="/usr/local/bin"
-    mkdir -p "$BINDIR/"
-    /usr/bin/install -s build/sommelier "$BINDIR/"
+    LIBDIR="/usr/local/lib"
+    mkdir -p "$LIBDIR/"
+    /usr/bin/install -s build/sommelier "$LIBDIR/sommelier.real"
 
     ETCDIR="/etc/crouton"
     mkdir -p "$ETCDIR"
