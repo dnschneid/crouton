@@ -6,7 +6,7 @@
 export CLUTTER_BACKEND=wayland
 export DISPLAY=:0
 export GDK_BACKEND=x11
-export SCALE=1
+export SCALE="${SCALE:-1}"
 export WAYLAND_DISPLAY=wayland-0
 export XDG_RUNTIME_DIR=/var/run/chrome
 
