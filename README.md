@@ -110,8 +110,8 @@ That's it! Surprised?
 crouton is a powerful tool, and there are a *lot* of features, but basic usage
 is as simple as possible by design.
 
-If you're just here to use crouton, you can grab the latest release and make 
-the installer executable with <br>
+If you're just here to use crouton, pop open a shell (Ctrl+Alt+T, type shell and hit enter),
+grab the latest release and make the installer executable with <br>
 `sudo sh -c 'curl -L https://goo.gl/fd3zc -o /usr/local/bin/crouton && chmod +x /usr/local/bin/crouton'`
 , then launch it with `sudo crouton` to see the help text. See the "examples" section for some
 usage examples.
@@ -141,17 +141,16 @@ start\* commands. Ta-da! That was easy.
 
 ### The easy way (assuming you want an Ubuntu LTS with Xfce)
 
-  1. Download `crouton`
-  2. Open a shell (Ctrl+Alt+T, type `shell` and hit enter)
-  3. Copy the installer to an executable location by running
-     `sudo install -Dt /usr/local/bin -m 755 ~/Downloads/crouton`
-  4. Now that it's executable, run the installer itself: `sudo crouton -t xfce`
-  5. Wait patiently and answer the prompts like a good person.
-  6. Done! You can jump straight to your Xfce session by running
+  1. Open a shell (Ctrl+Alt+T, type `shell` and hit enter)
+  2. Download the installer to an executable location by running
+     `sudo sh -c 'curl -L https://goo.gl/fd3zc -o /usr/local/bin/crouton && chmod +x /usr/local/bin/crouton'`
+  3. Now that it's executable, run the installer itself: `sudo crouton -t xfce`
+  4. Wait patiently and answer the prompts like a good person.
+  5. Done! You can jump straight to your Xfce session by running
      `sudo enter-chroot startxfce4` or, as a special shortcut, `sudo startxfce4`
-  7. Cycle through Chromium OS and your running graphical chroots using
+  6. Cycle through Chromium OS and your running graphical chroots using
      Ctrl+Alt+Shift+Back and Ctrl+Alt+Shift+Forward.
-  8. Exit the chroot by logging out of Xfce.
+  7. Exit the chroot by logging out of Xfce.
 
 ### With encryption!
 
