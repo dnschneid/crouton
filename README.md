@@ -112,8 +112,8 @@ is as simple as possible by design.
 
 If you're just here to use crouton, pop open a shell (Ctrl+Alt+T, type shell and hit enter),
 grab the latest release and make the installer executable with <br>
-`sudo sh -c 'curl -L https://goo.gl/fd3zc -o /usr/local/bin/crouton && chmod +x /usr/local/bin/crouton'`
-, then launch it with `sudo crouton` to see the help text. See the "examples" section for some
+`sudo sh -c 'curl -L https://goo.gl/fd3zc -o /usr/local/bin/crouton && chmod +x /usr/local/bin/crouton'`,
+then launch it with `sudo crouton` to see the help text. See the "examples" section for some
 usage examples.
 
 If you're modifying crouton, you'll probably want to clone or download the repo
