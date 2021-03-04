@@ -16,7 +16,7 @@ DEFAULT_SOMMELIER_ACCELERATORS="Super_L,<Control>space,<Alt>space,<Alt>bracketle
 SOMMELIER_ACCELERATORS="${SOMMELIER_ACCELERATORS:-${DEFAULT_SOMMELIER_ACCELERATORS}}"
 
 # Find the architecture specific libgl1-mesa-dri library location
-FOUND_DRIVER_PATH="$(grep '\/dri$' /var/lib/dpkg/info/libgl1-mesa-dri*list | head -1 )"
+FOUND_DRIVER_PATH="$(grep '[/]dri$' /var/lib/dpkg/info/libgl1-mesa-dri*list | head -n1 )"
 GL_DRIVER_PATH="${GL_DRIVER_PATH:-${FOUND_DRIVER_PATH}}"
 
 SOMMELIER="$(pidof sommelier.real 2> /dev/null || true)"
