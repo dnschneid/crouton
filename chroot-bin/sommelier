@@ -9,6 +9,9 @@ export SCALE="${SCALE:-1}"
 export WAYLAND_DISPLAY=wayland-0
 export XDG_RUNTIME_DIR=/var/run/chrome
 
+# This serves as an analogue of the Xserver log file
+SOMMELIER_LOG="/tmp/crouton-sommelier.log"
+
 # Allow user to define their own variables
 # WAITFORX, SOMMELIER_ACCELERATORS and GL_DRIVER_PATH
 
@@ -42,7 +45,7 @@ if [ -z "$SOMMELIER" ]; then
        --accelerators="$SOMMELIER_ACCELERATORS" \
        --xwayland-gl-driver-path="$GL_DRIVER_PATH" \
        --no-exit-with-child \
-       /bin/sh -c "/etc/crouton/sommelierrc" > /tmp/crouton-sommelier.log 2>&1 &
+       /bin/sh -c "/etc/crouton/sommelierrc" > "$SOMMELIER_LOG" 2>&1 &
      
     # wait for the X server to start
     SOMMELIER="$!"
@@ -50,7 +53,7 @@ if [ -z "$SOMMELIER" ]; then
     while [ "$waited" -le "$WAITFORX" ]; do
         if [ -S "/tmp/.X11-unix/X$disp" ]; then
             touch "/tmp/.X$disp-lock"
-            echo "Waited for $waited seconds for Xwayland to start." >> /tmp/crouton-sommelier.log 2>&1 &
+            echo "Waited for $waited seconds for Xwayland to start." >> "$SOMMELIER_LOG" 2>&1 &
             break
         fi
         sleep 1
@@ -66,7 +69,7 @@ else
 fi
 
 if [ "$#" -gt 0 ]; then
-    exec "$@" >> /tmp/crouton-sommelier.log 2>&1
+    exec "$@" >> "$SOMMELIER_LOG" 2>&1
 fi
 
 exit 0
