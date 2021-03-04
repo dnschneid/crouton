@@ -4,7 +4,6 @@
 # found in the LICENSE file.
 
 export CLUTTER_BACKEND=wayland
-export DISPLAY=:0
 export GDK_BACKEND=x11
 export SCALE="${SCALE:-1}"
 export WAYLAND_DISPLAY=wayland-0
@@ -22,7 +21,16 @@ GL_DRIVER_PATH="${GL_DRIVER_PATH:-${FOUND_DRIVER_PATH}}"
 
 SOMMELIER="$(pidof sommelier.real 2> /dev/null || true)"
 if [ -z "$SOMMELIER" ]; then
-    /usr/local/lib/sommelier.real -X --x-display="$DISPLAY" --scale="$SCALE" \
+    # Since sommelier is *not* running check for the next available
+    # DISPLAY. Code taken from crouton's 'xinit' script
+    disp=0
+    while [ -f "/tmp/.X$disp-lock" ]; do
+         disp=$((disp+1))
+    done
+    export DISPLAY=":${disp}"
+
+    /usr/local/lib/sommelier.real -X --x-display="$DISPLAY" \
+        --scale="$SCALE" \
        --glamor --drm-device=/dev/dri/renderD128  \
        --virtwl-device=/dev/null --shm-driver=noop \
        --data-driver=noop --display="$WAYLAND_DISPLAY" \
@@ -31,7 +39,13 @@ if [ -z "$SOMMELIER" ]; then
        --xwayland-gl-driver-path="$GL_DRIVER_PATH" \
        --no-exit-with-child \
        /bin/sh -c "/etc/crouton/sommelierrc" > /tmp/crouton-sommelier.log 2>&1 &
+     
+    # wait for the X server to start
     sleep 3
+    touch "/tmp/.X$disp-lock"
+else
+    # set the DISPLAY to that of the running sommelier
+    eval "export $(cat /proc/${SOMMELIER}/environ | tr '\0' '\n' | grep '^DISPLAY=')"
 fi
 
 SOMMELIER="$(pidof sommelier.real 2> /dev/null || true)"
