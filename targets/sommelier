@@ -40,7 +40,7 @@ SOMMELIERBUILDTMP="`mktemp -d crouton-sommelier.XXXXXX --tmpdir=/tmp`"
 
 addtrap "rm -rf --one-file-system '$SOMMELIERBUILDTMP'"
 
-echo "Download ..." 1>&2
+echo "Downloading ..." 1>&2
 
 wget -O "$SOMMELIERBUILDTMP/sommelier.tar.gz" \
      "$urlbase/sommelier.tar.gz"
