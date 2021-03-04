@@ -42,20 +42,15 @@ addtrap "rm -rf --one-file-system '$SOMMELIERBUILDTMP'"
 
 echo "Download ..." 1>&2
 
-superinsecure=''
-if release -le wheezy; then
-     # Wheezy doesn't have the right CA in ca-certificates that validates x.org
-     superinsecure='--no-check-certificate'
-fi
-wget $superinsecure -O "$SOMMELIERBUILDTMP/sommelier.tar.gz" \
+wget -O "$SOMMELIERBUILDTMP/sommelier.tar.gz" \
      "$urlbase/sommelier.tar.gz"
 
 mkdir "$SOMMELIERBUILDTMP/linux"
-wget $superinsecure -O- "$urlvirtwl" \
+wget -O- "$urlvirtwl" \
     | base64 --decode > "$SOMMELIERBUILDTMP/linux/virtwl.h"
 
 mkdir "$SOMMELIERBUILDTMP/etc"
-wget $superinsecure -O- "$urlrc" \
+wget -O- "$urlrc" \
     | base64 --decode > "$SOMMELIERBUILDTMP/etc/sommelierrc"
 
 install xwayland weston xorg x11-utils x11-server-utils
