@@ -10,7 +10,11 @@ export WAYLAND_DISPLAY=wayland-0
 export XDG_RUNTIME_DIR=/var/run/chrome
 
 # Allow user to define their own variables
-# SOMMELIER_ACCELERATORS and GL_DRIVER_PATH
+# WAITFORX, SOMMELIER_ACCELERATORS and GL_DRIVER_PATH
+
+# Time to wait for Xwayland to start
+DEFAULT_WAITFORX=3
+WAITFORX="${WAITFORX:-${DEFAULT_WAITFORX}}"
 
 DEFAULT_SOMMELIER_ACCELERATORS="Super_L,<Control>space,<Alt>space,<Alt>bracketleft,<Alt>bracketright,<Alt>minus,<Alt>equal"
 SOMMELIER_ACCELERATORS="${SOMMELIER_ACCELERATORS:-${DEFAULT_SOMMELIER_ACCELERATORS}}"
@@ -41,19 +45,24 @@ if [ -z "$SOMMELIER" ]; then
        /bin/sh -c "/etc/crouton/sommelierrc" > /tmp/crouton-sommelier.log 2>&1 &
      
     # wait for the X server to start
-    sleep 3
-    touch "/tmp/.X$disp-lock"
+    SOMMELIER="$!"
+    waited=0
+    while [ "$waited" -le "$WAITFORX" ]; do
+        if [ -S "/tmp/.X11-unix/X$disp" ]; then
+            touch "/tmp/.X$disp-lock"
+            echo "Waited for $waited seconds for Xwayland to start." >> /tmp/crouton-sommelier.log 2>&1 &
+            break
+        fi
+        sleep 1
+        waited="$(($waited + 1))"
+    done
+    if [ ! -f "/tmp/.X$disp-lock" ]; then
+        echo "Xwayland failed to start" 1>&2
+        exit 1
+    fi
 else
     # set the DISPLAY to that of the running sommelier
     eval "export $(cat /proc/${SOMMELIER}/environ | tr '\0' '\n' | grep '^DISPLAY=')"
-fi
-
-SOMMELIER="$(pidof sommelier.real 2> /dev/null || true)"
-if [ ! -z "$SOMMELIER" ]; then
-  echo "sommelier process $SOMMELIER is running"
-else
-  echo "sommelier failed to start"
-  exit 1
 fi
 
 if [ "$#" -gt 0 ]; then
