@@ -44,5 +44,5 @@ if [ "$#" = "0" ]; then
 fi
 
 eval "exec sh -e \"\$ENTERCHROOT\" $OPTS_ENTER \
-    exec runsommelier \"\$@\""
+    exec sommelier \"\$@\""
     

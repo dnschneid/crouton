@@ -85,7 +85,7 @@ install --minimal --asdeps pkg-config libwayland-dev libgbm-dev gcc \
 
 TIPS="$TIPS"'
 You can launch individual apps in ChromeOS windows by using the
-"runsommelier" command in the chroot shell. Use startsommelier to launch
+"sommelier" command in the chroot shell. Use startsommelier to launch
 directly from the host shell.  Use the startsommelier parameter -b to
 run in the background.  Example: sudo startsommelier -b xterm
 '
