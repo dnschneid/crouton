@@ -8,7 +8,7 @@ acronymize as well (crodupodece is admittedly pretty fun to say, though).
 
 ## But first...
 
-:warning: **Steps to install crouton have changed!**  :warning:
+:warning: **Steps to install crouton shit have changed!**  :warning:
 
 Due to improved security within Chromium OS ([yay!](https://chromium.googlesource.com/chromiumos/docs/+/master/security/noexec_shell_scripts.md)),
 the steps needed to launch the crouton installer, and the steps to run crouton
