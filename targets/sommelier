@@ -53,7 +53,7 @@ mkdir "$SOMMELIERBUILDTMP/etc"
 wget -O- "$urlrc" \
     | base64 --decode > "$SOMMELIERBUILDTMP/etc/sommelierrc"
 
-install xwayland weston xorg x11-utils x11-server-utils
+install xwayland weston xorg x11-utils x11-xserver-utils
 
 install --minimal --asdeps pkg-config libwayland-dev libgbm-dev gcc \
     libx11-xcb-dev libsystemd-dev libxcb-composite0-dev \
