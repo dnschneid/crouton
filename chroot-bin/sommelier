@@ -31,7 +31,7 @@ if [ -z "$SOMMELIER" ]; then
     # Since sommelier is *not* running check for the next available
     # DISPLAY. Code taken from crouton's 'xinit' script
     disp=0
-    while [ -S "/tmp/.X11/X$disp" ]; do
+    while [ -S "/tmp/.X11-unix/X$disp" ]; do
          disp=$(($disp+1))
     done
     export DISPLAY=":${disp}"
@@ -58,7 +58,7 @@ if [ -z "$SOMMELIER" ]; then
         sleep 1
         waited="$(($waited + 1))"
     done
-    if [ ! -S "/tmp/.X11/X$disp" ]; then
+    if [ ! -S "/tmp/.X11-unix/X$disp" ]; then
         echo "Xwayland failed to start" 1>&2
         exit 1
     fi
