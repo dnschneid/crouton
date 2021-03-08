@@ -37,8 +37,8 @@ if [ -z "$SOMMELIER" ]; then
     export DISPLAY=":${disp}"
 
     /usr/local/lib/sommelier.real -X --x-display="$DISPLAY" \
-        --scale="$SCALE" \
-       --glamor --drm-device=/dev/dri/renderD128  \
+       --scale="$SCALE" \
+       --glamor \
        --virtwl-device=/dev/null --shm-driver=noop \
        --data-driver=noop --display="$WAYLAND_DISPLAY" \
        --xwayland-path=/usr/bin/Xwayland \
