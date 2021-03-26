@@ -10,7 +10,7 @@ acronymize as well (crodupodece is admittedly pretty fun to say, though).
 
 :warning: **Steps to install crouton have changed!**  :warning:
 
-Due to improved security within Chromium OS ([yay!](https://chromium.googlesource.com/chromiumos/docs/+/master/security/noexec_shell_scripts.md)),
+Due to improved security within Chromium OS ([yay!](https://chromium.googlesource.com/chromiumos/docs/+/HEAD/security/noexec_shell_scripts.md)),
 the steps needed to launch the crouton installer, and the steps to run crouton
 from SD cards have to change a little.
 
@@ -65,7 +65,7 @@ to the rest of Chromium OS.
 
 ### What about dem crostinis though?
 
-[Crostini](https://chromium.googlesource.com/chromiumos/docs/+/master/containers_and_vms.md)
+[Crostini](https://chromium.googlesource.com/chromiumos/docs/+/HEAD/containers_and_vms.md)
 is an official project within Chromium OS to bring the Linux shell and apps to
 the platform *in verified mode* with clean integration, multi-layered security,
 and all the polish you expect from Chromium OS proper.
