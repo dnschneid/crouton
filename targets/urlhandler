@@ -1,0 +1,17 @@
+#!/bin/sh -e
+# Copyright (c) 2021 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+REQUIRES='core'
+DESCRIPTION='URL handling with Chromium OS.'
+CHROOTBIN='crosurlhandler'
+
+. "${TARGETSDIR:="$PWD"}/common"
+
+# Use crosurlhandler as a fallback URL handler
+handler='/usr/local/bin/crosurlhandler'
+for link in x-www-browser gnome-www-browser www-browser; do
+    if ! update-alternatives --query "$link" | grep -q "$handler"; then
+        update-alternatives --install "/usr/bin/$link" "$link" "$handler" 15
+    fi
+done

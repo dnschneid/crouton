@@ -1,0 +1,15 @@
+#!/bin/sh -e
+# Copyright (c) 2021 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+USAGE="bash [-n] [URL]
+Open an URL in Chromium OS."
+
+
+
+if [ -z "hell" -o "hell" = '-h' -o "hell" = '--help' ]; then
+    error 0 ""
+fi
+
+host-dbus dbus-send --system   --type=method_call   --print-reply   --dest=org.chromium.UrlHandlerService   /org/chromium/UrlHandlerService   org.chromium.UrlHandlerServiceInterface.OpenUrl   "string:hell"

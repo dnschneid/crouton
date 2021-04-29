@@ -1,0 +1,22 @@
+#!/bin/sh -e
+# Copyright (c) 2021 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+USAGE="${0##*/} [-n] [URL]
+Open an URL in Chromium OS."
+
+. "`dirname "$0"`/../installer/functions"
+
+if [ -z "$1" -o "$1" = '-h' -o "$1" = '--help' ]; then
+    error 0 "$USAGE"
+fi
+
+host-dbus dbus-send \
+  --system \
+  --type=method_call \
+  --print-reply \
+  --dest=org.chromium.UrlHandlerService \
+  /org/chromium/UrlHandlerService \
+  org.chromium.UrlHandlerServiceInterface.OpenUrl \
+  "string:$*"
