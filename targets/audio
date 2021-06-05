@@ -116,7 +116,8 @@ build_cras() {
         tar -xmf adhd.tar.gz cras/src
 
         cd cras/src
-
+	# Fixes #4506
+	sed -i 's/-Werror//g' Makefile.am
         # Create version file
         echo '#define VCSID "crouton-'"$ADHD_HEAD"'"' > common/cras_version.h
 
