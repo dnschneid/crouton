@@ -116,8 +116,7 @@ build_cras() {
         tar -xmf adhd.tar.gz cras/src
 
         cd cras/src
-	# Fixes #4506
-	sed -i 's/-Werror//g' Makefile.am
+
         # Create version file
         echo '#define VCSID "crouton-'"$ADHD_HEAD"'"' > common/cras_version.h
 
@@ -176,8 +175,8 @@ END
             # Note: -Wno-int-in-bool-context is necessary for building CRAS on
             # older ChromeOS versions (issue #3352).
             echo '
-                CFLAGS="$CFLAGS -Wno-int-in-bool-context -DCRAS_SOCKET_FILE_DIR=\"/var/run/cras\""
-
+                CFLAGS="$CFLAGS -Wno-int-in-bool-context -DCRAS_SOCKET_FILE_DIR=\"/var/run/cras\" -Wno-attributes"
+		
                 buildlib libcras
 
                 # Pass -rpath=$CRASLIBDIR to linker, so we do not need to add
