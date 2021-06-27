@@ -566,12 +566,16 @@ vboot_is_safe() {
 }
 
 # Check and update dev boot settings. This may fail on old systems; ignore it.
+altfw=dev_boot_altfw
+if crossystem "$altfw" 2>&1 >&- | grep -q Invalid; then
+    altfw=dev_boot_legacy
+fi
 if [ -z "$DOWNLOADONLY" ] && ! vboot_is_safe; then
     echo "WARNING: Your rootfs is writable. Signed boot verification cannot be enabled." 1>&2
     echo "If this is a surprise to you, you should do a full system recovery via USB." 1>&2
     sleep 5
 elif [ -z "$DOWNLOADONLY" ] && \
-    boot="`crossystem dev_boot_usb dev_boot_altfw dev_boot_signed_only`"; then
+    boot="`crossystem dev_boot_usb $altfw dev_boot_signed_only`"; then
     # db_usb and db_legacy be off, db_signed_only should be on.
     echo "$boot" | {
         read -r usb legacy signed
@@ -582,7 +586,7 @@ elif [ -z "$DOWNLOADONLY" ] && \
         fi
         if [ "$legacy" != 0 ]; then
             echo "WARNING: Legacy booting is enabled; consider disabling it." 1>&2
-            suggest="$suggest dev_boot_altfw=0"
+            suggest="$suggest ${altfw}=0"
         fi
         if [ -n "$suggest" ]; then
             if [ "$signed" != 1 ]; then
