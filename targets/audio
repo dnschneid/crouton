@@ -176,7 +176,7 @@ END
             # older ChromeOS versions (issue #3352).
             echo '
                 CFLAGS="$CFLAGS -Wno-int-in-bool-context -DCRAS_SOCKET_FILE_DIR=\"/var/run/cras\" -Wno-attributes"
-		
+
                 buildlib libcras
 
                 # Pass -rpath=$CRASLIBDIR to linker, so we do not need to add
