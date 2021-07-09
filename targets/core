@@ -82,14 +82,14 @@ deb $MIRROR $RELEASE main non-free contrib
 deb-src $MIRROR $RELEASE main non-free contrib
 EOF
             # Only stable and testing have an updates channel
-            if release -lt jessie; then
+            if release -lt sid; then
                 cat >> /etc/apt/sources.list <<EOF
 deb $MIRROR $RELEASE-updates main non-free contrib
 deb-src $MIRROR $RELEASE-updates main non-free contrib
 EOF
             fi
             # Some derivatives also have security updates
-            if release -lt jessie -eq kali; then
+            if release -le buster -eq kali; then
                 cat >> /etc/apt/sources.list <<EOF
 deb $MIRROR2 $RELEASE/updates main non-free contrib
 deb-src $MIRROR2 $RELEASE/updates main non-free contrib
