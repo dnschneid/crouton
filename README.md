@@ -6,6 +6,24 @@ supported (using debootstrap behind the scenes), but "Chromium OS Debian,
 Ubuntu, and Probably Other Distros Eventually Chroot Environment" doesn't
 acronymize as well (crodupodece is admittedly pretty fun to say, though).
 
+### crouton is now maintenance-only
+
+This means that:
+ * Only bugfix and release list PRs will be accepted.
+ * New distro releases will be added to the list as unsupported.
+ * As xenial is EOL, crouton will (at some point) no longer have a default
+   release. You will always have to specify `-r`.
+ * Bugs without updates in the past year will be bulk-closed with a "stale" tag.
+ * Open PRs will be left open but have the "stale" tag added. If anyone who
+   forks crouton wants to pick up the feature work, they can build right off of
+   those PRs.
+ * For the safety of users and stability of crouton's functionality for those on
+   EOL devices, offers to take over the dnschneid/crouton repo or Chrome
+   extension will be declined, and requests to change the goo.gl/fd3zc or
+   goo.gl/OVQOEt destinations will be rejected. If you would like to continue
+   feature work on crouton, fork it, do a good job of it, and people can choose
+   to use it at their own risk.
+
 ## But first...
 
 :warning: **Steps to install crouton have changed!**  :warning:
@@ -306,11 +324,11 @@ have to determine and download the bootstrap files every time.*
 ## Issues?
 
 Running another OS in a chroot is a pretty messy technique (although it's hidden
-behind very pretty scripts), and these scripts are relatively new, so problems
-are not surprising. Check the issue tracker and file a bug if your issue isn't
-there. When filing a new bug, include the output of `croutonversion` run from
-inside the chroot or, if you cannot mount your chroot, include the output
-of `cat /etc/lsb-release` from Crosh.
+behind very pretty scripts), and while these scripts are relatively mature,
+Chromium OS is changing all the time so problems are not surprising. Check the
+issue tracker and file a bug if your issue isn't there. When filing a new bug,
+include the output of `croutonversion` run from inside the chroot or, if you
+cannot mount your chroot, include the output of `cat /etc/lsb-release` from Crosh.
 
 
 ## I want to be a Contributor!
@@ -321,16 +339,15 @@ Don't worry, it only takes a minute and you'll definitely get to keep your
 firstborn, probably.  If you've already signed it for contributing to Chromium
 or Chromium OS, you're already done.
 
-If you don't know what to do with your time as an official Contributor, here's
-some suggestions:
+If you don't know what to do with your time as an official Contributor, keep in
+mind that crouton is maintenance-only and will only be accepting a limited amount
+of changes.  That having been said, here's some suggestions:
 
   * Really like a certain desktop environment? Fork crouton, add the target, and
-    create a pull request.
-  * Feel like hacking around with Chromium OS integration? Fork crouton, improve
-    integration, and create a pull request.
+    let people know in the discussions area.
   * Is your distro underrepresented? Want to contribute to the elusive and
-    mythical beast known as "croagh"? Fork crouton, add the distro, and create a
-    pull request.
+    mythical beast known as "croagh"? Fork crouton, add the distro, and people
+    will come.
   * Discovered a bug lurking within the scripts, or a papercut that bothers you
     just enough to make you want to actually do something about it? You guessed
     it: fork crouton, fix everything, and create a pull request.
@@ -351,8 +368,6 @@ There's a way For Everyone to help!
   * Something broken? File a bug! Bonus points if you try to fix it. It helps if
     you provide the output of `croutonversion` (or the output of
     `cat /etc/lsb-release` from Crosh) when you submit the bug.
-  * Want to try and break something? Look through [requests for testing](https://github.com/dnschneid/crouton/issues?labels=needstesting&state=open)
-    and then do your best to brutally rip the author's work to shreds.
   * Look through [open issues](https://github.com/dnschneid/crouton/issues?state=open)
     and see if there's a topic or application you happen to have experience
     with. And then, preferably, share that experience with others.
@@ -362,7 +377,6 @@ There's a way For Everyone to help!
     keep it relevant and organized.
   * Really like a certain desktop environment, but not up for coding? Open or
     comment on a bug with steps to get things working well.
-  * Hang out in the \#crouton IRC channel on freenode.net!
 
 
 ## License
