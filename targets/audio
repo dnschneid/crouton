@@ -83,7 +83,9 @@ build_cras() {
 
     # Install CRAS dependencies
     install --minimal alsa-utils \
-        libasound2$pkgsuffix libspeexdsp1$pkgsuffix
+        libasound2$pkgsuffix \
+        libasound2-plugins$pkgsuffix \
+        libspeexdsp1$pkgsuffix
 
     install --minimal --asdeps gcc $pkgdepextra libc6-dev$pkgsuffix \
         pkg-config libspeexdsp-dev$pkgsuffix
@@ -217,10 +219,11 @@ alsaconf='/etc/alsa/conf.d'
 if [ ! -d "$alsaconf" ]; then
     alsaconf='/usr/share/alsa/alsa.conf.d'
     if [ ! -d "$alsaconf" ]; then
-        echo "Unable to find correct ALSA configuration directory." >&2
+        echo "Unable to find correct ALSA configuration directory." 1>&2
         alsaconf='/tmp'
     fi
 fi
+echo "Writing ALSA config into $alsaconf/10-cras.conf" 1>&2
 cat > "$alsaconf/10-cras.conf" <<EOF
 pcm.cras {
     type cras
