@@ -175,7 +175,7 @@ END
             # Note: -Wno-int-in-bool-context is necessary for building CRAS on
             # older ChromeOS versions (issue #3352).
             echo '
-                CFLAGS="$CFLAGS -Wno-int-in-bool-context -DCRAS_SOCKET_FILE_DIR=\"/var/run/cras\" -Wno-error=attributes -Wno-error=maybe-uninitialized -Wno-error=stringop-overread"
+                CFLAGS="$CFLAGS -Wno-int-in-bool-context -DCRAS_SOCKET_FILE_DIR=\"/var/run/cras\" -Wno-error"
 
                 buildlib libcras
 
