@@ -1,0 +1,21 @@
+#!/bin/sh -e
+# Copyright (c) 2014 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+REQUIRES='gtk-extra'
+DESCRIPTION='Installs the GNOME desktop environment. (Approx. 400MB)'
+HOSTBIN='startgnome'
+CHROOTBIN='crouton-noroot startgnome gnome-session-wrapper'
+. "${TARGETSDIR:="$PWD"}/common"
+
+### Append to prepare.sh:
+# Arch: gtk2-engines-pixbuf provided by gtk2 package
+install --minimal evolution-data-server gnome-control-center \
+        gnome-screensaver gnome-session \
+        arch=,gnome-session-fallback \
+        gnome-shell gnome-themes-standard arch=,gvfs-backends nautilus \
+        unzip arch=,gtk2-engines-pixbuf
+
+TIPS="$TIPS
+You can start GNOME via the startgnome host command: sudo startgnome
+"

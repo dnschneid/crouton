@@ -1,0 +1,24 @@
+#!/bin/sh -e
+# Copyright (c) 2014 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+REQUIRES='x11'
+DESCRIPTION='Installs a minimal KDE desktop environment. (Approx. 600MB)'
+HOSTBIN='startkde'
+CHROOTBIN='crouton-noroot startkde'
+. "${TARGETSDIR:="$PWD"}/common"
+
+### Append to prepare.sh:
+install --minimal arch=,kde-plasma-desktop \
+    arch=kde-meta-kdeadmin, \
+    arch=kde-meta-kdebase, \
+    arch=kde-meta-kdegraphics, \
+    arch=kde-meta-kdepim, \
+    arch=kde-meta-kdeplasma-addons, \
+    arch=kde-meta-kdeutils, \
+    arch=kdesdk-kate, \
+    -- network-manager
+
+TIPS="$TIPS
+You can start KDE via the startkde host command: sudo startkde
+"

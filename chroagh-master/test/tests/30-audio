@@ -1,0 +1,97 @@
+#!/bin/sh -e
+# Copyright (c) 2014 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# All supported releases should be able to create an audio chroot and play sound
+if [ -z "$release" ]; then
+    echo "all"
+    exit 0
+fi
+
+snapshot "$release" audio
+
+test_audio() {
+    # We pass -fdat to aplay/arecord, which means 48kHz, 16-bit, stereo.
+    # dd writes/reads 8 blocks of 48000 bytes: 2 seconds worth of sound.
+    exitswithin 0 30 host enter-chroot -n "$release" sh -exc '
+        cras_test_client --dump_server_info
+        dd if=/dev/zero bs=48000 count=8 | aplay -fdat -v
+        arecord -fdat -v | dd of=/dev/null bs=48000 count=8 iflag=fullblock
+    '
+}
+
+if [ "`uname -m`" = "x86_64" -a "$release" = "arch" ]; then
+    # Arch: First test without multilib enabled
+    test_audio
+
+    # Enable multilib repository
+    echo '
+        # Enable multilib
+        cat >> /etc/pacman.conf << END
+[multilib]
+Include = /etc/pacman.d/mirrorlist
+END
+        pacman --noconfirm -Sy
+        yes | pacman -S gcc-libs-multilib
+    ' | crouton -T -U -n "$release"
+
+    # Now test with multilib
+    crouton -u -n "$release" -t audio
+fi
+
+test_audio
+
+# On x86_64 systems, test x86 client
+if [ "`uname -m`" = "x86_64" ]; then
+    echo '
+        mkdir -p /home/tmp
+        if [ "${DISTROAKA:-"$DISTRO"}" = "debian" ]; then
+            (
+                cd /home/tmp
+                apt-get download alsa-utils:i386
+                dpkg -x alsa-utils_*_i386.deb .
+                mv usr/bin/* .
+            )
+        elif  [ "${DISTROAKA:-"$DISTRO"}" = "arch" ]; then
+            (
+                cd /home/tmp
+                mirror="`sed -n \
+                    -e '\''s/^Server *= *//p'\'' /etc/pacman.d/mirrorlist | \
+                            head -n 1 | sed -e '\''s/$repo/extra/'\'' \
+                                            -e '\''s/$arch/i686/'\''`"
+                filename="`wget "$mirror" -O- -q \
+           | sed -n -e '\''s/.*"\(alsa-utils-[^\"]*.tar\.[^\."]*\)".*/\1/p'\'' \
+                    | head -n 1`"
+                wget "$mirror/$filename"
+                tar xf $filename usr/bin --strip-components=2
+            )
+        else
+            # Other distributions must be implemented or explicitly ignored
+            error 1 "Cannot fetch alsa-utils:i386 for $DISTRO"
+        fi
+    ' | crouton -T -U -n "$release"
+
+    exitswithin 0 30 host enter-chroot -n "$release" sh -exc '
+        /usr/local/i386-linux-gnu/bin/cras_test_client --dump_server_info
+        dd if=/dev/zero bs=48000 count=8 | \
+                /home/tmp/aplay -fdat -v
+        /home/tmp/arecord -fdat -v | \
+                dd of=/dev/null bs=48000 count=8 iflag=fullblock
+    '
+fi
+
+echo 'install pulseaudio arch=,pulseaudio-utils arch=pulseaudio-alsa,' | \
+    crouton -T -U -n "$release"
+exitswithin 0 30 host enter-chroot -n "$release" sh -exc '
+    pulseaudio --start
+    dd if=/dev/zero bs=44100 count=8 | pacat -v
+    parec -v | dd of=/dev/null bs=44100 count=8 iflag=fullblock
+    dd if=/dev/zero bs=48000 count=8 | aplay -f dat -Dpulse -v
+    arecord -fdat -Dpulse -v | \
+        dd of=/dev/null bs=48000 count=8 iflag=fullblock
+    cras_test_client --dump_server_info
+    pulseaudio --kill
+'
+
+host delete-chroot -y "$release"

@@ -1,0 +1,30 @@
+#!/bin/sh -e
+# Copyright (c) 2014 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+USAGE="${0##*/} [-n] URL
+Open an URL in Chromium OS (requires crouton extension).
+Switches back to Chromium OS unless -n is specified."
+
+. "`dirname "$0"`/../installer/functions"
+
+noswitch=''
+if [ "$1" = '-n' ]; then
+    noswitch='y'
+    shift
+fi
+
+if [ -z "$*" ]; then
+    error 2 "$USAGE"
+fi
+
+STATUS="`echo -n U"$*" | websocketcommand`"
+
+if [ ! "$STATUS" = 'UOK' ]; then
+    error 1 "${STATUS#?}"
+fi
+
+if [ -z "$noswitch" ]; then
+    croutoncycle cros
+fi

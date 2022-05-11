@@ -1,0 +1,35 @@
+This repository is a bit strange, because we constantly rebase on dnschneid/crouton.
+
+That means you need to do the following to fetch modifications from the tree:
+git fetch --all
+git reset --hard origin/master
+
+Be careful, as this will erase any other commit you did in your own master branch.
+
+====
+Rebasing is done as follows (you need to be in the master branch):
+
+git pull origin lastcrouton
+
+# Save a copy of the old branch, just in case:
+git branch -f master-base-`cat .git/refs/tags/lastcrouton`
+git push origin master-base-`cat .git/refs/tags/lastcrouton`
+
+git fetch --all
+git reset --hard crouton/master
+# Careful with the next one
+git clean -x -d -n
+git clean -x -d -f
+
+git merge --squash origin/croagh+arch; git commit
+git merge --squash origin/clipboard; git commit
+git merge --squash origin/audio; git commit
+
+# Then cherry-pick needed commits from master-base-`cat .git/refs/tags/lastcrouton`
+
+git tag -f lastcrouton crouton/master
+git push -f origin lastcrouton
+
+git push -f origin master
+
+========

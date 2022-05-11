@@ -1,0 +1,32 @@
+#!/bin/sh -e
+# Copyright (c) 2014 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Wrapper for scripts that shouldn't be launched as root.
+# Symlink to launch the application with the same name in /usr/bin/
+# Launch directly with a parameter to launch that executable
+# Launch directly with a blank or - first parameter and a word to just check and
+# exit with an exit code, printing out the second parameter as the app name.
+
+APPLICATION="${0##*/}"
+if [ "$APPLICATION" = 'crouton-noroot' ]; then
+    if [ -z "$1" -o "$1" = '-' -o "$1" = '--' ]; then
+        APPLICATION=''
+    else
+        APPLICATION="$1"
+        shift
+    fi
+else
+    APPLICATION="/usr/bin/$APPLICATION"
+fi
+
+if [ "$USER" = root -o "$UID" = 0 ]; then
+    app="${APPLICATION:-"$2"}"
+    echo "Do not launch ${app##*/} as root inside the chroot." 1>&2
+    exit 2
+elif [ -z "$APPLICATION" ]; then
+    exit 0
+fi
+
+exec "$APPLICATION" "$@"

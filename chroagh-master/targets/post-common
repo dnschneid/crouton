@@ -1,0 +1,104 @@
+#!/bin/sh -e
+# Copyright (c) 2014 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# This is a target, but it's not selectable by the user. These are the commands
+# that get executed at the very end of the generated prepare.sh.
+# These commands are not optional and are automatically added to targets.
+
+REQUIRES=''
+DESCRIPTION=''
+HOSTBIN='enter-chroot delete-chroot edit-chroot mount-chroot unmount-chroot'
+HOSTBIN="$HOSTBIN crash_reporter_wrapper"
+. "${TARGETSDIR:="$PWD"}/common"
+
+### Append to prepare.sh:
+
+# Set the default coredump handler
+if [ ! -f '/etc/crouton/core_pattern' ]; then
+    core_pattern=''
+    if [ "$DISTRO" = 'ubuntu' ]; then
+        core_pattern='|/usr/share/apport/apport %p %s %c'
+    fi
+    echo "\
+# The first non-comment line is the core_pattern that applies to this chroot.
+# See man 5 core for details.
+
+$core_pattern" > '/etc/crouton/core_pattern'
+fi
+
+echo 'Cleaning up...' 1>&2
+if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
+    apt-get -y --purge autoremove
+    apt-get clean
+elif [ "${DISTROAKA:-"$DISTRO"}" = 'arch' ]; then
+    # Archlinux equivalent of autoremove (recursively remove unneeded packages)
+    while true; do
+        remove="`pacman -Qdtq || true`"
+        if [ -z "$remove" ]; then
+            break
+        fi
+        pacman --noconfirm -R $remove
+    done
+    # Clear package cache
+    yes | pacman -Scc
+fi
+
+# Add the primary user
+groups='audio,video,plugdev'
+if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
+    groups="$groups,sudo"
+elif [ "${DISTROAKA:-"$DISTRO"}" = 'arch' ]; then
+    groups="$groups,users,wheel"
+    if [ ! -e /etc/sudoers.d/00-wheel ]; then
+        echo '%wheel ALL=(ALL) ALL' > /etc/sudoers.d/00-wheel
+        chmod 440 /etc/sudoers.d/00-wheel
+    fi
+fi
+
+# Make sure the groups actually exist
+for group in `echo "$groups" | tr ',' ' '`; do
+    groupadd -r -f "$group"
+done
+
+username="`awk -F: '$3==1000{print $1; exit}' '/etc/passwd'`"
+if [ -z "$username" ]; then
+    while ! echo "$username" | grep -q '^[a-z][-a-z0-9_]*$'; do
+        if [ -n "$username" ]; then
+            echo 'Username must be lowercase letters, numbers, or dashes.' 1>&2
+        fi
+        echo -n 'Please specify a username for the primary user: ' 1>&2
+        if [ -n "$USERNAME" ]; then
+            username="$USERNAME"
+            echo "$username" 1>&2
+        else
+            read -r username junk
+        fi
+    done
+    # Create a group with the same name as the user (GID 1000)
+    groupadd -g 1000 "$username"
+    useradd -u 1000 -g 1000 -G "$groups" -s '/bin/bash' -m "$username"
+    if [ -t 0 ]; then
+        tries=0
+    else
+        tries=3
+    fi
+    while [ "$tries" -lt 3 ] && ! passwd "$username"; do
+        tries="$((tries+1))"
+    done
+    if [ "$tries" = 3 ]; then
+        echo \
+"Password left unset. To set a password, inside the chroot run: passwd $username" 1>&2
+    fi
+else
+    usermod -a -G "$groups" "$username"
+fi
+
+if [ -n "$TIPS" ]; then
+    echo "
+Here's some tips:
+$TIPS" 1>&2
+fi
+
+rm -f "$0"

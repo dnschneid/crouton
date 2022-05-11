@@ -1,0 +1,79 @@
+#!/bin/sh -e
+# Copyright (c) 2014 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# croutonfindnacl address signature ["pids"]
+#
+# This script is used by croutonfbserver to find the nacl_helper process it is
+# connected to, and, in particular, the file descriptor corresponding to the shm
+# memory that the nacl_helper process shares with Chromium.
+#
+# - address:   NaCl-space address of the shared memory (hexadecimal). We assume
+#              that the NaCl/hardware memory mapping conserves the address,
+#              possibly with a prefix in the MSBs.
+# - signature: random 8 byte pattern (hexadecimal, machine byte order) that is
+#              written at the beginning of the shared buffer by the NaCl
+#              application. The first 8 bytes of each candidate buffer is read,
+#              guaranteeing that the correct buffer is returned.
+# - pids:      (normally ununsed, defaults to all processes named "nacl_helper")
+#              Space-separated list of PIDs to scan for.
+#
+# On success, prints "pid:filename" and exits with code 0.
+# On error (shm not found, invalid parameters), exits with code >0.
+
+set -e
+
+VERBOSE=
+
+if [ "$#" -lt 2 -o "$#" -gt 3 ]; then
+    echo "Invalid parameters"
+    exit 2
+fi
+
+ADDRESS="$1"
+PATTERN="$2"
+PIDS="${3:-"`pgrep nacl_helper`"}"
+
+MATCH=""
+
+# Iterate over all NaCl helper processes
+for pid in $PIDS; do
+    [ -n "$VERBOSE" ] && echo "pid:$pid" 1>&2
+    # Find candidate mappings
+    file="`awk '$1 ~ /^[0-9a-f]*'"$ADDRESS"'-/ && $2 == "rw-s" \
+             && $6 ~ /\/shm\/\.(com\.google\.Chrome|org\.chromium\.Chromium)/ \
+                   { print $6 }
+    ' "/proc/$pid/maps"`"
+    [ -n "$VERBOSE" ] && echo "file:$file" 1>&2
+    if [ -z "$file" ]; then
+        continue
+    fi
+
+    # Iterate over mappings, and check signature
+    for fd in "/proc/$pid/fd"/*; do
+        link="`readlink -- "$fd"`"
+        link="${link% (deleted)}"
+        if [ "$link" = "$file" ]; then
+            # Check if signature matches
+            pattern="`od -An -t x1 -N8 "$fd" | tr -d ' '`"
+            [ -n "$VERBOSE" ] && echo "FD:$fd ($pattern)" 1>&2
+            if [ "$pattern" = "$PATTERN" ]; then
+                # Second match? This should never happen
+                if [ -n "$MATCH" ]; then
+                    echo -n "-1:ambiguous"
+                    exit 1
+                fi
+                MATCH="$pid:$fd"
+            fi
+        fi
+    done
+done
+
+if [ -n "$MATCH" ]; then
+    echo -n "$MATCH"
+    exit 0
+else
+    echo -n "-1:no match"
+    exit 1
+fi

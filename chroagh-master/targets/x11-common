@@ -1,0 +1,113 @@
+#!/bin/sh -e
+# Copyright (c) 2014 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# This isn't a real target; it's the common commands for installing various
+# forms of X11.
+
+### Append to prepare.sh:
+
+# Arch: Install xorg-xinit before creating /etc/X11/xinit/xserverrc, to make
+# sure it does not get erased if xorg-xinit is pulled later on
+install --minimal arch=xorg-xinit,
+
+# Store and apply the X11 method
+ln -sfT '/etc/crouton/xserverrc' '/etc/X11/xinit/xserverrc'
+echo "$XMETHOD" > '/etc/crouton/xmethod'
+
+# Install utility for croutoncycle
+compile wmtools '-lX11' arch=,libx11-dev
+
+# Install utilities and links for powerd-poking daemon
+compile xi2event '-lX11 -lXi' arch=,libx11-dev arch=,libxi-dev
+install --minimal dbus xdg-utils
+ln -sf croutonpowerd /usr/local/bin/gnome-screensaver-command
+ln -sf croutonpowerd /usr/local/bin/xscreensaver-command
+
+# Install xbindkeys and xautomation for key shortcuts and kbd for chvt
+install --minimal xbindkeys xautomation kbd
+
+# Allow users to run sudo chvt without password, so we don't need to run
+# croutoncycle as root
+sudogroup="sudo"
+if [ "${DISTROAKA:-"$DISTRO"}" = 'arch' ]; then
+    sudogroup="wheel"
+fi
+echo "%$sudogroup ALL = NOPASSWD:/bin/chvt" > /etc/sudoers.d/chvt
+chmod 440 /etc/sudoers.d/chvt
+
+# Add a blank Xauthority to all users' home directories
+touch /etc/skel/.Xauthority
+chmod 600 /etc/skel/.Xauthority
+
+# Make xscreensaver default to blank only
+echo 'mode: blank' > /etc/skel/.xscreensaver
+
+# Create /usr/share/desktop-directories to avoid issues with xdg-desktop-menu
+mkdir -p /usr/share/desktop-directories
+
+# Prevent Upstart from taking over X sessions
+echo > /etc/upstart-xsessions
+
+# This makes sure Xephyr, running as user, can write server-*.xkm files to
+# /var/lib/xkb, so it does not conflict with files created by Chromium OS
+# X server in /tmp.
+mkdir -p /var/lib/xkb
+chgrp video /var/lib/xkb
+chmod g+rw /var/lib/xkb
+
+# Update policies for mounting and unmounting devices with udisks2
+mkdir -p '/etc/polkit-1/localauthority/10-vendor.d'
+cat > '/etc/polkit-1/localauthority/10-vendor.d/10-crouton-udisks2.pkla' <<EOF
+[Allow mounting when started from crosh]
+Identity=*
+Action=org.freedesktop.udisks*.filesystem-mount
+ResultAny=auth_admin
+ResultInactive=yes
+ResultActive=yes
+
+[Allow eject when started from crosh]
+Identity=*
+Action=org.freedesktop.udisks*.*eject*
+ResultAny=auth_admin
+ResultInactive=yes
+ResultActive=yes
+
+[Disallow unmounting of Chromium OS mounts; it won't work]
+Identity=*
+Action=org.freedesktop.udisks*.filesystem-unmount-others
+ResultAny=no
+ResultInactive=no
+ResultActive=no
+EOF
+
+# Setup default browser
+if [ "${DISTROAKA:-"$DISTRO"}" = 'arch' ]; then
+    install arch=desktop-file-utils,
+
+    # Application preference: prefer applications that take most effort to be
+    # installed: firefox needs to be installed via pacman, chrome/chromium have
+    # a crouton target, "crouton" needs the extension target, and netsurf is
+    # the fallback installed by gtk-extra.
+    order="firefox.desktop;google-chrome.desktop;chromium.desktop"
+    order="$order;crouton.desktop;netsurf.desktop"
+    echo "[Added Associations]" > /etc/crouton/mimeapps.list
+
+    # Protocol list is a common set of mime types found in the desktop files
+    # enumerated above
+    for mime in 'text/html' 'application/xhtml+xml' \
+                'x-scheme-handler/http' 'x-scheme-handler/https' \
+                'x-scheme-handler/ftp' ; do
+        echo "$mime=$order" >> /etc/crouton/mimeapps.list
+    done
+
+    mimedefault='/usr/local/share/applications/mimeapps.list'
+
+    if [ ! -e "$mimedefault" ]; then
+        mkdir -p /usr/local/share/applications/
+        ln -sfT /etc/crouton/mimeapps.list "$mimedefault"
+    fi
+
+    update-desktop-database -q
+fi

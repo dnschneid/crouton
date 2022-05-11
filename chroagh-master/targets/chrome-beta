@@ -1,0 +1,14 @@
+#!/bin/sh -e
+# Copyright (c) 2014 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+DESCRIPTION='Google Chrome browser, beta channel.'
+. "${TARGETSDIR:="$PWD"}/chrome-common"
+
+### Append to prepare.sh:
+if [ "${DISTROAKA:-"$DISTRO"}" = 'arch' ]; then
+    CHANNEL='-beta'
+else
+    CHANNEL='beta'
+fi
+### append chrome-common

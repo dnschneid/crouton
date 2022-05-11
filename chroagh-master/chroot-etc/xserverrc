@@ -1,0 +1,21 @@
+#!/bin/sh -e
+# Copyright (c) 2014 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+if [ -z "$XMETHOD" ]; then
+    if [ -f '/etc/crouton/xmethod' ]; then
+        read -r XMETHOD _ < /etc/crouton/xmethod
+    else
+        echo 'X11 backend not set.' 1>&2
+        exit 1
+    fi
+fi
+
+xserverrc="/etc/crouton/xserverrc-$XMETHOD"
+if [ "${XMETHOD##*/}" != "$XMETHOD" -o ! -f "$xserverrc" ]; then
+    echo "Invalid X11 backend '$XMETHOD'" 1>&2
+    exit 2
+fi
+
+. "$xserverrc"

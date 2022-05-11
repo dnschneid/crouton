@@ -1,0 +1,193 @@
+#!/bin/sh -e
+# Copyright (c) 2014 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# This is a distro-specific continuation of the prepare.sh script.
+
+PKGEXT='tar.xz'
+DISTROAKA='arch'
+
+# Detect if multilib repositories are installed
+arch_multilib() {
+    pacman -Sl multilib >/dev/null 2>&1
+}
+
+# install_dist: see install() in prepare.sh for details.
+# We ignore the second part of the parameters, as Arch only pulls required deps.
+# We also replace gcc by its multilib version, if the multilib repository is
+# enabled.
+install_dist() {
+    local pkgs='' params='' multilib=''
+    if arch_multilib; then
+        multilib='y'
+    fi
+    while [ "$#" != 0 ]; do
+        if [ "$1" = "--minimal" ]; then
+            : # Ignore: irrelevant for arch
+        elif [ "$1" = "--asdeps" ]; then
+            params="--asdeps"
+        else
+            break
+        fi
+        shift
+    done
+    while [ "$#" != 0 ]; do
+        if [ "$1" = '--' ]; then
+            shift
+            break
+        fi
+        if [ -n "$multilib" -a "$1" = "gcc" ]; then
+            pkgs="$pkgs $1-multilib"
+        else
+            pkgs="$pkgs $1"
+        fi
+        shift
+    done
+    if [ -n "$pkgs" ]; then
+        pacman -S --noconfirm --needed $params $pkgs
+    fi
+}
+
+
+# install_pkg_dist: see install_pkg() in prepare.sh for details.
+install_pkg_dist() {
+    error 1 'ERROR: install_pkg_dist is not supported on Arch'
+}
+
+
+# remove_dist: see remove() in prepare.sh for details.
+remove_dist() {
+    if [ "$#" -gt 0 ]; then
+        pacman -R "$@"
+    fi
+}
+
+
+# list_uninstalled_dist: see list_uninstalled() in prepare.sh for details.
+list_uninstalled_dist() {
+    local suffix="$1" pkg
+    if [ -n "$suffix" ]; then
+        error 1 'list_uninstalled_dist: suffix makes no sense on Arch'
+    fi
+    shift
+    for pkg in "$@"; do
+        if ! pacman -Q "$pkg" >/dev/null 2>&1; then
+            echo -n "$pkg "
+        fi
+    done
+}
+
+# Run boostrap second stage if it hasn't already happened
+bootstrappkglist="/crouton-bootstrap-pkg"
+if [ -r "$bootstrappkglist" ]; then
+    # This is technically not necessary, as we are not fetching anything at this
+    # stage, but pacman complains if no mirror is set. We setup a dummy one,
+    # to make sure we really do not fetch anything (we need to install the
+    # exact same packages as during the bootstrap creation, to make sure we
+    # do not leave any cruft behind).
+    if [ -n "$MIRROR" -a "$MIRROR" != 'unspecified' ]; then
+        echo "Server = https://192.0.2.1/" > "/etc/pacman.d/mirrorlist"
+    fi
+
+    echo "\
+Initializing pacman keyring (move the mouse to generate entropy)..." 1>&2
+    pacman-key --init
+
+    if [ "${ARCH#arm}" = "$ARCH" ]; then
+        pacman-key --populate archlinux
+    else
+        # archlinuxarm-keyring has been installed as part of bootstrap
+        pacman-key --populate archlinuxarm
+
+        if awk '
+            t == 3 && /^SigLevel[ \t]*=/ {
+                print "#" $0; next; # Replace all occurences
+            }
+            t == 2 && /^#[ \t]*LocalFileSigLevel[ \t]*=[ \t]*Optional[ \t]*$/ {
+                sub(/^\#/, ""); t=3
+            }
+            t == 1 &&
+          /^#[ \t]*SigLevel[ \t]*=[ \t]*Required[ \t]*DatabaseOptional[ \t]*$/ {
+                sub(/^\#/, ""); t=2
+            }
+            match($0, /^[ \t]*\[(.*)\][ \t]*$/, m) {
+                if (m[1] == "options") { t=1 }
+                else if (t != 3) { exit 1 }
+            }
+            1
+            END { if (t != 3) exit 1 }
+        ' /etc/pacman.conf > /etc/pacman.conf.new; then
+            mv -f /etc/pacman.conf.new /etc/pacman.conf
+        else
+            error 2 "Unable to activate Arch Linux ARM signature checking"
+        fi
+    fi
+
+    # Force overwritting packages files in the bootstrap, without any sort
+    # of dependency checking: this makes sure package content are properly
+    # recorded
+    pacman -S --nodeps --nodeps --asdeps --noconfirm --force \
+        `cat "$bootstrappkglist"`
+
+    # Restore the original pacman configuration
+    if [ -f /etc/pacman.conf.pacorig ]; then
+        mv -f /etc/pacman.conf.pacorig /etc/pacman.conf
+    fi
+
+    # Restore the original /etc/resolv.conf
+    if [ -f /etc/resolv.conf.pacorig ]; then
+        mv -f /etc/resolv.conf.pacorig /etc/resolv.conf
+    fi
+
+    # Now install a proper set of base packages
+
+    # Packages that are in base, but that we do not want to install in the
+    # chroot (nothing prevents the user from installing them later on)
+    # Final space critical for matching
+    PACKAGES_TARGET_IGNORE="cronie device-mapper dhcpcd heirloom-mailx \
+        jfsutils logrotate lvm2 mdadm netctl pciutils reiserfsprogs \
+        systemd-sysvcompat xfsprogs "
+
+    # Only erase mirror if specified (in case pacman fails later on)
+    if [ -n "$MIRROR" -a "$MIRROR" != 'unspecified' ]; then
+        # Keep a reference of the existing mirrorlist
+        mv /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.pacorig
+        echo "Server = $MIRROR" > "/etc/pacman.d/mirrorlist"
+    fi
+
+    # Synchronize
+    pacman -Sy
+
+    # Build a reasonable set of base packages, using pacman's output as
+    # reference, then remove packages in PACKAGES_TARGET_IGNORE.
+    allbasepkg="`pacman -Sg base | cut -d' ' -f 2`"
+
+    basepkg=""
+    for package in $allbasepkg; do
+        # Do not install if blacklisted
+        if [ "${PACKAGES_TARGET_IGNORE#*" $package "}" != \
+                                          "$PACKAGES_TARGET_IGNORE" ]; then
+            continue
+        fi
+
+        basepkg="$basepkg $package"
+    done
+
+    echo "Installing these base packages:"
+    echo "$basepkg"
+
+    pacman --noconfirm --needed -S $basepkg
+
+    # Make sure all these packages are marked as installed explicitly
+    pacman -D --asexplicit $basepkg >/dev/null
+
+    rm -f "$bootstrappkglist"
+
+    # Request a script restart to refresh the mount environment and recreate
+    # groups (/etc/group and other files were erased)
+    relaunch_setup
+fi
+
+# Fix the keyboard mode early on (this will be called again after dist-upgrade).
+fixkeyboardmode

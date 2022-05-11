@@ -1,0 +1,16 @@
+#!/bin/sh -e
+# Copyright (c) 2014 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+REQUIRES='gtk-extra'
+DESCRIPTION='Installs the LXDE desktop environment. (Approx. 200MB)'
+HOSTBIN='startlxde'
+CHROOTBIN='crouton-noroot startlxde'
+. "${TARGETSDIR:="$PWD"}/common"
+
+### Append to prepare.sh:
+install lxde -- dictionaries-common chromium-browser network-manager wicd
+
+TIPS="$TIPS
+You can start LXDE via the startlxde host command: sudo startlxde
+"
