@@ -1,0 +1,48 @@
+#!/bin/sh -e
+# Copyright (c) 2016 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Tests some of the more complex testing functions, and records the system info
+
+if [ -z "$release" ]; then
+    echo "default"
+    exit 0
+fi
+
+# Save the basic system info to the log
+log "System info"
+cat /etc/lsb-release | log
+log "Mirror info"
+env | grep CROUTON_MIRROR | log
+
+# Make sure test(), exitswithin() and runslongerthan(), passes(), fails()
+# work as expected
+test 1 -eq 1
+passes true
+fails false
+exitswithin 0 1 true
+exitswithin 1 1 false
+runslongerthan 1 sleep 2
+
+# Test "from" function importer by faking it out
+: '
+fromtester() {
+    return 0
+}
+'
+passes from 'test/tests/00-tester' import fromtester
+passes fromtester
+
+log 'BEGIN INTENTIONALLY FAILING TESTS'
+! test 1 -eq 0
+! passes false
+! fails true
+! exitswithin 0 1 false
+! exitswithin 1 1 true
+! exitswithin 0 1 sleep 2
+! runslongerthan 1 false
+! runslongerthan 1 true
+fails from sys import posix
+fails from 'test/tests/00-tester' import python
+log 'END INTENTIONALLY FAILING TESTS'

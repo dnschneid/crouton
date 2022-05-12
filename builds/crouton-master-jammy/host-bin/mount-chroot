@@ -1,0 +1,381 @@
+#!/bin/sh -e
+# Copyright (c) 2016 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+set -e
+
+APPLICATION="${0##*/}"
+BINDIR="`dirname "\`readlink -f -- "$0"\`"`"
+CHROOTS="`readlink -m -- "$BINDIR/../chroots"`"
+CREATE=''
+ENCRYPT=''
+KEYFILE=''
+PRINT=''
+ROOT="`readlink -m -- '/var/run/crouton'`"
+MOUNTOPTS='rw,dev,exec,suid'
+METRICSDIR='/run/metrics/external/crouton'
+
+USAGE="$APPLICATION [options] name [...]
+
+Mounts one or more chroots into a root-only subdirectory of $ROOT
+
+Options:
+    -c CHROOTS  Directory the chroots are in. Default: $CHROOTS
+    -e          If the chroot is not encrypted, encrypt it.
+                If specified twice, prompt to change the encryption passphrase.
+    -k KEYFILE  File or directory to store the (encrypted) encryption keys in.
+                If unspecified, the keys will be stored in the chroot if doing a
+                first encryption, or auto-detected on existing chroots.
+    -n          Create the chroot if it doesn't exist.
+    -p          Prints out the path to the mounted directory on stdout."
+
+# Common functions
+. "$BINDIR/../installer/functions"
+
+# Process arguments
+getopts_string='c:ek:np'
+while getopts_nextarg; do
+    case "$getopts_var" in
+    c) CHROOTS="`readlink -m -- "$getopts_arg"`";;
+    e) ENCRYPT="$((ENCRYPT+1))";;
+    k) KEYFILE="$getopts_arg";;
+    n) CREATE='y';;
+    p) PRINT='y';;
+    \?) error 2 "$USAGE";;
+    esac
+done
+
+# Need at least one chroot listed
+if [ $# = 0 ]; then
+    error 2 "$USAGE"
+fi
+
+# We need to run as root
+if [ "$USER" != root -a "$UID" != 0 ]; then
+    error 2 "$APPLICATION must be run as root."
+fi
+
+# Make sure we always exit with echo on the tty.
+addtrap "stty echo 2>/dev/null"
+
+# Whitelists a directory for symlink and other hardening
+whitelist() {
+    # As of 67, symlinks and fifos are blocked in stateful partitions.
+    # Add exceptions for this chroot.
+    local sec='/sys/kernel/security' mounted=''
+    if mountpoint -q "$sec"; then
+        mounted=y
+    elif ! mount -n -t securityfs -o nodev,noexec,nosuid securityfs "$sec"; then
+        return
+    fi
+    policies="$sec/chromiumos/inode_security_policies"
+    if [ -d "$policies" ]; then
+        for policy in "$policies/allow_"*; do
+            printf "$CHROOT" > "$policy"
+        done
+    fi
+    if [ -z "$mounted" ]; then
+        umount "$sec"
+    fi
+}
+
+# Function to prompt the user for a passphrase. Sets $passphrase.
+promptNewPassphrase() {
+    echo_tty -n "Choose an encryption passphrase for $NAME: "
+    [ -t 0 ] && stty -echo
+    while [ -z "$passphrase" ]; do
+        read -r passphrase
+        if [ -z "$passphrase" ]; then
+            echo_tty ''
+            echo_tty -n 'You must specify a passphrase: '
+            continue
+        fi
+        echo_tty ''
+        echo_tty -n 'Please confirm your passphrase: '
+        read -r confirmation
+        if [ "$confirmation" != "$passphrase" ]; then
+            passphrase=''
+            echo_tty ''
+            echo_tty -n 'Passphrases do not match; try again: '
+        fi
+        confirmation=''
+    done
+    [ -t 0 ] && stty echo
+    echo_tty ''
+}
+
+# Mount each chroot
+for NAME in "$@"; do
+    if ! validate_name "$NAME"; then
+        error 2 "Invalid chroot name '$NAME'."
+    fi
+
+    # Check for existence
+    CHROOT="$CHROOTS/$NAME"
+    movesrc=''
+    if [ -d "$CHROOT" ]; then
+        if [ -f "$CHROOT/.ecryptfs" -o -n "$ENCRYPT" ]; then
+            if [ -z "$ENCRYPT" ]; then
+                ENCRYPT=0
+            fi
+            # Check for non-encrypted files that we may need to move
+            for file in "$CHROOT/"*; do
+                if [ "${file#*/ECRYPTFS_FNEK_ENCRYPTED}" = "$file" ]; then
+                    movesrc="$CHROOT"
+                    break
+                fi
+            done
+        fi
+    elif [ -z "$CREATE" ]; then
+        error 1 "$CHROOT not found."
+    else
+        mkdir -p "$CHROOT"
+    fi
+
+    CHROOTSRC="$CHROOT"
+    CHROOT="$ROOT/${CHROOT#/}"
+
+    # Ensure there's a root-only folder for the bind-mounted chroot
+    mkdir -p -m 0700 "$CHROOT"
+    chown root:root "$ROOT"
+    chmod 700 "$ROOT"
+
+    # Extraordinarily vague usage stat; see https://crbug.com/989219
+    if [ -z "${CROUTON_DISABLE_STATS-}" -a -d "${METRICSDIR%/*}" ]; then
+        mkdir -p -m 0777 "$METRICSDIR"
+        chown root:root "$METRICSDIR"
+        chmod 777 "$METRICSDIR"
+        touch "$METRICSDIR/crouton-started"
+    fi || true
+
+    if [ -n "$PRINT" ]; then
+        echo "$CHROOT"
+    fi
+
+    # Check if we actually need to mount
+    if ! mountpoint -q "$CHROOT"; then
+        if [ -z "$ENCRYPT" ]; then
+            mount --bind "$CHROOTSRC" "$CHROOT"
+            mount -i -o "remount,$MOUNTOPTS" "$CHROOT"
+            mount --make-private "$CHROOT"
+            whitelist "$CHROOT"
+            continue
+        fi
+
+        # We must be on a terminal, unless we already have a password in env.
+        if [ ! -t 0 -a -z "$CROUTON_PASSPHRASE$CROUTON_NEW_PASSPHRASE" ]; then
+            error 2 'STDIN is not a terminal; cannot request passwords.'
+        fi
+
+        # Ensure that there's a root password set before decrypting the chroot,
+        # unless the passphrase was specified via env, which isn't secure anyway
+        if [ ! -f '/mnt/stateful_partition/etc/devmode.passwd' ]; then
+            echo_tty \
+'You must have a root password in Chromium OS to mount encrypted chroots.'
+            if [ -z "$CROUTON_PASSPHRASE$CROUTON_NEW_PASSPHRASE" ]; then
+                while ! chromeos-setdevpasswd; do :; done
+            fi
+        fi
+
+        # Detect the key file
+        if [ -z "$KEYFILE" ]; then
+            KEYFILE="$CHROOTSRC/.ecryptfs"
+            if [ -f "$KEYFILE" ]; then
+                header="`head -n1 "$KEYFILE"`"
+                if [ -n "$header" ]; then
+                    KEYFILE="$header"
+                fi
+            fi
+        elif [ "${KEYFILE#/}" = "$KEYFILE" ]; then
+            KEYFILE="$PWD/$KEYFILE"
+        fi
+        if [ -d "$KEYFILE" -o "${KEYFILE%/}" != "$KEYFILE" ]; then
+            KEYFILE="${KEYFILE%/}/$NAME"
+        fi
+        if ! mkdir -p "`dirname "$KEYFILE"`"; then
+            error 1 "Unable to create directory for $KEYFILE"
+        fi
+
+        # If we just created it, choose and create the keyfile.
+        passphrase="${CROUTON_PASSPHRASE:-"$CROUTON_NEW_PASSPHRASE"}"
+        if [ ! -f "$CHROOTSRC/.ecryptfs" ]; then
+            if [ -e "$KEYFILE" ]; then
+                error 1 "Encryption key file $KEYFILE already exists. Refusing to overwrite!"
+            fi
+
+            promptNewPassphrase
+
+            if [ -z "$CROUTON_WEAK_RANDOM" ]; then
+                random="/dev/random"
+                echo 'Generating keys (move the mouse to generate entropy)...' 1>&2
+            else
+                random="/dev/urandom"
+                echo 'Generating keys from /dev/urandom...' 1>&2
+            fi
+            key="`hexdump -v -n32 -e'32/1 "%02x"' "$random"`"
+            fnek="`hexdump -v -n32 -e'32/1 "%02x"' "$random"`"
+            echo 'done' 1>&2
+
+            # Create key file
+            wrappedkey="`mktemp`"
+            wrappedfnek="`mktemp`"
+            addtrap "rm -f '$wrappedkey' '$wrappedfnek'"
+            echo -n "$key
+$passphrase" | ecryptfs-wrap-passphrase "$wrappedkey" -
+            echo -n "$fnek
+$passphrase" | ecryptfs-wrap-passphrase "$wrappedfnek" -
+            unset key fnek
+            echo | cat - "$wrappedkey" "$wrappedfnek" > "$KEYFILE"
+            if [ ! -f "$CHROOTSRC/.ecryptfs" ]; then
+                echo "$KEYFILE" > "$CHROOTSRC/.ecryptfs"
+            fi
+        elif [ ! -f "$KEYFILE" ]; then
+            error 1 "Unable to find encryption key file $KEYFILE"
+        else
+            echo_tty -n "Enter encryption passphrase for $NAME: "
+            [ -t 0 ] && stty -echo
+            if [ -z "$passphrase" ]; then
+                read -r passphrase
+            fi
+            [ -t 0 ] && stty echo
+            echo_tty ''
+
+            wrappedkey="`mktemp`"
+            wrappedfnek="`mktemp`"
+            addtrap "rm -f '$wrappedkey' '$wrappedfnek'"
+
+            # Extract wrapped keys from keyfile
+            wrappedtotal="$(($(wc -c < "$KEYFILE") - $(head -n 1 "$KEYFILE" | wc -c)))"
+            wrappedsize="$((wrappedtotal / 2))"
+            tail -c "$wrappedtotal" "$KEYFILE" | head -c "$wrappedsize" > "$wrappedkey"
+            tail -c "$wrappedsize" "$KEYFILE" > "$wrappedfnek"
+
+            # Change the passphrase if requested
+            if [ "${ENCRYPT:-0}" -ge 2 ]; then
+                oldpassphrase="$passphrase"
+                passphrase="$CROUTON_NEW_PASSPHRASE"
+                promptNewPassphrase
+
+                echo "Applying passphrase change" 1>&2
+                echo -n "$oldpassphrase
+$passphrase" | ecryptfs-rewrap-passphrase "$wrappedkey" -
+                echo -n "$oldpassphrase
+$passphrase" | ecryptfs-rewrap-passphrase "$wrappedfnek" -
+                echo | cat - "$wrappedkey" "$wrappedfnek" > "$KEYFILE"
+
+                unset oldpassphrase
+            fi
+        fi
+
+        # Add keys to keychain and extract
+        keysig="`echo -n "$passphrase" \
+            | ecryptfs-unwrap-passphrase "$wrappedkey" - 2>/dev/null \
+            | ecryptfs-add-passphrase - 2>/dev/null \
+            | sed -n 's/.*\[\([0-9a-zA-Z]*\)\].*/\1/p'`"
+        fneksig="`echo -n "$passphrase" \
+            | ecryptfs-unwrap-passphrase "$wrappedfnek" - 2>/dev/null \
+            | ecryptfs-add-passphrase - 2>/dev/null \
+            | sed -n 's/.*\[\([0-9a-zA-Z]*\)\].*/\1/p'`"
+        if [ -z "$keysig" -o -z "$fneksig" ]; then
+            error 1 "Failed to decrypt $NAME."
+        fi
+
+        # Create a new session, and link user keyring to that session,
+        # as required by ecryptfs.
+        keyctl new_session >/dev/null
+        keyctl link @u @s
+
+        mnt="ecryptfs_sig=$keysig,ecryptfs_fnek_sig=$fneksig"
+        mnt="$mnt,ecryptfs_cipher=aes,ecryptfs_key_bytes=16"
+        mnt="$mnt,ecryptfs_unlink_sigs,$MOUNTOPTS"
+
+        if ! mount -i -t ecryptfs -o "$mnt" "$CHROOTSRC" "$CHROOT"; then
+            error 1 "Failed to mount $NAME."
+        fi
+
+        whitelist "$CHROOT"
+    fi
+
+    # Perform the move
+    if [ -z "$movesrc" ]; then
+        continue
+    fi
+    response=y
+    for file in "$movesrc/"*; do
+        if [ "${file#*/ECRYPTFS_FNEK_ENCRYPTED}" != "$file" ]; then
+            echo -n \
+"About to continue encrypting the unencrypted portion of $NAME.
+If this is unexpected, then it could mean that someone's trying to inject files
+into your encrypted chroot, potentially allowing them to steal your data.
+Please choose one of the following options:
+yes  -- You are sure you want to continue moving the files in. They're yours.
+del  -- You do not like these files and want them deleted permanently.
+list -- You do not know what these files are and want to list them.
+no   -- You don't want to decide one way or another quite yet.
+> " 1>&2
+            # Don't allow a response to be specified in env unless the password
+            # was also specified in env.
+            if [ -n "$CROUTON_PASSPHRASE" -a \
+                    -n "$CROUTON_MOUNT_RESPONSE" ]; then
+                response="$CROUTON_MOUNT_RESPONSE"
+                echo "$response" 1>&2
+            else
+                read -r response
+            fi
+            break
+        fi
+    done
+    case "$response" in
+    y*|Y*) (
+        echo -n "Encrypting $NAME; please wait..." 1>&2
+        cd "$movesrc"
+        tmp="`mktemp -d --tmpdir=. 'ECRYPTFS_MOVE_STAGING_XXXXXX'`"
+        find -not -name 'ECRYPTFS_FNEK_ENCRYPTED*' \
+             -not -wholename './ECRYPTFS_MOVE_STAGING_*' \
+             -not -wholename '.' \
+             -not -wholename './.ecryptfs' \
+             -not -wholename './.crouton-targets' \
+             -exec mkdir -p "$tmp/{}" ';' \
+             -exec rmdir "$tmp/{}" ';' \
+             '(' -prune , -exec mv -fT '{}' "$tmp/{}" ';' ')' 1>&2
+        for tmp in ECRYPTFS_MOVE_STAGING_*; do
+            (
+                cd "$tmp"
+                find '!' '(' -type d -exec test -d "$CHROOT/{}" ';' ')' \
+                     '(' -prune , -exec mv -fT '{}' "$CHROOT/{}" ';' ')' \
+                     -exec echo -n . ';' 1>&2
+                find -depth -type d -not -wholename . \
+                     -exec test -d "$CHROOT/{}" ';' \
+                     -exec rmdir '{}' ';' 1>&2
+            )
+            rmdir "$tmp" 2>/dev/null || true
+        done
+        echo 'done.' 1>&2
+    );;
+    d*|D*) (
+        echo "Deleting unencrypted files in $NAME; please wait..." 1>&2
+        cd "$movesrc"
+        find -not -name 'ECRYPTFS_FNEK_ENCRYPTED*' \
+             -not -wholename '.' \
+             -not -wholename './.ecryptfs' \
+             -not -wholename './.crouton-targets' \
+             '(' -prune , -exec rm -rvf '{}' ';' ')' 1>&2
+        echo 'Done.' 1>&2
+    );;
+    l*|L*) (
+        echo "Listing unencrypted files in $NAME; please wait..." 1>&2
+        cd "$movesrc"
+        find -not -name 'ECRYPTFS_FNEK_ENCRYPTED*' \
+             -not -name 'ECRYPTFS_MOVE_STAGING_*' \
+             -not -wholename '.' \
+             -not -wholename './.ecryptfs' \
+             -not -wholename './.crouton-targets' \
+             -print -prune | cut -b2- 1>&2
+        echo 'Done.' 1>&2
+        exit 2
+    );;
+    esac
+done
+
+exit 0

@@ -1,0 +1,21 @@
+#!/bin/sh -e
+# Copyright (c) 2016 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+#
+# Helper script for Unity called at user login.
+# Right now this just sets up .desktop files in the user's autostart
+# directory to override global autostart.
+
+RELEASE="`/usr/local/bin/croutonversion -r`"
+
+# unity-settings-daemon should run instead of gnome-settings-daemon in trusty
+if [ "$RELEASE" = 'trusty' -o "$RELEASE" = 'xenial' ]; then
+    autostartdir="$HOME/.config/autostart"
+    mkdir -p "$autostartdir"
+    cat > "$autostartdir"/gnome-settings-daemon.desktop <<EOF
+[Desktop Entry]
+OnlyShowIn=GNOME;
+EOF
+
+fi

@@ -1,0 +1,78 @@
+#!/bin/sh -e
+# Copyright (c) 2016 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Processes and extracts AR files so that the ar binary is not needed.
+# Same interface as the real ar, but only supports -p, -t, and -x.
+
+APPLICATION="${0##*/}"
+
+# First parameter is the operation
+case "$1" in
+    -p|p) OPERATION=p;;
+    -t|t) OPERATION=t;;
+    -x|x) OPERATION=x;;
+    *) OPERATION='';;
+esac
+if [ -z "$OPERATION" -o "$#" -lt 2 ]; then
+    echo "USAGE: $APPLICATION -p|-t|-x archive [member...]" 1>&2
+    exit 1
+fi
+
+# Second is the archive
+ARCHIVE="$2"
+if [ ! -f "$ARCHIVE" ]; then
+    echo "$APPLICATION: $ARCHIVE: No such file" 1>&2
+    exit 9
+elif [ ! -r "$ARCHIVE" ]; then
+    echo "$APPLICATION: $ARCHIVE: Permission denied" 1>&2
+    exit 1
+fi
+
+# Remaining (optional) are specific members of the archive
+shift 2
+
+# Read in from $ARCHIVE
+{
+    # Check header
+    read -r magic
+    if [ "$magic" != "!<arch>" ]; then
+        echo "$APPLICATION: $ARCHIVE: File format not recognized" 1>&2
+        exit 1
+    fi
+
+    # Process each file
+    while read -r name modtime owner group mode size magic; do
+        # Absorb extra newlines
+        if [ -z "$name" ]; then
+            continue;
+        fi
+        # Confirm magic
+        if [ "$magic" != '`' ]; then
+            echo "$APPLICATION: $ARCHIVE: Malformed archive" 1>&2
+            exit 1
+        fi
+        # Filter members
+        if [ $# != 0 ]; then
+            found='n'
+            for member in "$@"; do
+                if [ "$name" = "$member" ]; then
+                    found='y'
+                    break
+                fi
+            done
+            if [ "$found" = 'n' ]; then
+                # Consume file and skip
+                head -c "$size" > /dev/null
+                continue
+            fi
+        fi
+        # Do the requested action
+        case "$OPERATION" in
+            t) echo "$name"; head -c "$size" > /dev/null;;
+            p) head -c "$size";;
+            x) head -c "$size" > "$name";;
+        esac
+    done
+} < "$ARCHIVE"

@@ -1,0 +1,26 @@
+#!/bin/sh -e
+# Copyright (c) 2016 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+set -e
+
+APPLICATION="${0##*/}"
+
+USAGE="$APPLICATION [options]
+
+Wraps enter-chroot to start a CLI session in a new VT.
+By default, it will log into the primary user on the first chroot found.
+
+Options are directly passed to enter-chroot; run enter-chroot to list them."
+
+if [ -f /sbin/frecon ]; then
+    # Until we get a stable interface to controlling frecon, just use the pty
+    openvt=''
+else
+    openvt='openvt -vws --'
+fi
+
+export TERM='linux'
+exec sh -e "`dirname "\`readlink -f -- "$0"\`"`/enter-chroot" -t cli-extra -l \
+    "$@" "" $openvt

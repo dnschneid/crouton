@@ -1,0 +1,50 @@
+#!/bin/sh -e
+# Copyright (c) 2016 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+#
+# Provides a wrapper around gnome-session to allow gnome-session based
+# desktop environments to work with crouton nicely
+
+USAGE="${0##*/} [session]
+A wrapper around gnome-session that can be passed to xinit.
+Provide the session type in the DESKTOP_SESSION variable, 
+or as an optional session argument.
+
+Examples:
+(launch GNOME from crosh with session in DESKTOP_SESSION)
+DESKTOP_SESSION=gnome xinit /etc/X11/xinit/xinitrc ${0##*/}
+
+(launch Unity from an xterm with session as an argument)
+${0##*/} ubuntu"
+
+export DESKTOP_SESSION="${DESKTOP_SESSION:-"$1"}"
+export XDG_SESSION_TYPE="${XDG_SESSION_TYPE:-"x11"}"
+export XDG_SESSION_CLASS="user"
+
+SESSION='gnome-session'
+CINNAMON_SESSION='cinnamon-session'
+
+if [ -z "$DESKTOP_SESSION" ]; then
+    echo "$USAGE" 1>&2
+    exit 2
+fi
+
+# Cinnamon 2.0 and later uses its own fork of gnome-session
+if [ "${DESKTOP_SESSION#cinnamon}" != "$DESKTOP_SESSION" ] && \
+        hash "$CINNAMON_SESSION" 2>/dev/null; then
+    SESSION="$CINNAMON_SESSION"
+fi
+
+SESSION_FILE="/usr/share/$SESSION/sessions/$DESKTOP_SESSION.session"
+XDG_CURRENT_DESKTOP="$(awk -F "=" '/DesktopName/ {print $2}' "$SESSION_FILE")"
+if [ -n "$XDG_CURRENT_DESKTOP" ]; then
+    XDG_SESSION_DESKTOP="$XDG_CURRENT_DESKTOP"
+    export XDG_CURRENT_DESKTOP XDG_SESSION_DESKTOP
+fi
+
+if [ -z "$DISPLAY" ]; then
+    exec xinit /etc/X11/xinit/xinitrc "$0"
+else
+    exec "$SESSION" --session="$DESKTOP_SESSION"
+fi

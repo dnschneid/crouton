@@ -1,0 +1,13 @@
+#!/usr/bin/pulseaudio -nF
+# Copyright (c) 2016 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Include default configuration first
+.include /etc/pulse/default.pa
+
+# Forward audio to Chromium OS audio server
+load-module module-alsa-sink device=cras sink_name=cras-sink
+load-module module-alsa-source device=cras source_name=cras-source
+set-default-sink cras-sink
+set-default-source cras-source

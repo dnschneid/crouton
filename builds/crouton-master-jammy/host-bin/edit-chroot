@@ -1,0 +1,641 @@
+#!/bin/sh -e
+# Copyright (c) 2016 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+set -e
+
+APPLICATION="${0##*/}"
+ALLCHROOTS=''
+BACKUP=''
+BINDIR="`dirname "\`readlink -f -- "$0"\`"`"
+CHROOTS="`readlink -m -- "$BINDIR/../chroots"`"
+DELETE=''
+ENCRYPT=''
+KEYFILE=''
+LISTDETAILS=''
+MOVE=''
+COPY=''
+NEEDS_UNMOUNT=''
+RESTORE=''
+SPLIT=''
+TARBALL=''
+YES=''
+YESPARAM=''
+
+USAGE="$APPLICATION [options] name [...]
+
+Edits a chroot.
+
+Options:
+    -a          Operates on all chroots in $CHROOTS.
+                If no other operation is specified, prints out the names of the chroots.
+    -c CHROOTS  Directory the chroots are in. Default: $CHROOTS
+    -b          Backs up the chroot to a tarball. Compression format is chosen
+                based on the tarball extension. Backups always take place before
+                other actions on a given chroot.
+    -d          Deletes the chroot. Assumed if run as delete-chroot.
+    -e          If the chroot is not encrypted, encrypt it.
+                If it is encrypted, change the encryption passphrase.
+    -f TARBALL  When used with -b, overrides the default tarball to back up to.
+                If unspecified, assumes NAME-yyyymmdd-hhmm.tar[.gz], where .gz
+                is included for unencrypted chroots, and not for encrypted ones.
+                When used with -r, specifies the tarball to restore from.
+                If TARBALL is a directory, automatic naming is still used.
+                If multiple chroots are specified, TARBALL must be a directory.
+    -k KEYFILE  File or directory to store the (encrypted) encryption keys in.
+                If unspecified, the keys will be stored in the chroot if doing a
+                first encryption, or left in place on existing chroots.
+                If specified, keyfile will be moved. Specify a dash - as the
+                KEYFILE to move the key back into the chroot.
+                If multiple chroots are specified, KEYFILE must either be -
+                or a directory.
+    -l          Prints out croutonversion details on the chroot, if available.
+                Specify twice to prompt and unlock encrypted chroots as necessary.
+    -m DEST     Moves a chroot. Specify a new name to keep it in the same
+                directory, or an absolute path to move it entirely.
+                DEST can be a directory, in which case it must end in a slash.
+                If multiple chroots are specified, DEST must be a directory.
+                If you are moving a chroot to a SD card/USB drive, make sure the
+                storage is formatted to ext2/3/4.
+    -C DEST     Like -m, but copies instead of moves.
+    -r          Restores a chroot from a tarball. The tarball path can be
+                specified with -f or detected from name. If both are specified,
+                restores to that name instead of the one in the tarball.
+                Will not overwrite a chroot when restoring unless -r is
+                specified twice.
+    -s SPLIT    Force a backup archive to be split into SPLIT-sized chunks.
+                SPLIT is specified in megabytes (1048576 bytes), and cannot be
+                smaller than 10.
+                FAT32 filesystems are split by default to fit within 4GB.
+    -y          Do all actions without confirmation."
+
+# Common functions
+. "$BINDIR/../installer/functions"
+
+# Process arguments
+getopts_string='abc:C:def:k:lm:rs:y'
+while getopts_nextarg; do
+    case "$getopts_var" in
+    a) ALLCHROOTS='y';;
+    b) BACKUP='y'; NEEDS_UNMOUNT='y';;
+    c) CHROOTS="`readlink -m -- "$getopts_arg"`";;
+    C) COPY="$getopts_arg"; NEEDS_UNMOUNT='y';;
+    d) DELETE='y'; NEEDS_UNMOUNT='y';;
+    e) ENCRYPT='y'; NEEDS_UNMOUNT='y';;
+    f) TARBALL="$getopts_arg";;
+    k) KEYFILE="$getopts_arg";;
+    l) LISTDETAILS=$(($LISTDETAILS+1));;
+    m) MOVE="$getopts_arg"; NEEDS_UNMOUNT='y';;
+    r) RESTORE=$(($RESTORE+1)); NEEDS_UNMOUNT='y';;
+    s) SPLIT="$getopts_arg";;
+    y) YES='a'; YESPARAM='-y';;
+    \?) error 2 "$USAGE";;
+    esac
+done
+
+# If the executable name is delete*, assume DELETE.
+if [ "${APPLICATION#delete}" != "$APPLICATION" ]; then
+    DELETE='y'
+    NEEDS_UNMOUNT='y'
+fi
+
+# At least one command must be specified
+if [ -z "$ALLCHROOTS$BACKUP$DELETE$ENCRYPT$KEYFILE$LISTDETAILS$MOVE$COPY$RESTORE" ]; then
+    error 2 "$USAGE"
+fi
+
+# Need at least one chroot listed if not using -r with -f or -a.
+if [ $# = 0 ] && ! [ -n "$RESTORE" -a -n "$TARBALL" -o -n "$ALLCHROOTS" ]; then
+    error 2 "$USAGE"
+fi
+
+# Cannot specify a chroot and -a.
+if [ $# -gt 0 -a -n "$ALLCHROOTS" ]; then
+    error 2 "$USAGE"
+fi
+
+# -f without -r or -b doesn't make sense
+if [ -n "$TARBALL" -a -z "$BACKUP$RESTORE" ]; then
+    error 2 "$USAGE"
+fi
+
+# Cannot specify both backup and restore.
+if [ -n "$BACKUP" -a -n "$RESTORE" ]; then
+    error 2 "$USAGE"
+fi
+
+# Cannot specify both copy and move.
+if [ -n "$COPY" -a -n "$MOVE" ]; then
+    error 2 "$USAGE"
+fi
+
+# Cannot specify delete with anything else.
+if [ -n "$DELETE" -a -n "$BACKUP$ENCRYPT$KEYFILE$MOVE$COPY$RESTORE" ]; then
+    error 2 "$USAGE"
+fi
+
+# Make sure SPLIT is reasonable
+if [ -n "$SPLIT" ] && [ "$SPLIT" -lt 10 -o -z "$BACKUP" ]; then
+    error 2 "$USAGE"
+fi
+
+# If we specified -a option, bring in all chroots.
+if [ -n "$ALLCHROOTS" ]; then
+    if [ ! -d "$CHROOTS" ]; then
+        error 1 "$CHROOTS not found."
+    fi
+    for crname in "$CHROOTS"/*; do
+        if [ -d "$crname" ]; then
+            set -- "$@" "${crname##*/}"
+        fi
+    done
+    if [ $# = 0 ]; then
+        error 1 "No chroots found in $CHROOTS"
+    fi
+fi
+
+# If TARBALL is unspecified and we're in /, put the tarball in ~/Downloads
+if [ -n "$BACKUP$RESTORE" -a -z "$TARBALL" -a "$PWD" = '/' \
+        -a -d '/home/chronos/user/Downloads' ]; then
+    TARBALL="/home/chronos/user/Downloads/"
+fi
+
+# If multiple chroots are listed, KEYFILE and MOVE and COPY must be empty or directories.
+if [ $# -gt 1 -a -f "$KEYFILE" -a "$KEYFILE" != '-' ]; then
+    error 2 "Multiple chroots specified, but $KEYFILE is not a directory."
+elif [ $# -gt 1 -a -n "$MOVE" -a "${MOVE%/}" = "$MOVE" ]; then
+    error 2 "Multiple chroots specified, but $MOVE is not a directory."
+elif [ $# -gt 1 -a -n "$COPY" -a "${COPY%/}" = "$COPY" ]; then
+    error 2 "Multiple chroots specified, but $COPY is not a directory."
+elif [ $# -gt 1 -a -f "$TARBALL" ]; then
+    error 2 "Multiple chroots specified, but $TARBALL is not a directory."
+fi
+
+# Don't allow moving to non-ext filesystems (but don't check if just renaming)
+if [ -n "$MOVE" -a "${MOVE#*/}" != "$MOVE" ] && \
+        df -T "`getmountpoint "$MOVE"`" | awk '$2~"^ext"{exit 1}'; then
+    error 2 "Chroots can only be moved to ext filesystems."
+fi
+
+# Don't allow copying to non-ext filesystems (but don't check if in same directory)
+if [ -n "$COPY" -a "${COPY#*/}" != "$COPY" ] && \
+        df -T "`getmountpoint "$COPY"`" | awk '$2~"^ext"{exit 1}'; then
+    error 2 "Chroots can only be copied to ext filesystems."
+fi
+
+# Don't allow restoring to non-ext filesystems
+if [ -n "$RESTORE" ] && \
+        df -T "`getmountpoint "$CHROOTS"`" | awk '$2~"^ext"{exit 1}'; then
+    error 2 "Chroots can only be restored to ext filesystems."
+fi
+
+# Don't allow backing up to tmpfs filesystems
+if [ -n "$BACKUP" ] && ! df -T "`getmountpoint "${TARBALL:-.}"`" \
+                            | awk '$2=="tmpfs"{exit 1}'; then
+    error 2 "Chroots cannot be backed up to temporary filesystems."
+fi
+
+# We need to run as root
+if [ "$USER" != root -a "$UID" != 0 ]; then
+    error 2 "$APPLICATION must be run as root."
+fi
+
+# Strongly advise against moving a keyfile to a tmpfs path
+if [ "${KEYFILE:--}" != '-' ] && \
+        ! df -T "`getmountpoint "$KEYFILE"`" | awk '$2=="tmpfs"{exit 1}'; then
+    echo -n '\
+Moving a keyfile to a temporary filesystem is a really good way to permanently
+lose access to your chroot. If you still want to do this, wait for 15 seconds.
+Otherwise: HIT CTRL-C RIGHT NOW > ' 1>&2
+    sleep 15
+    echo \
+'...okay. Be sure to put the keyfile somewhere safe before you reboot.' 1>&2
+fi
+
+# If we're restoring and specified a tarball and no name, detect the name.
+if [ -n "$RESTORE" -a -n "$TARBALL" -a $# = 0 ]; then
+    echo 'Detecting chroot name...' 1>&2
+    label="`tar --test-label -f "$TARBALL" 2>/dev/null`"
+    if [ -n "$label" ]; then
+        if [ "${label#crouton:backup}" = "$label" ]; then
+            error 2 "$TARBALL doesn't appear to be a valid crouton backup."
+        fi
+        NAME="${label#*-}"
+    else
+        # Old backups just use the first folder name
+        NAME="`tar -tf "$TARBALL" 2>/dev/null | head -n 1`"
+        NAME="${NAME%%/*}"
+    fi
+    if [ -z "$NAME" ]; then
+        error 2 "$TARBALL doesn't appear to be a valid tarball."
+    fi
+    set -- "$NAME"
+fi
+
+# Make sure that all names are valid chroot names.
+# For anything but restore, make sure all chroots exist before doing anything.
+for NAME in "$@"; do
+    if ! validate_name "$NAME"; then
+        error 2 "Invalid chroot name '$NAME'."
+    fi
+
+    if [ -z "$RESTORE" ]; then
+        CHROOT="$CHROOTS/$NAME"
+
+        # Check for existence
+        if [ ! -d "$CHROOT" ]; then
+            extra=''
+            if [ "${NAME#-}" != "$NAME" ]; then
+                extra="
+Please specify all options before chroot names."
+            fi
+            error 2 "$CHROOT not found.$extra"
+        fi
+    fi
+done
+
+# Display all chroot names if using -a without any other operations.
+if [ -n "$ALLCHROOTS" -a -z "$BACKUP$DELETE$ENCRYPT$KEYFILE$LISTDETAILS$MOVE$COPY$RESTORE" ]; then
+    echo "$@"
+    exit 0
+fi
+
+# If TARBALL ends in a slash or we're restoring multiple chroots, make directory
+if [ -n "$TARBALL" ] && \
+        [ $# -ge 2 -o -d "$TARBALL" -o "${TARBALL%/}" != "$TARBALL" ]; then
+    TARBALL="${TARBALL%/}/"
+    mkdir -p "$TARBALL"
+fi
+
+# Avoid kernel panics due to slow I/O
+disablehungtask
+
+# Make sure we always exit with echo on the tty.
+addtrap "stty echo 2>/dev/null"
+
+# Prints out a fancy spinner that updates every time a line is fed in, unless
+# the output is not to a tty, in which case it just prints a new line.
+# $1: number of lines between each update of the spinner
+# $2...: Command to be run
+# Erases the line each time, so it will always be at position 0.
+# Either expect this and put text later in the line, or give this its own line.
+spinner() {
+    local spin="$1"
+    shift
+    if [ -t 2 ]; then
+        # Keep track of the exit status of the piped command
+        local ret="`(("$@" || echo "$?" 1>&3) | mawk -Winteractive '
+            BEGIN {
+                printf "\r"
+            }
+            {
+                y = (y+1) % '"$spin"'
+                if (y == 0) {
+                    x = (x+1) % 4
+                    printf substr("\|/-", x+1, 1) "\r"
+                }
+            }' 1>&2) 3>&1`"
+        if [ -n "$ret" ]; then
+            return "$ret"
+        fi
+    else
+        echo 1>&2
+        "$@" 1>/dev/null
+    fi
+}
+
+# Process each chroot
+for NAME in "$@"; do
+    # Double check $NAME (better paranoid than sorry)
+    if ! validate_name "$NAME"; then
+        error 2 "Invalid chroot name '$NAME'."
+    fi
+    CHROOT="$CHROOTS/$NAME"
+
+    # Check for existence and unmount/delete the chroot.
+    if [ -d "$CHROOT" ]; then
+        if [ -n "$LISTDETAILS" ]; then
+            getversion='y'
+            echo "name: $NAME"
+            if [ -f "$CHROOT/.ecryptfs" ]; then
+                if [ ! -d "/var/run/crouton/$CHROOT" \
+                        -a "$LISTDETAILS" -gt 1 ]; then
+                    sh "$BINDIR/mount-chroot" -c "$CHROOTS" -- "$NAME" || true
+                fi
+                if mountpoint -q "/var/run/crouton/$CHROOT"; then
+                    echo "encrypted: yes, unlocked"
+                else
+                    echo "encrypted: yes, locked"
+                    getversion='n'
+                fi
+            else
+                echo "encrypted: no"
+            fi
+            if [ "$getversion" = 'y' ]; then
+                CROUTON_NO_UNMOUNT=1 sh "$BINDIR/enter-chroot" \
+                    -c "$CHROOTS" -n "$NAME" -x /usr/local/bin/croutonversion \
+                    || true
+            fi
+        fi
+        if [ "$RESTORE" = 1 ]; then
+            error 2 "$CHROOT already exists! Specify a second -r to overwrite it (dangerous)."
+        elif [ -n "$RESTORE" ]; then
+            EXISTS='y'
+        elif ! sh -e "$BINDIR/unmount-chroot" $YESPARAM \
+                    -c "$CHROOTS" -- "$NAME"; then
+            if [ -n "$NEEDS_UNMOUNT" ]; then
+                exit 1
+            fi
+        fi
+    elif [ -n "$RESTORE" ]; then
+        EXISTS=''
+    else
+        # This should have been caught earlier
+        error 2 "$CHROOT not found."
+    fi
+
+    # Delete the chroot?
+    if [ -n "$DELETE" ]; then
+        # Confirm deletion
+        if [ "${YES#[Aa]}" = "$YES" ]; then
+            echo -n "Delete $CHROOT? [a/y/N] " 1>&2
+            if [ -n "$CROUTON_EDIT_RESPONSE" ]; then
+                YES="$CROUTON_EDIT_RESPONSE"
+                echo "$YES" 1>&2
+            else
+                read -r YES
+            fi
+            if [ "${YES#[AaYy]}" = "$YES" ]; then
+                 error 2 "Aborting deletion of $CHROOT"
+            fi
+        fi
+        # Delete the chroot
+        echo -n "  Deleting $CHROOT..." 1>&2
+        spinner 1000 rm -rvf --one-file-system "$CHROOT"
+        echo "Finished deleting $CHROOT" 1>&2
+        continue
+    fi
+
+    # Backup the chroot
+    if [ -n "$BACKUP" ]; then
+        dest="$TARBALL"
+        date="`date '+%Y%m%d-%H%M'`"
+        if [ -z "$dest" -o -d "$TARBALL" ]; then
+            dest="$TARBALL$NAME-$date.tar"
+            # Only compress if it's not encrypted (it'd be a waste of time)
+            if [ ! -f "$CHROOT/.ecryptfs" ]; then
+                dest="$dest.gz"
+            fi
+        fi
+        # If we're writing to a fat32 filesystem, split the file at 4GB chunks
+        if ! df -T "`getmountpoint "$dest"`" | awk '$2~"^v?fat"{exit 1}'; then
+            SPLIT="${SPLIT:-4095}"
+        fi
+        if [ -n "$SPLIT" ]; then
+            tardest="`mktemp -d --tmpdir=/tmp 'crouton-backup.XXX'`"
+            addtrap "rm -rf '$tardest'"
+            tardest="$tardest/pipe.${dest##*/}"
+            mkfifo -m 600 "$tardest"
+            split -b "${SPLIT}m" -a 4 "$tardest" "$dest.part-" &
+            splitpid="$!"
+        else
+            tardest="$dest"
+            splitpid=''
+        fi
+        echo -n "  Backing up $CHROOT to $(readlink -m -- "$dest")..." 1>&2
+        addtrap "echo 'Deleting partial archive.' 1>&2; \
+                 kill '$splitpid' 2>/dev/null; rm -f '$dest' '$dest.part-'*"
+        ret=0
+        spinner 1 tar --checkpoint=100 --checkpoint-action=exec=echo \
+            --one-file-system -V "crouton:backup.${date%-*}${date#*-}-$NAME" \
+            -caf "$tardest" -C "$CHROOTS" "$NAME" || ret="$?"
+        if [ -n "$SPLIT" ]; then
+            wait "$splitpid" || ret="$?"
+            mv -f "$dest.part-aaaa" "$dest" || ret="$?"
+        fi
+        if [ "$ret" -ne 0 ]; then
+            echo "Unable to backup $CHROOT." 1>&2
+            exit "$ret"
+        fi
+        # Make sure filesystem is sync'ed
+        sync
+        undotrap
+        echo "Finished backing up $CHROOT to $dest" 1>&2
+    fi
+
+    # Restore the chroot
+    if [ -n "$RESTORE" ]; then
+        src="$TARBALL"
+        if [ -z "$src" -o -d "$TARBALL" ]; then
+            src=''
+            file="$TARBALL$NAME"
+            # Search for the alphabetically last tarball with src.
+            # Dated tarballs take precedence over undated tarballs.
+            for file in "$file."* "$file-"*; do
+                if [ "${file%.part-[a-z][a-z][a-z][a-z]}" != "$file" \
+                        -o ! -f "$file" ]; then
+                    continue
+                fi
+                # Confirm it's a tarball
+                if ! tar --test-label -f "$file" >/dev/null 2>&1; then
+                    continue
+                fi
+                # Since * alphabetizes, always keep the last one
+                src="$file"
+            done
+            if [ -z "$src" ]; then
+                error 2 "Unable to find a tarball for $NAME. You can specify one with -f."
+            fi
+            echo "Found $src for restoring $NAME." 1>&2
+        elif ! tar --test-label -f "$src" >/dev/null 2>&1; then
+            error 2 "$src doesn't appear to be a valid tarball."
+        fi
+        if [ -n "$EXISTS" ]; then
+            echo "WARNING: $CHROOT already exists. Deleting it before restoring." 1>&2
+            echo "Press Control-C to abort; restoration will continue in 5 seconds." 1>&2
+            sleep 5
+            sh -e "$BINDIR/edit-chroot" -d -y -c "$CHROOTS" "$NAME"
+        fi
+        echo -n "  Restoring $src to $CHROOT..." 1>&2
+        mkdir -p "$CHROOT"
+        if [ -f "$src.part-aaab" ]; then
+            # Detect the type of compression before sending it through a fifo
+            for tarparam in -z -j -J -Z --no-auto-compress fail; do
+                if [ "$tarparam" = 'fail' ]; then
+                    error 2 "Unable to detect compression method of $src"
+                elif tar $tarparam --test-label -f "$src" >/dev/null 2>&1; then
+                    break
+                fi
+            done
+            # Don't let tar get tripped up by cat's incomplete writes
+            tarparam="$tarparam -B"
+            tarsrc="`mktemp -d --tmpdir=/tmp 'crouton-restore.XXX'`"
+            addtrap "rm -rf '$tarsrc'"
+            tarsrc="$tarsrc/pipe"
+            mkfifo -m 600 "$tarsrc"
+            cat "$src" "$src.part"* >> "$tarsrc" &
+            catpid="$!"
+            addtrap "kill '$catpid' 2>/dev/null"
+        else
+            tarsrc="$src"
+            tarparam='-a'
+            catpid=''
+        fi
+        spinner 1 tar --checkpoint=200 --checkpoint-action=exec=echo $tarparam \
+            --one-file-system -xf "$tarsrc" -C "$CHROOT" --strip-components=1
+        if [ -n "$catpid" ]; then
+            wait "$catpid"
+        fi
+        # Make sure filesystem is sync'ed
+        sync
+        echo "Finished restoring $src to $CHROOT" 1>&2
+    fi
+
+    # Update the keyfile
+    if [ -n "$KEYFILE" ]; then
+        newkeyfile="$KEYFILE"
+        # Find the current keyfile
+        oldkeyfile="$CHROOT/.ecryptfs"
+        if [ -f "$oldkeyfile" ]; then
+            header="`head -n1 "$oldkeyfile"`"
+            if [ -n "$header" ]; then
+                oldkeyfile="$header"
+            fi
+        fi
+        if [ "$newkeyfile" = '-' ]; then
+            newkeyfile="$CHROOT/.ecryptfs"
+        fi
+        if [ "${newkeyfile#/}" = "$newkeyfile" ]; then
+            newkeyfile="$PWD/$newkeyfile"
+        fi
+        if [ -d "$newkeyfile" -o "${newkeyfile%/}" != "$newkeyfile" ]; then
+            newkeyfile="${newkeyfile%/}/$NAME"
+        fi
+        oldkeyfile="`readlink -m -- "$oldkeyfile"`"
+        keyfilecanon="`readlink -m -- "$newkeyfile"`"
+        if [ ! -f "$oldkeyfile" ]; then
+            # If there is no old keyfile, make sure we've requested encryption.
+            if [ -z "$ENCRYPT" ]; then
+                error 1 "Old key file not found"
+            fi
+        elif [ "$oldkeyfile" != "$keyfilecanon" ]; then
+            chrootecryptfsfile="`readlink -m -- "$CHROOT/.ecryptfs"`"
+            # Don't clobber a file already there
+            if [ -e "$newkeyfile" -a "$newkeyfile" != "$chrootecryptfsfile" ]; then
+                error 1 "Encryption key file $newkeyfile already exists. Refusing to overwrite!"
+            fi
+            # Write the new keyfile before removing the old.
+            if ! mkdir -p "`dirname "$newkeyfile"`"; then
+                error 1 "Unable to create directory for $newkeyfile"
+            fi
+            echo "Moving key file from $oldkeyfile to $newkeyfile" 1>&2
+            (echo; tail -n+2 "$oldkeyfile") > "$newkeyfile"
+            # Remove old keyfile before writing .ecryptfs, as it may be the same
+            rm -f "$oldkeyfile"
+            if [ "$chrootecryptfsfile" != "$newkeyfile" ]; then
+                echo "$newkeyfile" > "$CHROOT/.ecryptfs"
+            fi
+        elif [ -z "$ENCRYPT$MOVE" ]; then
+            echo "Keyfile is already located at $newkeyfile" 1>&2
+        fi
+    fi
+
+    # Encrypt/rewrap the chroot
+    if [ -n "$ENCRYPT" ]; then
+        # Use mount-chroot to do the heavy lifting
+        unmount="sh -e '$BINDIR/unmount-chroot' -y -c '$CHROOTS' -- '$NAME'"
+        addtrap "$unmount"
+        if [ -n "$KEYFILE" ]; then
+            sh -e "$BINDIR/mount-chroot" -ee -k "$KEYFILE" -c "$CHROOTS" -- "$NAME"
+        else
+            sh -e "$BINDIR/mount-chroot" -ee -c "$CHROOTS" -- "$NAME"
+        fi
+        undotrap
+        eval "$unmount"
+    fi
+
+    # Move the chroot if requested
+    if [ -n "$MOVE" ]; then
+        target="$MOVE"
+        if [ "${target##*/}" = "$target" ]; then
+            # No slashes in the path. Assume renaming.
+            if ! validate_name "$target"; then
+                error 2 "Invalid target chroot name '$target'."
+            fi
+            target="$CHROOTS/$target"
+        elif [ "${target%/}" != "$target" ]; then
+            # Ends in a slash; append name.
+            target="$target$NAME"
+        fi
+        if [ -e "$target" ]; then
+            # Can't tell if the destination is a directory or a chroot that
+            # already exists; be safe and assume it was a mistake.
+            error 2 "$target already exists"
+        fi
+        # Check if we're changing filesystems, because we should cp+rm for
+        # safety. We don't do this when encrypting a chroot (see mount-chroot),
+        # because that would require 2x the space on one device. When switching
+        # filesystems like this, however, that isn't a concern.
+        if [ "`getmountpoint "$target"`" != "`getmountpoint "$CHROOT"`" ]; then
+            echo "Moving $CHROOT across filesystems to $target" 1>&2
+            echo 'This will take a while.' 1>&2
+            echo "If the operation gets interrupted, you can safely delete $target" 1>&2
+            # Confirm long operation
+            if [ "${YES#[Aa]}" = "$YES" ]; then
+                echo -n "Are you sure you want to continue? [a/y/N] " 1>&2
+                if [ -n "$CROUTON_EDIT_RESPONSE" ]; then
+                    YES="$CROUTON_EDIT_RESPONSE"
+                    echo "$YES" 1>&2
+                else
+                    read -r YES
+                fi
+                if [ "${YES#[AaYy]}" = "$YES" ]; then
+                     error 2 "Aborting move of $CHROOT"
+                fi
+            fi
+            if ! mkdir -p "`dirname "$target"`"; then
+                error 1 "Unable to create directory for $target"
+            fi
+            echo -n "  Copying to $target..." 1>&2
+            spinner 200 cp -av --one-file-system "$CHROOT" "$target"
+            echo "Finished copying to $target" 1>&2
+            echo -n "  Deleting old $CHROOT..." 1>&2
+            spinner 1000 rm -rfv --one-file-system "$CHROOT"
+            echo "Finished deleting old $CHROOT" 1>&2
+        else
+            if ! mkdir -p "`dirname "$target"`"; then
+                error 1 "Unable to create directory for $target"
+            fi
+            echo "Moving $CHROOT to $target" 1>&2
+            mv "$CHROOT" "$target"
+        fi
+    fi
+
+    # Copy the chroot if requested
+    if [ -n "$COPY" ]; then
+        target="$COPY"
+        if [ "${target##*/}" = "$target" ]; then
+            # No slashes in the path. Assume same directory.
+            if ! validate_name "$target"; then
+                error 2 "Invalid target chroot name '$target'."
+            fi
+            target="$CHROOTS/$target"
+        elif [ "${target%/}" != "$target" ]; then
+            # Ends in a slash; append name.
+            target="$target$NAME"
+        fi
+        if [ -e "$target" ]; then
+            # Can't tell if the destination is a directory or a chroot that
+            # already exists; be safe and assume it was a mistake.
+            error 2 "$target already exists"
+        fi
+        if ! mkdir -p "`dirname "$target"`"; then
+            error 1 "Unable to create directory for $target"
+        fi
+        echo "Copying $CHROOT to $target" 1>&2
+        spinner 200 cp -av --one-file-system "$CHROOT" "$target"
+    fi
+done
+
+exit 0

@@ -1,0 +1,43 @@
+#!/bin/sh -e
+# Copyright (c) 2016 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+#
+# Helper script for launching services normally managed by upstart.
+# Called during session's XDG autostart.
+
+RELEASE="`/usr/local/bin/croutonversion -r`"
+
+# Run the exec line from an Upstart conf file. Right now this assumes no space
+# in the path and no arguments.
+execfromconf() {
+    local exec_cmd="`awk '/^exec/{print $2; exit}' "$1"`"
+    if [ -x "$exec_cmd" ]; then
+        "$exec_cmd" &
+    fi
+}
+
+# Upstart launches unity on utopic+, and this needs to be started before
+# any dependent services.
+if [ "$RELEASE" = 'xenial' ]; then
+    PATH="$PATH":/sbin /usr/bin/unity &
+fi
+
+# Launch window-stack-bridge for Unity HUD support, and unity-panel-service for
+# indicators.
+if [ "$RELEASE" != 'precise' ]; then
+    services="unity-panel-service window-stack-bridge"
+    for service in $services; do
+        conf_file=/usr/share/upstart/sessions/"$service".conf
+        execfromconf "$conf_file"
+    done
+fi
+
+# If on trusty or later, indicators also need to be started.
+if [ "$RELEASE" = 'trusty' -o "$RELEASE" = 'xenial' ]; then
+    for conf_file in /usr/share/upstart/sessions/*.conf; do
+        if grep -q '^start on.* indicator-services-start' "$conf_file"; then
+            execfromconf "$conf_file"
+        fi
+    done
+fi

@@ -1,0 +1,91 @@
+#!/bin/sh -e
+# Copyright (c) 2016 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Test upgrade path from Ubuntu saucy to trusty.
+# Also test precise->trusty (LTS, upgrade not suggested until July 2014)
+
+# Format: FIRST;NEXT;DEV;PROMPT
+# FIRST: release to start with
+# NEXT: list of releases to be upgraded to
+# DEV: one additional release, for which upgrading is not recommended yet
+# PROMPT: choose normal or lts upgrade
+
+UPGRADEPATHS="\
+precise;trusty;;lts"
+
+#FIXME: add trusty;;utopic;normal then this is fixed:
+# https://bugs.launchpad.net/ubuntu/+source/update-manager-core/+bug/1382707
+
+if [ -z "$release" ]; then
+    # Only test upgrade if no release was set explicitly
+    if [ -z "$SUPPORTED_RELEASES_SET" ]; then
+        # Output all releases that are first in the upgrade paths
+        echo "$UPGRADEPATHS" | while read -r line; do
+            echo "${line%%;*}"
+        done
+    fi
+    exit 0
+fi
+
+# Install critical targets that are likely to break, as they manually pull in
+# packages from the mirror, or install alternative packages.
+
+TARGETS="core,audio,touch,x11"
+PACKAGES="touchegg"
+
+# upgrade [-d] release
+# -d: upgrade to a development release
+# release: expected release after the upgrade
+upgrade() {
+    extra=
+    if [ "$1" = "-d" ]; then
+        extra="$1"
+        shift
+    fi
+    host enter-chroot -n "$FIRST" -u 0 do-release-upgrade $extra \
+                        -f DistUpgradeViewNonInteractive
+    passes sh -e "$SCRIPTDIR/installer/ubuntu/getrelease.sh" \
+                        -r "$PREFIX/chroots/$FIRST" | passes grep -q "^$1$"
+    crouton -n "$FIRST" -u
+    versioninfo
+}
+
+# Dump version of critical packages
+versioninfo() {
+    host enter-chroot -n "$FIRST" -u 0 sh -ec '
+            sed -n -e "s/DISTRIB_CODENAME=/=== /p" /etc/lsb-release
+            dpkg-query -W '"$PACKAGES"'
+        ' | log
+}
+
+# Test upgrade paths starting with the selected release
+echo "$UPGRADEPATHS" | grep "^$release;" | while read -r line; do
+    FIRST="${line%%;*}"
+    line="${line#$FIRST;}"
+    NEXT="${line%%;*}"
+    line="${line#$NEXT;}"
+    DEV="${line%%;*}"
+    line="${line#$DEV;}"
+    PROMPT="${line%%;*}"
+
+    log "Trying upgrade path FIRST='$FIRST' to NEXT='$NEXT' (DEV='$DEV'). PROMPT='$PROMPT'"
+
+    crouton -T -r "$FIRST" -t "$TARGETS" <<EOF
+install update-manager-core python-apt
+sed -i -e 's/Prompt=lts/Prompt=$PROMPT/' /etc/update-manager/release-upgrades
+EOF
+    versioninfo
+
+    for next in $NEXT; do
+        upgrade "$next"
+    done
+
+    # Then upgrade to latest development version as well
+    if [ -n "$DEV" ]; then
+        upgrade -d "$DEV"
+    fi
+
+    host delete-chroot "$FIRST"
+done

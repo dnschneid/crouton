@@ -1,0 +1,15 @@
+#!/bin/sh -e
+# Copyright (c) 2016 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+if [ "${TARGETNOINSTALL:-c}" = 'c' ] &&
+        [ "$DISTRO" = 'debian' -o "$DISTRO" = 'kali' ] &&
+        [ "${ARCH#arm}" != "$ARCH" ]; then
+    error 99 "chromium target is not supported on Debian/ARM."
+fi
+REQUIRES='x11'
+DESCRIPTION="Chromium browser. Uses the distro's version, which may be old."
+. "${TARGETSDIR:="$PWD"}/common"
+
+### Append to prepare.sh:
+install ubuntu=chromium-browser,chromium

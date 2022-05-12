@@ -1,0 +1,193 @@
+#!/bin/sh -e
+# Copyright (c) 2016 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# xinitrc wrapper for crouton:
+#  1. Runs crouton-specific commands
+#  2. Runs the provided client (emulating xinit behaviour)
+#  3. Runs crouton-specific commands before the server is destroyed
+
+cmd=''
+extraargs=''
+binary=''
+ret=0
+
+# This part is a translation of what is found in xorg's xinit.c
+
+if [ -z "$1" ] || [ "${1#[/.]}" = "$1" ]; then
+    # No client parameter: find .xinitrc if possible, run xterm otherwise
+    required=''
+
+    if [ -n "$XINITRC" ]; then
+        cmd="$XINITRC"
+        required='y'
+    elif [ -n "$HOME" ]; then
+        cmd="$HOME/.xinitrc"
+    fi
+
+    if [ ! -e "$cmd" ]; then
+        if [ -n "$required" ]; then
+            echo "Warning, no client init file \"$cmd\"" 1>&2
+        fi
+
+        # If no client is given, use default command
+        cmd="xterm"
+        extraargs="-geometry +1+1 -n login"
+        # Make sure xterm is executed directly: let sh resolve the path
+        binary='y'
+    fi
+else
+    cmd="$1"
+    shift
+fi
+
+# Run crouton-specific commands:
+
+# Show chroot specifics for troubleshooting
+croutonversion 1>&2
+
+if [ -z "$XMETHOD" ]; then
+    if [ -f '/etc/crouton/xmethod' ]; then
+        read -r XMETHOD _ < /etc/crouton/xmethod
+        export XMETHOD
+    else
+        echo 'X11 backend not set.' 1>&2
+        exit 1
+    fi
+fi
+xmethodtype="${XMETHOD%%-*}"
+xmethodargs="${XMETHOD#*-}"
+
+# Record the name of the chroot in the root window properties
+if [ -f '/etc/crouton/name' ] && hash xprop 2>/dev/null; then
+    xprop -root -f CROUTON_NAME 8s -set CROUTON_NAME "`cat '/etc/crouton/name'`"
+fi
+
+# Record the crouton XMETHOD in the root window properties
+xprop -root -f CROUTON_XMETHOD 8s -set CROUTON_XMETHOD "$XMETHOD"
+
+# Launch the powerd poker daemon
+croutonpowerd --daemon &
+
+# Launch the clipboard synchronization daemon
+if hash croutonclip 2>/dev/null; then
+    croutonclip &
+fi
+
+# Launch system-wide trigger daemon
+croutontriggerd &
+
+
+# Apply the Chromebook keyboard map. Not needed for non-Freon xiwi.
+if [ "$xmethodtype" != 'xiwi' -o ! -f "/sys/class/tty/tty0/active" ]; then
+    # Apply the Chromebook keyboard map if installed.
+    if [ -f '/usr/share/X11/xkb/compat/chromebook' ]; then
+        setxkbmap -model chromebook
+    fi
+fi
+
+# Input-related stuff is not needed for kiwi
+if [ "$xmethodtype" != "xiwi" ]; then
+
+    # Launch X-server-local key binding daemon
+    xbindkeys -fg /etc/crouton/xbindkeysrc.scm
+
+    # Launch touchegg if it is requested.
+    toucheggconf='/etc/touchegg.conf'
+    if [ -f "$toucheggconf" ]; then
+        mkdir -p "$HOME/.config/touchegg"
+        ln -sf "$toucheggconf" "$HOME/.config/touchegg/"
+        touchegg 2>/dev/null &
+    fi
+
+    # Configure trackpad settings if needed
+    if synclient >/dev/null 2>&1; then
+        # Elan trackpads usually like these settings
+        if grep -q 'Elan Touchpad' /sys/class/input/event*/device/name; then
+            SYNCLIENT="FingerLow=1 FingerHigh=5 $SYNCLIENT"
+        fi
+        # Other special cases
+        case "`awk -F= '/_RELEASE_BOARD=/{print $2}' '/var/host/lsb-release'`" in
+            butterfly*|eve*|falco*)
+                SYNCLIENT="FingerLow=1 FingerHigh=5 $SYNCLIENT";;
+            parrot*|peppy*|wolf*)
+                SYNCLIENT="FingerLow=5 FingerHigh=10 $SYNCLIENT";;
+        esac
+        if [ -n "$SYNCLIENT" ]; then
+            synclient $SYNCLIENT
+        fi
+    fi
+fi
+
+# Crouton-in-a-tab: Start fbserver and launch display
+if [ "$xmethodtype" = 'xiwi' ]; then
+    # The extension sends evdev key codes: fix the keyboard mapping rules
+    setxkbmap -rules evdev
+    # Reapply xkb map: This fixes autorepeat mask in "xset q"
+    xkbcomp "$DISPLAY" - | xkbcomp - "$DISPLAY" 2>/dev/null
+
+    # Set resolution to a default 1024x768, this is important so that the DPI
+    # looks reasonable when the WM/DE start.
+    setres 1024 768 > /dev/null
+    croutonfbserver "$DISPLAY" &
+
+    try=1
+    while ! croutoncycle force "$DISPLAY"; do
+        echo "Cannot connect to extension, retrying..."
+        if [ "$try" -ge 10 ]; then
+            echo "\
+Unable to start display, make sure the crouton extension is installed
+and enabled, and up to date. (download from https://goo.gl/OVQOEt)" 1>&2
+            ret=1
+            break
+        fi
+        sleep 1
+        try="$((try+1))"
+    done
+    if [ "$ret" -eq 0 ]; then
+        echo "Connected to extension, launched crouton in a window." 1>&2
+    fi
+fi
+
+if [ "$xmethodtype" = "xorg" ]; then
+    # Since Chromium 56.0.2923.0, Chromium tries to switch off the display when
+    # switching VT (crbug.com/655770). For some unclear reason, running xrandr
+    # forces the display to be back on, and this is not needed ever again
+    # when switching VTs.
+    # The loop tries to work around a race that is more likely on xenial
+    try=1
+    while xrandr --auto 2>&1 | grep . 1>&2; do
+        echo "Kicking xrandr again" 1>&2
+        if [ "$try" -ge 10 ]; then
+            break
+        fi
+        sleep 1
+        try="$((try+1))"
+    done
+fi
+
+# Only run if no error occured before (e.g. cannot connect to extension)
+if [ "$ret" -eq 0 ]; then
+    # Shell is the leader of a process group, so signals sent to this process
+    # are propagated to its children. We ignore signals in this process, but the
+    # child handles them and exits. We use a no-op handler, as "" causes the
+    # signal to be ignored in children as well (see NOTES in "man 2 sigaction"
+    # for details). This process then runs exit commands, and terminates.
+    trap "true" HUP INT TERM
+
+    # Run the client itself if it is executable, otherwise run it in a shell.
+    if [ -n "$binary" -o -x "$cmd" ]; then
+        "$cmd" $extraargs "$@" || ret=$?
+    else
+        /bin/sh "$cmd" $extraargs "$@" || ret=$?
+    fi
+
+    trap - HUP INT TERM
+fi
+
+# Run crouton-specific commands before the server exits:
+
+echo "Running exit commands..." 1>&2
+
+exit "$ret"

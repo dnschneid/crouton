@@ -1,0 +1,74 @@
+#!/bin/sh -e
+# Copyright (c) 2016 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Ensure media sharing works with the host OS.
+
+# Release-independent.
+
+if [ -z "$release" ]; then
+    echo "default"
+    exit 0
+fi
+
+snapshot "$release" core
+
+# Creates a fake but representative media device with a picture of a cat on it.
+# Returns the path in the variable "newmediadevice"
+testfile='cat.jpg'
+addmediadevice() {
+    newmediadevice="`mktemp -d --tmpdir='/media/removable' testmount.XXXXXXXX`"
+    addtrap "umount -l '$newmediadevice' 2>/dev/null; rmdir '$newmediadevice'"
+    mount -t tmpfs catstash "$newmediadevice"
+    touch "$newmediadevice/$testfile"
+}
+
+# Add a media device that should persist throughout the whole test
+addmediadevice
+persist="$newmediadevice"
+
+# The device should exist inside the chroot at the same locaton
+host enter-chroot -n "$release" test -f "$persist/$testfile"
+
+# The device should still exist after the above unmounts
+test -f "$persist/$testfile"
+
+# Run the chroot in the background to maintain the link
+host enter-chroot -b -n "$release" sh -ec "
+    while [ -f '$persist/$testfile' ]; do
+        sleep 1
+    done"
+
+# Now that the chroot is mounted, creating another mount should appear.
+addmediadevice
+nonpersist="$newmediadevice"
+
+# The device should exist inside the chroot at the same locaton
+host enter-chroot -n "$release" test -f "$nonpersist/$testfile"
+
+# Unmounting the device should make it disappear from the chroot
+umount "$nonpersist"
+host enter-chroot -n "$release" test ! -f "$nonpersist/$testfile"
+
+# Adding the device and unmounting it inside the chroot should work as well.
+addmediadevice
+nonpersist="$newmediadevice"
+host enter-chroot -n "$release" -u root umount "$nonpersist"
+test ! -f "$nonpersist/$testfile"
+
+# Lastly, adding a device inside the chroot should appear outside of it.
+host enter-chroot -n "$release" -u root sh -ec "
+    mount -t tmpfs catstash '/var/host$nonpersist'
+    touch '$nonpersist/$testfile'"
+test -f "$nonpersist/$testfile"
+
+# Confirm the persistent one still exists, and finish it off
+test -f "$persist/$testfile"
+umount "$persist"
+
+# Wait for the chroot to exit
+sleep 1
+while ! host unmount-chroot "$release"; do
+    sleep 1
+done

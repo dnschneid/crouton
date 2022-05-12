@@ -1,0 +1,12 @@
+#!/bin/sh -e
+# Copyright (c) 2016 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Launches Unity; will fall back to Unity-2D on supported releases
+
+# Ensure global app menus work.
+export UBUNTU_MENUPROXY=1
+export GTK_MODULES="unity-gtk-module"
+
+exec crouton-noroot gnome-session-wrapper ubuntu

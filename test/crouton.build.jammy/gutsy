@@ -1,0 +1,327 @@
+case $ARCH in
+  amd64|i386)
+	case $SUITE in
+	  gutsy|hardy|intrepid|jaunty|karmic|lucid|maverick|natty|oneiric|precise|quantal|raring|saucy|utopic|vivid|wily|yakkety|zesty)
+	default_mirror http://old-releases.ubuntu.com/ubuntu
+	  ;;
+	  *)
+	default_mirror http://archive.ubuntu.com/ubuntu
+	;;
+	esac
+	;;
+  sparc)
+	case $SUITE in
+	  gutsy)
+	default_mirror http://old-releases.ubuntu.com/ubuntu
+	;;
+	  *)
+	default_mirror http://ports.ubuntu.com/ubuntu-ports
+	;;
+	esac
+	;;
+  *)
+	default_mirror http://ports.ubuntu.com/ubuntu-ports
+	;;
+esac
+mirror_style release
+download_style apt
+finddebs_style from-indices
+variants - buildd fakechroot minbase
+keyring /usr/share/keyrings/ubuntu-archive-keyring.gpg
+
+if doing_variant fakechroot; then
+	test "$FAKECHROOT" = "true" || error 1 FAKECHROOTREQ "This variant requires fakechroot environment to be started"
+fi
+
+case $ARCH in
+	alpha|ia64) LIBC="libc6.1" ;;
+	kfreebsd-*) LIBC="libc0.1" ;;
+	hurd-*)     LIBC="libc0.3" ;;
+	*)          LIBC="libc6" ;;
+esac
+
+case $SUITE in
+	gutsy|hardy|intrepid|jaunty|karmic|lucid|maverick|natty|oneiric|precise|quantal|raring|saucy|trusty|utopic|vivid|wily|xenial|jammy|yakkety|zesty|artful|bionic|cosmic|disco|eoan|focal|groovy|hirsute) ;;
+	*)
+		# impish+ will use zstd compression, check if supported
+		dpkg_zstd="$(dpkg-deb --help 2>/dev/null | grep ' zstd,' || :)"
+		if [ -z "$EXTRACTOR_OVERRIDE" ] && [ -z "$dpkg_zstd" ]; then
+			info CHOSENEXTRACTOR "%s uses zstd compression, setting --extractor=ar option" "$SUITE"
+			export EXTRACTOR_OVERRIDE=ar
+		fi
+	;;
+esac
+
+work_out_debs () {
+	required="$(get_debs Priority: required)"
+
+	if doing_variant - || doing_variant fakechroot; then
+		#required="$required $(get_debs Priority: important)"
+		#  ^^ should be getting debconf here somehow maybe
+		base="$(get_debs Priority: important)"
+	elif doing_variant buildd; then
+		base="apt build-essential"
+	elif doing_variant minbase; then
+		base="apt"
+	fi
+
+	if doing_variant fakechroot; then
+		# ldd.fake needs binutils
+		required="$required binutils"
+	fi
+
+	case $MIRRORS in
+	    https://*)
+		case "$CODENAME" in
+			gutsy|hardy|intrepid|jaunty|karmic|lucid|maverick|natty|oneiric|precise|quantal|raring|saucy|trusty|utopic|vivid|wily|xenial|yakkety|zesty)
+			base="$base apt-transport-https ca-certificates"
+			;;
+			*)
+			base="$base ca-certificates"
+			;;
+		esac
+		;;
+	esac
+
+	# do not install usrmerge in fresh bootstraps
+	# but do print it for germinate to accept it into minimal
+	if [ "$WHAT_TO_DO" = "finddebs printdebs kill_target" ]; then
+		case "$CODENAME" in
+			# "merged-usr" blacklist for past releases
+			gutsy|hardy|intrepid|jaunty|karmic|lucid|maverick|natty|oneiric|precise|quantal|raring|saucy|trusty|utopic|vivid|wily|xenial|jammy|yakkety|zesty|artful|bionic|cosmic|disco|eoan|focal|groovy)
+			;;
+			hirsute)
+				# keep hirsute buildd chroots split-usr to allow for escape hatch
+				if ! doing_variant buildd; then
+					if [ -z "$MERGED_USR" ] || [ "$MERGED_USR" = "yes" ]; then
+						base="$base usrmerge"
+					fi
+				fi
+				;;
+			*)
+				# all future series post hirsute use merged-usr in buildd chroots too
+				if [ -z "$MERGED_USR" ] || [ "$MERGED_USR" = "yes" ]; then
+					base="$base usrmerge"
+				fi
+				;;
+		esac
+	fi
+}
+
+first_stage_install () {
+	case "$CODENAME" in
+		# "merged-usr" blacklist for past releases
+		gutsy|hardy|intrepid|jaunty|karmic|lucid|maverick|natty|oneiric|precise|quantal|raring|saucy|trusty|utopic|vivid|wily|xenial|jammy|yakkety|zesty|artful|bionic|cosmic)
+			[ -z "$MERGED_USR" ] && MERGED_USR="no"
+			;;
+		disco|eoan|focal|groovy)
+			# see https://bugs.debian.org/838388
+			EXTRACT_DEB_TAR_OPTIONS="$EXTRACT_DEB_TAR_OPTIONS -k"
+			;;
+		hirsute)
+			# keep hirsute buildd chroots split-usr to allow for escape hatch
+			if [ -z "$MERGED_USR" ]; then
+				if doing_variant buildd; then
+					MERGED_USR="no"
+				else
+					MERGED_USR="yes"
+				fi
+			fi
+			# see https://bugs.debian.org/838388
+			EXTRACT_DEB_TAR_OPTIONS="$EXTRACT_DEB_TAR_OPTIONS -k"
+			;;
+		*)
+			# all future series post hirsute use merged-usr in buildd chroots too
+			[ -z "$MERGED_USR" ] && MERGED_USR="yes"
+			# see https://bugs.debian.org/838388
+			EXTRACT_DEB_TAR_OPTIONS="$EXTRACT_DEB_TAR_OPTIONS -k"
+			;;
+	esac
+
+	setup_merged_usr
+	extract $required
+
+	mkdir -p "$TARGET/var/lib/dpkg"
+	: >"$TARGET/var/lib/dpkg/status"
+	: >"$TARGET/var/lib/dpkg/available"
+
+	setup_etc
+	if [ ! -e "$TARGET/etc/fstab" ]; then
+		echo '# UNCONFIGURED FSTAB FOR BASE SYSTEM' > "$TARGET/etc/fstab"
+		chown 0:0 "$TARGET/etc/fstab"; chmod 644 "$TARGET/etc/fstab"
+	fi
+
+	setup_devices
+
+        if doing_variant fakechroot || [ "$CONTAINER" = "docker" ]; then
+		setup_proc_symlink
+	fi
+}
+
+second_stage_install () {
+	in_target /bin/true
+
+	setup_dynamic_devices
+
+	x_feign_install () {
+		local pkg="$1"
+		local deb="$(debfor $pkg)"
+		local ver="$(in_target dpkg-deb -f "$deb" Version)"
+
+		mkdir -p "$TARGET/var/lib/dpkg/info"
+
+		echo \
+"Package: $pkg
+Version: $ver
+Maintainer: unknown
+Status: install ok installed" >> "$TARGET/var/lib/dpkg/status"
+
+		touch "$TARGET/var/lib/dpkg/info/${pkg}.list"
+	}
+
+	x_feign_install dpkg
+
+	x_core_install () {
+		smallyes '' | in_target dpkg --force-depends --install $(debfor "$@")
+	}
+
+	p () {
+		baseprog="$(($baseprog + ${1:-1}))"
+	}
+
+	if ! doing_variant fakechroot; then
+		setup_proc
+		in_target /sbin/ldconfig
+	fi
+
+	DEBIAN_FRONTEND=noninteractive
+	DEBCONF_NONINTERACTIVE_SEEN=true
+	export DEBIAN_FRONTEND DEBCONF_NONINTERACTIVE_SEEN
+
+	baseprog=0
+	bases=7
+
+	p; progress $baseprog $bases INSTCORE "Installing core packages" #1
+	info INSTCORE "Installing core packages..."
+
+	p; progress $baseprog $bases INSTCORE "Installing core packages" #2
+	ln -sf mawk "$TARGET/usr/bin/awk"
+	x_core_install base-passwd
+	x_core_install base-files
+	p; progress $baseprog $bases INSTCORE "Installing core packages" #3
+	x_core_install dpkg
+
+	if [ ! -e "$TARGET/etc/localtime" ]; then
+		ln -sf /usr/share/zoneinfo/UTC "$TARGET/etc/localtime"
+	fi
+
+	if doing_variant fakechroot; then
+		install_fakechroot_tools
+	fi
+
+	p; progress $baseprog $bases INSTCORE "Installing core packages" #4
+	x_core_install $LIBC
+
+	p; progress $baseprog $bases INSTCORE "Installing core packages" #5
+	x_core_install perl-base
+
+	p; progress $baseprog $bases INSTCORE "Installing core packages" #6
+	rm "$TARGET/usr/bin/awk"
+	x_core_install mawk
+
+	p; progress $baseprog $bases INSTCORE "Installing core packages" #7
+	if doing_variant -; then
+		x_core_install debconf
+	fi
+
+	baseprog=0
+	bases=$(set -- $required; echo $#)
+
+	info UNPACKREQ "Unpacking required packages..."
+
+	exec 7>&1
+
+	smallyes '' |
+		(repeatn 5 in_target_failmsg UNPACK_REQ_FAIL_FIVE "Failure while unpacking required packages.  This will be attempted up to five times." "" \
+		dpkg --status-fd 8 --force-depends --unpack $(debfor $required) 8>&1 1>&7 || echo EXITCODE $?) |
+		dpkg_progress $baseprog $bases UNPACKREQ "Unpacking required packages" UNPACKING
+
+	info CONFREQ "Configuring required packages..."
+
+	if doing_variant fakechroot && [ -e "$TARGET/var/lib/dpkg/info/initscripts.postinst" ]
+	then
+		# fix initscripts postinst (no mounting possible, and wrong if condition)
+		sed -i '/dpkg.*--compare-versions/ s/\<lt\>/lt-nl/' "$TARGET/var/lib/dpkg/info/initscripts.postinst"
+	fi
+
+	echo \
+"#!/bin/sh
+exit 101" > "$TARGET/usr/sbin/policy-rc.d"
+	chmod 755 "$TARGET/usr/sbin/policy-rc.d"
+
+	mv "$TARGET/sbin/start-stop-daemon" "$TARGET/sbin/start-stop-daemon.REAL"
+	echo \
+"#!/bin/sh
+echo
+echo \"Warning: Fake start-stop-daemon called, doing nothing\"" > "$TARGET/sbin/start-stop-daemon"
+	chmod 755 "$TARGET/sbin/start-stop-daemon"
+
+	if [ -x "$TARGET/sbin/initctl" ]; then
+	  mv "$TARGET/sbin/initctl" "$TARGET/sbin/initctl.REAL"
+	  echo \
+"#!/bin/sh
+if [ \"\$1\" = version ]; then exec /sbin/initctl.REAL \"\$@\"; fi
+echo
+echo \"Warning: Fake initctl called, doing nothing\"" > "$TARGET/sbin/initctl"
+	  chmod 755 "$TARGET/sbin/initctl"
+	fi
+
+	setup_dselect_method apt
+
+	smallyes '' |
+		(in_target_failmsg CONF_REQ_FAIL "Failure while configuring required packages." "" \
+		dpkg --status-fd 8 --configure --pending --force-configure-any --force-depends 8>&1 1>&7 || echo EXITCODE $?) |
+		dpkg_progress $baseprog $bases CONFREQ "Configuring required packages" CONFIGURING
+
+	baseprog=0
+	bases="$(set -- $base; echo $#)"
+
+	info UNPACKBASE "Unpacking the base system..."
+
+	setup_available $required $base
+	done_predeps=
+	while predep=$(get_next_predep); do
+		# We have to resolve dependencies of pre-dependencies manually because
+		# dpkg --predep-package doesn't handle this.
+		predep=$(without "$(without "$(resolve_deps $predep)" "$required")" "$done_predeps")
+		# XXX: progress is tricky due to how dpkg_progress works
+		# -- cjwatson 2009-07-29
+		p; smallyes '' |
+		in_target dpkg --force-overwrite --force-confold --skip-same-version --install $(debfor $predep)
+		base=$(without "$base" "$predep")
+		done_predeps="$done_predeps $predep"
+	done
+
+	if [ -n "$base" ]; then
+		smallyes '' |
+			(repeatn 5 in_target_failmsg INST_BASE_FAIL_FIVE "Failure while installing base packages.  This will be re-attempted up to five times." "" \
+			dpkg --status-fd 8 --force-overwrite --force-confold --skip-same-version --unpack $(debfor $base) 8>&1 1>&7 || echo EXITCODE $?) |
+			dpkg_progress $baseprog $bases UNPACKBASE "Unpacking base system" UNPACKING
+
+		info CONFBASE "Configuring the base system..."
+
+		smallyes '' |
+			(repeatn 5 in_target_failmsg CONF_BASE_FAIL_FIVE "Failure while configuring base packages.  This will be re-attempted up to five times." "" \
+			dpkg --status-fd 8 --force-confold --skip-same-version --configure -a 8>&1 1>&7 || echo EXITCODE $?) |
+			dpkg_progress $baseprog $bases CONFBASE "Configuring base system" CONFIGURING
+	fi
+
+	if [ -x "$TARGET/sbin/initctl.REAL" ]; then
+		mv "$TARGET/sbin/initctl.REAL" "$TARGET/sbin/initctl"
+	fi
+	mv "$TARGET/sbin/start-stop-daemon.REAL" "$TARGET/sbin/start-stop-daemon"
+	rm -f "$TARGET/usr/sbin/policy-rc.d"
+
+	progress $bases $bases CONFBASE "Configuring base system"
+	info BASESUCCESS "Base system installed successfully."
+}

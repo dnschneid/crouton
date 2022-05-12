@@ -1,0 +1,60 @@
+#!/bin/sh -e
+# Copyright (c) 2016 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# All supported releases should be able to create an audio chroot and play sound
+if [ -z "$release" ]; then
+    echo "all"
+    exit 0
+fi
+
+snapshot "$release" audio
+
+# We pass -fdat to aplay/arecord, which means 48kHz, 16-bit, stereo.
+# dd writes/reads 8 blocks of 48000 bytes: 2 seconds worth of sound.
+exitswithin 0 30 host enter-chroot -n "$release" sh -exc '
+    cras_test_client --dump_server_info
+    dd if=/dev/zero bs=48000 count=8 | aplay -fdat -v
+    arecord -fdat -v | dd of=/dev/null bs=48000 count=8 iflag=fullblock
+'
+
+# On x86_64 systems, test x86 client
+if [ "`uname -m`" = "x86_64" ]; then
+    echo '
+        mkdir -p /home/tmp
+        if [ "${DISTROAKA:-"$DISTRO"}" = "debian" ]; then
+            (
+                cd /home/tmp
+                apt-get download alsa-utils:i386
+                dpkg -x alsa-utils_*_i386.deb .
+                mv usr/bin/* .
+            )
+        else
+            # Other distributions must be implemented or explicitly ignored
+            error 1 "Cannot fetch alsa-utils:i386 for $DISTRO"
+        fi
+    ' | crouton -T -U -n "$release"
+
+    exitswithin 0 30 host enter-chroot -n "$release" sh -exc '
+        /usr/local/i386-linux-gnu/bin/cras_test_client --dump_server_info
+        dd if=/dev/zero bs=48000 count=8 | \
+                /home/tmp/aplay -fdat -v
+        /home/tmp/arecord -fdat -v | \
+                dd of=/dev/null bs=48000 count=8 iflag=fullblock
+    '
+fi
+
+echo 'install pulseaudio pulseaudio-utils' | \
+    crouton -T -U -n "$release"
+exitswithin 0 30 host enter-chroot -n "$release" sh -exc '
+    pulseaudio --start
+    dd if=/dev/zero bs=48000 count=8 | pacat -v
+    dd if=/dev/zero bs=48000 count=8 | aplay -f dat -Dpulse -v
+    arecord -fdat -Dpulse -v | \
+        dd if=/dev/null bs=48000 count=8 iflag=fullblock
+    cras_test_client --dump_server_info
+    pulseaudio --kill
+'
+
+host delete-chroot -y "$release"

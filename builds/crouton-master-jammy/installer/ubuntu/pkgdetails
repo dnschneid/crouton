@@ -1,0 +1,299 @@
+#!/bin/sh -e
+# Copyright (c) 2016 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# An adaption of pkgdetails.c from debootstrap into shell/mawk.
+
+APPLICATION="${0##*/}"
+USAGE="\
+usage: $APPLICATION PKGS mirror packagesfile pkgs..
+   or: $APPLICATION FIELD field mirror packagesfile pkgs..
+   or: $APPLICATION GETDEPS packagesfile pkgs..
+   or: $APPLICATION STANZAS packagesfile pkgs..
+   or: $APPLICATION WGET% low high end reason"
+
+
+# Parses a packages file to extract the dependencies for a set of packages.
+# $1: pkgsfile
+# $2+: packages
+# Outputs a list of dependencies to stdout.
+dogetdeps() {
+    mawk -F': ' -f- "$@" <<EOF
+        BEGIN {
+            for (n = 2; n < ARGC; n++) {
+                pkgs[ARGV[n]] = 1
+                ARGV[n] = ""
+            }
+            npkgs = ARGC-2
+        }
+
+        /^Package:/ {
+            if (output && \$2 != pkg) {
+                print output
+                if (pkg) {
+                    delete pkgs[pkg]
+                    npkgs--
+                }
+                if (!npkgs) {
+                    nextfile
+                }
+            }
+            output = ""
+            pkg = \$2
+            if (!(pkg in pkgs)) {
+                pkg = ""
+            }
+        }
+
+        pkg && /^(Pre-)?Depends:/ {
+            # Parses the dependency list, spitting out the packages that are
+            # required, one per line. If multiple packages fulfil a dependency
+            # (as in, | is used), spit out the first one in the list.
+            split(\$2, deps, ",")
+            for (dep in deps) {
+                d = deps[dep]
+                match(d, "[^ ][^ ]*")
+                if (output) {
+                    output = output "\n"
+                }
+                output = output substr(d, RSTART, RLENGTH)
+            }
+        }
+
+        END {
+            if (output) {
+                print output
+            }
+        }
+EOF
+    return 0
+}
+
+
+# Searches a package list for a set of packages that have a field that matches
+# the specified data.
+# $1: unique; set to y to exit once all items have been found once.
+# $2: fieldname
+# $3: mirror
+# $4: pkgsfile
+# $5+: packages
+# Outputs matching package data on stdout.
+dopkgmirrorpkgs() {
+    local unique="$1" targetfield="$2" mirror="$3"
+    local checksumfield="${DEBOOTSTRAP_CHECKSUM_FIELD:-"MD5sum"}"
+    shift 3
+
+    mawk -F': ' -f- "$@" <<EOF
+        BEGIN {
+            # Grab all the packages from the parameters, and zero them so that
+            # awk doesn't try to read them as files.
+            for (n = 2; n < ARGC; n++) {
+                pkgs[ARGV[n]] = 1
+                ARGV[n] = ""
+            }
+            npkgs = ARGC-2
+            skip = 2
+        }
+
+        # Empty lines mark the start of new packages
+        /^$/ {
+            if (skip == 0) {
+                output = pkg " " ver " " arch " $mirror " filename " " checksum " " size
+            }
+            skip = 2
+            next
+        }
+
+        # Do a case-insensitive search on the field name
+        /^${targetfield%":"}:/ {
+            if ("$unique" == "y" && \$2 != field) {
+                if (field) {
+                    delete pkgs[field]
+                    npkgs--
+                }
+                if (!npkgs) {
+                    nextfile
+                }
+            }
+            field = \$2
+            # See if it's in our list. If it's not, mark the item as skip so
+            # that we don't have to parse remaining fields.
+            skip = (field in pkgs) ? 0 : 1
+            if (skip) {
+                field = ""
+            }
+        }
+
+        # If we already know we don't care about this one, skip it.
+        (skip == 1) {
+            next
+        }
+
+        # Case-insensitive search on the checksum field name
+        /^${checksumfield%":"}:/ {
+            checksum = \$2
+            next
+        }
+
+        # Handle other fields
+        /^Package:/ {
+            if (output && \$2 != pkg) {
+                print output
+                output = ""
+            }
+            pkg = \$2
+            next
+        }
+        /^Version:/ {
+            ver = \$2
+            next
+        }
+        /^Architecture:/ {
+            arch = \$2
+            next
+        }
+        /^Size:/ {
+            size = \$2
+            next
+        }
+        /^Filename:/ {
+            filename = \$2
+            next
+        }
+
+        END {
+            if (output) {
+                print output
+            }
+
+            # In unique mode, any that weren't found are returned as "pkg -"
+            if ("$unique" == "y" ) {
+                for (pkg in pkgs) {
+                    print pkg, "-"
+                }
+            }
+        }
+EOF
+    return 0
+}
+
+
+# Spits out the complete package info for the specified packages.
+# $1: pkgsfile
+# $2+: packages
+dopkgstanzas() {
+    mawk -F': ' -f- "$@" <<EOF
+        BEGIN {
+            for (n = 2; n < ARGC; n++) {
+                pkgs[ARGV[n]] = 1
+                ARGV[n] = ""
+            }
+            npkgs = ARGC-2
+            accum = ""
+            skip = 0
+        }
+
+        /^$/ {
+            if (!skip && accum) {
+                output = accum
+            }
+            accum = ""
+            skip = 0
+            next
+        }
+
+        /^Package:/ {
+            if (output && \$2 != pkg) {
+                print output
+                output = ""
+                if (pkg) {
+                    delete pkgs[pkg]
+                    npkgs--
+                }
+                if (!npkgs) {
+                    nextfile
+                }
+            }
+            pkg = \$2
+            skip = (pkg in pkgs) ? 0 : 1
+        }
+
+        (!skip) {
+            accum = accum \$0 "\n"
+        }
+
+        END {
+            if (output) {
+                print output
+            }
+        }
+EOF
+}
+
+
+# Print out anything that looks like a % on its own line, appropriately scaled
+# $1: low percent
+# $2: high percent
+# $3: end
+# $4: reason
+dotranslatewgetpercent() {
+    local input char lastval=0 val=0 low="$1" high="$2" ret=0
+    local suffix="$3${4:+" "}$4"
+    # Use the tr method if we have stdbuf, as it is way faster.
+    if hash stdbuf 2>/dev/null; then
+        stdbuf -oL tr -sc '[:digit:]%' '
+' | {
+            while read -r input; do
+                val="${input%"%"}"
+                if [ "$input" = "$val" ]; then
+                    continue
+                fi
+                lastval="$val"
+                echo "P: $((val*(high-low)/100+low)) $suffix"
+            done
+            [ "$lastval" -eq 100 ]
+        } || ret=1
+    else
+        # Otherwise we have to use the head method, which is CPU intensive.
+        # Input may not have newlines, so process each character at a time.
+        # Grabbing one byte at a time is terribly slow, so we grab batches.
+        while input="`head -c8`"; do
+            while [ -n "$input" ]; do
+                char="${input%"${input#?}"}"
+                input="${input#"$char"}"
+                case "$char" in
+                    [0-9]) val=$((val*10+char));;
+                    %) lastval="$val"
+                       echo "P: $((val*(high-low)/100+low)) $suffix";;
+                    *) val=0;;
+                esac
+            done
+        done
+        [ "$lastval" -eq 100 ] || ret=1
+    fi
+    return "$ret"
+}
+
+
+# Process command
+extraparam=''
+case "$1" in
+    WGET%)   minparams=3; cmd=dotranslatewgetpercent;;
+    GETDEPS) minparams=2; cmd=dogetdeps;;
+    PKGS)    minparams=3; cmd=dopkgmirrorpkgs; extraparam='y Package:';;
+    FIELD)   minparams=4; cmd=dopkgmirrorpkgs; extraparam='n';;
+    STANZAS) minparams=2; cmd=dopkgstanzas;;
+    *)       minparams=0; cmd='';;
+esac
+
+# Use -le to check number of parameters, since one parameter is the command.
+if [ -z "$cmd" -o "$#" -le "$minparams" ]; then
+    echo "$USAGE" 1>&2
+    exit 1
+fi
+
+# Dispatch
+shift
+"$cmd" $extraparam "$@"
+exit $?

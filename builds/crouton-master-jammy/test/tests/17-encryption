@@ -1,0 +1,160 @@
+#!/bin/sh -e
+# Copyright (c) 2016 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Ensure all aspects of encryption work properly.
+
+if [ -z "$release" ]; then
+    echo "default"
+    exit 0
+fi
+
+# Create encrypted chroot
+crouton -f "`bootstrap "$release"`" -e -t core
+
+# Ensure all files are encrypted
+for file in "$PREFIX/chroots/$release"/*; do
+    test "${file#*/ECRYPTFS}" != "$file"
+done
+
+# Check chroot is encrypted and locked
+host edit-chroot -l "$release" | passes grep "^encrypted: yes, locked"
+
+# Unlocked after mounted
+host mount-chroot "$release"
+host edit-chroot -l "$release" | passes grep "^encrypted: yes, unlocked"
+
+# Locked again if unmounted
+host unmount-chroot "$release"
+host edit-chroot -l "$release" | passes grep "^encrypted: yes, locked"
+
+# Enter encrypted chroot
+host enter-chroot -n "$release" true
+
+# Incorrect password on encrypted chroot
+correct="$CROUTON_PASSPHRASE"
+export CROUTON_PASSPHRASE=wrongfuelcelldonkeyclip
+fails host enter-chroot -n "$release" true
+
+# Change encrypted chroot passphrase
+export CROUTON_PASSPHRASE="$correct"
+export CROUTON_NEW_PASSPHRASE='correcthorsebatterystable'
+host edit-chroot -e "$release"
+export CROUTON_PASSPHRASE="$CROUTON_NEW_PASSPHRASE"
+host enter-chroot -n "$release" true
+
+# Move key to separate file
+host edit-chroot -k "$PREFIX/$release.key" "$release"
+test -f "$PREFIX/$release.key"
+host enter-chroot -n "$release" true
+
+# Move key to a relative location
+oldpwd="$PWD"
+cd "$PREFIX"
+host edit-chroot -k "$release.relative.path" "$release"
+test -f "$release.relative.path"
+cd /
+host enter-chroot -n "$release" true
+cd "$oldpwd"
+
+# Move key to a folder
+mkdir "$PREFIX/keys"
+host edit-chroot -k "$PREFIX/keys" "$release"
+test -f "$PREFIX/keys/$release"
+host enter-chroot -n "$release" true
+
+# Move key back to inside chroot
+host edit-chroot -k - "$release"
+test ! -f "$PREFIX/keys/$release"
+host enter-chroot -n "$release" true
+
+# Move key over another file (fail)
+touch "$PREFIX/keys/exists"
+fails host edit-chroot -k "$PREFIX/keys/exists" "$release"
+
+# Move key to a folder with a file already there (fail)
+touch "$PREFIX/keys/$release"
+fails host edit-chroot -k "$PREFIX/keys" "$release"
+
+# Ensure you can update an encrypted chroot
+crouton -u -n "$release"
+
+# Create encrypted chroot with external key where a file exists (fail)
+fails crouton -f "`bootstrap "$release"`" -e -t core -n "$release-2" \
+              -k "$PREFIX/keys/exists"
+
+# Create encrypted chroot with external key where folder with file exists (fail)
+touch "$PREFIX/keys/$release-2"
+fails crouton -f "`bootstrap "$release"`" -e -t core -n "$release-2" \
+              -k "$PREFIX/keys"
+
+# Create encrypted chroot with external key
+rm "$PREFIX/keys/"*
+crouton -f "`bootstrap "$release"`" -e -t core -n "$release-2" \
+        -k "$PREFIX/keys/exists"
+host enter-chroot -n "$release-2" true
+
+# Move multiple keys into new folder
+host edit-chroot -k "$PREFIX/keys" "$release" "$release-2"
+host enter-chroot -n "$release" true
+host enter-chroot -n "$release-2" true
+
+# Physically move key and be unable to enter chroot
+mv "$PREFIX/keys/$release" "$PREFIX/keys/exists"
+fails host enter-chroot -n "$release" true
+
+# Specify new key location and be able to enter again
+host enter-chroot -n "$release" -k "$PREFIX/keys/exists" true
+mv "$PREFIX/keys/exists" "$PREFIX/keys/$release"
+
+# Move multiple keys back to chroot
+host edit-chroot -k - "$release" "$release-2"
+test ! -f "$PREFIX/keys/$release" -a ! -f "$PREFIX/keys/$release-2"
+
+# Remove the encrypted chroots
+host delete-chroot -y "$release" "$release-2"
+
+# Create unencrypted chroot
+snapshot "$release" core
+
+# Encrypt the chroot
+host edit-chroot -e "$release"
+host enter-chroot -n "$release" true
+
+# Ensure all files are encrypted
+for file in "$PREFIX/chroots/$release"/*; do
+    test "${file#*/ECRYPTFS}" != "$file"
+done
+
+# Add some unencrypted files, test "yes"/"no"/"del"/"list" responses
+chroot="$PREFIX/chroots/$release"
+mkdir -p "$chroot/a/b"
+touch "$chroot/a/x" "$chroot/a/b/y"
+
+# No => they still exist
+export CROUTON_MOUNT_RESPONSE='no'
+host enter-chroot -n "$release" true
+test -f "$chroot/a/x" -a -f "$chroot/a/b/y"
+
+# List => we get a list; command fails with exit code 2; files still exist
+export CROUTON_MOUNT_RESPONSE='list'
+exitswithin 2 30 host enter-chroot -n "$release" true 2>&1 \
+    | tee /dev/stderr | passes grep '^/a$'
+test -f "$chroot/a/x" -a -f "$chroot/a/b/y"
+
+# Delete => they no longer exist inside or outside the chroot
+export CROUTON_MOUNT_RESPONSE='delete'
+host enter-chroot -n "$release" test ! -d '/a'   -a ! -d '/a/b' \
+                                  -a ! -f '/a/x' -a ! -f '/a/b/y'
+test ! -d "$chroot/a"   -a ! -d "$chroot/a/b" \
+  -a ! -f "$chroot/a/x" -a ! -f "$chroot/a/b/y"
+
+# Yes => they exist inside the chroot but not out
+export CROUTON_MOUNT_RESPONSE='yes'
+mkdir -p "$chroot/a/b"
+touch "$chroot/a/x" "$chroot/a/b/y"
+host enter-chroot -n "$release" test -d '/a'   -a -d '/a/b' \
+                                  -a -f '/a/x' -a -f '/a/b/y'
+test ! -d "$chroot/a"   -a ! -d "$chroot/a/b" \
+  -a ! -f "$chroot/a/x" -a ! -f "$chroot/a/b/y"

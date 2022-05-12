@@ -1,0 +1,224 @@
+#!/bin/sh -e
+# Copyright (c) 2016 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Ensure all parameters of edit-chroot work properly (except encryption,
+# tested in 17-encryption).
+
+if [ -z "$release" ]; then
+    echo "default"
+    exit 0
+fi
+
+BACKUPDIR="$PREFIX/my backups"
+mkdir -p "$BACKUPDIR"
+
+# Release-independent.
+snapshot "$release" core
+
+host enter-chroot -n "$release" true
+
+# Tests with single parameter
+
+# List all chroots
+host edit-chroot -a | tee /dev/stderr | passes grep "$release"
+
+# Check that the list all chroots option fails with anything else entered on the command line
+fails host edit-chroot -a $release
+
+# List all chroots with details
+host edit-chroot -al | tee /dev/stderr | passes grep "^release: $release"
+
+# List one chroot with details
+host edit-chroot -l $release | tee /dev/stderr | passes grep "^release: $release"
+
+# Cannot list a non-existing chroot's 'croutonversion'
+fails host edit-chroot -l x$release
+
+# Check that the list all chroots with details option fails with anything else entered on the command line
+fails host edit-chroot -al $release
+
+# Add cli-extra target, so we can check that startcli gets restored
+crouton -u -n "$release" -t cli-extra
+test -f "$PREFIX/bin/startcli"
+
+# Check that we can restore host-bin files.
+md5sum "$PREFIX/bin"/* > "$BACKUPDIR/csum"
+rm "$PREFIX/bin"/*
+fails md5sum -c "$BACKUPDIR/csum"
+fails host enter-chroot -n "$release" true
+# Create a dummy directory to check that crouton -b ignores invalid chroots
+mkdir "$PREFIX/chroots/dummy"
+# Restore binaries
+crouton -b
+md5sum -c "$BACKUPDIR/csum"
+test -f "$PREFIX/bin/startcli"
+rm "$BACKUPDIR/csum"
+host enter-chroot -n "$release" true
+# Verify croutonversion outputs correct information
+host edit-chroot -l $release | tee /dev/stderr | passes grep "^release: $release"
+
+# Cannot backup a non-existing chroot
+fails host edit-chroot -y -f "$BACKUPDIR" -b "$release.x"
+fails ls "$BACKUPDIR"/*
+
+# BACKUPDIR contains a space: these must fail as well
+fails host edit-chroot -y -b -f $BACKUPDIR "$release"
+fails host edit-chroot -y -f $BACKUPDIR -b "$release"
+fails ls "$BACKUPDIR"/*
+
+# Backup a chroot
+fails ls "$BACKUPDIR"/*
+host edit-chroot -y -f "$BACKUPDIR/$release.tar" -b "$release"
+
+# Move an existing chroot
+host edit-chroot -y "$release" -m "$release.2"
+host enter-chroot -n "$release.2" true
+fails host enter-chroot -n "$release" true
+
+# Cannot copy a chroot that does not exist
+fails host edit-chroot -y "$release" -C "$release.3"
+
+# Cannot copy and move a chroot
+fails host edit-chroot -y "$release" -C "$release.3" -m "$release.4"
+
+# Copy a chroot
+host edit-chroot -y "$release.2" -C "$release.3"
+host enter-chroot -n "$release.2" true
+host enter-chroot -n "$release.3" true
+
+# Delete the copy
+host delete-chroot -y "$release.3"
+fails host enter-chroot -n "$release.3" true
+
+# Restore the chroot
+host edit-chroot -y -f "$BACKUPDIR/$release.tar" -r "$release"
+host enter-chroot -n "$release" true
+# Verify croutonversion outputs correct information
+host edit-chroot -l $release | tee /dev/stderr | passes grep "^release: $release"
+rm "$BACKUPDIR/$release.tar"
+
+# Back up with a compressed split
+host edit-chroot -y -s 50 -f "$BACKUPDIR/$release.tar.gz" -b "$release"
+test "`ls "$BACKUPDIR/$release.tar.gz"* | wc -l`" -ge 2
+du -b "$BACKUPDIR/$release.tar.gz"* | passes awk '$1>50*1024*1024{exit 1}'
+# Ensure it's compressed
+test "`hexdump -v -n2 -e'"%02x"' "$BACKUPDIR/$release.tar.gz"`" = "8b1f"
+
+# Restore the split archive. Fails first due to existence
+fails host edit-chroot -y -f "$BACKUPDIR/$release.tar.gz" -r "$release"
+host edit-chroot -y -f "$BACKUPDIR/$release.tar.gz" -rr "$release"
+host enter-chroot -n "$release" true
+
+# Delete it
+host delete-chroot -y "$release"
+fails host enter-chroot -n "$release" true
+
+# Restore the chroot using the crouton installer (without update)
+crouton -f "$BACKUPDIR/$release.tar.gz" -n "$release"
+host enter-chroot -n "$release" true
+host edit-chroot -l $release | tee /dev/stderr | passes grep "^release: $release"
+rm "$BACKUPDIR/$release.tar.gz"*
+
+# Backup a chroot with automatic naming
+host edit-chroot -y -f "$BACKUPDIR" -b "$release"
+
+# Delete it
+host delete-chroot -y "$release"
+fails host enter-chroot -n "$release" true
+
+# Restore the chroot with automatically named tarball
+host edit-chroot -y -f "$BACKUPDIR" -r "$release"
+host enter-chroot -n "$release" true
+rm "$BACKUPDIR"/*.tar.*
+
+# Backing up a chroot fails if there if not enough disk space
+# Create a 5MB filesystem
+dd if=/dev/zero of="$PREFIX/img" bs=1M count=0 seek=5
+mkfs.ext2 -F "$PREFIX/img"
+mkdir -p "$PREFIX/img.mnt"
+mount -o loop "$PREFIX/img" "$PREFIX/img.mnt"
+# Make sure backup does not complete
+fails host edit-chroot -y -f "$PREFIX/img.mnt" -b "$release"
+fails ls "$PREFIX/img.mnt"/*.tar.*
+umount "$PREFIX/img.mnt"
+rm -f "$PREFIX/img"
+
+# Tests with multiple parameters (we have $release and $release.2 at this stage)
+
+# No archive gets created if one of the chroots does not exist
+fails host edit-chroot -y -f "$BACKUPDIR" -b \
+    "$release" "$release.2" "$release.3"
+fails ls "$BACKUPDIR"/*
+
+# Backup both chroots
+host edit-chroot "$release" -y -f "$BACKUPDIR" -b "$release.2"
+
+# Copy them to a new prefix: destination needs to end with a slash
+fails host edit-chroot -y -C "$PREFIX/chroots.2" "$release" "$release.2"
+
+host edit-chroot -y -C "$PREFIX/chroots.2/" "$release" "$release.2"
+host enter-chroot -c "$PREFIX/chroots.2" -n "$release" true
+host enter-chroot -c "$PREFIX/chroots.2" -n "$release.2" true
+host enter-chroot -n "$release" true
+host enter-chroot -n "$release.2" true
+
+# Move them to a new prefix: destination needs to end with a slash
+fails host edit-chroot -y -m "$PREFIX/chroots.3" "$release" "$release.2"
+host enter-chroot -n "$release" true
+host enter-chroot -n "$release.2" true
+
+host edit-chroot -y -m "$PREFIX/chroots.3/" "$release" "$release.2"
+host enter-chroot -c "$PREFIX/chroots.3" -n "$release" true
+host enter-chroot -c "$PREFIX/chroots.3" -n "$release.2" true
+fails host enter-chroot -n "$release" true
+fails host enter-chroot -n "$release.2" true
+
+# Delete all four chroots
+host delete-chroot "$release" "$release.2" -y -c "$PREFIX/chroots.2"
+host delete-chroot "$release" "$release.2" -y -c "$PREFIX/chroots.3"
+fails host enter-chroot -c "$PREFIX/chroots.2" -n "$release" true
+fails host enter-chroot -c "$PREFIX/chroots.2" -n "$release.2" true
+fails host enter-chroot -c "$PREFIX/chroots.3" -n "$release" true
+fails host enter-chroot -c "$PREFIX/chroots.3" -n "$release.2" true
+
+OLDCWD="`pwd`"
+
+# Restore both chroots from automatically named tarballs in current directory
+cd "$BACKUPDIR"
+host edit-chroot -y -r "$release" "$release.2"
+host enter-chroot -n "$release" true
+host enter-chroot -n "$release.2" true
+cd "$OLDCWD"
+rm "$BACKUPDIR"/*.tar.*
+
+# chroot name can start with -
+host edit-chroot -y -m "-$release" "$release.2"
+host enter-chroot -n "-$release" true
+
+# Check that invalid chroot name is detected in parameters
+fails host edit-chroot -b -y "test/$release"
+fails host edit-chroot -b -y ".." "$release.2"
+fails host edit-chroot -b -y "$release.2" "."
+fails host edit-chroot -b -y "$release.2" ""
+fails ls "$BACKUPDIR"/*
+
+# Check invalid names are also detected in parameter to -m
+# (/ are acceptable in this context, as target directory)
+fails host edit-chroot -y -m "." -- "-$release"
+fails host edit-chroot -y -m ".." -- "-$release"
+fails host edit-chroot -y -m "" -- "-$release"
+host enter-chroot -n "-$release" true
+
+# Check invalid names are also detected in parameter to -C
+# (/ are acceptable in this context, as target directory)
+fails host edit-chroot -y -C "." -- "-$release"
+fails host edit-chroot -y -C ".." -- "-$release"
+fails host edit-chroot -y -C "" -- "-$release"
+host enter-chroot -n "-$release" true
+
+# Delete both chroots
+host delete-chroot -y -- "-$release" "$release"
+fails host enter-chroot -n "$release" true
+fails host enter-chroot -n -- "-$release" true

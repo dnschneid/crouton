@@ -1,0 +1,233 @@
+#!/bin/sh -e
+# Copyright (c) 2016 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# When launched from the kernel, PATH is not set and stderr is closed
+if [ ! -t 0 ]; then
+    exec 2>/var/log/crash_reporter_wrapper.log
+    export PATH='/bin:/sbin:/usr/bin:/usr/sbin'
+fi
+
+APPLICATION="${0##*/}"
+CORE_PATTERN_PARAMS='%p %s %u %g %e %h %t %E'
+CORE_PATTERN_PARAMS_COUNT=8
+CORE_PATTERN="|`readlink -f -- "$0"` $CORE_PATTERN_PARAMS"
+CORE_PATTERN_FILE='/var/run/crw/core_pattern'
+CORE_PATTERN_PROC='/proc/sys/kernel/core_pattern'
+DEFAULT_CHROOT_PATTERN=''
+IDEAL_LOCATION='/var/run/crw/crw'
+
+USAGE="$APPLICATION register
+$APPLICATION $CORE_PATTERN_PARAMS
+
+Handles system core dumps, passing the dump through to Chromium OS's
+crash_reporter or processing it as the chroot requests, depending on what
+namespace the process belongs to.
+
+The first form should be run as root, and sets $CORE_PATTERN_PROC
+to use this script as the core dump pipe program.
+
+The second form is expected to be called by the kernel upon program crash, via
+the core_pattern set with the first form. The script checks if the crashing
+PID's root has an /etc/crouton/core_pattern and uses that to emulate the
+kernel's handling of the core_pattern proc entry."
+
+
+# Outputs a parameter by core_pattern name (e.g. %p prints out the expanded $1)
+# If the parameter doesn't exist, outputs an error to stderr and returns $1
+# $1: the parameter name, either in the form of "%p" or just "p"
+# $2+: must be "$@"
+get_parameter() {
+    local param="%${1#%}" param_names="$CORE_PATTERN_PARAMS "
+    if [ "$param" = '%%' ]; then
+        echo -n '%'
+        return
+    elif [ "$param" = '%c' ]; then
+        echo -n "$core_limit"
+        return
+    fi
+    shift
+    while [ "$param" != "${param_names%% *}" ]; do
+        param_names="${param_names#* }"
+        if [ -z "$param_names" ]; then
+            echo "$param not provided for core_pattern" 1>&2
+            echo -n "$param"
+            return
+        fi
+        shift
+    done
+    echo -n "$1"
+}
+
+# Takes the specified string and expands included parameters
+# Outputs result to stdout
+# $1: the string to expand and escape
+# $2+: must be "$@"
+expand_parameters() {
+    local unexpanded="$1%" remain param
+    shift
+    while [ -n "$unexpanded" ]; do
+        param="${unexpanded%%%*}"
+        echo -n "$param"
+        remain="${unexpanded#*%?}"
+        if [ "$remain" = "$unexpanded" ]; then
+            break
+        fi
+        param="${unexpanded#"$param"}"
+        param="${param%"$remain"}"
+        unexpanded="$remain"
+        get_parameter "$param" "$@"
+    done
+}
+
+# Takes stdin and escapes it to be safe within single-quotes
+# Outputs result to stdout
+# Converts ' to '\''
+escape() {
+    sed "s/'/'\\\\\\''/g"
+}
+
+
+if [ "$#" != 1 -a "$#" != "$CORE_PATTERN_PARAMS_COUNT" ]; then
+    echo "$USAGE" 1>&2
+    exit 2
+fi
+
+if [ "$#" = 1 -a "$1" != 'register' ]; then
+    echo "$USAGE" 1>&2
+    exit 2
+fi
+
+if [ "${UID:-0}" != 0 -o "${USER:-root}" != 'root' ]; then
+    echo "$APPLICATION must be run as root." 1>&2
+    exit 2
+fi
+
+if [ "$#" = 1 ]; then
+    # Always register the script from /var/run for safety
+    if [ "$0" != "$IDEAL_LOCATION" ]; then
+        dir="${IDEAL_LOCATION%/*}"
+        if ! mountpoint "$dir" >/dev/null 2>/dev/null; then
+            mkdir -p "$dir"
+            mount -t tmpfs \
+                  -o 'rw,nosuid,nodev,exec,noatime,mode=700,size=128K' \
+                  tmpfs "$dir"
+        fi
+        cp -fT "$0" "$IDEAL_LOCATION"
+        chmod 500 "$IDEAL_LOCATION"
+        exec "$IDEAL_LOCATION" "$@"
+    fi
+    # Store Chromium OS's core pattern for passthrough usage
+    if [ ! -f "$CORE_PATTERN_FILE" ]; then
+        cat "$CORE_PATTERN_PROC" > "$CORE_PATTERN_FILE"
+    fi
+    # Register ourselves as the coredump handler
+    echo "$CORE_PATTERN" > "$CORE_PATTERN_PROC"
+    exit 0
+fi
+
+# It's a core dump! See CORE(5) for details in emulating core_pattern.
+pattern=''
+
+# $1 is the pid of the process. Check the process's root for etc/crouton
+pid="$1"
+root="/proc/$pid/root"
+cwd="/proc/$pid/cwd"
+croutondir="$root/etc/crouton"
+if [ -d "$croutondir" ]; then
+    # Looks like a chroot (or a very weird rootfs, but that's unlikely)
+    # Grab the chroot's pattern or use the default if the file doesn't exist
+    if [ -f "$croutondir/core_pattern" ]; then
+        # File exists; first non-empty, non-comment line is the core_pattern
+        pattern="`awk '/^[^#]/ { print $0; exit }' "$croutondir/core_pattern"`"
+    else
+        pattern="$DEFAULT_CHROOT_PATTERN"
+    fi
+else
+    # Probably a Chromium process. Grab the backed-up core pattern.
+    if [ -f "$CORE_PATTERN_FILE" ]; then
+        pattern="`cat "$CORE_PATTERN_FILE"`"
+    else
+        echo "$APPLICATION was not properly registered as the core_pattern." 1>&2
+        echo "You must register using '$0 register'" 1>&2
+        exit 2
+    fi
+fi
+
+# If the pattern is empty, just exit.
+if [ -z "$pattern" ]; then
+    exit 0
+fi
+
+# Remove the pipe character so we can play with the path generically
+ispipe=''
+if [ "${pattern#|}" != "$pattern" ]; then
+    ispipe='y'
+    pattern="${pattern#|}"
+    # Pipe paths must be absolute
+    if [ "${pattern#/}" = "$pattern" ]; then
+        echo "core_pattern '|$pattern' is not absolute" 1>&2
+        exit 2
+    fi
+fi
+
+# Get the core size limit for the process
+core_limit="`awk '/^Max core file size/ {
+                printf ($5=="unlimited") ? -1 : $5; exit
+            }' "/proc/$pid/limits"`"
+
+# Prepare the file to operate on
+if [ -z "$ispipe" ]; then
+    # Don't bother if core file size limit is 0
+    if [ "$core_limit" = 0 ]; then
+        exit 0
+    fi
+    # If this is not a pipe, we need to expand the %'s here.
+    file="`expand_parameters "$pattern" "$@"`"
+else
+    # For pipes, path is anything up to a space
+    file="${pattern%% *}"
+    pattern="${pattern#"$file"}"
+fi
+
+# Fix up the path to be working directory-relative
+if [ "${file#/}" = "$file" ]; then
+    file="$cwd/$file"
+fi
+
+# Canonicalize within the chroot and escape the filename to work within quotes
+file="`chroot "$root" readlink -m -- "/${file%/*}"`/${file##*/}"
+file="`echo -n "$file" | escape`"
+
+# Prepare the command to run inside the chroot as the appropriate user
+if [ -z "$ispipe" ]; then
+    cmd="
+        if [ -e '$file' -a ! -f '$file' ] || [ -h '$file' ]; then
+            echo \"Not overwriting '$file'; it is not a regular file\" 1>&2
+        elif [ -f '$file' ] && [ \"\`stat -c '%h' '$file'\`\" != 1 ]; then
+            echo \"Not overwriting '$file'; it is multiply linked\" 1>&2
+        elif [ '$core_limit' = -1 ] && cat > '$file'; then
+            exit 0
+        elif [ '$core_limit' != -1 ] && head -c '$core_limit' > '$file'; then
+            exit 0
+        fi
+        exit 1
+    "
+    username="`chroot "$root" ps -ouser= -p "$pid"`"
+else
+    # Finally need to expand the parameters here
+    cmd="exec '$file'"
+    params="$pattern "
+    while [ -n "$params" ]; do
+        param="${params%% *}"
+        params="${params#* }"
+        if [ -n "$param" ]; then
+            cmd="$cmd '`expand_parameters "$param" "$@" | escape`'"
+        fi
+    done
+    username='root'
+fi
+
+# Run the generated command within the appropriate chroot
+exec chroot "$root" su -s '/bin/sh' -c "$cmd" - "$username"

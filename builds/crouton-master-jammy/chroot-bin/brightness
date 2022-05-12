@@ -1,0 +1,41 @@
+#!/bin/sh -e
+# Copyright (c) 2016 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# A shortcut script to control device brightness.
+# Usage:
+#    brightness [b|k] [up|down|# [instant]]
+
+# Choose the device
+device='Screen'
+nokbd=''
+case "$1" in
+k*) device='Keyboard'
+    nokbd='echo "Command not supported with keyboard backlight." 1>&2; exit 1' 
+    shift;;
+b*) shift;;
+esac
+
+# Handle user command
+print=''
+postcmd=''
+case "$1" in
+u*) precmd='Increase';;
+d*) precmd='Decrease';;
+[0-9]*) eval $nokbd;
+    precmd='Set'; postcmd="Percent double:$1 int32:${2:-"1"}${2:+"2"}";;
+*) eval $nokbd; precmd='Get'; postcmd='Percent'; print='--print-reply';;
+esac
+
+host-dbus dbus-send --system --dest=org.chromium.PowerManager \
+          --type=method_call $print /org/chromium/PowerManager \
+          org.chromium.PowerManager.${precmd}${device}Brightness${postcmd} | {
+    read -r junk
+    read -r double percent
+    if [ -n "$print" ]; then
+        echo "${percent%.*}"
+    fi
+}
+
+exit 0

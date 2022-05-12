@@ -1,0 +1,88 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<!-- Copyright (c) 2016 The crouton Authors. All rights reserved.
+     Use of this source code is governed by a BSD-style license that can be
+     found in the LICENSE file. -->
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+    <title>crouton integration extension popup</title>
+    <style type="text/css">
+      body {
+        min-width: 400px;
+        max-width: 400px;
+        overflow-x: hidden;
+      }
+
+      a { // Do not show focus outline
+        outline: 0;
+      }
+
+      #windowlist {
+        border: 0px;
+        border-spacing: 0;
+      }
+
+      #logger {
+        border: 0px;
+        border-spacing: 0;
+      }
+
+      td {
+        font-family: "monospace";
+        font-size: 12px;
+        vertical-align: top;
+      }
+
+      td.display {
+        padding: 2px 5px;
+        font-size: 20px;
+        color:#666666;
+      }
+
+      td.name {
+        padding: 2px 5px;
+        font-size: 20px;
+        color:#000080;
+        cursor:pointer;
+      }
+
+      td.time {
+        padding: 2px 0px;
+        color:#606060;
+      }
+
+      td.time.error {
+        background-color: #FF0000;
+        color: #000000;
+      }
+
+      td.value {
+        padding: 2px 15px;
+      }
+      td.value.debug { color: #808080; }
+      td.value.info { color: #008000; }
+      td.value.error { color: #800000; }
+
+      input:disabled+label { color:#cccccc; }
+    </style>
+    <script src="popup.js" type="text/javascript"></script>
+  </head>
+  <body>
+    <div style="float: right;"><a href="#" id="help">Help?</a>
+      <br/><a href="#" id="enable">.</a></div>
+    <h1 style="display:inline">crouton integration</h1>
+    <hr/>
+    <div id="info">Loading...</div>
+    <div id="switcher"><table id="windowlist"><tr><td /></tr></table></div>
+    <div id="scrolllogger"><table id="logger"><tr><td /></tr></table></div>
+    <div style="float:right">
+      <input type="checkbox" id="hidpicheck" />
+        <label for="hidpicheck">HiDPI</label>
+      <input type="checkbox" id="logcheck" />
+        <label for="logcheck">Show log</label>
+      <input type="checkbox" id="debugcheck" />
+        <label for="debugcheck">Enable debugging</label>
+    </div>
+  </body>
+</html>

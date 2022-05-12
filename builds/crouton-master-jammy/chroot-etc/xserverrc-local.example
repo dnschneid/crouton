@@ -1,0 +1,14 @@
+#!/bin/sh
+# Copyright (c) 2016 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Sample script to customize X server invocation. To activate copy it to
+# /etc/crouton/xserverrc-local
+#
+# The file is sourced before invoking the X server with the variable
+# XMETHOD set to xiwi, or xorg and the variable XARGS containing the
+# command line arguments that will be passed to the server.
+#
+# Uncoment if fonts look too big on machines with 1366x768 11.6" screen
+#XARGS="$XARGS -dpi 135x135"

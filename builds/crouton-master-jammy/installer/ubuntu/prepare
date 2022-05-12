@@ -1,0 +1,270 @@
+#!/bin/sh -e
+# Copyright (c) 2016 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# This is a distro-specific continuation of the prepare.sh script.
+
+PKGEXT='deb'
+DISTROAKA='debian'
+
+
+# install_dist: see install() in prepare.sh for details.
+install_dist() {
+    local pkgs='' pkgsasdeps='' params='' asdeps=''
+    while [ "$#" != 0 ]; do
+        if [ "$1" = "--minimal" ]; then
+            params='--no-install-recommends'
+        elif [ "$1" = "--asdeps" ]; then
+            asdeps='y'
+        else
+            break
+        fi
+        shift
+    done
+    while [ "$#" != 0 ]; do
+        if [ "$1" = '--' ]; then
+            shift
+            break
+        fi
+        pkgs="$pkgs $1"
+        shift
+    done
+    if [ -n "$asdeps" ]; then
+        pkgsasdeps="`list_uninstalled_dist '' $pkgs`"
+    fi
+    apt-get -y $params install $pkgs `list_uninstalled_dist - "$@"` || return $?
+    if [ -n "$pkgsasdeps" ]; then
+        apt-mark auto $pkgsasdeps
+    fi
+}
+
+
+# install_pkg_dist: see install_pkg() in prepare.sh for details.
+install_pkg_dist() {
+    local params=''
+    if [ "$1" = '--minimal' ]; then
+        params='--no-install-recommends'
+        shift
+    fi
+    if [ "$#" != 0 ]; then
+        dpkg --force-depends -i "$@" || return $?
+    fi
+    apt-get -fy $params install
+}
+
+
+# install_dummy_dist: see install_dummy() in prepare.sh for details.
+install_dummy_dist() {
+    if [ "$#" = 0 ]; then
+        return
+    fi
+    local pkgname="crouton-$1" pkgprovides="$1"
+    shift
+    while [ "$#" != 0 ]; do
+        if [ "$1" = '--' ]; then
+            shift
+            break
+        fi
+        pkgprovides="$pkgprovides, $1"
+        shift
+    done
+    local pkgdepends="$1"
+    if [ "$#" != 0 ]; then
+        shift
+        while [ "$#" != 0 ]; do
+            pkgdepends="$pkgdepends, $1"
+            shift
+        done
+    fi
+    local tmp="`mktemp -d crouton.XXXXXX --tmpdir=/tmp`"
+    addtrap "rm -rf '$tmp'"
+    cat > "$tmp/control" <<EOF
+Package: $pkgname
+Version: 0
+Architecture: all
+Maintainer: crouton
+Installed-Size: 0
+Provides: $pkgprovides
+Conflicts: $pkgprovides
+Replaces: $pkgprovides
+Depends: $pkgdepends
+Section: misc
+Priority: Required
+Description: Provides a dummy ${pkgname#*-} for crouton
+EOF
+    touch "$tmp/md5sums"
+    echo '2.0' > "$tmp/debian-binary"
+    tar -czf "$tmp/control.tar.gz" -C "$tmp" control md5sums
+    tar -cf "$tmp/data.tar" -T /dev/null
+    ar r "$tmp/$pkgname.deb" \
+        "$tmp/debian-binary" "$tmp/control.tar.gz" "$tmp/data.tar"
+    dpkg -i --force-depends "$tmp/$pkgname.deb"
+    apt-get -fy install
+}
+
+
+# remove_dist: see remove() in prepare.sh for details.
+remove_dist() {
+    apt-get -y --purge remove "$@"
+}
+
+
+# list_uninstalled_dist: see list_uninstalled() in prepare.sh for details.
+# If the package is virtual (e.g. libc-dev), we need to find the binary package
+# corresponding to it (e.g. libc6-dev), so that we can remove it afterwards
+# ("apt-get remove libc-dev" does not remove libc6-dev).
+list_uninstalled_dist() {
+    local suffix="$1" pkg
+    shift
+    for pkg in "$@"; do
+        # If $pkg is a binary package, apt-cache returns the package name
+        # itself, so $pkg value stays the same.
+        # If $pkg is a virtual package, it returns a list of binary packages
+        # that are able to provide it. If there is a single match, use that.
+        # If there is no match, it may mean that we are checking for a package
+        # that we installed manually from a .deb file, so we still use $pkg.
+        # If there is more than one match, we use $pkg, and apt-get install
+        # will fail due to selection ambiguity (it is not the purpose of this
+        # function to pick one of the alternative).
+        pkg="`apt-cache search --names-only "^$pkg\$" |
+                  awk 'x{x=""; exit} !x{x=$1} END{print x?x:"'"$pkg"'"}'`"
+        if ! dpkg-query -l "$pkg" 2>/dev/null | grep -q '^[ih]i'; then
+            echo -n "$pkg$suffix "
+        fi
+    done
+}
+
+# detect_mirror
+# Detects the current mirror: Prints the first source that provides the
+# "main" component.
+detect_mirror() {
+    if ! awk '/^deb .* main( .*)?$/ { print $2; f=1; exit }; END { exit !f }' \
+          /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null; then
+        error 1 "Cannot detect mirror."
+    fi
+}
+
+
+# install_mirror_package [--asdeps] package path [regex arch]
+# Fetch and install a package directly from the mirror.
+# This allows to install a package from a different release, when the current
+# release does not provide the required package, or when the version it
+# provides is broken or outdated.
+# --asdeps: Install as dependency
+# package:  Package name (e.g. xserver-xephyr)
+# path:     Mirror path (e.g. pool/universe/x/xorg-server)
+# regex:    Version regex (e.g. '1\.11\.4-0ubuntu[0-9][0-9]\.[0-9]*').
+#           If not specified, match any version (default regex: ".*").
+#           The latest version that matches the regex is selected.
+#           If the package is a dependency of other packages (e.g. a library),
+#           you should select the earliest version that provides the required
+#           features, to prevent breakage during release upgrade.
+# arch:     Additional architecture to install. e.g. i386 installs both i386
+#           and amd64 packages. Defaults to only installing "$ARCH"
+install_mirror_package() {
+    local asdeps=''
+    if [ "$1" = "--asdeps" ]; then
+        asdeps='y'
+        shift
+    fi
+    local package="$1"
+    # Split local and assignment to make sure -e error handling works
+    local mirror
+    mirror="`detect_mirror`"
+    local url="${mirror%/}/${2#/}/"
+    local debfiles=""
+    local pkgnames=""
+
+    for carch in "$ARCH" "$4"; do
+        if [ -z "$carch" ]; then
+            continue
+        fi
+        local pkgname="$package:$carch"
+        local regex="^${package}_${3:-.*}_(${carch}|all)\.deb$"
+        # Find package in directory listing:
+        # Filenames are HTML <a href> values, enclosed in quotes.
+        local xvers="`wget -O- "$url" -nv \
+            | awk 'BEGIN { RS="<[aA][^>]* [hH][rR][eE][fF]=\\""; FS="\\"" }
+                   NR > 1 && $1 ~ /'"$regex"'/ { print $1 }' \
+            | sort -V | tail -n 1`"
+        if [ -z "$xvers" ]; then
+            error 1 "Error retrieving $pkgname."
+        fi
+        # Check if installed version is already up to date
+        local installed="`dpkg-query -l "$pkgname" 2>/dev/null | \
+            awk '/^[hi]i/ { sub(/^[0-9]+:/, "", $3); print $2 "_" $3 }'`"
+        if [ "${xvers%_*}" = "$installed" ]; then
+            echo "$pkgname is already up to date ($installed)."
+            continue
+        fi
+        pkgurl="$url$xvers"
+        # Download the package to a temporary file
+        local deb="`mktemp crouton.XXXXXX --tmpdir=/tmp`"
+        addtrap "rm -f '$deb'"
+        wget "$pkgurl" -O"$deb"
+        debfiles="$debfiles $deb"
+        pkgnames="$pkgnames $pkgname"
+    done
+
+    if [ -n "$debfiles" ]; then
+        # Install the package
+        install_pkg $debfiles
+        if [ -n "$asdeps" ]; then
+            apt-mark auto $pkgnames
+        fi
+    fi
+}
+
+# Run dpkg in non-interactive mode
+export DEBIAN_FRONTEND=noninteractive
+
+# dpkg will auto start some services when installing, and it will ask
+# policy-rc.d for permissions. We don't want any service to start, so always
+# return denies.
+echo exit 101 > /usr/sbin/policy-rc.d
+chmod +x /usr/sbin/policy-rc.d
+
+# Debian glibc won't install on kernel revisions >=255, so add a wrapper script
+# to clamp the revision number. Without also patching the uname syscalls,
+# glibc's version math will overflow, resulting in an increased minor version
+# number and possibly in glibc trying to use unavailable syscalls or features.
+if [ ! -e /bin/uname.bin -a ! -e /usr/bin/uname.bin ]; then
+    for uname in /bin/uname /usr/bin/uname; do
+        # We don't use --rename since /bin may be a temp symlink to /usr/bin.
+        # --no-rename doesn't exist on old dpkg, but --rename will become the
+        # default in the future, so we have to try both with and without.
+        dpkg-divert --divert "$uname.bin" --no-rename "$uname" 2>/dev/null \
+            || dpkg-divert --divert "$uname.bin" "$uname"
+        mv -f "$uname" "$uname.bin" 2>/dev/null || true
+    done
+    echo '#!/bin/sh -eu
+uname.bin "$@" | sed '\''s/\.\(25[5-9]\|2[6-9][0-9]\|[3-9][0-9][0-9]\)-/.254-/g'\' > /bin/uname
+    chmod +x /bin/uname
+fi
+
+# Run debootstrap second stage if it hasn't already happened
+if [ -r /debootstrap ]; then
+    # Debootstrap doesn't like anything mounted under /sys or /var when it runs
+    # We request a re-mount after bootstrapping, so these mounts will be fixed.
+    sed "s=\\\\040=//=g" /proc/mounts | cut -d' ' -f2 \
+        | grep -e '^/sys/.' -e '^/var/run' \
+        | sed -e 's=//= =g;s/^\(\(.*\) (deleted)\)$/\1\n\2/' \
+        | sort -r | xargs --no-run-if-empty -d '
+' -n 1 umount || true
+    # Workaround for some kernel versions where debootstrap second stage
+    # crashes when attempting to generate /etc/machine-id (issue #4016).
+    date -Ins | md5sum | cut -f1 -d' ' > /etc/machine-id
+    # Start the bootstrap
+    /debootstrap/debootstrap --second-stage
+    # Clean contents of /var/run (since we'll always be mounting over it).
+    rm -rf --one-file-system /var/run/*
+    # Request a script restart to refresh the mount environment
+    relaunch_setup
+else
+    # Do any pending configuration, in case of an unfortunately-timed Ctrl-C
+    dpkg --configure -a
+
+    # Fix the keyboard mode in case it got reverted to raw
+    fixkeyboardmode
+fi

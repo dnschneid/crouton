@@ -1,0 +1,35 @@
+# Copyright (c) 2016 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+from autotest_lib.client.common_lib import utils
+
+AUTHOR = "drinkcat,dnschneid"
+NAME = "platform_Crouton_wrapper"
+TIME = "LENGTHY"
+TEST_TYPE = "client"
+
+DOC = """
+This test is a wrapper around platform_Crouton, meant to be dynamically modified
+and passed to atest.
+
+This test fetches a specific branch of crouton, and runs crouton tests.
+
+@param repo: (dnschneid/crouton) github repository to fetch from
+@param branch: (master) github branch
+@param runargs: (-R precise 00) parameters to pass to run.sh
+@param env: () Environment variables to set, semicolon-separated key=val pairs.
+            Only CROUTON_MIRROR_* can be set
+"""
+
+# For debugging purpose
+utils.system('cat /etc/lsb-release')
+
+args_dict = {
+          'repo': """###REPO###""",
+          'branch': """###BRANCH###""",
+          'runargs': """###RUNARGS###""",
+          'env': """###ENV###"""
+}
+
+job.run_test('platform_Crouton', args=args_dict)

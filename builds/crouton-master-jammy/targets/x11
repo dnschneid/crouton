@@ -1,0 +1,14 @@
+#!/bin/sh -e
+# Copyright (c) 2016 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+if [ -z "$TARGETNOINSTALL" ]; then
+    # Wheezy/Kali are too old to use KMS well
+    if [ -f /sbin/frecon ] && release -le wheezy -le kali; then
+        REQUIRES='xiwi'
+    else
+        REQUIRES='xorg'
+    fi
+fi
+DESCRIPTION='X11 via autodetected backend. Does not install any desktop environment.'
+. "${TARGETSDIR:="$PWD"}/common"

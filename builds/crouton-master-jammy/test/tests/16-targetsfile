@@ -1,0 +1,39 @@
+#!/bin/sh -e
+# Copyright (c) 2016 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Make sure we detect if /etc/crouton/targets is not present (e.g. update from
+# an old chroot), and that we can recover the situation by specifying targets
+# manually.
+
+if [ -z "$release" ]; then
+    echo "default"
+    exit 0
+fi
+
+checktargetlist() {
+    # Target list must include core only
+    test "$(host enter-chroot -n "$release" cat /etc/crouton/targets \
+                | tr -d ',\n')" = 'core'
+}
+
+# Release-independent.
+snapshot "$release" core
+
+host enter-chroot -n "$release" true
+checktargetlist
+
+# Update works
+crouton -n "$release" -u
+checktargetlist
+
+# Update fails if /etc/crouton/targets is deleted
+host enter-chroot -n "$release" -u 0 rm /etc/crouton/targets
+fails checktargetlist
+fails crouton -n "$release" -u
+fails checktargetlist
+
+# But we can recover the chroot by specifying targets
+crouton -n "$release" -u -t core
+checktargetlist

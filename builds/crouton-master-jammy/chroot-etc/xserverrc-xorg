@@ -1,0 +1,46 @@
+#!/bin/sh -e
+# Copyright (c) 2016 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+if [ "${XMETHOD%%-*}" != 'xorg' ]; then
+    export XMETHOD='xorg'
+fi
+XARGS='-nolisten tcp'
+if [ -f /etc/crouton/xserverrc-local ]; then
+    . /etc/crouton/xserverrc-local
+fi
+
+X=/usr/bin/X
+
+# Handle Freon systems
+if [ ! -f "/sys/class/tty/tty0/active" ]; then
+    # We won't be able to launch properly if running from frecon
+    ppid="$$"
+    while [ -n "$ppid" -a "$ppid" -ne 1 ]; do
+        ppid="`ps -p "$ppid" -o 'ppid=' 2>/dev/null | sed 's/ //g'`"
+        if ps -p "$ppid" -o 'comm=' | grep -q '^frecon$'; then
+            echo 'Xorg X11 servers cannot be launched from Frecon.' 1>&2
+            echo 'Return to Chromium OS and use crosh to launch X.' 1>&2
+            exit 2
+        fi
+    done
+    # Prepare lock file
+    mkdir -p '/tmp/crouton-lock'
+    touch '/tmp/crouton-lock/display'
+    chmod -Rf g+rwX '/tmp/crouton-lock'
+    chgrp -Rf crouton '/tmp/crouton-lock'
+    # Freon necessitates the preload hack for X to coexist
+    X=/usr/bin/Xorg
+    logfile="/tmp/Xorg.crouton.$$.log"
+    for arg in "$@"; do
+        disp="`echo "$arg" | sed -n 's/^\:\([0-9]*\)$/\1/p'`"
+        if [ -n "$disp" ]; then
+            logfile="/tmp/Xorg.crouton.$disp.log"
+        fi
+    done
+    XARGS="$XARGS -logfile $logfile"
+    export LD_PRELOAD="/usr/local/lib/croutonfreon.so:$LD_PRELOAD"
+fi
+
+exec "$X" $XARGS "$@"

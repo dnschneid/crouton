@@ -1,0 +1,765 @@
+#!/bin/sh -e
+# Copyright (c) 2016 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+set -e
+
+APPLICATION="${0##*/}"
+BACKGROUND=''
+BINDIR="`dirname "\`readlink -f -- "$0"\`"`"
+CHROOTS="`readlink -m -- "$BINDIR/../chroots"`"
+KEYFILE=''
+LOGIN=''
+NAME=''
+TARGET=''
+USERNAME='1000'
+TMPXMETHOD=''
+NOLOGIN=''
+SETUPSCRIPT='/prepare.sh'
+
+USAGE="$APPLICATION [options] [command [args...]]
+
+Enters an installed Debian-based chroot for running alongside Chromium OS.
+
+By default, it will log into the primary user on the first chroot found.
+You can specify a command and parameters to run instead of an interactive shell.
+
+Options:
+    -b          Fork and run the specified command silently in the background.
+    -c CHROOTS  Directory the chroots are in. Default: $CHROOTS
+    -l          Make the command part of a login. Parameters are passed directly
+                to the chroot command, and a call to su is appended.
+    -k KEYFILE  Override the auto-detected encryption key location.
+    -n NAME     Name of the chroot to enter. Default: first one found in CHROOTS
+    -t TARGET   Only enter the chroot if it contains the specified TARGET.
+    -u USERNAME Username (or UID) to log into. Default: 1000 (the primary user)
+    -X XMETHOD  Override the auto-detected XMETHOD for this session.
+    -x          Does not log in, but directly executes the command instead.
+                Note that the environment will be empty (sans TERM).
+                Specify -x a second time to run the $SETUPSCRIPT script."
+
+# Common functions
+. "$BINDIR/../installer/functions"
+
+# Safely launch a command ($*) via /bin/sh within the chroot as the root user.
+chrootcmd() {
+    # env may be overridden when running in the background; don't let it fork.
+    local ret=0 oldtrap="$TRAP"
+    TRAP=''
+    env -i chroot "$CHROOT" su -s '/bin/sh' -c "$*" - root || ret=$?
+    local pid="$!"
+    # $pid might not be set if env has not been redefined yet
+    if [ -n "$BACKGROUND" ] && [ -n "$pid" ]; then
+        wait "$pid" || ret=$?
+    fi
+    TRAP="$oldtrap"
+    return "$ret"
+}
+
+# Process arguments
+prevoptind=1
+while getopts 'bc:k:ln:t:u:X:x' f; do
+    # Disallow empty string as option argument
+    if [ "$((OPTIND-prevoptind))" = 2 -a -z "$OPTARG" ]; then
+        error 2 "$USAGE"
+    fi
+    prevoptind="$OPTIND"
+    case "$f" in
+    b) BACKGROUND='y';;
+    c) CHROOTS="`readlink -m -- "$OPTARG"`";;
+    k) KEYFILE="$OPTARG";;
+    l) LOGIN='y';;
+    n) NAME="$OPTARG";;
+    t) TARGET="$OPTARG";;
+    u) USERNAME="$OPTARG";;
+    X) TMPXMETHOD="$OPTARG";;
+    x) NOLOGIN="$((NOLOGIN+1))"
+       [ "$NOLOGIN" -gt 2 ] && NOLOGIN=2;;
+    \?) error 2 "$USAGE";;
+    esac
+done
+shift "$((OPTIND-1))"
+
+# Shift away empty string as first argument (used in start* scripts to mark
+# the end of user-specified parameters)
+if [ "$#" -ge 1 -a -z "$1" ]; then
+    shift
+fi
+
+# We need to run as root
+if [ "$USER" != root -a "$UID" != 0 ]; then
+    error 2 "$APPLICATION must be run as root."
+fi
+
+# We need a command if we specified to run in the background
+if [ -n "$BACKGROUND" -a $# = 0 ]; then
+    error 2 "A command must be specified in order to run in the background."
+fi
+
+# If -x is specified twice, our command is the setup script.
+if [ "$NOLOGIN" = 2 ]; then
+    if [ $# != 0 ]; then
+        error 2 "A command cannot be specified with -xx."
+    fi
+    if [ -n "$BACKGROUND" ]; then
+        error 2 "Cannot run the setup script in the background."
+    fi
+    set -- "$SETUPSCRIPT"
+fi
+
+# Select the first chroot available if one hasn't been specified
+if [ -z "$NAME" ]; then
+    haschroots=''
+    for CHROOT in "$CHROOTS"/*; do
+        if [ ! -d "$CHROOT/etc" -a ! -f "$CHROOT/.ecryptfs" ]; then
+            continue
+        fi
+        haschroots='y'
+        if [ -n "$TARGET" ]; then
+            if ! grep -q "^$TARGET$" "$CHROOT/.crouton-targets" 2>/dev/null; then
+                continue
+            fi
+        fi
+        NAME="${CHROOT##*/}"
+        break
+    done
+    if [ -z "$haschroots" ]; then
+        error 1 "No chroots found in $CHROOTS"
+    fi
+    if [ -z "$NAME" ]; then
+        error 1 "No chroots with target '$TARGET' found in $CHROOTS"
+    fi
+elif [ -n "$TARGET" ]; then
+    if ! grep -q "^$TARGET$" "$CHROOTS/$NAME/.crouton-targets" 2>/dev/null; then
+        error 1 "$CHROOTS/$NAME does not contain target '$TARGET'"
+    fi
+fi
+
+# Check to ensure that the XMETHOD requested has been installed
+if [ -n "$TMPXMETHOD" ]; then
+    if ! grep -q "^${TMPXMETHOD%%-*}$" "$CHROOTS/$NAME/.crouton-targets"; then
+        error 1 "$CHROOTS/$NAME does not contain XMETHOD '${TMPXMETHOD%%-*}'"
+    fi
+fi
+
+# Avoid kernel panics due to slow I/O
+disablehungtask
+
+# Allow X server running as normal user to set/drop DRM master
+drm_relax_file="/sys/kernel/debug/dri/drm_master_relax"
+if [ -f "$drm_relax_file" ]; then
+    echo 'Y' > "$drm_relax_file"
+fi
+
+# Make sure we always exit with echo on the tty.
+addtrap "stty echo 2>/dev/null"
+
+# Mount the chroot and update our CHROOT path
+CHROOTSRC="$CHROOTS/$NAME"
+if [ -n "$KEYFILE" ]; then
+    CHROOT="`sh -e "$BINDIR/mount-chroot" \
+                                     -k "$KEYFILE" -p -c "$CHROOTS" -- "$NAME"`"
+else
+    CHROOT="`sh -e "$BINDIR/mount-chroot" -p -c "$CHROOTS" -- "$NAME"`"
+fi
+
+if [ "$NOLOGIN" != 2 ]; then
+    echo "Entering $CHROOTSRC..." 1>&2
+fi
+
+# In disk full situations, mount-chroot can be empty. Good time to check sanity.
+if [ -z "$CHROOT" ]; then
+    error 1 'Something is wrong with the crouton install. Please make sure you have
+sufficient space available, then re-install the chroot and try again.'
+fi
+
+# Register the crash_reporter_wrapper to properly handle coredumps
+if [ -f "$BINDIR/crash_reporter_wrapper" ]; then
+    if ! sh -e "$BINDIR/crash_reporter_wrapper" register; then
+        echo 'WARNING: Unable to register core dump handler.' 1>&2
+    fi
+fi
+
+if [ -z "$CROUTON_NO_UNMOUNT" ]; then
+    # Auto-unmount everything below and including the chroot upon exit
+    addtrap "sh -e '$BINDIR/unmount-chroot' -yc '$CHROOTS' -- '$NAME'"
+fi
+
+# If our root is on an external disk we need to ensure USB device persistence is
+# enabled otherwise we will lose the file-system after a suspend event.
+if [ "${CHROOTSRC#/media}" != "$CHROOTSRC" ]; then
+    for usbp in /sys/bus/usb/devices/*/power/persist; do
+        if [ -e "$usbp" ]; then
+            echo 1 > "$usbp"
+        fi
+    done
+fi
+
+# Offer to run the setup script if it exists and yet we're logging in.
+if [ -z "$NOLOGIN" -a -f "$CHROOT$SETUPSCRIPT" ]; then
+    echo 'A chroot setup script still exists inside the chroot.' 1>&2
+    echo 'The chroot may not be fully set up.' 1>&2
+    response=''
+    # A finished setup script will have permissions 500
+    if [ "`stat -c '%a' "$CHROOT$SETUPSCRIPT"`" != '500' ]; then
+        echo 'However, it appears the setup script is invalid.' 1>&2
+        response='d'
+    fi
+    if [ -t 0 -a -z "$response" ]; then
+        echo -n 'Would you like to finish the setup? [Y/n/d] ' 1>&2
+        read -r response
+    fi
+    if [ -z "$response" -o "${response#[Yy]}" != "$response" ]; then
+        echo 'Preparing chroot environment...' 1>&2
+        if CROUTON_NO_UNMOUNT=1 sh -e "$BINDIR/enter-chroot" \
+                -c "$CHROOTS" -n "$NAME" -xx; then
+            echo 'Setup completed. Entering chroot...' 1>&2
+            response=''
+        else
+            echo 'The chroot setup script may be broken. Your chroot is not fully configured.' 1>&2
+            response='d'
+        fi
+    fi
+    if [ "${response#[Dd]}" != "$response" ]; then
+        echo 'Removing the chroot setup script. You may want to update your chroot again.' 1>&2
+        rm -f "$CHROOT$SETUPSCRIPT"
+    elif [ -n "$response" ]; then
+        echo 'Skipping setup. You will be prompted again next time.' 1>&2
+    fi
+fi
+
+# Resolve USERNAME if it is a UID (and we're logging in)
+passwd="$CHROOT/etc/passwd"
+if [ -z "$NOLOGIN" ]; then
+    if [ ! -r "$passwd" ]; then
+        error 1 "$CHROOTSRC doesn't appear to be a valid chroot."
+    fi
+    case "$USERNAME" in
+    ''|*[!0-9]*)
+        # Make sure the username exists
+        if ! grep -q "^$USERNAME:" "$passwd"; then
+            error 1 "User $USERNAME not found in $NAME"
+        fi;;
+     *)
+        # Resolve the UID
+        uid="$USERNAME"
+        USERNAME="`awk -F: '$3=='"$uid"'{print $1; exit}' "$passwd"`"
+        if [ -z "$USERNAME" ]; then
+            error 1 "UID $uid not found in $NAME"
+        fi
+    esac
+    # Detect the home directory and shell for the user
+    CHROOTHOME="`awk -F: '$1=="'"$USERNAME"'"{print $6; exit}' "$passwd"`"
+    CHROOTSHELL="`awk -F: '$1=="'"$USERNAME"'"{print $NF; exit}' "$passwd"`"
+else
+    CHROOTSHELL='/bin/sh'
+fi
+
+# Save the chroot name to the chroot
+echo "$NAME" > "$CHROOT/etc/crouton/name"
+
+# Ensure $CHROOT/var/host exists.
+mkdir -p "$CHROOT/var/host"
+
+# Copy in the current Chromium OS version for reference
+cp -f '/etc/lsb-release' "$CHROOT/var/host/"
+
+# Copy CRAS version into the chroot
+cras_test_client --version 2>/dev/null > "$CHROOT/var/host/cras-version" || true
+
+# Copy the latest Xauthority into the chroot
+if [ -f "${XAUTHORITY:=/home/chronos/.Xauthority}" ]; then
+    cp -f "$XAUTHORITY" "$CHROOT/var/host/Xauthority"
+    chmod 444 "$CHROOT/var/host/Xauthority"
+    # Be backwards-compatible, just in case
+    if [ -f "$CHROOT/etc/X11/host-Xauthority" ]; then
+        ln -sfT '/var/host/Xauthority' "$CHROOT/etc/X11/host-Xauthority"
+    fi
+fi
+
+# Prepare chroot filesystem
+# Soft-link resolv.conf so that updates are automatically propagated
+ln -sfT '/var/host/shill/resolv.conf' "$CHROOT/etc/resolv.conf"
+
+# Sanity check of the timezone setting
+localtime="$CHROOT/etc/localtime"
+hostlocaltime='/var/host/timezone/localtime'
+if [ -h "$localtime" ] && [ "`readlink -- "$localtime"`" = "$hostlocaltime" ]; then
+    timezone="`readlink -m -- /var/lib/timezone/localtime || true`"
+    if [ -z "$timezone" -o ! -e "$CHROOT$LOCALTIME" ]; then
+        echo "\
+WARNING: the timezone selected in Chromium OS does not exist inside the chroot.
+To set the chroot's timezone, run the following: sudo dpkg-reconfigure tzdata" 1>&2
+    else
+        # Set /etc/timezone in chroot - fixes the clock in Unity
+        echo "${timezone#/usr/share/zoneinfo/}" > "$CHROOT/etc/timezone"
+    fi
+fi
+
+# Follows and fixes dangerous symlinks, returning the canonicalized path.
+fixabslinks() {
+    local p="$CHROOT/$1" c
+    # Follow and fix dangerous absolute symlinks
+    while c="`readlink -m -- "$p"`" && [ "$c" != "$p" ]; do
+        p="$CHROOT${c#"$CHROOT"}"
+    done
+    echo "$p"
+}
+
+# Bind-mounts $1 into $CHROOT/${2:-"$1"} if $2 is not already mounted
+# If $3 is specified, remounts with the specified options.
+# If $1 starts with a -, it's considered options to the bind mount, and the rest
+# of the parameters are shifted.
+bindmount() {
+    bindopts=''
+    if [ "${1#"-"}" != "$1" ]; then
+        bindopts="$1"
+        shift
+    fi
+    local target="`fixabslinks "${2:-"$1"}"`"
+    if mountpoint -q "$target"; then
+        return 0
+    fi
+    mkdir -p "$target"
+    mount --bind $bindopts "$1" "$target"
+    if [ -n "$3" ]; then
+        mount -i -o "remount,$3" "$target"
+    fi
+}
+
+# Creates a tmpfs mount at $CHROOT/$1 with options $2 if not already mounted
+tmpfsmount() {
+    local target="`fixabslinks "$1"`"
+    if mountpoint -q "$target"; then
+        return 0
+    fi
+    mkdir -p "$target"
+    mount -i -t tmpfs -o "rw${2:+,}$2" tmpfs "$target"
+}
+
+# If /var/run isn't mounted, we know the chroot hasn't been started yet.
+if mountpoint -q "`fixabslinks '/var/run'`"; then
+    firstrun=''
+else
+    firstrun='y'
+fi
+
+bindmount /dev
+bindmount /dev/pts
+bindmount /dev/shm
+bindmount /tmp /tmp exec
+bindmount /proc
+tmpfsmount /var/run 'noexec,nosuid,mode=0755,size=10%'
+tmpfsmount /var/run/lock 'noexec,nosuid,nodev,size=5120k'
+bindmount /var/run/dbus /var/host/dbus
+bindmount /var/run/shill /var/host/shill
+bindmount /var/lib/timezone /var/host/timezone
+for m in /lib/modules/*; do
+    if [ -d "$m" ]; then
+        bindmount '-o ro' "$m"
+    fi
+done
+
+# Add a shm symlink to our new /var/run
+ln -sfT /dev/shm "`fixabslinks '/var/run'`/shm"
+
+# Setup udev control directory in the chroot
+# Chromium OS >=6092 uses /run/udev, older versions /dev/.udev
+if [ -d /var/run/udev ]; then
+    bindmount /var/run/udev /var/host/udev
+    ln -sfT /var/host/udev "`fixabslinks '/var/run'`/udev"
+else
+    # Add a /run/udev symlink for later versions of udev in chroot
+    ln -sfT /dev/.udev "`fixabslinks '/var/run'`/udev"
+fi
+
+if [ -d /var/run/cras ]; then
+    bindmount /var/run/cras /var/host/cras
+    # Add a /var/host/cras symlink for CRAS clients
+    ln -sfT /var/host/cras "$(fixabslinks '/var/run')/cras"
+else
+    echo "\
+WARNING: CRAS not running in Chromium OS. Audio forwarding will not work." 1>&2
+fi
+
+if [ -d /var/run/chrome ]; then
+    bindmount /var/run/chrome /var/host/chrome
+    # Add a /var/host/chrome symlink for display clients
+    ln -sfT /var/host/chrome "$(fixabslinks '/var/run')/chrome"
+else
+    echo "\
+WARNING: Chrome not running in Chromium OS. Display forwarding will not work." 1>&2
+fi
+
+# Bind-mount /media, specifically the removable directory
+destmedia="`fixabslinks '/var/host/media'`"
+if ! mountpoint -q "$destmedia"; then
+    mount --make-shared /media
+    mkdir -p "$destmedia" "$CHROOT/media"
+    ln -sfT "/var/host/media/removable" "$CHROOT/media/removable"
+    mount --rbind /media "$destmedia"
+fi
+
+# Provide a default /etc/crouton/shares file
+shares="`fixabslinks '/etc/crouton/shares'`"
+if [ -e "$shares" -a ! -f "$shares" ]; then
+    echo "Not mounting shares: /etc/crouton/shares is not a file." 1>&2
+elif [ ! -f "$shares" ]; then
+    cat > "$shares" <<EOF
+# Defines directories to map into the chroot from the host.
+# Order is important: be sure to mount directories before you mount
+# subdirectories of those mounts.
+# The only directories that can be mapped from outside of the chroot are
+# subdirectories of the following locations:
+#  myfiles: ~/MyFiles
+#  downloads: ~/Downloads
+#  shared: /mnt/stateful_partition/crouton/shared
+#  encrypted: ~/crouton/shared
+# Inside the chroot, any absolute or user-relative path (~/x or ~user/x) is OK.
+# Syntax is as follows:
+#  HOSTDIR CHROOTDIR [OPTIONS]
+# Directory names can have spaces (if quoted), but no quote characters or
+# relative path elements (..'s).
+# Options can be any options to mount. If unspecified, "exec" is assumed.
+
+# Examples:
+#  Share a home directory encrypted by the current user's unsynced profile
+#   encrypted/home ~
+#  Share an unencrypted directory between chroots.
+#   shared/home ~/Share
+#  Absolute directories on the chroot side work too
+#   shared/bin /usr/local/bin exec,suid
+#  Share a noexec path that has spaces, and a specific user home directory
+#   "encrypted/stupid example" "~omg/Why are you even doing this?" noexec
+
+# Share the downloads folder of the current user's profile
+downloads ~/Downloads
+EOF
+fi
+# Bind-mount the stuff in $CHROOT/etc/crouton/shares, unless NOLOGIN is set
+if [ -z "$NOLOGIN" -a -f "$shares" ]; then
+    localmyfiles='/home/chronos/user/MyFiles'
+    if [ ! -d "$localmyfiles" ]; then
+        localmyfiles=''
+    fi
+    localdownloads='/home/chronos/user/Downloads'
+    if [ ! -d "$localdownloads" ]; then
+        localdownloads=''
+    fi
+    localencrypted='/home/chronos/user/crouton/shared'
+    if [ ! -d "/home/chronos/user" ]; then
+        localencrypted=''
+    fi
+    localshare='/mnt/stateful_partition/crouton/shared'
+    # Parse file and split into three lines: src, dest, options
+    awk '
+        BEGIN {
+            PARAMMATCH = "^[ \t]*(\"[^\"]+\"|[^ \t\"]+)([ \t]"
+        }
+        function strip(s) {
+            if (index(s, "\"")) {
+                sub("[ \t]*\"", "", s)
+                sub("\"[ \t]*", "", s)
+            } else {
+                gsub("[ \t]", "", s)
+            }
+            return s
+        }
+        $1 ~ /^#/ { next }
+        match($0, PARAMMATCH ")") {
+            dest = substr($0, RLENGTH+1)
+            src = strip(substr($0, 1, RLENGTH))
+            if (match(dest, PARAMMATCH "|$)")) {
+                opts = strip(substr(dest, RLENGTH+1))
+                dest = strip(substr(dest, 1, RLENGTH))
+                if (src && dest ~ "^[/~]" && opts ~ "^[a-z,]*$") {
+                    # Ensure that they end in slashes
+                    if (src !~ "/$")
+                        src = src "/"
+                    if (dest !~ "/$")
+                        dest = dest "/"
+                    # .. path elements are not allowed
+                    if (src !~ "/../" && dest !~ "/../") {
+                        print src
+                        print dest
+                        print opts
+                        next
+                    }
+                }
+            }
+        }
+        /./ {
+            print "error"
+            print "Invalid syntax in /etc/crouton/shares on line " NR ":\n  " \
+                  $0
+        }
+    ' "$shares" | while read -r src && read -r dest && read -r opts; do
+        line="\n  \"$src\" \"$dest\" $opts"
+        # Expand src
+        case "${src%%/*}" in
+            myfile|myfiles)
+                if [ -z "$localmyfiles" ]; then
+                    echo "Not mounting share (no Chromium OS user):$line" 1>&2
+                    continue
+                fi
+                src="$localmyfiles/${src#*/}";;
+            download|downloads)
+                if [ -z "$localdownloads" ]; then
+                    echo "Not mounting share (no Chromium OS user):$line" 1>&2
+                    continue
+                fi
+                src="$localdownloads/${src#*/}";;
+            encrypt|encrypted)
+                if [ -z "$localencrypted" ]; then
+                    echo "Not mounting share (no Chromium OS user):$line" 1>&2
+                    continue
+                fi
+                src="$localencrypted/${src#*/}";;
+            share|shares|shared)
+                src="$localshare/${src#*/}";;
+            error)
+                # Print the error message from awk script.
+                echo "$dest" 1>&2
+                echo "$opts" 1>&2
+                continue;;
+            *)
+                echo "Invalid share:$line" 1>&2
+                continue;;
+        esac
+        # Expand dest for homedirs
+        if [ "${dest#"~"}" != "$dest" ]; then
+            destuser="${dest%%/*}"
+            if [ "$destuser" = '~' ]; then
+                if [ -z "$CHROOTHOME" ]; then
+                    echo "Not mounting share (no chroot user):$line" 1>&2
+                    continue
+                fi
+                dest="$CHROOTHOME/${dest#*/}"
+            else
+                dest="/home/${destuser#"~"}/${dest#*/}"
+            fi
+        fi
+        # Do the bindmount
+        mkdir -m 700 -p "$src"
+        if ! bindmount "$src" "$dest" "${opts:-exec}"; then
+            echo "Failed to mount share:$line" 1>&2
+        fi
+    done
+fi
+
+# Bind-mount /sys recursively, making it a slave in the chroot
+if ! mountpoint -q "$CHROOT/sys"; then
+    mkdir -p "$CHROOT/sys"
+    mount --make-rshared /sys
+    mount --rbind /sys "$CHROOT/sys"
+    mount --make-rslave "$CHROOT/sys"
+    # Unmount selinux in the chroot, make a fake entry to set enforce=0
+    if mountpoint -q "$CHROOT/sys/fs/selinux"; then
+        umount "$CHROOT/sys/fs/selinux"
+        mount -t tmpfs none "$CHROOT/sys/fs/selinux"
+        echo 0 > "$CHROOT/sys/fs/selinux/enforce"
+        mount -o remount,ro "$CHROOT/sys/fs/selinux"
+    fi
+fi
+
+# Modify chroot's /sys/class/drm and /dev/dri to avoid vgem/mfgsys
+varrundrm="$(fixabslinks '/var/run/drm')"
+varrundri="$(fixabslinks '/var/run/dri')"
+sysclassdrm="$(fixabslinks '/sys/class/drm')"
+devdri="$(fixabslinks '/dev/dri')"
+if [ ! -d "$varrundrm" -a -d "$sysclassdrm" -a -d "$devdri" ]; then
+    cp -Ta "$sysclassdrm" "$varrundrm"
+    cp -Ta "$devdri" "$varrundri"
+    for f in "$varrundrm"/*; do
+        if [ -h "$f" ] && readlink -- "$f" | grep -qF -e /vgem/ -e mfgsys; then
+            rm -f "$f" "$varrundri/${f##*/}"
+        fi
+    done
+    # Scanning of /dev/dri is done sequentially, so make sure there's a card0
+    for f in "$varrundri/card"*; do
+        [ -e "$varrundri/card0" ] || mv -f "$f" "$varrundri/card0"
+    done
+    mount --bind "$varrundrm" "$sysclassdrm"
+    mount --bind "$varrundri" "$devdri"
+fi
+
+# Get croutonversion variables
+croutonversion="$CHROOT/usr/local/bin/croutonversion"
+CHROOTRELEASE="unknown"
+if [ -x "$croutonversion" ]; then
+    CHROOTRELEASE="`"$croutonversion" -r 2>/dev/null || echo "$CHROOTRELEASE"`"
+fi
+
+# For test machines with low entropy, bind mount /dev/urandom to /dev/random
+if [ -n "$CROUTON_WEAK_RANDOM" ]; then
+    mount --bind "$CHROOT/dev/urandom" "$CHROOT/dev/random"
+fi
+
+# Fix group numbers for critical groups to match Chromium OS. This is necessary
+# so that users have access to shared hardware, such as video and audio.
+gfile="$CHROOT/etc/group"
+if [ -f "$gfile" ]; then
+    for group in audio:hwaudio cras:audio cdrom chronos-access:crouton \
+                 devbroker-access dialout disk floppy i2c input lp serial \
+                 tape tty usb:plugdev uucp video wayland; do
+        hostgroup="${group%:*}"
+        chrootgroup="${group#*:}"
+        gid="$(awk -F: '$1=="'"$hostgroup"'"{print $3; exit}' '/etc/group')"
+        curgid="$(awk -F: '$1=="'"$chrootgroup"'"{print $3; exit}' "$gfile")"
+        if [ -z "$gid" ]; then
+            if [ -z "$curgid" ]; then
+                echo "Creating unassociated $chrootgroup group..." 1>&2
+                chrootcmd groupadd --system "$chrootgroup"
+            fi
+            continue
+        fi
+        if [ "$gid" = "$curgid" ]; then
+            continue
+        elif [ -z "$curgid" ]; then
+            echo "Creating $chrootgroup group with GID $gid..." 1>&2
+            groupcmd=groupadd
+        else
+            echo "Changing $chrootgroup GID from $curgid to $gid..." 1>&2
+            groupcmd=groupmod
+        fi
+        move="`awk -F: '$3=='"$gid"'{print $1; exit}' "$gfile"`"
+        if [ -n "$move" ]; then
+            ngid="$gid"
+            while grep -q ":$ngid:" "$gfile"; do
+                ngid="$((ngid+1))"
+            done
+            echo "Moving $move GID from $gid to $ngid..." 1>&2
+            chrootcmd groupmod -g "$ngid" "$move"
+        fi
+        chrootcmd "$groupcmd" -g "$gid" "$chrootgroup"
+    done
+fi
+
+# To run silently, we override the env command to launch a background process,
+# and move the trap code to happen there.
+if [ -n "$BACKGROUND" ]; then
+    env() {
+        # Shuffle FDs around to preserve stdin
+        { (
+            trap '' INT HUP
+            trap "$TRAP" 0
+            exec 0<&9 9<&-
+            [ -t 0 ] && exec < /dev/null
+            [ -t 1 ] && exec > /dev/null
+            [ -t 2 ] && exec 2>&1
+            /usr/bin/env "$@"
+        ) & } 9<&0
+    }
+fi
+
+ret=0
+
+# Launch the system dbus unless we are entering a basic shell.
+if [ "$NOLOGIN" != 1 ] && grep -q '^root:' "$passwd" 2>/dev/null; then
+    # Try to detect the dbus user by parsing its configuration file
+    # If it fails, or if the user does not exist, `id -un '$dbususer'`
+    # will fail, and we fallback on a default user name ("messagebus")
+    dbususer="`echo "cat /busconfig/user/text()" \
+        | xmllint --shell "$CHROOT/etc/dbus-1/system.conf" 2>/dev/null \
+        | grep '^[a-z][-a-z0-9_]*$' || true`"
+    chrootcmd "
+        if ! hash dbus-daemon 2>/dev/null; then
+            exit 0
+        fi
+        dbususer='$dbususer'"'
+        pidfile="/var/run/dbus/pid"
+        if [ -f "$pidfile" ]; then
+            if grep -q "^dbus-daemon" "/proc/`cat "$pidfile"`/cmdline" \
+                    2>/dev/null; then
+                exit 0
+            fi
+            rm -f "$pidfile"
+        fi
+        mkdir -p /var/run/dbus
+        dbususer="`id -un "$dbususer" 2>/dev/null || echo "messagebus"`"
+        dbusgrp="`id -gn "$dbususer" 2>/dev/null || echo "messagebus"`"
+        chown "$dbususer:$dbusgrp" /var/run/dbus
+        exec dbus-daemon --system --fork' || ret=$?
+    if [ "$ret" != 0 ]; then
+        echo "WARNING: starting chroot system dbus daemon failed with code $ret" 1>&2
+        ret=0
+    fi
+
+    # Launch systemd-logind if available and not already running
+    # Whitelisted for saucy and trusty
+    systemd_dir="`fixabslinks '/run/systemd'`"
+    if [ -x "$CHROOT/lib/systemd/systemd-logind" ] && \
+            [ ! -d "$systemd_dir" ] && \
+            [ "$CHROOTRELEASE" = 'saucy' -o "$CHROOTRELEASE" = 'trusty' ]; then
+        # Every piece of systemd code ever assumes that this directory exists
+        mkdir -p "$systemd_dir"
+
+        # Create systemd cgroup if necessary
+        if ! mountpoint -q "$CHROOT/sys/fs/cgroup/systemd"; then
+            mkdir -p "$CHROOT/sys/fs/cgroup/systemd"
+            mount -t cgroup -o nosuid,noexec,nodev,none,name=systemd systemd \
+                  "$CHROOT/sys/fs/cgroup/systemd"
+        fi
+        # systemd-logind doesn't fork
+        chrootcmd "/lib/systemd/systemd-logind >/dev/null 2>&1 </dev/null &"
+    fi
+
+    chrootcmd "/usr/local/bin/croutonfindnacld >/dev/null 2>&1 </dev/null &"
+fi
+
+# Start the chroot and any specified command
+if [ -n "$NOLOGIN" ]; then
+    env -i TERM="$TERM" chroot "$CHROOT" "$@" || ret=$?
+    # Handle the return value when running the setup script.
+    if [ "$NOLOGIN" = 2 ]; then
+        # If it succeeded yet still exists, run it again.
+        if [ "$ret" = 0 -a -f "$CHROOT$SETUPSCRIPT" ]; then
+            sh -e "$BINDIR/unmount-chroot" -yxc "$CHROOTS" -- "$NAME"
+            # We don't need to return from this.
+            exec sh -e "$BINDIR/enter-chroot" -c "$CHROOTS" -n "$NAME" -xx
+        elif [ "$ret" != 0 ]; then
+            error "$ret" 'Failed to complete chroot setup.'
+        fi
+    fi
+else
+    # Check and run rc.local
+    if [ -n "$firstrun" -a -x "$CHROOT/etc/rc.local" ]; then
+        ( sleep 10; echo "Still running chroot's rc.local..." 2>&1 ) &
+        noticepid="$!"
+        addtrap "kill '$noticepid' 2>/dev/null"
+        chrootcmd 'exec /etc/rc.local >/dev/null 2>/dev/null </dev/null' \
+            || ret=$?
+        undotrap
+        kill "$noticepid" 2>/dev/null || true
+        wait "$noticepid" || true
+        if [ "$ret" != 0 ]; then
+            echo "WARNING: /etc/rc.local failed with code $ret" 1>&2
+            ret=0
+        fi
+    fi
+
+    if [ $# = 0 -o -n "$LOGIN" ]; then
+        env -i TERM="$TERM" chroot "$CHROOT" "$@" su - "$USERNAME" || ret=$?
+    else
+        # Escape out the command
+        cmd="export SHELL='$CHROOTSHELL';"
+        if [ -n "$TMPXMETHOD" ]; then
+            cmd="$cmd export XMETHOD='$TMPXMETHOD';"
+        fi
+        for param in "$@"; do
+            cmd="$cmd'`echo -n "$param" | sed "s/'/'\\\\\\''/g"`' "
+        done
+        env -i TERM="$TERM" chroot "$CHROOT" \
+            su -s '/bin/sh' -c "$cmd" - "$USERNAME" \
+            || ret=$?
+    fi
+fi
+
+# We don't want to trap for this proccess if we're running in the background
+if [ -n "$BACKGROUND" ]; then
+    settrap ''
+fi
+
+# Cleanup all happens in the exit trap
+exit $ret

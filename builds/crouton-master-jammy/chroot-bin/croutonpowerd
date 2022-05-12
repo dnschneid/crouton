@@ -1,0 +1,127 @@
+#!/bin/sh -e
+# Copyright (c) 2016 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+USAGE="${0##*/} -p|--poke|-deactivate|--daemon
+${0##*/} -i|--inhibit [command [params ...]]
+Interfaces with Chromium OS's powerd to prevent the system from suspending.
+
+Passes parameters to the appropriate command if called as xscreensaver-command
+or gnome-screensaver-command.
+
+Options:
+    -i --inhibit           Inhibits powerd for the duration of the command, or
+                           forever if no command is specified.
+    -p --poke -deactivate  Pings powerd to prevent activation.
+    --suspend              Switches to Chromium OS and triggers a suspend.
+    --daemon               Enters daemon mode where idleness and screensaver
+                           inhibition are passed on to Chromium OS's powerd."
+
+INHIBITSLEEP='30'
+DAEMONSLEEP='15'
+
+# Common functions
+. "`dirname "$0"`/../installer/functions"
+
+# Check if we need to pass through to another command
+EXEC="${0##*/}"
+case "$EXEC" in
+gnome-screensaver-command|xscreensaver-command) EXEC="/usr/bin/$EXEC";;
+*) EXEC='';;
+esac
+
+# Check what command we need to run, or immediately pass through if unrecognized
+case "$1" in
+-i|--inhibit) CMD='i';;
+-p|--poke|-deactivate) CMD='p';;
+--suspend) CMD='s';;
+--daemon) CMD='d';;
+*)  if [ -z "$EXEC" ]; then
+        echo "$USAGE" 1>&2
+        exit 2
+    fi
+    exec "$EXEC" "$@";;
+esac
+
+hostdbus=''
+if hash host-dbus 2>/dev/null; then
+    hostdbus='host-dbus'
+fi
+
+pingpowerd() {
+    $hostdbus dbus-send --system --dest=org.chromium.PowerManager \
+                        --type=method_call /org/chromium/PowerManager \
+                        org.chromium.PowerManager.HandleUserActivity \
+                        int32:0 || true
+}
+
+if [ "$CMD" = 'p' ]; then
+    # Ping
+    pingpowerd
+    exec "${EXEC:-"true"}" "$@"
+elif [ "$CMD" = 'i' ]; then
+    # Inhibit
+    while pingpowerd; do
+        sleep "$INHIBITSLEEP"
+    done &
+    pid=$!
+    addtrap "kill '$pid' 2>/dev/null"
+    if [ -n "$EXEC" ]; then
+        "$EXEC" "$@"
+    elif [ -n "$2" ]; then
+        shift
+        "$@"
+    else
+        wait $pid
+    fi
+elif [ -n "$EXEC" ]; then
+    exec "$EXEC" "$@"
+elif [ "$CMD" = 's' ]; then
+    if hash croutoncycle 2>/dev/null; then
+        croutoncycle cros
+    fi
+    $hostdbus dbus-send --system --dest=org.chromium.PowerManager \
+                        --type=method_call /org/chromium/PowerManager \
+                        org.chromium.PowerManager.RequestSuspend || true
+elif [ "$CMD" = 'd' ]; then
+    if [ -z "$DISPLAY" ]; then
+        error 1 'Cannot launch daemon: $DISPLAY not specified.'
+    fi
+
+    # Daemon
+    xdgs='/usr/bin/xdg-screensaver'
+    xi2pid=''
+
+    # Send pings to powerd at regular intervals, if the user is active (i.e.
+    # there are input events), or if the screensaver is disabled.
+    # For performance reason, we probably do not want to monitor every single
+    # X input events. Therefore, we start a subshell that pings powerd upon
+    # receiving a single event, then quits.
+    # Every $DAEMONSLEEP seconds we check if that subshell if alive, and
+    # restart it if necessary. This means that we miss events during up to 
+    # $DAEMONSLEEP seconds, and, if powerd timeout is X seconds, then the
+    # screen may already dim after X-DAEMONSLEEP seconds of inactivity. This is
+    # not noticeable if DAEMONSLEEP is much smaller than X (usually, X=300s).
+
+    while sleep "$DAEMONSLEEP"; do
+        if [ "`"$xdgs" status 2>/dev/null`" = 'disabled' ]; then
+            # Screensaver disabled: ping
+            pingpowerd
+        elif [ -z "$xi2pid" ] || ! kill -0 "$xi2pid" 2>/dev/null; then
+            # croutonxi2event subshell is not running
+
+            if [ -n "$xi2pid" ]; then
+                # Fail if return status from process != 0: wait returns the exit
+                # status of the child, and this shell exits on error (-e)
+                wait $xi2pid
+            fi
+
+            # Wait for input event, then ping immediately
+            ( croutonxi2event -1 >/dev/null 2>&1 && pingpowerd ) &
+            xi2pid=$!
+        fi
+    done
+fi
+
+exit 0

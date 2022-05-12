@@ -1,0 +1,169 @@
+#!/bin/sh -e
+# Copyright (c) 2016 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+#
+# Synchronizes clipboard between X displays, making use of crouton's WebSocket
+# server and Chromium extension to synchronize the clipboard with Chromium OS
+
+VERBOSE=''
+
+. "`dirname "$0"`/../installer/functions"
+
+# rundisplay :X cmd ...
+# Run a command on the specified display
+rundisplay() {
+    local disp="$1"
+    shift
+    DISPLAY="$disp" "$@"
+}
+
+copyclip() {
+    next="$1"
+
+    # Do not copy if next is empty (display cannot be detected), or
+    # if current == next. Also set current=$next if $current is empty
+    if [ -z "$next" -o "${current:="$next"}" = "$next" ]; then
+        if [ -n "$VERBOSE" ]; then
+            echo "==Current: $current==Next: $next==" 1>&2
+        fi
+        return 0
+    fi
+
+    if [ -n "$VERBOSE" ]; then
+        echo ">>Current: $current>>" 1>&2
+    fi
+
+    # Copy clipboard content from the current display
+    {
+        if [ "$current" = 'cros' ]; then
+            echo -n 'R' | websocketcommand
+        else
+            # Check if display is still running
+            if rundisplay "$current" xdpyinfo >/dev/null 2>&1; then
+                echo -n 'R'
+                rundisplay "$current" xsel -ob
+            else
+                echo -n "EUnable to open display '$current'."
+            fi
+        fi
+    } | (
+        STATUS="`head -c 1`"
+        if [ "$STATUS" != 'R' ]; then
+            echo -n "croutonwebsocket error: " >&2
+            cat >&2
+            # Stop here (the clipboard content is lost in this case)
+            exit 0
+        fi
+
+        # Paste clipboard content to the next display
+        if [ "$next" = 'cros' ]; then
+            STATUS="`(echo -n 'W'; cat) | websocketcommand`"
+            if [ "$STATUS" != 'WOK' ]; then
+                # Write failed, skip Chromium OS (do not update $current)
+                echo -n "croutonwebsocket error: $STATUS" >&2
+                exit 1
+            fi
+        else
+            # Do not override content if it "looks" the same
+            # (we might have rich text or other content in the clipboard)
+            cliptmp="`mktemp "croutonclip.XXX" --tmpdir=/tmp`"
+            trap "rm -f '$cliptmp'" 0
+            cat > $cliptmp
+
+            if ! rundisplay "$next" xsel -ob \
+                    | diff -q - "$cliptmp" > /dev/null; then
+                rundisplay "$next" xsel -ib < "$cliptmp"
+            fi
+        fi
+    ) && current="$next"
+
+    if [ -n "$VERBOSE" ]; then
+        echo "<<Next: $current<<" 1>&2
+    fi
+}
+
+# Wait for the websocket server to get connected to the extension
+# Timeout after 10 seconds (twice crouton extension retry period)
+waitwebsocket() {
+    timeout=10
+    while [ $timeout -gt 0 ]; do
+        if [ -n "$VERBOSE" ]; then
+            echo "Ping..." 1>&2
+        fi
+
+        # Prepare and send a ping message
+        MSG="PING$$$timeout"
+        STATUS="`echo -n "$MSG" | websocketcommand`"
+        if [ "$STATUS" = "$MSG" ]; then
+            if [ -n "$VERBOSE" ]; then
+                echo "OK!" 1>&2
+            fi
+            return 0
+        fi
+
+        if [ -n "$VERBOSE" ]; then
+            echo "$STATUS" 1>&2
+        fi
+
+        sleep 1
+        timeout=$(($timeout-1))
+    done
+    echo "Timeout waiting for extension to connect." >&2
+}
+
+# Assume current display is Chromium OS: avoid race as we may not be able to
+# detect the first VT/window change.
+current='cros'
+
+mkdir -m 775 -p "$CROUTONLOCKDIR"
+exec 3>>"$CROUTONLOCKDIR/clip"
+chmod -Rf g+rwX "$CROUTONLOCKDIR" || true
+chgrp -Rf crouton "$CROUTONLOCKDIR" || true
+if ! flock -n 3; then
+    echo "Another instance of croutonclip running, waiting..."
+    flock 3
+fi
+
+addtrap "echo -n > '$CROUTONLOCKDIR/clip' 2>/dev/null"
+
+(
+    # This subshell handles USR1 signals from croutoncycle.
+    # It prints a line when it receives a signal, or on VT change (we are able
+    # to filter out duplicate notifications).
+
+    # Start croutonwebsocket here to give "wait" something to wait for
+    croutonwebsocket &
+    addtrap "kill $! 2>/dev/null"
+
+    waitwebsocket
+
+    # Update on VT change (if user types Ctrl-Alt instead of Ctrl-Alt-Shift)
+    if hash croutonvtmonitor 2>/dev/null; then
+       croutonvtmonitor &
+       addtrap "kill $! 2>/dev/null"
+    fi
+
+    trap "echo 'USR1'" USR1
+
+    # Set the PID of this subshell after the trap is in place
+    sh -c 'echo -n "$PPID"' > "$CROUTONLOCKDIR/clip"
+
+    # Force an update when started.
+    echo "Force"
+
+    # Wait until all the children have terminated (gets interrupted on signal,
+    # which gives handlers a chance to run)
+    while ! wait; do
+        :
+    done
+) | (
+    # Do not hold the lock in this subshell and children (especially xsel)
+    exec 3>/dev/null
+    while read -r line; do
+        display="`croutoncycle display`"
+        copyclip "$display"
+    done
+)
+
+exit 1

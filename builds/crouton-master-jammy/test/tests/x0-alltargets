@@ -1,0 +1,51 @@
+#!/bin/sh -e
+# Copyright (c) 2016 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+if [ -z "$release" ]; then
+    echo "all"
+    exit 0
+fi
+
+# All supported releases should be able to install all targets, unless
+# explicitly blacklisted (exit status 99)
+for target in "$SCRIPTDIR/targets/"*; do
+    target="${target#$SCRIPTDIR/targets/}"
+
+    # Ignore *common targets
+    if [ "${target%common}" != "$target" ]; then
+        continue
+    fi
+
+    # Ignore *desktop targets too, since they'd all be blacklisted
+    if [ "${target%desktop}" != "$target" ]; then
+        continue
+    fi
+
+    # Some other targets do not require testing in this context,
+    # or have their own w* tests
+    for blacklist in audio core x11 xiwi xorg \
+                     e17 gnome kde lxde unity xbmc xfce; do
+        if [ "$target" = "$blacklist" ]; then
+            break
+        fi
+    done
+    if [ "$target" = "$blacklist" ]; then
+        continue
+    fi
+
+    # Start with a x11 snapshot, as most targets depend on it
+    snapshot "$release" x11
+    ret=0
+    crouton -u -n "$release" -t "$target" || ret=$?
+    if [ "$ret" -ne 0 ]; then
+        if [ "$ret" -eq 99 ]; then
+            log "Target $target failed on $release, as expected (unsupported combination)."
+        else
+            log "Target $target failed on $release."
+            exit "$ret"
+        fi
+    fi
+    host delete-chroot -y "$release"
+done

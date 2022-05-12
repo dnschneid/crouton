@@ -1,0 +1,155 @@
+#!/bin/sh -e
+# Copyright (c) 2016 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+VERSION='unknown'
+RELEASE='unknown'
+ARCH='unknown'
+
+APPLICATION="${0##*/}"
+CHANGES=''
+DOWNLOAD=''
+UPDATES=''
+
+BRANCH="${VERSION##*~}"
+BRANCH="${BRANCH%%:*}"
+COMMIT="${VERSION##*:}"
+CHANGESURL="https://github.com/dnschneid/crouton/compare/$COMMIT..."
+INSTALLER="crouton-$BRANCH"
+INSTALLER="${INSTALLER%-master}"
+CROUTONURL="https://github.com/dnschneid/crouton/raw/releases/$INSTALLER"
+DEST="$HOME/Downloads/$INSTALLER"
+
+USAGE="$APPLICATION [options]
+
+Reports the version of crouton installed, checks if updates are available,
+and/or launches a changelog.
+
+If no options are specified, outputs crouton version information to STDOUT.
+
+Options:
+    -a       Prints the architecture of this chroot to stdout.
+    -c       Launches a browser to view the list of changes.
+             If -u is specified, only launches if a newer version exists.
+    -d       Downloads the latest version of crouton to the location specified.
+             If -u is specified, only downloads if the version is newer.
+    -f FILE  Changes the destination of the downloaded crouton.
+             Default: $DEST
+    -h       Prints out usage.
+    -r       Prints the release of this chroot to stdout.
+    -u       Checks for updates, and prints out the updated version number."
+
+
+# Function to exit with exit code $1, spitting out message $@ to stderr
+error() {
+    local ecode="$1"
+    shift
+    echo "$*" 1>&2
+    exit "$ecode"
+}
+
+# Process arguments
+while getopts 'acdf:ru' f; do
+    case "$f" in
+    a) echo "$ARCH"; exit 0;;
+    c) CHANGES='y';;
+    d) DOWNLOAD='y';;
+    f) DEST="$OPTARG";;
+    r) echo "$RELEASE"; exit 0;;
+    u) UPDATES='y';;
+    \?) error 2 "$USAGE";;
+    esac
+done
+
+# No extra parameters
+if [ "$#" != "$((OPTIND-1))" ]; then
+    error 2 "$USAGE"
+fi
+
+# Print out version if nothing else specified
+if [ -z "$CHANGES$DOWNLOAD$UPDATES" ]; then
+    echo "crouton: version $VERSION"
+    echo "release: $RELEASE"
+    echo "architecture: $ARCH"
+    xmethodfile='/etc/crouton/xmethod'
+    if [ -r "$xmethodfile" ]; then
+        echo "xmethod: `cat "$xmethodfile"`"
+    fi
+    targetfile='/etc/crouton/targets'
+    if [ -r "$targetfile" ]; then
+        echo "targets: `sed 's/^,//' "$targetfile"`"
+    fi
+    hostrel='/var/host/lsb-release'
+    if [ -r "$hostrel" ]; then
+        host="`awk -F= '/_RELEASE_DESCRIPTION=/{print $2}' "$hostrel"`"
+    fi
+    echo "host: version ${host:-unknown}"
+    echo "kernel: $(uname -a)"
+    freon="yes"
+    if [ -f /sys/class/tty/tty0/active ]; then
+        freon="no"
+    fi
+    echo "freon: $freon"
+    exit 0
+fi
+
+# Print out version to stderr for info
+echo "crouton: version $VERSION" 1>&2
+
+latest=''
+tmpdir=''
+if [ -n "$UPDATES$DOWNLOAD" ]; then
+    tmpdir="`mktemp -d --tmpdir=/tmp crouton.XXX`"
+    trap "rm -rf --one-file-system '$tmpdir'" INT HUP 0
+    echo "Retrieving latest version of $INSTALLER" 1>&2
+    if ! wget "$CROUTONURL" -O "$tmpdir/$INSTALLER" 2>"$tmpdir/log"; then
+        cat "$tmpdir/log" 1>&2
+        echo "Failed to retrieve latest version of $INSTALLER" 1>&2
+        exit 1
+    fi
+    latest="`awk -F"'" '/^VERSION=/{print $2;exit}' "$tmpdir/$INSTALLER"`"
+fi
+
+# Print out latest version number if requested
+if [ -n "$UPDATES" ]; then
+    echo "latest: version $latest"
+elif [ -n "$latest" ]; then
+    echo "latest: version $latest" 1>&2
+fi
+
+# Save latest version if requested
+if [ -n "$DOWNLOAD" -a "$VERSION" != "$latest" ]; then
+    echo "Saving latest version to $DEST" 1>&2
+    mv -f "$tmpdir/$INSTALLER" "$DEST"
+fi
+
+# Launch changelog if requested
+if [ -n "$CHANGES" -a "$VERSION" != "$latest" ]; then
+    # Check if changelogs are available from this version / to this branch
+    if ! wget "$CHANGESURL$BRANCH" -O/dev/full 2>&1 | grep -q '404 Not Found'; then
+        CHANGESURL="$CHANGESURL$BRANCH"
+    elif ! wget "${CHANGESURL}master" -O/dev/full 2>&1 | grep -q '404 Not Found'; then
+        CHANGESURL="${CHANGESURL}master"
+    else
+        # Fall back on the main commit log
+        CHANGESURL='https://github.com/dnschneid/crouton/commits/'
+    fi
+    # One of these will probably work...
+    for x in exo-open gnome-open kde-open xdg-open \
+             sensible-browser x-www-browser www-browser; do
+        if hash "$x" 2>/dev/null; then
+            browser="$x"
+            break
+        fi
+    done
+    if [ -z "$browser" ]; then
+        error 2 "No browser found to view $CHANGESURL"
+    fi
+    # Launch the webpage
+    if ! "$browser" "$CHANGESURL"; then
+        error 1 "Failed to launch browser to view $CHANGESURL"
+    fi
+fi
+
+exit 0

@@ -1,0 +1,245 @@
+#!/bin/sh -e
+# Copyright (c) 2016 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+REQUIRES='audio'
+PROVIDES='x11'
+DESCRIPTION='X.Org X11 backend. Enables GPU acceleration on supported platforms.'
+CHROOTBIN='croutoncycle croutontriggerd croutonxinitrc-wrapper setres xinit'
+CHROOTETC='xbindkeysrc.scm xorg-intel-sna.conf xserverrc xserverrc-xorg xserverrc-local.example'
+. "${TARGETSDIR:="$PWD"}/common"
+
+### Append to prepare.sh:
+XMETHOD="${XMETHOD:-xorg}"
+
+# Migration from ambiguous XMETHOD
+rm -f '/etc/crouton/xserverrc-x11'
+
+
+# Figure out what we need on this system
+
+# Freon?
+freon=''
+if [ ! -f "/sys/class/tty/tty0/active" ]; then
+    freon='y'
+fi
+
+# Pull in backported Xorg when possible on precise to support newer hardware
+backport=''
+if release -eq precise; then
+    if [ "${ARCH#arm}" = "$ARCH" ]; then
+        # Note: lts-trusty mesa requires kernel version >=3.6
+        if ! uname -r | grep -q "^3.4."; then
+            backport='-lts-trusty'
+        fi
+    else
+        # ARM only offers quantal backport at the moment
+        backport='-lts-quantal'
+    fi
+fi
+
+# Intel?
+inteldriver=''
+intelhasfbc=''
+pinmesa=''
+intelfbcsupport='y'
+if [ "${ARCH#arm}" = "$ARCH" ]; then
+    inteldriver="xserver-xorg-video-intel$backport"
+
+    # If the system has an Intel FBC-capable video card but has too old a driver
+    # to support the chipset, we'll need to disable hardware acceleration.
+    if grep -q 1 '/sys/module/i915/parameters/i915_enable_fbc' 2>/dev/null; then
+        intelhasfbc=y
+        if release -le wheezy -le sana; then
+            intelfbcsupport=''
+        fi
+    fi
+
+    # On saucy onwards, if kernel version is 3.4, manually pin down old mesa
+    # libraries, as new ones require version >=3.6 (see issue #704).
+    # This is only required on non-Atom Intel chipsets (Atom uses i915 dri driver)
+    if release -ge saucy && uname -r | grep -q "^3.4." &&
+            ! grep -q 0xa0 /sys/class/graphics/fb0/device/device; then
+        pinmesa='y'
+    fi
+
+    # Unhold xserver-xorg-video-intel, modification will be reapplied later.
+    apt-mark unhold "$inteldriver" 2>/dev/null || true
+fi
+
+# Catalog relevant and irrelevant video drivers
+fbdev="xserver-xorg-video-fbdev$backport"
+
+if release -lt sid -lt kali-rolling -lt vivid; then
+    modesetting="xserver-xorg-video-modesetting$backport"
+else
+    # modesetting is built into xserver-xorg-core
+    modesetting=''
+fi
+
+installvideodrivers=''
+removevideodrivers=''
+if [ -n "$freon" ]; then
+    installvideodrivers="$modesetting"
+    removevideodrivers="$fbdev"
+else
+    installvideodrivers="$fbdev"
+fi
+if [ -n "$inteldriver" ]; then
+    # If we need SNA (for fbc) but don't have it, don't install intel
+    if [ -z "$intelhasfbc" -o -n "$intelfbcsupport" ]; then
+        installvideodrivers="$installvideodrivers $inteldriver"
+    else
+        removevideodrivers="$removevideodrivers $inteldriver"
+    fi
+fi
+
+
+# On Freon, we need crazy xorg hacks
+if [ -n "$freon" ]; then
+    compile freon '-ldl -ldrm -I/usr/include/libdrm' so libdrm-dev
+fi
+
+# Pin precise's version of mesa if necessary
+pinfile='/etc/apt/preferences.d/precise-mesa-pin'
+pinlist='/etc/apt/sources.list.d/precise.list'
+pindummypkg='libwayland-egl1-dummy'
+if [ -n "$pinmesa" ]; then
+    # Create a dummy libwayland-egl1 package, to satisfy dependencies
+    # (the libraries are actually provided by libegl1-mesa-drivers in precise)
+    install --minimal --asdeps equivs
+
+    DEBTMP="`mktemp -d crouton.XXXXXX --tmpdir=/tmp`"
+    addtrap "rm -rf --one-file-system '$DEBTMP'"
+
+    ( cd "$DEBTMP"; equivs-build - ) <<END
+Section: misc
+Priority: optional
+Standards-Version: 3.9.2
+
+Package: $pindummypkg
+Version: 8.0.4
+Depends: libegl1-mesa-drivers
+Provides: libwayland-egl1
+Description: Dummy package providing libwayland-egl1
+END
+
+    # Add precise package sources
+    mirror="`detect_mirror`"
+
+    cat > "$pinlist" <<END
+deb $mirror precise main
+deb $mirror precise-updates main
+deb $mirror precise-security main
+END
+
+    cat > "$pinfile" <<END
+# Do not install any packages from precise by default
+Package: *
+Pin: release n=precise
+Pin-Priority: -10
+
+# Install mesa packages and their dependencies from precise
+Package: libegl1-mesa:* libegl1-mesa-dbg:* libegl1-mesa-dev:* \
+         libegl1-mesa-drivers:* libegl1-mesa-drivers-dbg:* \
+         libgl1-mesa-dev:* libgl1-mesa-dri:* libgl1-mesa-dri-dbg:* \
+         libgl1-mesa-glx:* libgl1-mesa-glx-dbg:* \
+         libglapi-mesa:* libglapi-mesa-dbg:* \
+         libgles1-mesa:* libgles1-mesa-dbg:* libgles1-mesa-dev:* \
+         libgles2-mesa:* libgles2-mesa-dbg:* libgles2-mesa-dev:* \
+         libdrm-nouveau1a:* libllvm3.0:* libudev0:*
+Pin: release n=precise
+Pin-Priority: 1100
+END
+
+    # Fetch new package sources
+    apt-get update || true
+
+    # Forcibly replace libwayland-egl1-mesa by libwayland-egl1-dummy
+    # (dpkg -r does not fail if package does not exist)
+    dpkg -r --force-depends libwayland-egl1-mesa libwayland-egl1-mesa:i386
+    dpkg -i --force-depends "$DEBTMP"/libwayland-egl1-dummy_*_all.deb
+
+    # Downgrade packages, -f is needed as dependencies are broken
+    # This happens to install python2.7-minimal as well, pulled in by a wrong
+    # dependency of ubuntu-minimal-1.267 (precise), which we did not install.
+    # Looks like an apt bug, I guess we can live with that.
+    apt-get -y --force-yes --no-install-recommends dist-upgrade -f
+elif [ -f "$pinfile" -o -f "$pinlist" ]; then
+    # No longer need the pin; remove it
+    rm -f "$pinfile" "$pinlist"
+    apt-get update || true
+    dpkg -r --force-depends "$pindummypkg"
+    apt-get -y --force-yes --no-install-recommends dist-upgrade -f
+fi
+
+# Install backported xorg instead of the default one
+if [ -n "$backport" ]; then
+    # We still install xorg later to pull in its dependencies
+    install --minimal "xserver-xorg$backport" "libgl1-mesa-glx$backport" \
+        "libegl1-mesa$backport" "libgles2-mesa$backport" \
+        "xserver-xorg-input-synaptics$backport" $installvideodrivers
+fi
+
+if release -lt stretch -lt kali-rolling -lt yakkety; then
+    vmmouse='xserver-xorg-input-vmmouse'
+else
+    # xserver-xorg-input-vmmouse is obsolete
+    vmmouse=''
+fi
+
+# Install xorg, no video drivers
+if [ -z "$inteldriver" -a -n "$backport" ] && release -eq precise; then
+    # xorg is packaged wrong on ARM and conflicts with xserver-xorg-lts-quantal
+    # so replace it with something not broken
+    install_dummy xorg -- xserver-xorg$backport libgl1-mesa-glx$backport \
+        libgl1-mesa-dri$backport libglu1-mesa xfonts-base x11-apps \
+        x11-session-utils x11-utils x11-xfs-utils x11-xkb-utils \
+        x11-xserver-utils xauth xinit xfonts-utils xkb-data xorg-docs-core \
+        xterm x11-common xinput
+else
+    install xorg $installvideodrivers -- xserver-xorg-video-all$backport \
+        $vmmouse
+fi
+
+# Remove bad video drivers
+if [ -n "$removevideodrivers" ]; then
+    remove $removevideodrivers
+fi
+
+# If this is a system with framebuffer compression, we need SNA+tearfree
+xorgconf='/usr/share/X11/xorg.conf.d/20-crouton-intel-sna.conf'
+if [ -n "$intelhasfbc" -a -n "$intelfbcsupport" ]; then
+    mkdir -p "${xorgconf%/*}"
+    ln -sfT /etc/crouton/xorg-intel-sna.conf "$xorgconf"
+else
+    # In case this got moved to a different system, delete the config
+    rm -f "$xorgconf"
+fi
+
+# Fix launching X11 from inside crosh (user doesn't own a TTY)
+echo 'allowed_users=anybody' > '/etc/X11/Xwrapper.config'
+
+inteldrv='/usr/lib/xorg/modules/drivers/intel_drv.so'
+if [ -n "$freon" -a -e "$inteldrv" ]; then
+    # Modify the Intel driver to call getuid0 (provided by croutonfreon.so)
+    # instead of geteuid, to force DRM master setting/dropping.
+    offset="`grep -F -m 1 -boa 'geteuid' "$inteldrv" 2>/dev/null || true`"
+    if [ -n "$offset" ]; then
+        echo -n 'getuid0' | dd seek="${offset%:*}" bs=1 of="$inteldrv" \
+                               conv=notrunc,nocreat 2>/dev/null
+    fi
+
+    if grep -F -q -a 'getuid0' "$inteldrv" 2>/dev/null; then
+        # Hold xserver-xorg-video-intel to make sure that the modification
+        # (which may have been made in a previous update) does not get erased.
+        apt-mark hold "$inteldriver"
+    fi
+fi
+
+TIPS="$TIPS
+You can flip through your running chroot desktops and Chromium OS by hitting
+Ctrl+Alt+Shift+Back and Ctrl+Alt+Shift+Forward.
+"
+
+### append x11-common

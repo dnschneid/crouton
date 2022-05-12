@@ -1,0 +1,13 @@
+# Copyright (c) 2016 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+[Desktop Entry]
+Type=Application
+Name=crouton autostart script for Unity
+Exec=/usr/local/bin/crouton-unity-autostart
+OnlyShowIn=Unity;
+NoDisplay=true
+X-GNOME-Autostart-Phase=Initialization
+X-GNOME-Autostart-Notify=true
+X-GNOME-AutoRestart=true

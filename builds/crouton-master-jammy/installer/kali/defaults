@@ -1,0 +1,32 @@
+#!/bin/sh -e
+# Copyright (c) 2016 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# This file is sourced from main.sh to update distro-specific defaults.
+# It must set at least ARCH and MIRROR if not already specified.
+
+if [ -z "$ARCH" ]; then
+    ARCH="`uname -m`"
+fi
+
+case "$ARCH" in
+x86 | i?86) ARCH="i386";;
+x86_64 | amd64) ARCH="amd64";;
+armel) ARCH="armel";;
+arm64 | aarch64) ARCH="arm64";;
+arm*) ARCH="armhf";;
+*) error 2 "Invalid architecture '$ARCH'.";;
+esac
+
+if [ -z "$MIRROR" ]; then
+    MIRROR="${CROUTON_MIRROR_kali:-http://http.kali.org}"
+fi
+
+if [ -z "$MIRROR2" ]; then
+    MIRROR2="${CROUTON_MIRROR2_kali:-http://security.kali.org/kali-security}"
+fi
+
+BOOTSTRAP_RELEASE="stable"
+
+

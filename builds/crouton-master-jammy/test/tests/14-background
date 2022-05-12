@@ -1,0 +1,70 @@
+#!/bin/sh -e
+# Copyright (c) 2016 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Ensure backgrounding works properly and fails when it's supposed to
+# Release-independent.
+
+if [ -z "$release" ]; then
+    echo "default"
+    exit 0
+fi
+
+snapshot "$release" core
+
+waitfinish() {
+    while ! host unmount-chroot "$release"; do
+        sleep 1
+    done
+    # Make sure the chroot isn't being unmounted by the backgrounded process.
+    while pgrep -f unmount-chroot >/dev/null; do
+        sleep 1
+    done
+}
+
+# Should work by default
+host enter-chroot -b -n "$release" true
+waitfinish
+
+# Return value doesn't matter
+host enter-chroot -b -n "$release" false
+waitfinish
+
+# Piping should work
+s='PIPES ARE GO'
+echo "$s" | host enter-chroot -b -n "$release" cat | passes grep "$s" | log
+
+# Groups can still be created/modified
+host enter-chroot -n "$release" -u 0 groupdel hwaudio
+fails grep hwaudio "$PREFIX/chroots/$release/etc/group"
+host enter-chroot -b -n "$release" sleep 3
+# group must be recreated before the command goes to background
+passes grep hwaudio "$PREFIX/chroots/$release/etc/group"
+waitfinish
+
+# Even with a failing rc.local it should work
+log 'Making rc.local fail'
+rclocal="$PREFIX/chroots/$release/etc/rc.local"
+echo '#!/bin/sh -e
+exit 1' > "$rclocal"
+chmod a+rx "$rclocal"
+host enter-chroot -b -n "$release" true
+waitfinish
+# Remove the failing rc.local: it should also work without rc.local
+rm -f "$rclocal"
+host enter-chroot -b -n "$release" true
+waitfinish
+
+# Even with a failing dbus-daemon it should work
+log 'Making dbus-daemon fail'
+for dir in bin sbin usr/bin usr/sbin; do
+    dbusdaemon="$PREFIX/chroots/$release/$dir/dbus-daemon"
+    if [ -d "`dirname "$dbusdaemon"`" ]; then
+        echo '#!/bin/sh -e
+exit 1' > "$dbusdaemon"
+        chmod a+rx "$dbusdaemon"
+    fi
+done
+host enter-chroot -b -n "$release" true
+waitfinish

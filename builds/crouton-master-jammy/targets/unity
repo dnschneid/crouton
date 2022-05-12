@@ -1,0 +1,49 @@
+#!/bin/sh -e
+# Copyright (c) 2016 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+if [ "${TARGETNOINSTALL:-c}" = 'c' ]; then
+    if [ "$DISTRO" != 'ubuntu' ]; then
+        error 99 "unity target is only supported on Ubuntu."
+    fi
+
+    if [ "${ARCH#arm}" != "$ARCH" ] && release -gt precise; then
+        error 99 "unity is unsupported on ARM for releases after precise."
+    fi
+fi
+REQUIRES='gtk-extra'
+DESCRIPTION='Installs the Unity desktop environment. (Approx. 700MB)'
+HOSTBIN='startunity'
+CHROOTBIN='crouton-noroot startunity gnome-session-wrapper crouton-unity-autostart'
+CHROOTETC='unity-autostart.desktop unity-profiled'
+. "${TARGETSDIR:="$PWD"}/common"
+
+### Append to prepare.sh:
+# Note that whitespace is important for syntax.
+# See distropkgs method in installer/prepare.sh
+install unity ubuntu-artwork gnome-session nautilus ttf-ubuntu-font-family \
+        pulseaudio \
+        ubuntu~precise=unity-2d, \
+        ubuntu~precise=,ubuntu-settings \
+        ubuntu~precise=,ubuntu-session \
+        -- network-manager brasero firefox
+
+# XDG autostart/profile.d additions only needed in saucy and later
+if release -ge saucy; then
+    autostartdir='/etc/xdg/autostart'
+    # Remove previous indicator-only desktop file
+    rm -f "$autostartdir"/crouton-unity-indicator.desktop
+
+    # Set up global autostart script
+    mkdir -p "$autostartdir"
+    ln -sfT /etc/crouton/unity-autostart.desktop \
+        "$autostartdir"/crouton-unity-autostart.desktop
+
+    # Set up profile.d
+    chmod 755 /etc/crouton/unity-profiled
+    ln -sfT /etc/crouton/unity-profiled /etc/profile.d/crouton-unity-profiled.sh
+fi
+
+TIPS="$TIPS
+You can start Unity via the startunity host command: sudo startunity
+"

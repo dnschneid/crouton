@@ -1,0 +1,296 @@
+#!/bin/sh -e
+# Copyright (c) 2016 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+#
+# This file contains functions common to many of the scripts.
+# The file is sourced when the scripts are run directly out of the repo, and
+# directly inserted into the files when built into a bundle.
+
+# Installs a script to a destination, statically inserting the below functions
+# in this file if this file is sourced. If the file is a symlink, copies the
+# symlink without modification.
+# $1: the source script to process
+# $2: the destination file or directory
+# $3: optional additional commands to pass to sed (passed to -e)
+installscript() {
+    local src="$1" dst="$2"
+    if [ -d "$dst" -o "${dst%/}" != "$dst" ]; then
+        mkdir -p "$dst"
+        dst="${dst%/}/${src##*/}"
+    fi
+    if [ -h "$src" ]; then
+        cp -fPT "$src" "$dst"
+        return
+    fi
+    thisfile="${INSTALLERDIR:-"`dirname "$0"`/../installer"}/functions"
+    if [ ! -f "$thisfile" ]; then
+        # This should never happen.
+        error 1 "Unable to find common functions file."
+    fi
+    {
+        # Find the line sourcing the functions file
+        line="$(grep -n '^\. .*/installer/functions' "$src" | cut -d : -f 1)"
+        if [ -n "$line" ]; then
+            head -n $((line - 1)) "$src"
+            awk 'ok; !ok && /^###/ {ok=1}' "$thisfile"
+            tail -n +$((line + 1)) "$src"
+        else
+            cat "$src"
+        fi
+    } | sed -e "${3:-;}" > "$dst"
+}
+
+### Everything after this line will be statically inserted into scripts.
+
+# Exits the script with exit code $1, spitting out message $@ to stderr
+error() {
+    local ecode="$1"
+    shift
+    if [ "$ecode" -eq 1 ]; then
+        echo_color "r" "$*" 1>&2
+    else
+        echo "$*" 1>&2
+    fi
+    exit "$ecode"
+}
+
+# Setup trap ($1) in case of interrupt or error.
+# Traps explicitly do not exit on command error.
+# Traps are first disabled to avoid executing clean-up commands twice.
+# In the case of interrupts, exit is called to avoid the script continuing.
+# $1 must either be empty or end in a semicolon.
+settrap() {
+    trap "set +e; trap - INT HUP TERM 0; $1 exit 2" INT HUP TERM
+    trap "set +e; trap - INT HUP TERM 0; $1" 0
+}
+
+# Prepend a command to the existing $TRAP
+addtrap() {
+    OLDTRAP="$TRAP"
+    TRAP="$1;$TRAP"
+    settrap "$TRAP"
+}
+
+# Revert the last trap change
+undotrap() {
+    TRAP="$OLDTRAP"
+    settrap "$TRAP"
+}
+
+# Works mostly like built-in getopts but silently coalesces positional arguments.
+# Does not take parameters. Set getopts_string prior to calling.
+# Sets getopts_var and getopts_arg.
+# $@ will be left with the positional arguments, so you should NOT shift at all.
+# In bash, enables alias expansion, but that shouldn't impact anything.
+shopt -q -s expand_aliases 2>/dev/null || true
+# Running count of the number of positional arguments
+# We're done processing if all of the remaining arguments are positional.
+getopts_npos=0
+getopts_dashdash=''
+alias getopts_nextarg='getopts_ret=1
+    while [ "$#" -gt "$getopts_npos" ]; do
+        if [ -z "$getopts_dashdash" ] && getopts "$getopts_string" getopts_var; then
+            if [ "$(($#+1-OPTIND))" -lt "$getopts_npos" ]; then
+                # Bad parameter usage ate a positional argument.
+                # Generate the proper error message by abusing getopts.
+                set -- "-$getopts_var"
+                getopts "$getopts_var:" getopts_var
+                shift
+            fi
+            getopts_arg="$OPTARG"
+            getopts_ret=0
+            # Avoid -- confusion by shifting if OPTARG is set
+            if [ -n "$OPTARG" ]; then
+                shift "$((OPTIND-1))"
+                OPTIND=1
+            fi
+            break
+        fi
+        # Do not let getopts consume a --
+        if [ "$OPTIND" -gt 1 ]; then
+            shift "$((OPTIND-2))"
+            if [ "$1" != "--" ]; then
+                shift
+            fi
+        fi
+        OPTIND=1
+        if [ -z "$getopts_dashdash" -a "$1" = "--" ]; then
+            # Still need to loop through to fix the ordering
+            getopts_dashdash=y
+        else
+            set -- "$@" "$1"
+            getopts_npos="$((getopts_npos+1))"
+        fi
+        shift
+    done
+    [ "$getopts_ret" = 0 ]'
+
+# Compares $RELEASE to the specified releases, assuming $DISTRODIR/releases is
+# sorted oldest to newest. Every two parameters are considered criteria that are
+# ORed together. The first parameter is the comparator, as provided to "test".
+# The second parameter is the release to compare to. A comparison against a
+# release from a different distro always fails. Since either $DISTRODIR/releases
+# has to be readable or the release list has to be embedded, and RELEASE has to
+# be set properly, this function should only be used in the context of targets.
+# Returns non-zero if the release doesn't match
+# Example:  release -ge quantal -ge wheezy
+release() {
+    if [ "$(($# % 2))" -ne 0 ]; then
+        error 3 "$(echo_color "y" "invalid parameters to release(): $*")"
+    fi
+    # Load up the list of releases; this will be replaced with a literal list
+    local releases="`cat "$DISTRODIR/releases" 2>/dev/null`"
+    if [ -z "$releases" ]; then
+        error 3 "$(echo_color "y" "list of releases for $DISTRO not found")"
+    fi
+    # End-of-word regex for awk
+    local eow='([^a-z]|$)'
+    local relnum="`echo "$releases" | awk "/^$RELEASE$eow/ {print NR; exit}"`"
+    if [ -z "$relnum" ]; then
+        error 3 "$(echo_color "y" "$RELEASE not found in $DISTRO")"
+    fi
+    while [ "$#" -ge 2 ]; do
+        local cmp="`echo "$releases" | awk "/^$2$eow/ {print NR; exit}"`"
+        if [ -n "$cmp" ] && test "$relnum" "$1" "$cmp"; then
+            return 0
+        fi
+        shift 2
+    done
+    return 1
+}
+
+# Large writes to slow devices (e.g. SD card or USB stick) can cause a task to
+# be stuck for longer than 120 seconds, which triggers a kernel panic (and an
+# immediate reboot). Instead of disabling the timeout altogether, we just make
+# sure the kernel does not panic (this is the default configuration of a vanilla
+# kernel). See crbug.com/260955 for details.
+disablehungtask() {
+    echo 0 > /proc/sys/kernel/hung_task_panic
+}
+
+# Run an awk program, without buffering its output.
+# unbuffered_awk 'program' [argument ...]
+# In the awk code, all "print" calls must be replaced by "output"
+#
+# - Detects whether to run mawk or gawk (mawk is preferred as it is faster),
+# - Prepends the definition of the "output" function to the awk program
+# - Run the modified awk program.
+# mawk needs '-W interactive' to flush the output properly (fflush does not
+# work as documented, but apparently this behaviour is intentional, see
+# https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=593504).
+# Furthermore, fflush is not POSIX so we cannot use any other awk flavor.
+unbuffered_awk() {
+    local cmd
+    if hash mawk 2>/dev/null; then
+        cmd="mawk -W interactive"
+    elif hash gawk 2>/dev/null; then
+        cmd="gawk"
+    else
+        echo "Cannot find mawk or gawk." 1>&2
+        return 1
+    fi
+
+    local program="$1"
+    shift
+
+    $cmd '
+    function output(s) {
+        print s
+        fflush()
+    }
+    '"$program" "$@"
+}
+
+# Validate a chroot name: It cannot contain any /, and cannot be ".", ".." nor
+# an empty string.
+validate_name() {
+    if [ "${1%/*}" != "$1" -o "$1" = "." -o "$1" = ".." -o -z "$1" ]; then
+        return 1
+    fi
+    return 0
+}
+
+# Returns the mountpoint a path is on. The path doesn't need to exist.
+# $1: the path to check
+# outputs on stdout
+getmountpoint() {
+    mp="`readlink -m -- "$1"`"
+    while ! stat -c '%m' "${mp:-/}" 2>/dev/null; do
+        mp="${mp%/*}"
+    done
+}
+
+# Echos to stderr, or /dev/tty if stdin is a tty but stderr is not
+echo_tty() {
+    if [ -t 0 -a ! -t 2 ]; then
+        echo "$@" 1>/dev/tty
+    else
+        echo "$@" 1>&2
+    fi
+}
+
+# Outputs colored text to stdout
+# usage: echo_color [l][color] [colored string] [uncolored string]
+# Specifying "t" (thick) uses bold text.
+# Color can be red, green, yellow, blue, magenta, cyan.
+# Color can be specified with just the first letter.
+# example: echo_color "tr" "bold red" "normal text"
+echo_color() {
+    # If not outputting to a tty print no colors.
+    if [ ! -t 2 ]; then
+        shift
+        echo "$@"
+        return
+    fi
+    printf "\033["
+    local c="$1"
+    if [ "${c#t}" != "$c" ]; then
+        printf "1;"
+        c="${c#t}"
+    else
+        printf "0;"
+    fi
+    case "$c" in
+        r*) printf "31m";;
+        g*) printf "32m";;
+        y*) printf "33m";;
+        b*) printf "34m";;
+        m*) printf "35m";;
+        c*) printf "36m";;
+         *) printf "37m";;
+    esac
+    shift
+    local s='\n'
+    if [ "$1" = '-n' ]; then
+        s=''
+        shift
+    fi
+    echo '-n' "$1"
+    printf "\033[0m"
+    shift
+    echo '-n' "$*"
+    printf "$s"
+}
+
+# Websocket interface
+PIPEDIR='/tmp/crouton-ext'
+CRIATDISPLAY="$PIPEDIR/kiwi-display"
+CROUTONLOCKDIR='/tmp/crouton-lock'
+
+# Write a command to croutonwebsocket, and read back response
+websocketcommand() {
+    # Check that $PIPEDIR and the FIFO pipes exist
+    if ! [ -d "$PIPEDIR" -a -p "$PIPEDIR/in" -a -p "$PIPEDIR/out" ]; then
+        echo "EError $PIPEDIR/in or $PIPEDIR/out are not pipes."
+        exit 0
+    fi
+
+    if ! timeout 3 \
+           sh -c "flock 5; cat > '$PIPEDIR/in';
+                  cat '$PIPEDIR/out'" 5>"$PIPEDIR/lock"; then
+        echo "EError timeout"
+    fi
+    chmod -Rf g+rwX "$PIPEDIR" || true
+    chgrp -Rf crouton "$PIPEDIR" || true
+}
