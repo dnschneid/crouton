@@ -6,22 +6,22 @@ on:
   pull_request:
     branches: [ master ]
 
-jobs:
-  build:
+#jobs:
+  #build:
 
-    runs-on: ubuntu-latest
+    #runs#-on: ubuntu#-latest
 
-    steps:
-    - uses: actions/checkout@v3
+   # steps:
+    #- uses: actions/checkout@v3
     
-    - name: configure
-      run: ./configure
+    #- name: configure
+      #run: ./configure
       
-    - name: Install dependencies
-      run: make
+    #- name: Install dependencies
+      #run: make
       
-    - name: Run check
-      run: make check
+    #- name: Run check
+      #run: make check
       
-    - name: Run distcheck
-      run: make distcheck
+    #- name: Run distcheck
+      #run: make distcheck
