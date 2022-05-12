@@ -6,16 +6,16 @@ REQUIRES='x11'
 DESCRIPTION='GTK-based tools including gdebi, gksu, and a simple browser.'
 . "${TARGETSDIR:="$PWD"}/common"
 
-### Append to prepare.sh:
-install arch=,gdebi arch=,gksu arch=netsurf,netsurf-gtk
+#### Append to prepare.sh:
+#install arch=,gdebi arch=,gksu arch=netsurf,netsurf-gtk
 
-if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
+#if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
     # Add netsurf-gtk to Debian-alternatives if not already there
-    netsurf='/usr/bin/netsurf-gtk'
-    for link in x-www-browser gnome-www-browser; do
-        if ! update-alternatives --query "$link" | grep -q "$netsurf"; then
-            update-alternatives --install "/usr/bin/$link" "$link" "$netsurf" 10
-        fi
-    done
-fi
+#    netsurf='/usr/bin/netsurf-gtk'
+#    for link in x-www-browser gnome-www-browser; do
+#        if ! update-alternatives --query "$link" | grep -q "$netsurf"; then
+#           update-alternatives --install "/usr/bin/$link" "$link" "$netsurf" 10
+#        fi
+#    done
+#fi
 # Arch: Alternative handling is done in x11-common

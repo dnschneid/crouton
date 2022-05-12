@@ -1,0 +1,26 @@
+#!/bin/sh -e
+# Copyright (c) 2014 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# This file is sourced from main.sh to update distro-specific defaults.
+# It must set at least ARCH and MIRROR if not already specified.
+
+if [ -z "$ARCH" ]; then
+    ARCH="`uname -m`"
+fi
+
+case "$ARCH" in
+x86 | i?86) ARCH="i686";;
+x86_64 | amd64) ARCH="x86_64";;
+arm*) ARCH="armv7h";;
+*) error 2 "Invalid architecture '$ARCH'.";;
+esac
+
+if [ -z "$MIRROR" ]; then
+    if [ "$ARCH" = 'x86_64' -o "$ARCH" = 'i686' ]; then
+        MIRROR="${CROUTON_MIRROR_arch:-http://mirrors.kernel.org/archlinux/\$repo/os/\$arch}"
+    else
+        MIRROR="${CROUTON_MIRROR_alarm:-http://mirror.archlinuxarm.org/armv7h/\$repo}"
+    fi
+fi
