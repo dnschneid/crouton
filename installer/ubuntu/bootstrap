@@ -13,7 +13,7 @@
 # $tmp; the contents of which will be moved into $INSTALLERDIR/.. in the bundle
 
 # Grab debootstrap
-d="https://salsa.debian.org/installer-team/debootstrap/-/archive/1.0.124/debootstrap-1.0.124.tar.gz"
+d="https://salsa.debian.org/installer-team/debootstrap/-/archive/1.0.127/debootstrap-1.0.127.tar.gz"
 
 # Download and patch if it's not bundled already
 if [ -n "${INSTALLERDIR-}" -a -d "$INSTALLERDIR/../debootstrap" ]; then
