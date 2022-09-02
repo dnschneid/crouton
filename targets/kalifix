@@ -4,34 +4,38 @@
 # found in the LICENSE file.
 REQUIRES='core'
 DESCRIPTION='Fixes xbindkeys error during kali linux setup.'
+. "${TARGETSDIR:="$PWD"}/common"
 
-if release -le kali; then
 
-    # Adding debian bullseye repo to get xbindkeys installed
-    echo -e '\033[1mAdding debian bullseye repo to sources.list...'
-    cat >> /etc/apt/sources.list <<EOF
+### Append to prepare.sh:
+
+## Debian Overrides
+# Kodi wiki recommends using the Jessie Backports repository
+if release -eq kali-rolling; then
+    cat > '/etc/apt/sources.list.d/kalifix.list' <<EOF
 deb http://ftp.halifax.rwth-aachen.de/debian bullseye main non-free contrib
 deb-src http://ftp.halifax.rwth-aachen.de/debian bullseye main non-free contrib
 EOF
-
-    # Update the package list.
-    # Ignore failures, as most are due to bad PPAs and are not critical.
-    echo -e '\033[1mUpdate the package list...'
-    apt-get -y -qq update || true
-
-    ### Install xbindkeys
-    echo -e '\033[1minstalling xbindkeys...'
-    apt -y -qq install xbindkeys xbindkeys-config
-
-    # Remove bullseye sources to exclude conflicts with future install steps
-    echo -e '\033[1mRemove bullseye sources...'
-    sh -c "head -n -2 /etc/apt/sources.list > /etc/apt/sources.list.tmp"
-    rm /etc/apt/sources.list
-    mv /etc/apt/sources.list.tmp /etc/apt/sources.list
-
-    echo -e '\033[1mUpdate the package list...'
-    apt-get -y -qq update
-
-    TIPS="$TIPS
-    The Kali Linux xbindkeys fix is installed in your chroot."
+    # Update database
+    echo "Update the package list..."
+    apt-get update || true
 fi
+
+### Install xbindkeys
+echo "installing xbindkeys..."
+apt -y -qq install xbindkeys xbindkeys-config
+
+# Remove bullseye sources to exclude conflicts with future install steps
+echo "Remove bullseye sources..."
+rm /etc/apt/sources.list.d/kalifix.list
+
+echo "Update the package list..."
+apt-get -y -qq update
+
+#echo -e '\033[1mInstall kali core meta package...'
+#apt-get -y -qq install kali-linux-core
+
+#TO-DO: - MOTD FIX (delete lines) /etc/profile.d/kali.sh
+
+TIPS="$TIPS"'
+The Kali Linux xbindkeys fix is installed in your chroot.'
