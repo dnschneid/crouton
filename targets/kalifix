@@ -32,11 +32,6 @@ EOF
     echo -e '\033[1mUpdate the package list...'
     apt-get -y -qq update
 
-    echo -e '\033[1mInstall kali core meta package...'
-    apt-get -y -qq install kali-linux-core
-
-    #TO-DO: - MOTD FIX (delete lines) /etc/profile.d/kali.sh
-
     TIPS="$TIPS
     The Kali Linux xbindkeys fix is installed in your chroot."
 fi
