@@ -158,6 +158,7 @@ for NAME in "$@"; do
         if [ -z "$ENCRYPT" ]; then
             mount --bind "$CHROOTSRC" "$CHROOT"
             mount -i -o "remount,$MOUNTOPTS" "$CHROOT"
+            mount -i -o 'remount,symfollow' "$CHROOT" 2>/dev/null || true
             mount --make-private "$CHROOT"
             whitelist "$CHROOT"
             continue
@@ -293,6 +294,8 @@ $passphrase" | ecryptfs-rewrap-passphrase "$wrappedfnek" -
         if ! mount -i -t ecryptfs -o "$mnt" "$CHROOTSRC" "$CHROOT"; then
             error 1 "Failed to mount $NAME."
         fi
+
+        mount -i -o 'remount,symfollow' "$CHROOT" 2>/dev/null || true
 
         whitelist "$CHROOT"
     fi
