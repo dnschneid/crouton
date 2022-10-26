@@ -14,6 +14,12 @@ else
   legacy_session_package="gnome-session-flashback"
 fi
 
+if release -lt bionic -lt buster; then
+  gnome_themes="gnome-themes-standard"
+else
+  gnome_themes="gnome-themes-extra"
+fi
+
 ### Append to prepare.sh:
 install --minimal \
   $legacy_session_package \
@@ -23,7 +29,7 @@ install --minimal \
   gnome-screensaver \
   gnome-session \
   gnome-shell \
-  gnome-themes-standard \
+  $gnome_themes \
   gtk2-engines-pixbuf \
   gvfs-backends \
   nautilus \
