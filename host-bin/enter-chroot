@@ -323,6 +323,7 @@ bindmount() {
     fi
     mkdir -p "$target"
     mount --bind $bindopts "$1" "$target"
+    mount -i -o 'remount,symfollow' "$target" 2>/dev/null || true
     if [ -n "$3" ]; then
         mount -i -o "remount,$3" "$target"
     fi
@@ -336,6 +337,7 @@ tmpfsmount() {
     fi
     mkdir -p "$target"
     mount -i -t tmpfs -o "rw${2:+,}$2" tmpfs "$target"
+    mount -i -o 'remount,symfollow' "$target" 2>/dev/null || true
 }
 
 # If /var/run isn't mounted, we know the chroot hasn't been started yet.
