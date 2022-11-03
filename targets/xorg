@@ -25,26 +25,25 @@ if [ ! -f "/sys/class/tty/tty0/active" ]; then
 fi
 
 # Pull in backported Xorg when possible on precise to support newer hardware
-backport=''
-if release -eq precise; then
-    if [ "${ARCH#arm}" = "$ARCH" ]; then
-        # Note: lts-trusty mesa requires kernel version >=3.6
-        if ! uname -r | grep -q "^3.4."; then
-            backport='-lts-trusty'
-        fi
-    else
-        # ARM only offers quantal backport at the moment
-        backport='-lts-quantal'
-    fi
-fi
-
+#backport=''
+#if release -eq precise; then
+#   if [ "${ARCH#arm}" = "$ARCH" ]; then
+#        # Note: lts-trusty mesa requires kernel version >=3.6
+#       if ! uname -r | grep -q "^3.4."; then
+#            backport='-lts-trusty'
+#        fi
+#    else
+#        # ARM only offers quantal backport at the moment
+#        backport='-lts-quantal'
+#    fi
+#fi
 # Intel?
 inteldriver=''
 intelhasfbc=''
 pinmesa=''
 intelfbcsupport='y'
 if [ "${ARCH#arm}" = "$ARCH" ]; then
-    inteldriver="xserver-xorg-video-intel$backport"
+    inteldriver="xserver-xorg-video-intel"
 
     # If the system has an Intel FBC-capable video card but has too old a driver
     # to support the chipset, we'll need to disable hardware acceleration.
@@ -68,10 +67,10 @@ if [ "${ARCH#arm}" = "$ARCH" ]; then
 fi
 
 # Catalog relevant and irrelevant video drivers
-fbdev="xserver-xorg-video-fbdev$backport"
+fbdev="xserver-xorg-video-fbdev"
 
 if release -lt sid -lt kali-rolling -lt vivid; then
-    modesetting="xserver-xorg-video-modesetting$backport"
+    modesetting="xserver-xorg-video-modesetting"
 else
     # modesetting is built into xserver-xorg-core
     modesetting=''
@@ -174,12 +173,12 @@ elif [ -f "$pinfile" -o -f "$pinlist" ]; then
 fi
 
 # Install backported xorg instead of the default one
-if [ -n "$backport" ]; then
-    # We still install xorg later to pull in its dependencies
-    install --minimal "xserver-xorg$backport" "libgl1-mesa-glx$backport" \
-        "libegl1-mesa$backport" "libgles2-mesa$backport" \
-        "xserver-xorg-input-synaptics$backport" $installvideodrivers
-fi
+# if [ -n "$backport" ]; then
+   # We still install xorg later to pull in its dependencies
+#     install --minimal "xserver-xorg$backport" "libgl1-mesa-glx$backport" \
+#         "libegl1-mesa$backport" "libgles2-mesa$backport" \
+#         "xserver-xorg-input-synaptics$backport" $installvideodrivers
+# fi
 
 if release -lt stretch -lt kali-rolling -lt yakkety; then
     vmmouse='xserver-xorg-input-vmmouse'
@@ -189,18 +188,18 @@ else
 fi
 
 # Install xorg, no video drivers
-if [ -z "$inteldriver" -a -n "$backport" ] && release -eq precise; then
+# if [ -z "$inteldriver" -a -n "$backport" ] && release -eq precise; then
     # xorg is packaged wrong on ARM and conflicts with xserver-xorg-lts-quantal
     # so replace it with something not broken
-    install_dummy xorg -- xserver-xorg$backport libgl1-mesa-glx$backport \
-        libgl1-mesa-dri$backport libglu1-mesa xfonts-base x11-apps \
-        x11-session-utils x11-utils x11-xfs-utils x11-xkb-utils \
-        x11-xserver-utils xauth xinit xfonts-utils xkb-data xorg-docs-core \
-        xterm x11-common xinput
-else
-    install xorg $installvideodrivers -- xserver-xorg-video-all$backport \
+#     install_dummy xorg -- xserver-xorg$backport libgl1-mesa-glx$backport \
+#         libgl1-mesa-dri$backport libglu1-mesa xfonts-base x11-apps \
+#         x11-session-utils x11-utils x11-xfs-utils x11-xkb-utils \
+#         x11-xserver-utils xauth xinit xfonts-utils xkb-data xorg-docs-core \
+#         xterm x11-common xinput
+# else
+    install xorg $installvideodrivers \
         $vmmouse
-fi
+#fi
 
 # Remove bad video drivers
 if [ -n "$removevideodrivers" ]; then
@@ -243,3 +242,4 @@ Ctrl+Alt+Shift+Back and Ctrl+Alt+Shift+Forward.
 "
 
 ### append x11-common
+
