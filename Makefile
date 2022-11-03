@@ -9,14 +9,15 @@ LIBSTARGETS = $(patsubst src/%.c, crouton%.so, $(LIBS))
 SRCTARGETS = $(patsubst src/%.c,crouton%,$(filter-out $(LIBS),$(wildcard src/*.c)))
 CONTRIBUTORS = CONTRIBUTORS
 WRAPPER = build/wrapper.sh
-SCRIPTS := \
-	$(wildcard chroot-bin/*) \
-	$(wildcard chroot-etc/*) \
+SCRIPTS_NOSYM := \
 	$(wildcard host-bin/*) \
 	$(wildcard installer/*.sh) installer/functions \
 	$(wildcard installer/*/*) \
 	$(wildcard src/*) \
 	$(wildcard targets/*)
+SCRIPTS := \
+	$(wildcard chroot-bin/*) \
+	$(wildcard chroot-etc/*)
 EXTPEXE = host-ext/crouton/kiwi.pexe
 EXTPEXESOURCES = $(wildcard host-ext/nacl_src/*.h) \
 				 $(wildcard host-ext/nacl_src/*.cc)
@@ -58,9 +59,10 @@ $(TARGET): $(WRAPPER) $(BUILDDIR) $(GENVERSION) $(GITHEAD) Makefile
 		&& chmod +x /dev/stdout \
 	;} > $(TARGET) || ! rm -f $(TARGET)
 
-$(BUILDDIR): $(SCRIPTS) Makefile
+$(BUILDDIR): $(SCRIPTS) $(SCRIPTS_NOSYM) Makefile
 	rm -rf $(BUILDDIR) && mkdir -p $(BUILDDIR) \
 	&& cp -at $(BUILDDIR) --parents $(SCRIPTS) \
+	&& cp -Lprt $(BUILDDIR) --parents $(SCRIPTS_NOSYM) \
 	&& for bootstrap in $(BOOTSTRAPS); do \
 		tmp=$(BUILDDIR); \
 		[ -h "$$bootstrap" ] && continue; \
