@@ -331,7 +331,7 @@ fi
 
 # If we're not running as root, we must be downloading and have fakeroot and
 # have an exec and dev /tmp
-if grep -q '.* /tmp .*\(nodev\|noexec\)' /proc/mounts; then
+if grep -q '.* /tmp .*\(nodev\|noexec\|nosymfollow\)' /proc/mounts; then
     NOEXECTMP=y
 else
     NOEXECTMP=n
@@ -628,6 +628,9 @@ if [ -z "$UPDATE$RESTOREBIN" ] && [ -n "$DOWNLOADONLY" -o -z "$TARBALL" ]; then
     # Ensure that the temporary directory has exec+dev, or mount a new tmpfs
     if [ "$NOEXECTMP" = 'y' ]; then
         mount -i -t tmpfs -o 'rw,dev,exec' tmpfs "$tmp"
+        # Ensure symfollow is set on platforms that feature it, but don't fail
+        # on ones that do not.
+        mount -o 'remount,symfollow' "$tmp" 2>/dev/null || true
         addtrap "umount -l '$tmp'"
     fi
 
