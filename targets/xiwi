@@ -58,7 +58,7 @@ if release -le wheezy; then
      superinsecure='--no-check-certificate'
 fi
 wget $superinsecure -O "$DUMMYBUILDTMP/dummy.tar.gz" \
-     "$urlbase/xf86-video-dummy-0.3.8.tar.gz"
+     "$urlbase/xf86-video-dummy-0.4.0.tar.gz"
 
 install --minimal --asdeps patch gcc libc-dev pkg-config \
     xserver-xorg-dev$ltspackages x11proto-xf86dga-dev
