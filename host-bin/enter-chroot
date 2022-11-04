@@ -25,6 +25,8 @@ Enters an installed Debian-based chroot for running alongside Chromium OS.
 By default, it will log into the primary user on the first chroot found.
 You can specify a command and parameters to run instead of an interactive shell.
 
+#The system startup will be managed by systemd this is the experiment to see what happens
+
 Options:
     -b          Fork and run the specified command silently in the background.
     -c CHROOTS  Directory the chroots are in. Default: $CHROOTS
@@ -307,6 +309,7 @@ fixabslinks() {
     echo "$p"
 }
 
+# this is new systenD task
 # Bind-mounts $1 into $CHROOT/${2:-"$1"} if $2 is not already mounted
 # If $3 is specified, remounts with the specified options.
 # If $1 starts with a -, it's considered options to the bind mount, and the rest
@@ -688,8 +691,11 @@ if [ "$NOLOGIN" != 1 ] && grep -q '^root:' "$passwd" 2>/dev/null; then
         ret=0
     fi
 
+#this is the propsed enter point to start systemD via init to manage the PTS mounts
+#
     # Launch systemd-logind if available and not already running
-    # Whitelisted for saucy and trusty
+    # kali rolling install 11/2022
+    #
     systemd_dir="`fixabslinks '/run/systemd'`"
     if [ -x "$CHROOT/lib/systemd/systemd-logind" ] && \
             [ ! -d "$systemd_dir" ] && \
