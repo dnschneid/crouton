@@ -1,0 +1,195 @@
+# Safely launch a command ($*) via /bin/sh within the chroot as the root user.
+chrootcmd() {
+    # env may be overridden when running in the background; don't let it fork.
+    local ret=0 oldtrap="$TRAP"
+    TRAP=''
+    env -i chroot "$CHROOT" su -s '/bin/sh' -c "$*" - root || ret=$?
+    local pid="$!"
+    # $pid might not be set if env has not been redefined yet
+    if [ -n "$BACKGROUND" ] && [ -n "$pid" ]; then
+        wait "$pid" || ret=$?
+    fi
+    TRAP="$oldtrap"
+    return "$ret"
+}
+
+# Process arguments
+prevoptind=1
+while getopts 'bc:k:ln:t:u:X:x' f; do
+    # Disallow empty string as option argument
+    if [ "$((OPTIND-prevoptind))" = 2 -a -z "$OPTARG" ]; then
+        error 2 "$USAGE"
+    fi
+    prevoptind="$OPTIND"
+    case "$f" in
+    b) BACKGROUND='y';;
+    c) CHROOTS="`readlink -m -- "$OPTARG"`";;
+    k) KEYFILE="$OPTARG";;
+    l) LOGIN='y';;
+    n) NAME="$OPTARG";;
+    t) TARGET="$OPTARG";;
+    u) USERNAME="$OPTARG";;
+    X) TMPXMETHOD="$OPTARG";;
+    x) NOLOGIN="$((NOLOGIN+1))"
+       [ "$NOLOGIN" -gt 2 ] && NOLOGIN=2;;
+    \?) error 2 "$USAGE";;
+    esac
+done
+shift "$((OPTIND-1))"
+
+# Shift away empty string as first argument (used in start* scripts to mark
+# the end of user-specified parameters)
+if [ "$#" -ge 1 -a -z "$1" ]; then
+    shift
+fi
+
+# We need to run as root
+if [ "$USER" != root -a "$UID" != 0 ]; then
+    error 2 "$APPLICATION must be run as root."
+fi
+
+# We need a command if we specified to run in the background
+if [ -n "$BACKGROUND" -a $# = 0 ]; then
+    error 2 "A command must be specified in order to run in the background."
+fi
+
+# If -x is specified twice, our command is the setup script.
+if [ "$NOLOGIN" = 2 ]; then
+    if [ $# != 0 ]; then
+        error 2 "A command cannot be specified with -xx."
+    fi
+    if [ -n "$BACKGROUND" ]; then
+        error 2 "Cannot run the setup script in the background."
+    fi
+    set -- "$SETUPSCRIPT"
+fi
+
+
+# Prepare chroot filesystem
+# Soft-link resolv.conf so that updates are automatically propagated
+ln -sfT '/var/host/shill/resolv.conf' "$CHROOT/etc/resolv.conf"
+
+# Sanity check of the timezone setting
+localtime="$CHROOT/etc/localtime"
+hostlocaltime='/var/host/timezone/localtime'
+if [ -h "$localtime" ] && [ "`readlink -- "$localtime"`" = "$hostlocaltime" ]; then
+    timezone="`readlink -m -- /var/lib/timezone/localtime || true`"
+    if [ -z "$timezone" -o ! -e "$CHROOT$LOCALTIME" ]; then
+        echo "\
+WARNING: the timezone selected in Chromium OS does not exist inside the chroot.
+To set the chroot's timezone, run the following: sudo dpkg-reconfigure tzdata" 1>&2
+    else
+        # Set /etc/timezone in chroot - fixes the clock in Unity
+        echo "${timezone#/usr/share/zoneinfo/}" > "$CHROOT/etc/timezone"
+    fi
+fi
+
+
+
+
+# this is new systenD task
+# Bind-mounts $1 into $CHROOT/${2:-"$1"} if $2 is not already mounted
+# If $3 is specified, remounts with the specified options.
+# If $1 starts with a -, it's considered options to the bind mount, and the rest
+# of the parameters are shifted.
+bindmount() {
+    bindopts=''
+    if [ "${1#"-"}" != "$1" ]; then
+        bindopts="$1"
+        shift
+    fi
+    local target="`fixabslinks "${2:-"$1"}"`"
+    if mountpoint -q "$target"; then
+        return 0
+    fi
+    mkdir -p "$target"
+    mount --bind $bindopts "$1" "$target"
+    mount -i -o 'remount,symfollow' "$target" 2>/dev/null || true
+    if [ -n "$3" ]; then
+        mount -i -o "remount,$3" "$target"
+    fi
+}
+
+# Creates a tmpfs mount at $CHROOT/$1 with options $2 if not already mounted
+tmpfsmount() {
+    local target="`fixabslinks "$1"`"
+    if mountpoint -q "$target"; then
+        return 0
+    fi
+    mkdir -p "$target"
+    mount -i -t tmpfs -o "rw${2:+,}$2" tmpfs "$target"
+    mount -i -o 'remount,symfollow' "$target" 2>/dev/null || true
+}
+
+# If /var/run isn't mounted, we know the chroot hasn't been started yet.
+if mountpoint -q "`fixabslinks '/var/run'`"; then
+    firstrun=''
+else
+    firstrun='y'
+fi
+
+bindmount /dev
+bindmount /dev/pts
+bindmount /dev/shm
+bindmount /tmp /tmp exec
+bindmount /proc
+tmpfsmount /var/run 'noexec,nosuid,mode=0755,size=10%'
+tmpfsmount /var/run/lock 'noexec,nosuid,nodev,size=5120k'
+bindmount /var/run/dbus /var/host/dbus
+bindmount /var/run/shill /var/host/shill
+bindmount /var/lib/timezone /var/host/timezone
+for m in /lib/modules/*; do
+    if [ -d "$m" ]; then
+        bindmount '-o ro' "$m"
+    fi
+done
+
+# To run silently, we override the env command to launch a background process,
+# and move the trap code to happen there.
+if [ -n "$BACKGROUND" ]; then
+    env() {
+        # Shuffle FDs around to preserve stdin
+        { (
+            trap '' INT HUP
+            trap "$TRAP" 0
+            exec 0<&9 9<&-
+            [ -t 0 ] && exec < /dev/null
+            [ -t 1 ] && exec > /dev/null
+            [ -t 2 ] && exec 2>&1
+            /usr/bin/env "$@"
+        ) & } 9<&0
+    }
+fi
+
+ret=0
+
+# Launch the system dbus unless we are entering a basic shell.
+if [ "$NOLOGIN" != 1 ] && grep -q '^root:' "$passwd" 2>/dev/null; then
+    # Try to detect the dbus user by parsing its configuration file
+    # If it fails, or if the user does not exist, `id -un '$dbususer'`
+    # will fail, and we fallback on a default user name ("messagebus")
+    dbususer="`echo "cat /busconfig/user/text()" \
+        | xmllint --shell "$CHROOT/etc/dbus-1/system.conf" 2>/dev/null \
+        | grep '^[a-z][-a-z0-9_]*$' || true`"
+    chrootcmd "
+        if ! hash dbus-daemon 2>/dev/null; then
+            exit 0
+        fi
+        dbususer='$dbususer'"'
+        pidfile="/var/run/dbus/pid"
+        if [ -f "$pidfile" ]; then
+            if grep -q "^dbus-daemon" "/proc/`cat "$pidfile"`/cmdline" \
+                    2>/dev/null; then
+                exit 0
+            fi
+            rm -f "$pidfile"
+        fi
+        mkdir -p /var/run/dbus
+        dbususer="`id -un "$dbususer" 2>/dev/null || echo "messagebus"`"
+        dbusgrp="`id -gn "$dbususer" 2>/dev/null || echo "messagebus"`"
+        chown "$dbususer:$dbusgrp" /var/run/dbus
+        exec dbus-daemon --system --fork' || ret=$?
+    if [ "$ret" != 0 ]; then
+        echo "WARNING: starting chroot system dbus daemon failed with code $ret" 1>&2
+        ret=0
+    fi
