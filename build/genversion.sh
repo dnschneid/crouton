@@ -1,7 +1,10 @@
 #!/bin/sh -e
+# check /bin/sh exist not ln -s to dash
 # Copyright (c) 2016 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+
+#not used for local forked repos 
 
 # Outputs a version string with the specified prefix.
 
@@ -13,7 +16,7 @@ fi
 source=''
 
 # Get the branch from git
-git="`dirname "$0"`/../.git"
+#git="`dirname "$0"`/../.git"
 if [ -f "$git/HEAD" ]; then
     source="`cut -d/ -f3 "$git/HEAD"`"
     if [ -n "$source" ]; then
@@ -28,4 +31,4 @@ fi
 
 VERSION="$1-%Y%m%d%H%M%S$source"
 
-exec date "+$VERSION"
+#exec date "+$VERSION"
