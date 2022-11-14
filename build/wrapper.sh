@@ -1,4 +1,6 @@
 #!/bin/sh -e
+#check /bin/sh for dash link 
+#
 # Copyright (c) 2016 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file of the source repository, which has been replicated
@@ -41,6 +43,8 @@ VERSION='git'
 # Minimum Chromium OS version is R45 stable
 CROS_MIN_VERS=7262
 
+#if maybe dir check the mount the command come from and be sure is it Exec monunted
+
 if [ "$1" = '-x' -a "$#" -le 2 ]; then
     # Extract to the specified directory.
     SCRIPTDIR="${2:-"${0##*/}.unbundled"}"
@@ -58,6 +62,7 @@ else
     trap "$TRAP" INT HUP 0
 fi
 
+Check to see is file exists
 # Extract this file after the ### line
 # TARPARAMS will be set by the Makefile to match the compression method.
 line="`awk '/^###/ { print FNR+1; exit 0; }' "$0"`"
@@ -69,6 +74,7 @@ if [ -z "$TRAP" ]; then
 fi
 
 # See if we want to just run a script from the bundle
+#check if cmd point and run point is exce
 if [ "$1" = '-X' ]; then
     script="$SCRIPTDIR/$2"
     if [ ! -f "$script" ]; then
@@ -96,6 +102,7 @@ Runs a script directly from the bundle. Valid DIR/SCRIPT combos:" 1>&2
 fi
 
 # Execute the main script inline. It will use SCRIPTDIR to find what it needs.
+#if the script exist 
 . "$SCRIPTDIR/installer/main.sh"
 
 exit
