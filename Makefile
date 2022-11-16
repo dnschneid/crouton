@@ -30,7 +30,7 @@ RELEASE = build/release.sh
 VERSION = 1
 TARPARAMS ?= -j
 
-CFLAGS=-g -Wall -Werror -Os
+CFLAGS=-g -Wall -Werror -Wno-error=unused-function -Os
 
 croutonfbserver_LIBS = -lX11 -lXdamage -lXext -lXfixes -lXtst
 croutonxi2event_LIBS = -lX11 -lXi
@@ -72,7 +72,7 @@ $(BUILDDIR): $(SCRIPTS) $(SCRIPTS_NOSYM) Makefile
 	done
 
 $(EXTTARGET): $(EXTSOURCES) Makefile
-	rm -f $(EXTTARGET) && zip -q --junk-paths $(EXTTARGET) $(EXTSOURCES)
+	#rm -f $(EXTTARGET) && zip -q --junk-paths $(EXTTARGET) $(EXTSOURCES)
 
 $(EXTPEXE): $(EXTPEXESOURCES)
 	$(MAKE) -C host-ext/nacl_src

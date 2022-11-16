@@ -57,7 +57,8 @@ int find_nacl(int conn)
 {
     char argbuf[70], outbuf[256];
     char* cut;
-    int idx = 0, c;
+    /*int idx = 0, c; cleanup */
+    int c;
 
     if ((c = read(conn, argbuf, sizeof(argbuf)-1)) < 0) {
        syserror("Failed to read arguments");
@@ -116,11 +117,12 @@ int find_nacl(int conn)
 
 int main()
 {
-    int sock, conn, n, i, fd;
+    /*int sock, conn, n, i, fd;8 cleanup*/
+    int sock, conn, fd;
     int maxfd;
     struct sockaddr_un addr;
-    struct epoll_event ev, events[MAX_EVENTS];
-    char args[64];
+    /*struct epoll_event ev, events[MAX_EVENTS];*/
+    /*char args[64]; Cleanup */
     fd_set readset, recvset;
 
     /* Set egid to be 27 (video) and change the umask to 007,
@@ -166,7 +168,8 @@ int main()
 
     for (;;) {
         memcpy(&recvset, &readset, sizeof(recvset));
-        n = select(maxfd + 1, &recvset, NULL, NULL, NULL);
+        /*n = select(maxfd + 1, &recvset, NULL, NULL, NULL); Cleanup*/
+        select(maxfd + 1, &recvset, NULL, NULL, NULL);
 
         for (fd = 0; fd <= maxfd; fd++) {
             if (FD_ISSET(fd, &recvset)) {
