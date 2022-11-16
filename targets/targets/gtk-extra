@@ -1,0 +1,27 @@
+#!/bin/sh -e
+# Copyright (c) 2016 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+REQUIRES='x11'
+DESCRIPTION='GTK-based tools including gdebi and a simple browser.'
+. "${TARGETSDIR:="$PWD"}/common"
+
+### Append to prepare.sh:
+install_dummy network-manager network-manager-gnome
+install gdebi
+if release -lt buster -lt kali-rolling -lt artful; then
+  install gksu
+fi
+
+for BROWSER in netsurf-gtk dillo hv3 ""; do
+    test -n "$BROWSER"
+    if install "$BROWSER"; then
+        bin="/usr/bin/$BROWSER"
+        for link in x-www-browser gnome-www-browser; do
+            if ! update-alternatives --query "$link" | grep -q "$bin"; then
+                update-alternatives --install "/usr/bin/$link" "$link" "$bin" 10
+            fi
+        done
+        break
+    fi
+done

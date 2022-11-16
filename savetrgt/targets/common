@@ -1,0 +1,132 @@
+#!/bin/sh -e
+# Copyright (c) 2016 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# This isn't a real target; it's the boilerplate that the other targets source.
+# The targets are simply sourced inside of install.sh, and so can expect to have
+# access to all all-caps variables (by convention; not a technical restriction).
+
+# Additionally, this common script expects the sourcing script to set
+# DESCRIPTION with the description of the target, and REQUIRES with a
+# space-separated list of other targets it needs.
+
+# The script can also specify a space-separated list of targets in PROVIDES;
+# this will prevent other targets from installing when this one is done first.
+
+# Finally, targets can set HOSTBIN, CHROOTBIN, and CHROOTETC with a
+# space-separated list of files to copy from host-bin, chroot-bin, and
+# chroot-etc into the appropriate places.
+
+# All targets must be idempotent since the user may Ctrl-C the process and run
+# it again.
+
+if [ -z "$TARGET" ]; then
+    TARGET="$0"
+    SIMULATE=echo
+fi
+
+if [ "$TARGETS" = 'help' ]; then
+    if [ -n "$DESCRIPTION" ]; then
+        echo "$TARGET"
+        echo "	$DESCRIPTION"
+        if [ -n "$REQUIRES" ]; then
+            echo "	Requires: $REQUIRES"
+        fi
+    fi
+elif [ "$TARGETNOINSTALL" = "p" ]; then
+    # This will check the provides from /etc/crouton/targets and targets
+    # specified with -t. If there are duplicates we will respect the
+    # order of the targets specified. This means on an update targets
+    # specified with -t will have higher priority then already installed targets.
+    for t in $PROVIDES; do
+        echo "$t=$TARGET" >> "${PROVIDESFILE:-/dev/null}"
+    done
+elif [ -z "$TARGETNOINSTALL" -o -n "$RESTOREHOSTBIN" ]; then
+    # Avoid double-adding targets
+    if grep -q "^$TARGET\$" "${TARGETDEDUPFILE:-/dev/null}"; then
+        exit
+    else
+        echo "$TARGET" >> "${TARGETDEDUPFILE:-/dev/null}"
+    fi
+    # Avoid adding things already provided
+    for t in $PROVIDES; do
+        echo "$t" >> "${TARGETDEDUPFILE:-/dev/null}"
+    done
+    # Source the prerequisites
+    for t in $REQUIRES; do
+        # If it is already provided change it to the target what provides it.
+        provider="`awk -F= '/'"$t"'=/{print $2; exit}' "${PROVIDESFILE:-/dev/null}"`"
+        t="${provider:-"$t"}"
+        (TARGET="$t" PROVIDES='' HOSTBIN='' CHROOTBIN='' CHROOTETC=''
+         . "$TARGETSDIR/$t")
+    done
+    # Add a print to the output
+    echo ''
+    echo "echo 'Installing target $TARGET...' 1>&2"
+    # Copy in requested items from host-bin and chroot-bin
+    for f in $HOSTBIN; do
+        echo "Installing $f into the host..." 1>&2
+        src="${HOSTBINDIR:-../host-bin}/$f"
+        $SIMULATE installscript "$src" "$BIN/"
+        [ ! -h "$src" ] && $SIMULATE chmod 755 "$BIN/$f"
+    done
+
+    # Stop here if we are just restoring host-bin
+    if [ -n "$RESTOREHOSTBIN" ]; then
+        exit
+    fi
+
+    for f in $CHROOTBIN; do
+        echo "Installing $f into the chroot..." 1>&2
+        src="${CHROOTBINDIR:-../chroot-bin}/$f"
+        $SIMULATE installscript "$src" "$CHROOT/usr/local/bin/"
+        [ ! -h "$src" ] && $SIMULATE chmod 755 "$CHROOT/usr/local/bin/$f"
+    done
+    for f in $CHROOTETC; do
+        echo "Installing $f into the chroot..." 1>&2
+        src="${CHROOTETCDIR:-../chroot-etc}/$f"
+        $SIMULATE cp -fP "$src" "$CHROOT/etc/crouton/"
+        [ ! -h "$src" ] && $SIMULATE chmod 644 "$CHROOT/etc/crouton/$f"
+    done
+
+    # Copy all the source files to chroot
+    $SIMULATE rm -rf "$CHROOT/usr/src/crouton"
+    $SIMULATE cp -afP "${SRCDIR:-../src}" "$CHROOT/usr/src/crouton"
+
+    # Print out the target file below the ### line.
+    # This avoids having to escape everything like with cat<<EOF
+    # All ### lines are ignored.
+    # Lines with "### append filename" will queue a file to be processed after
+    # the current file is done.
+    # Lines that start with "compile" will have their source code inserted as a
+    # HERE document. In that case, we also look for local include file, and
+    # insert them as needed.
+    t="$TARGET"
+    if [ "${t#/}" = "$t" ]; then
+        t="$TARGETSDIR/$t"
+    fi
+    awk '
+        (FNR == 1) {
+            ok = 0;
+        }
+        /^###/ {
+            ok = 1;
+            if ($2 == "append") {
+                ARGV[ARGC++] = "'"$TARGETSDIR"'/" $3;
+            }
+            next;
+        }
+        ok && /^ *compile / {
+            src = $2 ".c";
+        }
+        src && $NF != substr("\\\\", 1, 1) {
+            print $0 " < /usr/src/crouton/" src
+            src = "";
+            next
+        }
+        ok;
+    ' "$t"
+fi
+# Break out of the subshell.
+exit

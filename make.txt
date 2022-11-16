@@ -1,0 +1,24 @@
+rm -rf crouton.build && mkdir -p crouton.build \
+&& cp -at crouton.build --parents chroot-bin/brightness chroot-bin/croutonfindnacl chroot-bin/xiwi chroot-bin/croutonnotify chroot-bin/croutontriggerd chroot-bin/host-dbus chroot-bin/crouton-unity-autostart chroot-bin/crouton-noroot chroot-bin/setres chroot-bin/croutoncycle chroot-bin/croutonclip chroot-bin/startkde chroot-bin/startxfce4 chroot-bin/startunity chroot-bin/croutonxinitrc-wrapper chroot-bin/startgnome chroot-bin/gnome-session-wrapper chroot-bin/host-wayland chroot-bin/croutonpowerd chroot-bin/startlxde chroot-bin/croutonversion chroot-bin/croutonurlhandler chroot-bin/volume chroot-bin/xinit chroot-etc/unity-profiled chroot-etc/xorg-dummy.conf chroot-etc/xiwi.conf chroot-etc/xserverrc-xiwi chroot-etc/kodi-cycle.py chroot-etc/xserverrc chroot-etc/xbindkeysrc.scm chroot-etc/xorg-intel-sna.conf chroot-etc/unity-autostart.desktop chroot-etc/kodi-keyboard.xml chroot-etc/xserverrc-local.example chroot-etc/pulseaudio-default.pa chroot-etc/xserverrc-xorg \
+&& cp -Lprt crouton.build --parents host-bin/unmount-chroot host-bin/enter-chroot host-bin/startkde host-bin/startxfce4 host-bin/edit-chroot host-bin/startunity host-bin/startgnome host-bin/starte17 host-bin/delete-chroot host-bin/mount-chroot host-bin/startxiwi host-bin/startlxde host-bin/crash_reporter_wrapper host-bin/startkodi host-bin/startcli installer/prepare.sh installer/main.sh installer/functions installer/ubuntu/defaults installer/ubuntu/pkgdetails installer/ubuntu/ar installer/ubuntu/prepare installer/ubuntu/getrelease.sh installer/ubuntu/bootstrap installer/ubuntu/releases installer/debian/defaults installer/debian/pkgdetails installer/debian/ar installer/debian/prepare installer/debian/getrelease.sh installer/debian/bootstrap installer/debian/releases installer/kali/defaults installer/kali/pkgdetails installer/kali/ar installer/kali/prepare installer/kali/getrelease.sh installer/kali/bootstrap installer/kali/releases src/vtmonitor.c src/findnacld.c src/fbserver.c src/fbserver-proto.h src/freon.c src/xi2event.c src/websocket.c src/websocket.h targets/post-common targets/xfce targets/mate-desktop targets/touch targets/common targets/xiwi targets/xfce-desktop targets/lxde targets/core targets/audio targets/extension targets/kodi targets/tools targets/mate targets/chrome-beta targets/chrome-dev targets/openoffice targets/kde-desktop targets/cli-extra targets/gtk-extra targets/chromium targets/xbmc targets/keyboard targets/x11-common targets/gnome-desktop targets/chrome targets/xorg targets/unity-desktop targets/chrome-common targets/kde targets/unity targets/lxde-desktop targets/gnome targets/x11 targets/e17 \
+&& for bootstrap in installer/ubuntu/bootstrap installer/debian/bootstrap installer/kali/bootstrap; do \
+	tmp=crouton.build; \
+	[ -h "$bootstrap" ] && continue; \
+	echo "Preparing bootstrap dependencies for $bootstrap" >&2; \
+	tmp=crouton.build sh -e "$bootstrap" \
+		|| ! rm -rf crouton.build || exit 1; \
+done
+{ \
+	sed -e "s/\$TARPARAMS/-j/" \
+		-e "s/VERSION=.*/VERSION='1-20221115182047~master:cb6bfd1e'/" \
+		build/wrapper.sh \
+	&& (cd crouton.build && tar --owner=root --group=root -c -j *)\
+	&& chmod +x /dev/stdout \
+;} > crouton || ! rm -f crouton
+gcc -g -Wall -Werror -Wno-error=unused-function -Os src/vtmonitor.c  -o croutonvtmonitor
+gcc -g -Wall -Werror -Wno-error=unused-function -Os src/findnacld.c  -o croutonfindnacld
+gcc -g -Wall -Werror -Wno-error=unused-function -Os src/fbserver.c -lX11 -lXdamage -lXext -lXfixes -lXtst -o croutonfbserver
+gcc -g -Wall -Werror -Wno-error=unused-function -Os src/xi2event.c -lX11 -lXi -o croutonxi2event
+gcc -g -Wall -Werror -Wno-error=unused-function -Os src/websocket.c  -o croutonwebsocket
+gcc -g -Wall -Werror -Wno-error=unused-function -Os -shared -fPIC src/freon.c -ldl -ldrm -I/usr/include/libdrm -o croutonfreon.so
+#rm -f crouton.zip && zip -q --junk-paths crouton.zip host-ext/crouton/icon-128.png host-ext/crouton/manifest.json host-ext/crouton/connected-38.png host-ext/crouton/connected-19.png host-ext/crouton/popup.html host-ext/crouton/icon-48.png host-ext/crouton/disabled-38.png host-ext/crouton/background.js host-ext/crouton/window.html host-ext/crouton/error-38.png host-ext/crouton/error-19.png host-ext/crouton/disabled-19.png host-ext/crouton/disconnected-38.png host-ext/crouton/popup.js host-ext/crouton/background.html host-ext/crouton/first.html host-ext/crouton/kiwi.nmf host-ext/crouton/window.js host-ext/crouton/disconnected-19.png

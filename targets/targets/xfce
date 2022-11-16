@@ -1,0 +1,42 @@
+#!/bin/sh -e
+# Copyright (c) 2016 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+REQUIRES='gtk-extra'
+DESCRIPTION='Installs the Xfce desktop environment. (Approx. 250MB)'
+HOSTBIN='startxfce4'
+CHROOTBIN='crouton-noroot startxfce4'
+. "${TARGETSDIR:="$PWD"}/common"
+
+### Append to prepare.sh:
+# Ubuntu 12.04 no longer has a PPA for Xfce 4.10 - so remove it if found.
+if release -eq precise && [ "$ARCH" = 'amd64' -o "$ARCH" = 'i386' ]; then
+    if [ -s /etc/apt/sources.list.d/xfce-4.10.list ]; then
+        rm -f /etc/apt/sources.list.d/xfce-4.10.list*
+        # Update database
+        apt-get update || true
+    fi
+fi
+
+# Fix icons by setting default icon theme to Tango
+mkdir -p /etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml
+cat > '/etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xsettings.xml' <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+
+<channel name="xsettings" version="1.0">
+  <property name="Net" type="empty">
+    <property name="IconThemeName" type="string" value="Tango"/>
+  </property>
+</channel>
+EOF
+
+if release -lt xenial && [ "$ARCH" = 'arm64' ]; then
+    install_dummy xfce4-battery-plugin
+fi
+
+install xfce4 xfce4-goodies dbus-x11 ubuntu=shimmer-themes, \
+        -- hddtemp xorg
+
+TIPS="$TIPS
+You can start Xfce via the startxfce4 host command: sudo startxfce4
+"

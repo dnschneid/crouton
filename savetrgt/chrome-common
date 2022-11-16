@@ -1,0 +1,56 @@
+#!/bin/sh -e
+# Copyright (c) 2016 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# This isn't a real target; it's the common commands for installing the various
+# channels of the Google Chrome browser that the relevant targets source.
+
+# This command expects CHANNEL to be set with the requested Google Chrome
+# channel: stable, beta, or unstable.
+
+if [ "${TARGETNOINSTALL:-c}" = 'c' -a "${ARCH#arm}" != "$ARCH" ]; then
+    echo 'Google Chrome does not yet have an ARM build. Installing Chromium instead.' 1>&2
+    TARGET=chromium
+    . "${TARGETSDIR:="$PWD"}/$TARGET"
+fi
+if [ "${TARGETNOINSTALL:-c}" = 'c' ] && release -lt saucy -lt jessie; then
+    echo "Google Chrome is not supported on $RELEASE anymore. Installing Chromium instead." 1>&2
+    TARGET=chromium
+    . "${TARGETSDIR:="$PWD"}/$TARGET"
+fi
+if [ "${TARGETNOINSTALL:-c}" = 'c' -a "$TARGET" != 'chrome' ]; then
+    # Avoid installing multiple chrome targets
+    if grep -q "^chrome\$" "${TARGETDEDUPFILE:-/dev/null}"; then
+        exit
+    else
+        echo "chrome" >> "${TARGETDEDUPFILE:-/dev/null}"
+    fi
+fi
+REQUIRES='x11'
+. "${TARGETSDIR:="$PWD"}/common"
+
+### Append to prepare.sh:
+# Only download if it's not already installed, since it auto-updates
+pkg="google-chrome-$CHANNEL"
+if [ -n "`list_uninstalled '' "$pkg"`" ]; then
+    # Chrome needs hicolor-icon-theme to configure/install
+    install hicolor-icon-theme
+
+    url="https://dl.google.com/linux/direct/${pkg}_current_$ARCH.$PKGEXT"
+    tmp="`mktemp crouton.XXXXXX --tmpdir=/tmp`"
+    addtrap "rm -f '$tmp'"
+
+    wget "$url" -O "$tmp"
+
+    # Remove other providers of google-chrome, then install the package
+    for c in stable beta dev; do
+        c="google-chrome-$c"
+        if [ -z "`list_uninstalled '' "$c"`" ]; then
+            remove "$c"
+        fi
+    done
+    install_pkg "$tmp"
+else
+    echo "$pkg is already installed."
+fi

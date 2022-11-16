@@ -1,0 +1,92 @@
+#!/bin/sh -e
+# Copyright (c) 2016 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# This isn't a real target; it's the common commands for installing various
+# forms of X11.
+
+### Append to prepare.sh:
+
+# Create dummy xserver-xorg-legacy
+install_dummy xserver-xorg-legacy
+
+# Store and apply the X11 method
+ln -sfT '/etc/crouton/xserverrc' '/etc/X11/xinit/xserverrc'
+echo "$XMETHOD" > '/etc/crouton/xmethod'
+
+# Remove old vgem hack
+offset="`grep -F -m 1 -boa 'croutonhax' /usr/bin/Xorg 2>/dev/null || true`"
+if [ -n "$offset" ]; then
+    echo -n 'card[0-9]*' | dd seek="${offset%:*}" bs=1 of=/usr/bin/Xorg \
+        conv=notrunc,nocreat 2>/dev/null
+fi
+
+# Install utilities and links for powerd-poking daemon
+compile xi2event '-lX11 -lXi' libx11-dev libxi-dev
+install --minimal dbus xdg-utils
+ln -sf croutonpowerd /usr/local/bin/gnome-screensaver-command
+ln -sf croutonpowerd /usr/local/bin/xscreensaver-command
+
+# Install nicer cursors
+install --minimal dmz-cursor-theme
+
+# Install bsdmainutils, xbindkeys and xautomation for shortcuts
+install --minimal bsdmainutils xbindkeys xautomation
+
+# We need chvt on freon systems
+if [ -f "/sys/class/tty/tty0/active" ]; then
+    install --minimal kbd
+    # Allow users to run sudo chvt without password, so we don't need to run
+    # croutoncycle as root
+    echo '%sudo ALL = NOPASSWD:/bin/chvt' > /etc/sudoers.d/chvt
+    chmod 440 /etc/sudoers.d/chvt
+fi
+
+# Add a blank Xauthority to all users' home directories
+touch /etc/skel/.Xauthority
+chmod 600 /etc/skel/.Xauthority
+
+# Make xscreensaver default to blank only
+echo 'mode: blank' > /etc/skel/.xscreensaver
+
+# Create /usr/share/desktop-directories to avoid issues with xdg-desktop-menu
+mkdir -p /usr/share/desktop-directories
+
+# Prevent Upstart from taking over X sessions
+if release -eq trusty -eq xenial; then
+    dpkg-divert --local --rename --add /etc/upstart-xsessions
+fi
+
+# FIXME: is this necessary for rootless X11?
+# This makes sure Xephyr, running as user, can write server-*.xkm files to
+# /var/lib/xkb, so it does not conflict with files created by Chromium OS
+# X server in /tmp.
+mkdir -p /var/lib/xkb
+chgrp video /var/lib/xkb
+chmod g+rw /var/lib/xkb
+
+# Update policies for mounting and unmounting devices with udisks2
+mkdir -p '/etc/polkit-1/localauthority/10-vendor.d'
+cat > '/etc/polkit-1/localauthority/10-vendor.d/10-crouton-udisks2.pkla' <<EOF
+[Allow mounting when started from crosh]
+Identity=*
+Action=org.freedesktop.udisks*.filesystem-mount
+ResultAny=auth_admin
+ResultInactive=yes
+ResultActive=yes
+
+[Allow eject when started from crosh]
+Identity=*
+Action=org.freedesktop.udisks*.*eject*
+ResultAny=auth_admin
+ResultInactive=yes
+ResultActive=yes
+
+[Disallow unmounting of Chromium OS mounts; it won't work]
+Identity=*
+Action=org.freedesktop.udisks*.filesystem-unmount-others
+ResultAny=no
+ResultInactive=no
+ResultActive=no
+EOF

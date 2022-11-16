@@ -1,0 +1,71 @@
+#!/bin/sh -e
+# Copyright (c) 2016 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+if [ "${TARGETNOINSTALL:-c}" = 'c' ]; then
+    if release -le wheezy; then
+        error 99 "Kodi not supported on Debian Wheezy or older."
+    elif release -eq precise; then
+        error 99 "Kodi not supported on Precise Ubuntu."
+    fi
+fi
+REQUIRES='x11'
+PROVIDES='xbmc'
+DESCRIPTION='Installs the KODI media player. (Approx. 200MB)'
+HOSTBIN='startkodi'
+CHROOTETC='kodi-keyboard.xml kodi-cycle.py'
+. "${TARGETSDIR:="$PWD"}/common"
+
+### Append to prepare.sh:
+
+## Debian Overrides
+# Kodi wiki recommends using the Jessie Backports repository
+if release -eq jessie; then
+    cat > '/etc/apt/sources.list.d/kodi.list' <<EOF
+# Bring in Jessie Backports for newer Kodi
+deb http://http.debian.net/debian jessie-backports main
+EOF
+    # Update database
+    apt-get update || true
+fi
+
+## Ubuntu Overrides
+# Kodi has an official ppa for the latest stable version
+if [ "$DISTRO" = 'ubuntu' ] && [ "$ARCH" = 'amd64' -o "$ARCH" = 'i386' ]; then    
+    # Pull in the signing key
+    apt-key adv --keyserver 'keyserver.ubuntu.com' \
+                --recv-keys '91E7EE5E'
+    # Add the software source
+    cat > '/etc/apt/sources.list.d/kodi.list' <<EOF
+# Bring in Kodi PPA Repository
+deb http://ppa.launchpad.net/team-xbmc/ppa/ubuntu $RELEASE main 
+deb-src http://ppa.launchpad.net/team-xbmc/ppa/ubuntu $RELEASE main 
+EOF
+    # Update database
+    apt-get update || true
+fi
+
+install kodi pulseaudio
+
+# Configure keymaps kodi for the hotkeys ctr-shift-alt F1/F2 to
+# cycle through chroots/chromeos. We use ~/.kodi/userdata/keymaps/keyboard.xml
+# for this purpose, but the main user may not have been created yet, so we 
+# add a script in /etc/profile.d to link ~/.kodi/userdata/keymaps/keyboard.xml
+# to /etc/crouton/kodi-keyboard.xml
+
+profiledsh='/etc/profile.d/crouton-kodi-keymaps.sh'
+# Make sure symbolic link is setup on login
+echo '#!/bin/sh
+
+keyboardxmldir="$HOME/.kodi/userdata/keymaps"
+# Do not install if user is root, or $HOME does not exist
+if [ "$(id -u)" -ne 0 -a -d "$HOME" -a ! -e "$keyboardxmldir/keyboard.xml" ]; then
+    mkdir -p "$keyboardxmldir"
+    ln -sfT /etc/crouton/kodi-keyboard.xml "$keyboardxmldir/keyboard.xml"
+fi' > "$profiledsh"
+
+chmod 755 "$profiledsh"
+
+TIPS="$TIPS
+You can start KODI via the startkodi host command: sudo startkodi
+"

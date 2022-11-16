@@ -1,0 +1,53 @@
+#!/bin/sh -e
+# Copyright (c) 2016 The crouton Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+REQUIRES='gtk-extra'
+DESCRIPTION='Installs the GNOME desktop environment. (Approx. 400MB)'
+HOSTBIN='startgnome'
+CHROOTBIN='crouton-noroot startgnome gnome-session-wrapper'
+. "${TARGETSDIR:="$PWD"}/common"
+
+if release -lt jessie -lt sana -lt trusty; then
+  legacy_session_package="gnome-session-fallback"
+else
+  legacy_session_package="gnome-session-flashback"
+fi
+
+if release -lt bionic -lt buster; then
+  gnome_themes="gnome-themes-standard"
+else
+  gnome_themes="gnome-themes-extra"
+fi
+
+### Append to prepare.sh:
+install --minimal \
+  $legacy_session_package \
+  dconf-cli \
+  evolution-data-server \
+  gnome-control-center \
+  gnome-screensaver \
+  gnome-session \
+  gnome-shell \
+  $gnome_themes \
+  gtk2-engines-pixbuf \
+  gvfs-backends \
+  nautilus \
+  pulseaudio \
+  unzip
+
+mkdir -p /etc/dconf/profile
+mkdir -p /etc/dconf/db/local.d
+cat << EOF > /etc/dconf/profile/user
+user-db:user
+system-db:local
+EOF
+cat << EOF > /etc/dconf/db/local.d/01-always_show_logout
+[org/gnome/shell]
+always-show-log-out=true
+EOF
+dconf update
+
+TIPS="$TIPS
+You can start GNOME via the startgnome host command: sudo startgnome
+"
