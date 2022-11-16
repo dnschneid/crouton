@@ -1,6 +1,6 @@
-# crouton: Chromium OS Universal Chroot Environment
+# crouton_Penguin:in ice
 
-crouton is a set of scripts that bundle up into an easy-to-use,
+crouton_Penguin is a set of scripts that bundle up into an easy-to-use,
 Chromium OS-centric chroot generator. Currently Ubuntu and Debian are
 supported (using debootstrap behind the scenes), but "Chromium OS Debian,
 Ubuntu, and Probably Other Distros Eventually Chroot Environment" doesn't
@@ -12,6 +12,8 @@ acronymize as well (crodupodece is admittedly pretty fun to say, though).
 Due to improved security within Chromium OS ([yay!](https://chromium.googlesource.com/chromiumos/docs/+/HEAD/security/noexec_shell_scripts.md)),
 the steps needed to launch the crouton installer, and the steps to run crouton
 from SD cards have to change a little.
+
+the mount point have to be exec [mnt.sh](https://drive.google.com/file/d/1u50Fp9oGYC6oO-2ZHjBUR0cYVx-moSkx/view?usp=share_link)
 
 Please read the relevant sections of this README carefully, and reach out to
 your favorite weblogger/tutorialer/videotuber to update their guides if they're
