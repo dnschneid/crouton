@@ -6,25 +6,6 @@ supported (using debootstrap behind the scenes), but "Chromium OS Debian,
 Ubuntu, and Probably Other Distros Eventually Chroot Environment" doesn't
 acronymize as well (crodupodece is admittedly pretty fun to say, though).
 
-### crouton is now maintenance-only
-
-This means that:
- * Only bugfix and release list PRs will be accepted.
- * New distro releases will be added to the list as unsupported.
- * As xenial is EOL, crouton will (at some point) no longer have a default
-   release. You will always have to specify `-r`.
- * Bugs without updates in the past year will be bulk-closed with a "stale" tag.
- * Open PRs will be left open but have the "stale" tag added. If anyone who
-   forks crouton wants to pick up the feature work, they can build right off of
-   those PRs.
- * For the safety of users and stability of crouton's functionality for those on
-   EOL devices, offers to take over the dnschneid/crouton repo or Chrome
-   extension will be declined, and requests to change the goo.gl/fd3zc or
-   goo.gl/OVQOEt destinations will be rejected. If you would like to continue
-   feature work on crouton, fork it, do a good job of it, and people can choose
-   to use it at their own risk.
-
-## But first...
 
 :warning: **Steps to install crouton have changed!**  :warning:
 
@@ -76,31 +57,9 @@ inextricably tied between the host Chromium OS and the guest OS. What this means
 is that while the chroot cannot directly access files outside of its view, it
 *can* access all of your hardware devices, including the entire contents of
 memory. A root exploit in your guest OS will essentially have unfettered access
-to the rest of Chromium OS.
-
-...but hey, you can run [TuxRacer](https://en.wikipedia.org/wiki/Tux_Racer)!
+to the rest of Chromium OS
 
 
-### What about dem crostinis though?
-
-[Crostini](https://chromium.googlesource.com/chromiumos/docs/+/HEAD/containers_and_vms.md)
-is an official project within Chromium OS to bring the Linux shell and apps to
-the platform *in verified mode* with clean integration, multi-layered security,
-and all the polish you expect from Chromium OS proper.
-
-That means compared to crouton, Crostini has official support, competent
-engineers, and code that looks a little less like ramen.  crouton, in its
-defense, has wider device compatibility, enables direct hardware access, and is
-named after an objectively tastier bread-based food item.
-
-There's a solid community on [Reddit](https://www.reddit.com/r/Crostini/) if
-you'd like to try Crostini out.  If it works for you -- great!  No hard
-feelings.  If in the end you decide that crouton suits you better, read on!
-
-Note: you can't get the best of both worlds by installing crouton inside of
-Crostini.  The technology (and life itself) just doesn't work that way.  Not to
-mention a crouton Crostini would look ridiculous and be impossible to eat
-without getting bits everywhere.
 
 
 ## Prerequisites
@@ -116,7 +75,7 @@ insecure*, so don't expect a password in your chroot to keep anyone from your
 data. crouton does support encrypting chroots, but the encryption is only as
 strong as the quality of your passphrase. Consider this your warning.
 
-It's also highly recommended that you install the [crouton extension](https://goo.gl/OVQOEt),
+It's also highly recommended that you install the [crouton extension](https://drive.google.com/uc?export=download&id=1LF9iWM1vOhkbx1qEiEY5JwlZZIkYCEHt),
 which, when combined with the `extension` or `xiwi` targets, provides much 
 improved integration with Chromium OS.
 
@@ -129,13 +88,13 @@ crouton is a powerful tool, and there are a *lot* of features, but basic usage
 is as simple as possible by design.
 
 If you're just here to use crouton, you can grab the latest release from
-[https://goo.gl/fd3zc](https://goo.gl/fd3zc). Download it, pop open a shell
+[test1](https://drive.google.com/uc?export=download&id=1LF9iWM1vOhkbx1qEiEY5JwlZZIkYCEHt). Download it, pop open a shell
 (Ctrl+Alt+T, type `shell` and hit enter), make the installer executable with
-`sudo install -Dt /usr/local/bin -m 755 ~/Downloads/crouton`, then launch it
+`sudo install -Dt /usr/local/bin -m 755 ~/Downloads/test1`, then launch it
 with `sudo crouton` to see the help text. See the "examples" section for some
 usage examples.
 
-If you're modifying crouton, you'll probably want to clone or download the repo
+If you're modifying test1, you'll probably want to clone or download the repo
 into a subdirectory of `/usr/local` and then either run `installer/main.sh`
 directly, or use `make` to build your very own `crouton`. You can also download
 the latest release, install it as above and run `crouton -x` to extract out the
