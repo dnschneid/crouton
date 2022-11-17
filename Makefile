@@ -30,7 +30,7 @@ RELEASE = build/release.sh
 VERSION = 1
 TARPARAMS ?= -j
 
-CFLAGS=-g -Wall -Werror -Os
+CFLAGS=-g -Wall -Werror -Wno-error=unused-function -Os
 
 croutonfbserver_LIBS = -lX11 -lXdamage -lXext -lXfixes -lXtst
 croutonxi2event_LIBS = -lX11 -lXi
