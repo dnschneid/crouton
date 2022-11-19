@@ -25,7 +25,7 @@ MIRROR=''
 MIRRORSET=''
 MIRROR2=''
 NAME=''
-PREFIX='/usr/local'
+PREFIX='/usr/local/'
 PREFIXSET=''
 CHROOTSLINK='/mnt/stateful_partition/crouton/chroots'
 PROXY='unspecified'
@@ -43,6 +43,7 @@ UPDATEIGNOREEXISTING=''
 USAGE="$APPLICATION [options] -t targets
 $APPLICATION [options] -f backup_tarball
 $APPLICATION [options] -d -f bootstrap_tarball
+
 
 Constructs a chroot for running a more standard userspace alongside Chromium OS.
 
@@ -387,7 +388,7 @@ if [ -z "$RESTOREBIN" ]; then
     CHROOT="$CHROOTS/${NAME:="${RELEASE:-"$DEFAULTRELEASE"}"}"
     CHROOTSRC="$CHROOT"
 fi
-TARGETDEDUPFILE="`mktemp --tmpdir=/tmp "$APPLICATION-dedup.XXX"`"
+TARGETDEDUPFILE="`mktemp --tmpdir=/usr/local/bin "$APPLICATION-dedup.XXX"`"
 addtrap "rm -f '$TARGETDEDUPFILE'"
 
 # Confirm we have write access to the directory before starting.
@@ -404,6 +405,7 @@ if [ -z "$RESTOREBIN$DOWNLOADONLY" ]; then
     # Instead, use the direct path, and confirm that they're actually the same
     # to catch situations where things are bind-mounted over /usr/local
     truechroots="/mnt/stateful_partition/dev_image/chroots"
+    
     if [ -z "$PREFIXSET" -a ! -h "$CHROOTS" ] \
             && ([ ! -e "$CHROOTS" ] || [ "$CHROOTS" -ef "$truechroots" ]); then
         # Detect if chroots are left in the old chroots directory, and move them
@@ -554,7 +556,7 @@ fi
 # temporary directory to avoid changing its state permanently if it is
 # successful.
 vboot_is_safe() {
-    local tmp="`mktemp -d --tmpdir=/tmp 'crouton-rwtest.XXX'`"
+    local tmp="`mktemp -d --tmpdir=/usr/local/bin 'crouton-rwtest.XXX'`"
     local unmount="umount -l '$tmp' 2>/dev/null; rmdir '$tmp'"
     addtrap "$unmount"
     mount --bind / "$tmp" >/dev/null
@@ -621,7 +623,7 @@ fi
 # Download the bootstrap data if appropriate
 if [ -z "$UPDATE$RESTOREBIN" ] && [ -n "$DOWNLOADONLY" -o -z "$TARBALL" ]; then
     # Create the temporary directory and delete it upon exit
-    tmp="`mktemp -d --tmpdir=/tmp "$APPLICATION.XXX"`"
+    tmp="`mktemp -d --tmpdir=/usr/local/bin "$APPLICATION.XXX"`"
     subdir="$RELEASE-$ARCH"
     addtrap "rm -rf --one-file-system '$tmp'"
 
@@ -649,6 +651,7 @@ if [ -z "$UPDATE$RESTOREBIN" ] && [ -n "$DOWNLOADONLY" -o -z "$TARBALL" ]; then
     echo 'Moving bootstrap files into the chroot...' 1>&2
     # Make sure we do not leave an incomplete chroot in case of interrupt or
     # error during the move
+    tmp="/usr/local/bin"
     addtrap "rm -rf --one-file-system '$CHROOT'"
     mv -f "$tmp/$subdir/"* "$CHROOT"
     undotrap
@@ -735,7 +738,7 @@ echo -n '' > "$TARGETDEDUPFILE"
 # Check if a target has defined PROVIDES, if we are not restoring host-bin.
 if [ ! -n "$RESTOREHOSTBIN" ]; then
     # Create temporary file to list PROVIDES=TARGET.
-    PROVIDESFILE="`mktemp --tmpdir=/tmp "$APPLICATION-provides.XXX"`"
+    PROVIDESFILE="`mktemp --tmpdir=/usr/local/bin "$APPLICATION-provides.XXX"`"
     addtrap "rm -f '$PROVIDESFILE'"
     t="${TARGETS%,},"
     while [ -n "$t" ]; do

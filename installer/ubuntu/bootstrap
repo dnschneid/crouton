@@ -4,29 +4,29 @@
 # found in the LICENSE file.
 
 # This is a distro-specific bootstrap script, sourced from main.sh, and as such
-# has access to all of the variables set by main.sh, namely $tmp (the temporary
+# has access to all of the variables set by main.sh, namely $usr (the temporary
 # directory), $INSTALLERDIR/$DISTRO, $RELEASE, $BOOTSTRAP_RELEASE (if different
 # from $RELEASE), $ARCH, and $MIRROR.
 
-# This script is also sourced with nothing but $tmp set, as part of the bundle
+# This script is also sourced with nothing but $usr set, as part of the bundle
 # build process. Any pre-downloading of tools should happen and be stored in
-# $tmp; the contents of which will be moved into $INSTALLERDIR/.. in the bundle
+# $usr; the contents of which will be moved into $INSTALLERDIR/.. in the bundle
 
 # Grab debootstrap
 d="https://salsa.debian.org/installer-team/debootstrap/-/archive/1.0.128+nmu2/.tar.gz"
-
+usr="/usr/local/bin"
 # Download and patch if it's not bundled already
 if [ -n "${INSTALLERDIR-}" -a -d "$INSTALLERDIR/../debootstrap" ]; then
-    cp -at "$tmp" "$INSTALLERDIR/../debootstrap/"*
+    cp -at "$usr" "$INSTALLERDIR/../debootstrap/"*
 else
     # Add the subdirectory if we're preparing the installer bundle
     if [ -z "$RELEASE" ]; then
-        tmp="$tmp/debootstrap"
+        tmp="$usr/debootstrap"
         mkdir -p "$tmp"
     fi
 
     if ! curl -f -# -L --connect-timeout 60 --retry 2 "$d" \
-            | tar -C "$tmp" --strip-components=1 --exclude=debian -zx 2>&-; then
+            | tar -C "$usr" --strip-components=1 --exclude=debian -zx 2>&-; then
         error 1 'Failed to download debootstrap.
 Check your internet connection or proxy settings and try again.'
     fi
@@ -42,37 +42,37 @@ Check your internet connection or proxy settings and try again.'
         /"\$iters" -lt 10/ { sub(/10/, "3"); t=1 }
         1
         END { if (t != 5) exit 1 }
-            ' "$tmp/functions" > "$tmp/functions.new"; then
-        mv -f "$tmp/functions.new" "$tmp/functions"
+            ' "$usr/functions" > "$usr/functions.new"; then
+        mv -f "$usr/functions.new" "$usr/functions"
     else
-        rm -f "$tmp/functions.new"
+        rm -f "$usr/functions.new"
         echo "Unable to patch debootstrap, moving on..." 1>&2
     fi
 
     # Patch debootstrap so that is does not create devices under /dev (issue #2387).
-    sed -i -e 's/^setup_devices () {$/\0 return 0/' "$tmp/functions"
+    sed -i -e 's/^setup_devices () {$/\0 return 0/' "$usr/functions"
 
     # Fix incorrect quoting in wgetprogress call (d45ca044136553)
     sed -i -e 's/wgetprogress "$CHECKCERTIF" "$CERTIFICATE" "$PRIVATEKEY"'\
-'/wgetprogress $CHECKCERTIF $CERTIFICATE $PRIVATEKEY/' "$tmp/functions"
+'/wgetprogress $CHECKCERTIF $CERTIFICATE $PRIVATEKEY/' "$usr/functions"
 
     # Patch debootstrap to use curl instead of wget
     # Note that we do not translate other parameter, and lose the progress bar, but
     # we do not use these anyway.
     # FIXME: include curl wrapper script instead?
-    sed -i -e 's/wgetprogress\(.*\) -O "$dest"/curl\1 -f -L -o "$dest"/' "$tmp/functions"
-    sed -i -e 's/in_path wget/in_path curl/' "$tmp/debootstrap"
+    sed -i -e 's/wgetprogress\(.*\) -O "$dest"/curl\1 -f -L -o "$dest"/' "$usr/functions"
+    sed -i -e 's/in_path wget/in_path curl/' "$usr/debootstrap"
 
     # debootstrap wants a file to initialize /dev with, but we don't actually
     # want any files there. Create an empty tarball that it can extract.
-    tar -czf "$tmp/devices.tar.gz" -T /dev/null
+    tar -czf "$usr/devices.tar.gz" -T /dev/null
 fi
 
 if [ -n "$RELEASE" ]; then
     # There is no bootstrap script for some distros derived from Debian. Thus we use
     # the scripts for matching upstream distros to bootstrap the derived distros.
-    if [ ! -f "$tmp/scripts/$RELEASE" ]; then
-        ln -s "$tmp/scripts/$BOOTSTRAP_RELEASE" "$tmp/scripts/$RELEASE"
+    if [ ! -f "$usr/scripts/$RELEASE" ]; then
+        ln -s "$usr/scripts/$BOOTSTRAP_RELEASE" "$usr/scripts/$RELEASE"
     fi
 
     # bionic/buster onwards does not require installing apt-transport-https (apt
@@ -82,21 +82,21 @@ if [ -n "$RELEASE" ]; then
     #
     # TODO: Drop this when debootstrap handles this case properly
     if ! release -le artful -le stretch -le kali; then
-        sed -e 's/ apt-transport-https / /' -i "$tmp/scripts/$RELEASE"
+        sed -e 's/ apt-transport-https / /' -i "$usr/scripts/$RELEASE"
     fi
 
     # Add the necessary debootstrap executables
-    newpath="$PATH:$tmp"
-    cp "$INSTALLERDIR/$DISTRO/ar" "$INSTALLERDIR/$DISTRO/pkgdetails" "$tmp/"
-    chmod 755 "$tmp/ar" "$tmp/pkgdetails"
+    newpath="$PATH:$usr"
+    cp "$INSTALLERDIR/$DISTRO/ar" "$INSTALLERDIR/$DISTRO/pkgdetails" "$usr/"
+    chmod 755 "$usr/ar" "$usr/pkgdetails"
 
     # Grab the release and drop it into the subdirectory
     echo 'Downloading bootstrap files...' 1>&2
-    if ! PATH="$newpath" DEBOOTSTRAP_DIR="$tmp" $FAKEROOT \
-            "$tmp/debootstrap" --foreign --extractor='ar' --arch="$ARCH" \
-            "$RELEASE" "$tmp/$subdir" "$MIRROR" 1>&2; then
+    if !  PATH="$newpath" DEBOOTSTRAP_DIR="$usr" $FAKEROOT \
+            bash "$usr/debootstrap" --foreign --extractor='ar' --arch="$ARCH" \
+            "$RELEASE" "$usr/$subdir" "$MIRROR" 1>&2; then
         echo "debootstrap error log:" 1>&2
-        tail -n 3 "$tmp/$subdir/debootstrap/debootstrap.log" 1>&2 || true
+        tail -n 3 "$usr/$subdir/debootstrap/debootstrap.log" 1>&2 || true
         error 1 'Failed to run debootstrap.'
     fi
 fi

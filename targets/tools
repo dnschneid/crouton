@@ -11,7 +11,7 @@ CHROOTBIN='croutonpowerd'
 
 ### Append to prepare.sh:
 
-install util-linux  partitionmanager golang \
+install util-linux net-tools  partitionmanager golang \
 -- bison cmake nano gedit gedit-plugins kwrite vlc \
 -- vlc-plugin-access-extra gnome-disk-utility gnome-sound-recorder \
 -- util-linux ninja-build meson
