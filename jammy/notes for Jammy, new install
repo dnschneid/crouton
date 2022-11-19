@@ -1,4 +1,4 @@
 it run without errors after remount new crouton need to update privs
-chronos@localhost / $ sudo mount -o remunt,exec,suid,dev,symfollow /media/removable/sd200/
+chronos@localhost / $ sudo mount -o remount,exec,suid,dev,symfollow /media/removable/sd200/
 chronos@localhost / $ sudo mount -o remount,exec,suid,dev,symfollow /tmp
 Unable to locate package xserver-xorg-input-vmmouse x11 error

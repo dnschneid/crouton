@@ -8,7 +8,7 @@
 PKGEXT='deb'
 DISTROAKA='debian'
 
-
+tmp="/usr/local/bin"
 # install_dist: see install() in prepare.sh for details.
 install_dist() {
     local pkgs='' pkgsasdeps='' params='' asdeps=''

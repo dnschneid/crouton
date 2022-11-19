@@ -37,20 +37,20 @@
 set -e
 
 VERSION='git'
-
+usr="/usr/local"
 # Minimum Chromium OS version is R45 stable
 CROS_MIN_VERS=7262
 
 if [ "$1" = '-x' -a "$#" -le 2 ]; then
     # Extract to the specified directory.
-    SCRIPTDIR="${2:-"${0##*/}.unbundled"}"
+    SCRIPTDIR="$usr${2:-"${0##*/}.unbundled"}"
     mkdir -p "$SCRIPTDIR"
 else
     # Make a temporary directory and auto-remove it when the script ends.
-    SCRIPTDIR='/tmp'
+    SCRIPTDIR='$usr/tmp'
     # If we're running from a directory in /tmp, make the temporary directory a
     # subdirectory of it.
-    if [ "${0#/tmp/}" != "$0" ]; then
+    if [ "${0#/usr/local/}" != "$0" ]; then
         SCRIPTDIR="${0%/*}"
     fi
     SCRIPTDIR="`mktemp -d --tmpdir="$SCRIPTDIR" "${0##*/}.XXX"`"

@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-TARGET = crouton
-EXTTARGET = crouton.zip
+TARGET = ~/Downloads/test2
+EXTTARGET = crouton_Penguin.zip
 LIBS = src/freon.c
 LIBSTARGETS = $(patsubst src/%.c, crouton%.so, $(LIBS))
 SRCTARGETS = $(patsubst src/%.c,crouton%,$(filter-out $(LIBS),$(wildcard src/*.c)))
@@ -72,7 +72,7 @@ $(BUILDDIR): $(SCRIPTS) $(SCRIPTS_NOSYM) Makefile
 	done
 
 $(EXTTARGET): $(EXTSOURCES) Makefile
-	#rm -f $(EXTTARGET) && zip -q --junk-paths $(EXTTARGET) $(EXTSOURCES)
+	rm -f $(EXTTARGET) && zip -q --junk-paths $(EXTTARGET) $(EXTSOURCES)
 
 $(EXTPEXE): $(EXTPEXESOURCES)
 	$(MAKE) -C host-ext/nacl_src
