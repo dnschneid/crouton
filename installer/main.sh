@@ -625,9 +625,9 @@ if [ -z "$UPDATE$RESTOREBIN" ] && [ -n "$DOWNLOADONLY" -o -z "$TARBALL" ]; then
     subdir="$RELEASE-$ARCH"
     addtrap "rm -rf --one-file-system '$tmp'"
 
-    # Ensure that the temporary directory has exec+dev, or mount a new tmpfs
+    # Ensure that the temporary directory has exec+dev, or mount a new ramfs
     if [ "$NOEXECTMP" = 'y' ]; then
-        mount -i -t tmpfs -o 'rw,dev,exec' tmpfs "$tmp"
+        mount -i -t ramfs -o 'rw,dev,exec' ramfs "$tmp"
         # Ensure symfollow is set on platforms that feature it, but don't fail
         # on ones that do not.
         mount -o 'remount,symfollow' "$tmp" 2>/dev/null || true
