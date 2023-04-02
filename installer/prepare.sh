@@ -223,6 +223,11 @@ convert_automake() {
         # Concatenate lines ending in \
         : start; /\\$/{N; b start}
         s/ *\\\n[ \t]*/ /g
+        # Fix for #4932
+        s/\-Wundef\-prefix=HAVE_,CRAS_//g
+        s/-Wundef\-prefix=HAVE_,CRAS_//g
+        s/\-Werror=undef-prefix//g
+        s/-Werror=undef-prefix//g
         # Convert automake to shell
         s/^[^ ]*:/#\0/
         s/^\t/#\0/
