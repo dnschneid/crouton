@@ -120,7 +120,7 @@ build_cras() {
         cd "$CRASBUILDTMP"
 
         # Make sure we start fresh
-        rm -rf --one-file-system cras
+        rm -rf --one-file-system cras include
 
         # Copy over prefetched Makefile.am, it'll get overriden if already present.
         mkdir -p cras/src
@@ -128,6 +128,11 @@ build_cras() {
 
         # -m prevents "time stamp is in the future" spam
         tar -xmf adhd.tar.gz cras/src
+
+        # If include/ exists, extract the content and move it to cras/src/common
+        if tar -xmf adhd.tar.gz include; then
+          mv include/*.h cras/src/common
+        fi
 
         cd cras/src
 
