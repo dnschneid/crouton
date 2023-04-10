@@ -62,7 +62,7 @@ fi
 lastgoodam="c2ece09f69565afcbcf511b1693f3fe735bde511/cras/src/Makefile.am"
 mkdir -p "$CRASBUILDTMP/cras/src"
 wget "https://chromium.googlesource.com/chromiumos/third_party/adhd/+/${lastgoodam}?format=TEXT" -O- \
-    | base64 -d > Makefile.am
+    | base64 -d > "$CRASBUILDTMP/Makefile.am"
 
 
 # Build CRAS ALSA plugin for the given architecture ($1)
