@@ -35,7 +35,7 @@ fi
 # We're currently unable to build cras on version 111 and above, so skip it.
 if [ -n "${CROS_VER:-}" ] && [ "${CROS_VER%%.*}" -gt 15278 ]; then
     TIPS="$TIPS
-Audio build was skipped due to toolchain changes in cras.
+Audio build was skipped due to unsupported toolchain changes in cras.
 You can add your user to hwaudio to directly use the hardware audio, but it may
 be unreliable as it will conflict with cras on Chromium OS.
 "
