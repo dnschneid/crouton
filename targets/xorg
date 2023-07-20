@@ -2,7 +2,7 @@
 # Copyright (c) 2016 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-REQUIRES='core'
+REQUIRES='audio'
 PROVIDES='x11'
 DESCRIPTION='X.Org X11 backend. Enables GPU acceleration on supported platforms.'
 CHROOTBIN='croutoncycle croutontriggerd croutonxinitrc-wrapper setres xinit'

@@ -2,7 +2,7 @@
 # Copyright (c) 2016 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-REQUIRES='core extension'
+REQUIRES='audio extension'
 PROVIDES='x11'
 DESCRIPTION='X.org X11 backend running unaccelerated in a Chromium OS window.'
 HOSTBIN='startxiwi'
