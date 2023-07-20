@@ -18,14 +18,9 @@ addtrap "rm -rf --one-file-system '$CRASBUILDTMP'"
 
 # ADHD_HEAD is normally autodetected, but it can be set manually using a custom
 # target sourced before this one (used for automated testing)
-# The custom target also needs to set CROS_VER_1
 if [ -z "$ADHD_HEAD" ]; then
     # Chrome OS version (e.g. 4100.86.0)
     CROS_VER="`sed -n 's/^CHROMEOS_RELEASE_VERSION=//p' /var/host/lsb-release`"
-
-    # Set CROS_VER_1 to the major version number (e.g. 4100), used later on to
-    # selectively apply patches.
-    CROS_VER_1="${CROS_VER%%.*}"
 
     cras_version="`cat /var/host/cras-version 2>/dev/null || true`"
     ADHD_HEAD="${cras_version##*-}"
@@ -35,6 +30,17 @@ if [ -z "$ADHD_HEAD" ]; then
         ADHD_HEAD=""
     fi
 fi
+
+
+# We're currently unable to build cras on version 111 and above, so skip it.
+if [ -n "${CROS_VER:-}" ] && [ "${CROS_VER%%.*}" -gt 15278 ]; then
+    TIPS="$TIPS
+Audio build was skipped due to toolchain changes in cras.
+You can add your user to hwaudio to directly use the hardware audio, but it may
+be unreliable as it will conflict with cras on Chromium OS.
+"
+else
+
 
 echo "Fetching CRAS (branch $ADHD_HEAD)..." 1>&2
 
@@ -278,3 +284,6 @@ through an ALSA plugin.
 Future Chromium OS upgrades may break compatibility with the installed version
 of CRAS. Should this happen, simply update your chroot.
 "
+
+
+fi  # disable building audio on newer platforms due to toolchain changes
