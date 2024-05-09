@@ -69,6 +69,11 @@ whitelist() {
     elif ! mount -n -t securityfs -o nodev,noexec,nosuid securityfs "$sec"; then
         return
     fi
+    # Ensure it's mounted rw
+    if ! mount -o remount,rw "$sec"; then
+        echo "Failed to make inode security policies writeable" >&2
+        return 1
+    fi
     policies="$sec/chromiumos/inode_security_policies"
     if [ -d "$policies" ]; then
         for policy in "$policies/allow_"*; do
