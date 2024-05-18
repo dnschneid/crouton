@@ -28,22 +28,10 @@ This means that:
 
 :warning: **Steps to install crouton have changed!**  :warning:
 
-Due to improved security within Chromium OS ([yay!](https://chromium.googlesource.com/chromiumos/docs/+/HEAD/security/noexec_shell_scripts.md)),
-the steps needed to launch the crouton installer, and the steps to run crouton
-from SD cards have to change a little.
-
-Please read the relevant sections of this README carefully, and reach out to
-your favorite weblogger/tutorialer/videotuber to update their guides if they're
-behind the times. If you're successful, brag about your accomplishments in [the
-issue tracker](https://github.com/dnschneid/crouton/issues/4026) and earn the
-personal gratitude of the crouton authors\*!
-
-<sup>\* limit one (1) gratitude per commenter</sup>
-
-*WHOA*
-
-Ok, back to business.
-
+Chromium OS has introduced several security features over the years that impede
+the installation and usage of crouton. If your device is no longer receiving
+updates, the steps below will likely work for you. However, if you are still
+having trouble, please try the [community-maintained instructions](https://github.com/dnschneid/crouton/wiki/%28CIF000%29-crouton-on-modern-Chromium-OS).
 
 ## "crouton"...an acronym?
 
