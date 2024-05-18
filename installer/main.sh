@@ -528,25 +528,18 @@ You also have to specify a mirror to crouton (-m) for installation to proceed."
         echo "\
 You have specified a mirror, so installation will proceed anyway.
 You will almost certainly run into issues, but some features may still work.
-Press Ctrl-C to abort; installation will continue in 30 seconds." 1>&2
+Press Ctrl-C to abort; installation will continue in 5 seconds." 1>&2
     else
         echo "\
 That means you may have issues updating now or in the future.
 You should upgrade your chroot to a supported version as soon as possible.
 Refer to https://goo.gl/Z5LGVD for upgrade instructions.
-Press Ctrl-C to abort; normal update will continue in 30 seconds." 1>&2
+Press Ctrl-C to abort; normal update will continue in 5 seconds." 1>&2
     fi
-    sleep 30
+    sleep 5
 elif [ "${releaseline%"*"}" != "$releaseline" ]; then
     echo_color r "WARNING: $RELEASE is an unsupported release." "
 You will likely run into issues, but things may work with some effort." 1>&2
-
-    if [ -z "$UPDATE" ]; then
-        echo "Press Ctrl-C to abort; installation will continue in 5 seconds." 1>&2
-    else
-        echo "Press Ctrl-C to abort; update will continue in 5 seconds." 1>&2
-    fi
-    sleep 5
 fi
 
 # Checks if it's safe to enable boot signing verification.
