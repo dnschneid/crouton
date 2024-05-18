@@ -31,7 +31,7 @@ This means that:
 Chromium OS has introduced several security features over the years that impede
 the installation and usage of crouton. If your device is no longer receiving
 updates, the steps below will likely work for you. However, if you are still
-having trouble, please try the [community-maintained instructions](https://github.com/dnschneid/crouton/wiki/%28CIF000%29-crouton-on-modern-Chromium-OS).
+having trouble, please try the [community-maintained instructions](https://github.com/dnschneid/crouton/wiki/Updated-Installation-Instructions-for-Crouton).
 
 ## "crouton"...an acronym?
 
