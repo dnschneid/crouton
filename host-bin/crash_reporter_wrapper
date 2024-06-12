@@ -230,4 +230,5 @@ else
 fi
 
 # Run the generated command within the appropriate chroot
-exec chroot "$root" su -s '/bin/sh' -c "$cmd" - "$username"
+export SHELL=/bin/sh
+exec chroot "$root" sudo -s -u "$username" "$cmd"

@@ -191,7 +191,7 @@ unmount() {
     fi
 
     # Kill the chroot's system dbus if one is running; failure is fine
-    env -i chroot "$CHROOT" su -s '/bin/sh' -c '
+    env -i SHELL=/bin/sh chroot "$CHROOT" sudo -s -u root '
         pidfile="/var/run/dbus/pid"
         if [ ! -f "$pidfile" ]; then
             exit 0
@@ -200,7 +200,7 @@ unmount() {
         if ! grep -q "^dbus-daemon" "/proc/$pid/cmdline" 2>/dev/null; then
             exit 0
         fi
-        kill $pid' - root 2>/dev/null || true
+        kill $pid' 2>/dev/null || true
 
     # Unmount all mounts
     ntries=0
