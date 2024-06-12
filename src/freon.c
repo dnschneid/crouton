@@ -304,9 +304,11 @@ static int _open(int (*origfunc)(const char *pathname, int flags, mode_t mode),
 int open(const char *pathname, int flags, ...) {
     if (!orig_open) preload_init();
 
+    mode_t mode = 0;
     va_list argp;
     va_start(argp, flags);
-    mode_t mode = va_arg(argp, mode_t);
+    if (flags & (O_CREAT | O_TMPFILE))
+        mode = va_arg(argp, mode_t);
     va_end(argp);
 
     return _open(orig_open, "open", pathname, flags, mode);
@@ -315,9 +317,11 @@ int open(const char *pathname, int flags, ...) {
 int open64(const char *pathname, int flags, ...) {
     if (!orig_open64) preload_init();
 
+    mode_t mode = 0;
     va_list argp;
     va_start(argp, flags);
-    mode_t mode = va_arg(argp, mode_t);
+    if (flags & (O_CREAT | O_TMPFILE))
+        mode = va_arg(argp, mode_t);
     va_end(argp);
 
     return _open(orig_open64, "open64", pathname, flags, mode);
