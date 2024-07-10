@@ -76,9 +76,9 @@ whitelist() {
     fi
     policies="$sec/chromiumos/inode_security_policies"
     if [ -d "$policies" ]; then
-        for policy in "$policies/allow_"*; do
-            printf "$CHROOT" > "$policy"
-        done
+        # Touch allow_symlink first to avoid kernel crash on chromeos-5.15 R126.
+        printf "$CHROOT" > "$policies/allow_symlink"
+        printf "$CHROOT" > "$policies/allow_fifo"
     fi
     if [ -z "$mounted" ]; then
         umount "$sec"
