@@ -22,7 +22,7 @@
 
 ### 用法
 
-1. 你需要从[这里](https://goo.gl/fd3zc)下载Crouton脚本。~~什么？下不下来？关我什么事~~
+1. 你需要从[这里](https://goo.gl/fd3zc?si=1)下载Crouton脚本。~~什么？下不下来？关我什么事~~
 
 2. 然后打开shell（`ctrl+alt+T`,在打开的窗口中输入`shell`，然后回车）。
 
