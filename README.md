@@ -19,10 +19,9 @@ This means that:
    those PRs.
  * For the safety of users and stability of crouton's functionality for those on
    EOL devices, offers to take over the dnschneid/crouton repo or Chrome
-   extension will be declined, and requests to change the goo.gl/fd3zc or
-   goo.gl/OVQOEt destinations will be rejected. If you would like to continue
-   feature work on crouton, fork it, do a good job of it, and people can choose
-   to use it at their own risk.
+   extension will be declined, and requests to change link destinations will be
+   rejected. If you would like to continue feature work on crouton, fork it, do
+   a good job of it, and people can choose to use it at their own risk.
 
 ## But first...
 
@@ -104,7 +103,7 @@ insecure*, so don't expect a password in your chroot to keep anyone from your
 data. crouton does support encrypting chroots, but the encryption is only as
 strong as the quality of your passphrase. Consider this your warning.
 
-It's also highly recommended that you install the [crouton extension](https://goo.gl/OVQOEt),
+It's also highly recommended that you install the [crouton extension](https://chromewebstore.google.com/detail/crouton-integration/gcpneefbbnfalgjniomfjknbcgkbijom),
 which, when combined with the `extension` or `xiwi` targets, provides much 
 improved integration with Chromium OS.
 
@@ -178,7 +177,8 @@ start\* commands. Ta-da! That was easy.
 
 ### Wasteful redundancies are wasteful: one clipboard, one browser, one window
 
-  1. Install the [crouton extension](https://goo.gl/OVQOEt) into Chromium OS.
+  1. Install the [crouton extension](https://chromewebstore.google.com/detail/crouton-integration/gcpneefbbnfalgjniomfjknbcgkbijom)
+     into Chromium OS.
   2. Add the `extension` or `xiwi` version to your chroot.
   3. Try some copy-pasta, or uninstall all your web browsers from the chroot.
 
@@ -192,8 +192,8 @@ graphical sessions as Chromium OS windows.*
      command-line tools using `-t core` or `-t cli-extra`
   2. Enter the chroot in as many crosh shells as you want simultaneously using
      `sudo enter-chroot`
-  3. Use the [Crosh Window](https://goo.gl/eczLT) extension to keep Chromium OS
-     from eating standard keyboard shortcuts.
+  3. Use the [Crosh Window](https://chromewebstore.google.com/detail/crosh-window/nhbmpbdladcchdhkemlojfjdknjadhmh)
+     extension to keep Chromium OS from eating standard keyboard shortcuts.
   4. If you installed cli-extra, `startcli` will launch a new VT right into the
      chroot.
 

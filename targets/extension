@@ -49,6 +49,7 @@ You already have the Chromium OS extension installed, so you're good to go!
 else
     TIPS="$TIPS
 You must install the Chromium OS extension for integration with crouton to work.
-The extension is available here: https://goo.gl/OVQOEt
+The extension is available here:
+  https://chromewebstore.google.com/detail/crouton-integration/gcpneefbbnfalgjniomfjknbcgkbijom
 "
 fi

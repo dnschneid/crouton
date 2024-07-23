@@ -18,7 +18,7 @@
 
 - **良好的**网络环境
 - 进入**开发者模式**的Chromebook，相关操作请进入[这个页面](https://www.chromium.org/chromium-os/developer-information-for-chrome-os-devices)（英文页面），点击对应的设备型号，按照*Entering Developer Mode*章节的步骤进行
-- 强烈建议安装[Crouton插件](https://goo.gl/OVQOEt)，配合`extension`或者`xiwi`目标，可以提高第二系统与Chrome OS之间的交互体验
+- 强烈建议安装[Crouton插件](https://chromewebstore.google.com/detail/crouton-integration/gcpneefbbnfalgjniomfjknbcgkbijom)，配合`extension`或者`xiwi`目标，可以提高第二系统与Chrome OS之间的交互体验
 
 ### 用法
 
@@ -60,7 +60,7 @@
 
 **说好的“更好的交互体验”？**
 
-1. 在Chrome OS安装[Crouton插件](https://goo.gl/OVQOEt)
+1. 在Chrome OS安装[Crouton插件](https://chromewebstore.google.com/detail/crouton-integration/gcpneefbbnfalgjniomfjknbcgkbijom)
 
 2. 在chroot环境中添加`extension`或者`xiwi`目标
 
@@ -70,7 +70,7 @@
 
 1. 指定安装目标时可以只使用`-t core`或者`-t cli-extra`
 2. 使用`sudo enter-chroot`进入chroot环境
-3. 使用[Crosh Window插件](https://goo.gl/eczLT)，防止chroot命令行环境导致的快捷键失效
+3. 使用[Crosh Window插件](https://chromewebstore.google.com/detail/crosh-window/nhbmpbdladcchdhkemlojfjdknjadhmh)，防止chroot命令行环境导致的快捷键失效
 
 **升级chroot环境**
 
