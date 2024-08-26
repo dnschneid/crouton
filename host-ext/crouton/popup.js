@@ -4,6 +4,13 @@
  */
 'use strict';
 
+// Copy-paste from background.js...
+var LogLevel = Object.freeze({
+    ERROR : "error",
+    INFO  : "info",
+    DEBUG : "debug"
+});
+
 document.addEventListener('DOMContentLoaded', function() {
     /* Update "help" link */
     var helplink = document.getElementById("help");
@@ -17,7 +24,7 @@ function showHelp() {
     chrome.runtime.sendMessage({msg: 'showHelp'});
 }
 
-function updateUI(enabled, debug, hidpi, status, windows) {
+function updateUI(enabled, debug, hidpi, status, windows, showlog, logger) {
     if (document.readyState == "loading") {
         console.log("Document still loading")
         return
@@ -80,11 +87,44 @@ function updateUI(enabled, debug, hidpi, status, windows) {
             }
         } })(i);
     }
+
+    /* Update logger table */
+    var loggertable = document.getElementById("logger");
+
+    /* FIXME: only update needed rows */
+    while (loggertable.rows.length > 0) {
+        loggertable.deleteRow(0);
+    }
+
+    /* Only update if "show log" is enabled */
+    var logcheck = document.getElementById("logcheck");
+    logcheck.onclick = function() {
+        chrome.runtime.sendMessage({msg: 'Logger', data: logcheck.checked});
+    }
+    logcheck.checked = showlog;
+    if (showlog) {
+        for (var i = 0; i < logger.length; i++) {
+            var value = logger[i];
+
+            if (value[0] == LogLevel.DEBUG && !debug)
+                continue;
+
+            var row = loggertable.insertRow(-1);
+            var cell1 = row.insertCell(0);
+            var cell2 = row.insertCell(1);
+            var levelclass = value[0];
+            cell1.className = "time " + levelclass;
+            cell2.className = "value " + levelclass;
+            cell1.innerHTML = value[1];
+            cell2.innerHTML = value[2];
+        }
+    }
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     console.log("POPUP rcv message " + message.msg)
     if (message.msg == "updateUI") {
-        updateUI(message.data.enabled, message.data.debug, message.data.hidpi, message.data.status, message.data.windows)
+        updateUI(message.data.enabled, message.data.debug, message.data.hidpi, message.data.status, message.data.windows,
+            message.data.showlog, message.data.logger)
     }
 });

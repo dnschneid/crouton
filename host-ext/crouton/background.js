@@ -172,7 +172,9 @@ function refreshUI() {
                     debug: debug_,
                     hidpi: hidpi_,
                     status: status_,
-                    windows: windows_
+                    windows: windows_,
+                    showlog: showlog_,
+                    logger: logger_
                 }})
         }
     )
@@ -180,38 +182,7 @@ function refreshUI() {
         var view = views[i];
         /* Make sure page is ready */
         if (view.document.readyState != "loading") {
-            /* Update logger table */
-            var loggertable = view.document.getElementById("logger");
-
-            /* FIXME: only update needed rows */
-            while (loggertable.rows.length > 0) {
-                loggertable.deleteRow(0);
-            }
-
-            /* Only update if "show log" is enabled */
-            var logcheck = view.document.getElementById("logcheck");
-            logcheck.onclick = function() {
-                showlog_ = logcheck.checked;
-                refreshUI();
-            }
-            logcheck.checked = showlog_;
-            if (showlog_) {
-                for (var i = 0; i < logger_.length; i++) {
-                    var value = logger_[i];
-
-                    if (value[0] == LogLevel.DEBUG && !debug_)
-                        continue;
-
-                    var row = loggertable.insertRow(-1);
-                    var cell1 = row.insertCell(0);
-                    var cell2 = row.insertCell(1);
-                    var levelclass = value[0];
-                    cell1.className = "time " + levelclass;
-                    cell2.className = "value " + levelclass;
-                    cell1.innerHTML = value[1];
-                    cell2.innerHTML = value[2];
-                }
-            }
+ 
         }
     }
 }
@@ -274,6 +245,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         }
     } else if (message.msg == "Window") {
         websocket_.send("C" + message.data);
+    } else if (message.msg == "Logger") {
+        showlog_ = message.data;
+        refreshUI();
     }
 });
 
