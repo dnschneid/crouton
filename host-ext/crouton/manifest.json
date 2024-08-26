@@ -17,6 +17,7 @@
     "clipboardRead",
     "clipboardWrite",
     "notifications",
+    "offscreen",
     "storage"
   ],
   "action": {

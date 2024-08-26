@@ -20,7 +20,6 @@ var LogLevel = Object.freeze({
 });
 
 /* Global variables */
-var clipboardholder_; /* textarea used to hold clipboard content */
 var timeout_ = null; /* Set if a timeout is active */
 var websocket_ = null; /* Active connection */
 
@@ -262,10 +261,6 @@ function clipboardStart() {
     chrome.tabs.onRemoved.addListener(
             function(id, data) { onRemoved(id, true); });
 
-    /* FIXME: create a background document
-    clipboardholder_ = document.getElementById("clipboardholder");
-    */
-
     /* Notification event handlers */
     chrome.notifications.onClosed.addListener(notificationClosed);
     chrome.notifications.onClicked.addListener(notificationClicked);
@@ -309,22 +304,12 @@ function websocketOpen() {
     setStatus("Connected: checking version...", false);
 }
 
-function readClipboard() {
-    /* FIXME: create a background document
-    clipboardholder_.value = "";
-    clipboardholder_.select();
-    document.execCommand("Paste");
-    return clipboardholder_.value;
-    */
-    return "";
+function readClipboard(callback) {
+    chrome.runtime.sendMessage({msg: 'readClipboard'}, callback);
 }
 
 function writeClipboard(str) {
-    /* FIXME: create a background document
-    clipboardholder_.value = str;
-    clipboardholder_.select();
-    document.execCommand("Copy");
-    */
+    chrome.runtime.sendMessage({msg: 'writeClipboard', data: str});
 }
 
 /* Received a message from the server */
@@ -357,37 +342,37 @@ function websocketMessage(evt) {
 
     switch(cmd) {
     case 'W': /* Write */
-        var clip = readClipboard();
+        readClipboard((clip) => {
+            dummystr_ = false;
 
-        dummystr_ = false;
-
-        /* Do not erase identical clipboard content */
-        if (clip != payload) {
-             /* We cannot write an empty string: Write DUMMY instead */
-            if (payload == "") {
-                writeClipboard(DUMMY_EMPTYSTRING);
-                dummystr_ = true;
-            } else {
+            /* Do not erase identical clipboard content */
+            if (clip != payload) {
+                /* We cannot write an empty string: Write DUMMY instead */
+                if (payload == "") {
+                    writeClipboard(DUMMY_EMPTYSTRING);
+                    dummystr_ = true;
+                } else {
+                    writeClipboard(payload);
+                }
+            } else if (payload == DUMMY_EMPTYSTRING) {
+                /* Unlikely case where DUMMY string comes from the other side */
                 writeClipboard(payload);
+            } else {
+                printLog("Not erasing content (identical)", LogLevel.DEBUG);
             }
-        } else if (payload == DUMMY_EMPTYSTRING) {
-            /* Unlikely case where DUMMY string comes from the other side */
-            writeClipboard(payload);
-        } else {
-            printLog("Not erasing content (identical)", LogLevel.DEBUG);
-        }
 
-        websocket_.send("WOK");
+            websocket_.send("WOK");
+        })
 
         break;
     case 'R': /* Read */
-        var clip = readClipboard();
-
-        if (clip == DUMMY_EMPTYSTRING && dummystr_) {
-            websocket_.send("R");
-        } else {
-            websocket_.send("R" + clip);
-        }
+        readClipboard((clip) => {
+            if (clip == DUMMY_EMPTYSTRING && dummystr_) {
+                websocket_.send("R");
+            } else {
+                websocket_.send("R" + clip);
+            }
+        });
 
         break;
     case 'U': /* Open an URL */
@@ -728,13 +713,14 @@ chrome.runtime.getPlatformInfo(function(platforminfo) {
             return true;
         }
 
-        /* Start the extension as soon as the background page is loaded */
-        /* FIXME: create a background document
-        if (document.readyState == 'complete') {
-            clipboardStart();
-        } else {
-            document.addEventListener('DOMContentLoaded', clipboardStart);
-        }*/
+        chrome.offscreen.createDocument({
+            url: chrome.runtime.getURL('offscreen.html'),
+            reasons: ['CLIPBOARD'],
+            justification: 'offscreen page for clipboard',
+            });
+
+        // FIXME: Previously, we waited the the background page to load to continue.
+        clipboardStart();
 
         chrome.runtime.onUpdateAvailable.addListener(function(details) {
             updateAvailable(details.version);
