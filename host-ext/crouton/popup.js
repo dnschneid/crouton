@@ -80,11 +80,7 @@ function updateUI(enabled, debug, hidpi, status, windows, showlog, logger) {
         cell2.className = "name";
         cell2.innerHTML = windows[i].name;
         cell2.onclick = (function(i) { return function() {
-            if (active_) {
-                chrome.runtime.sendMessage({msg: 'Window', data: windows[i].display});
-                //FIXME: Figure out how to close the popup
-                //closePopup();
-            }
+            chrome.runtime.sendMessage({msg: 'Window', data: windows[i].display});
         } })(i);
     }
 

@@ -244,7 +244,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             }
         }
     } else if (message.msg == "Window") {
-        websocket_.send("C" + message.data);
+        if (active_) {
+            websocket_.send("C" + message.data);
+            closePopup();
+        }
     } else if (message.msg == "Logger") {
         showlog_ = message.data;
         refreshUI();
