@@ -1,6 +1,5 @@
 {
-  "manifest_version": 2,
-
+  "manifest_version": 3,
   "name": "crouton integration",
   "short_name": "crouton",
   "description": "Improves integration with crouton chroots.",
@@ -9,16 +8,7 @@
     "48": "icon-48.png",
     "128": "icon-128.png"
   },
-
   "offline_enabled": true,
-  "browser_action": {
-    "default_icon": {
-        "19": "disconnected-19.png",
-        "38": "disconnected-38.png"
-    },
-    "default_popup": "popup.html",
-    "default_title": "crouton"
-  },
   "background": {
     "page": "background.html"
   },
@@ -27,5 +17,14 @@
     "clipboardWrite",
     "notifications",
     "storage"
-  ]
+  ],
+  "action": {
+    "default_icon": {
+      "19": "disconnected-19.png",
+      "38": "disconnected-38.png"
+    },
+    "default_popup": "popup.html",
+    "default_title": "crouton"
+  },
+  "content_security_policy": {}
 }

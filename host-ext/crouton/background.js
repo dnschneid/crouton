@@ -144,15 +144,15 @@ function refreshUI() {
     else if (active_)
         icon = "connected";
 
-    chrome.browserAction.setIcon(
+    chrome.action.setIcon(
         {path: {19: icon + '-19.png', 38: icon + '-38.png'}}
     );
-    chrome.browserAction.setTitle({title: 'crouton: ' + icon});
+    chrome.action.setTitle({title: 'crouton: ' + icon});
 
-    chrome.browserAction.setBadgeText(
+    chrome.action.setBadgeText(
         {text: windows_.length > 1 ? '' + (windows_.length-1) : ''}
     );
-    chrome.browserAction.setBadgeBackgroundColor({color: '#2E822B'});
+    chrome.action.setBadgeBackgroundColor({color: '#2E822B'});
 
     var views = chrome.extension.getViews({type: "popup"});
     for (var i = 0; i < views.length; views++) {
@@ -787,9 +787,9 @@ chrome.runtime.getPlatformInfo(function(platforminfo) {
         });
     } else {
         /* Disable the icon on non-Chromium OS. */
-        chrome.browserAction.setTitle(
+        chrome.action.setTitle(
             {title: 'crouton is not available on this platform'}
         );
-        chrome.browserAction.disable();
+        chrome.action.disable();
     }
 });
