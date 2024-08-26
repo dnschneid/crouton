@@ -170,7 +170,9 @@ function refreshUI() {
                 data: {
                     enabled: enabled_,
                     debug: debug_,
-                    hidpi: hidpi_
+                    hidpi: hidpi_,
+                    status: status_,
+                    windows: windows_
                 }})
         }
     )
@@ -178,33 +180,6 @@ function refreshUI() {
         var view = views[i];
         /* Make sure page is ready */
         if (view.document.readyState != "loading") {
-            /* Update status box */
-            view.document.getElementById("info").textContent = status_;
-
-            /* Update window table */
-            /* FIXME: Improve UI */
-            var windowlist = view.document.getElementById("windowlist");
-
-            while (windowlist.rows.length > 0) {
-                windowlist.deleteRow(0);
-            }
-
-            for (var i = 0; i < windows_.length; i++) {
-                var row = windowlist.insertRow(-1);
-                var cell1 = row.insertCell(0);
-                var cell2 = row.insertCell(1);
-                cell1.className = "display";
-                cell1.innerHTML = windows_[i].display;
-                cell2.className = "name";
-                cell2.innerHTML = windows_[i].name;
-                cell2.onclick = (function(i) { return function() {
-                    if (active_) {
-                        websocket_.send("C" + windows_[i].display);
-                        closePopup();
-                    }
-                } })(i);
-            }
-
             /* Update logger table */
             var loggertable = view.document.getElementById("logger");
 
@@ -297,6 +272,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 }
             }
         }
+    } else if (message.msg == "Window") {
+        websocket_.send("C" + message.data);
     }
 });
 

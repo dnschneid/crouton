@@ -17,7 +17,7 @@ function showHelp() {
     chrome.runtime.sendMessage({msg: 'showHelp'});
 }
 
-function updateUI(enabled, debug, hidpi) {
+function updateUI(enabled, debug, hidpi, status, windows) {
     if (document.readyState == "loading") {
         console.log("Document still loading")
         return
@@ -52,11 +52,39 @@ function updateUI(enabled, debug, hidpi) {
         hidpicheck.disabled = true;
     }
     hidpicheck.checked = hidpi;
+
+    /* Update status box */
+    document.getElementById("info").textContent = status;
+
+    /* Update window table */
+    /* FIXME: Improve UI (nah not gonna happen) */
+    var windowlist = document.getElementById("windowlist");
+
+    while (windowlist.rows.length > 0) {
+        windowlist.deleteRow(0);
+    }
+
+    for (var i = 0; i < windows.length; i++) {
+        var row = windowlist.insertRow(-1);
+        var cell1 = row.insertCell(0);
+        var cell2 = row.insertCell(1);
+        cell1.className = "display";
+        cell1.innerHTML = windows[i].display;
+        cell2.className = "name";
+        cell2.innerHTML = windows[i].name;
+        cell2.onclick = (function(i) { return function() {
+            if (active_) {
+                chrome.runtime.sendMessage({msg: 'Window', data: windows[i].display});
+                //FIXME: Figure out how to close the popup
+                //closePopup();
+            }
+        } })(i);
+    }
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     console.log("POPUP rcv message " + message.msg)
     if (message.msg == "updateUI") {
-        updateUI(message.data.enabled, message.data.debug, message.data.hidpi)
+        updateUI(message.data.enabled, message.data.debug, message.data.hidpi, message.data.status, message.data.windows)
     }
 });
