@@ -17,7 +17,7 @@ function showHelp() {
     chrome.runtime.sendMessage({msg: 'showHelp'});
 }
 
-function updateUI(enabled, debug) {
+function updateUI(enabled, debug, hidpi) {
     if (document.readyState == "loading") {
         console.log("Document still loading")
         return
@@ -41,11 +41,22 @@ function updateUI(enabled, debug) {
         chrome.runtime.sendMessage({msg: 'Debug', data: debugcheck.checked});
     }
     debugcheck.checked = debug;
+    /* Update hidpi mode according to checkbox state. */
+    var hidpicheck = document.getElementById("hidpicheck");
+    if (window.devicePixelRatio > 1) {
+        hidpicheck.onclick = function() {
+            chrome.runtime.sendMessage({msg: 'HiDPI', data: hidpicheck.checked});
+        }
+        hidpicheck.disabled = false;
+    } else {
+        hidpicheck.disabled = true;
+    }
+    hidpicheck.checked = hidpi;
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     console.log("POPUP rcv message " + message.msg)
     if (message.msg == "updateUI") {
-        updateUI(message.data.enabled, message.data.debug)
+        updateUI(message.data.enabled, message.data.debug, message.data.hidpi)
     }
 });

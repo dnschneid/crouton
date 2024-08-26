@@ -166,40 +166,18 @@ function refreshUI() {
                 console.log("No popup listens to me.")
                 return
             }
-            chrome.runtime.sendMessage({msg: 'updateUI', data: {enabled: enabled_, debug: debug_}})
+            chrome.runtime.sendMessage({msg: 'updateUI',
+                data: {
+                    enabled: enabled_,
+                    debug: debug_,
+                    hidpi: hidpi_
+                }})
         }
     )
     for (var i = 0; i < views.length; views++) {
         var view = views[i];
         /* Make sure page is ready */
         if (view.document.readyState != "loading") {
-            /* Update hidpi mode according to checkbox state. */
-            var hidpicheck = view.document.getElementById("hidpicheck");
-            if (window.devicePixelRatio > 1) {
-                hidpicheck.onclick = function() {
-                    hidpi_ = hidpicheck.checked;
-                    /* Update local storage to persist hidpi_ setting */
-                    chrome.storage.local.set({hidpi: hidpi_});
-                    refreshUI();
-                    var disps = Object.keys(kiwi_win_);
-                    for (var i = 0; i < disps.length; i++) {
-                        var win = kiwi_win_[disps[i]];
-                        if (win.window) {
-                            if (win.isTab) {
-                                chrome.tabs.sendMessage(win.id,
-                                        {func: 'setHiDPI', param: hidpi_?1:0});
-                            } else {
-                                win.window.setHiDPI(hidpi_?1:0);
-                            }
-                        }
-                    }
-                }
-                hidpicheck.disabled = false;
-            } else {
-                hidpicheck.disabled = true;
-            }
-            hidpicheck.checked = hidpi_;
-
             /* Update status box */
             view.document.getElementById("info").textContent = status_;
 
@@ -299,6 +277,23 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                             {func: 'setDebug', param: debug_?1:0});
                 } else {
                     win.window.setDebug(debug_?1:0);
+                }
+            }
+        }
+    } else if (message.msg == "HiDPI") {
+        hidpi_ = message.data;
+        /* Update local storage to persist hidpi_ setting */
+        chrome.storage.local.set({hidpi: hidpi_});
+        refreshUI();
+        var disps = Object.keys(kiwi_win_);
+        for (var i = 0; i < disps.length; i++) {
+            var win = kiwi_win_[disps[i]];
+            if (win.window) {
+                if (win.isTab) {
+                    chrome.tabs.sendMessage(win.id,
+                            {func: 'setHiDPI', param: hidpi_?1:0});
+                } else {
+                    win.window.setHiDPI(hidpi_?1:0);
                 }
             }
         }
