@@ -3,14 +3,15 @@
   "name": "crouton integration",
   "short_name": "crouton",
   "description": "Improves integration with crouton chroots.",
-  "version": "2.5.2",
+  "version": "3.0.0",
   "icons": {
     "48": "icon-48.png",
     "128": "icon-128.png"
   },
   "offline_enabled": true,
   "background": {
-    "page": "background.html"
+    "service_worker": "background.js",
+    "type": "module"
   },
   "permissions": [
     "clipboardRead",

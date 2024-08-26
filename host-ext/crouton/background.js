@@ -126,7 +126,10 @@ function registerKiwi(displaynum, window) {
 
 /* Close the popup window */
 function closePopup() {
-    var views = chrome.extension.getViews({type: "popup"});
+    var views = []
+    //FIXME: figure out how to replace getViews with getContexts
+    //chrome.extension.getViews({type: "popup"});
+    //chrome.runtime.getContexts({contextTypes: ['POPUP']})
     for (var i = 0; i < views.length; views++) {
         views[i].close();
     }
@@ -154,7 +157,10 @@ function refreshUI() {
     );
     chrome.action.setBadgeBackgroundColor({color: '#2E822B'});
 
-    var views = chrome.extension.getViews({type: "popup"});
+    var views = []
+    //FIXME: figure out how to replace getViews with getContexts
+    //chrome.extension.getViews({type: "popup"});
+    //chrome.runtime.getContexts({contextTypes: ['POPUP']})
     for (var i = 0; i < views.length; views++) {
         var view = views[i];
         /* Make sure page is ready */
@@ -316,7 +322,9 @@ function clipboardStart() {
     chrome.tabs.onRemoved.addListener(
             function(id, data) { onRemoved(id, true); });
 
+    /* FIXME: create a background document
     clipboardholder_ = document.getElementById("clipboardholder");
+    */
 
     /* Notification event handlers */
     chrome.notifications.onClosed.addListener(notificationClosed);
@@ -362,16 +370,21 @@ function websocketOpen() {
 }
 
 function readClipboard() {
+    /* FIXME: create a background document
     clipboardholder_.value = "";
     clipboardholder_.select();
     document.execCommand("Paste");
     return clipboardholder_.value;
+    */
+    return "";
 }
 
 function writeClipboard(str) {
+    /* FIXME: create a background document
     clipboardholder_.value = str;
     clipboardholder_.select();
     document.execCommand("Copy");
+    */
 }
 
 /* Received a message from the server */
@@ -776,11 +789,12 @@ chrome.runtime.getPlatformInfo(function(platforminfo) {
         }
 
         /* Start the extension as soon as the background page is loaded */
+        /* FIXME: create a background document
         if (document.readyState == 'complete') {
             clipboardStart();
         } else {
             document.addEventListener('DOMContentLoaded', clipboardStart);
-        }
+        }*/
 
         chrome.runtime.onUpdateAvailable.addListener(function(details) {
             updateAvailable(details.version);

@@ -5,5 +5,7 @@
 'use strict';
 
 document.addEventListener('DOMContentLoaded', function() {
-    chrome.extension.getBackgroundPage().refreshUI();
+    //FIXME: figure out how to send message to service worker
+    console.log("FIXME")
+    //chrome.extension.getBackgroundPage().refreshUI();
 });
