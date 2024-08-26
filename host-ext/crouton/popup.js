@@ -17,7 +17,7 @@ function showHelp() {
     chrome.runtime.sendMessage({msg: 'showHelp'});
 }
 
-function updateUI(enabled) {
+function updateUI(enabled, debug) {
     if (document.readyState == "loading") {
         console.log("Document still loading")
         return
@@ -35,11 +35,17 @@ function updateUI(enabled) {
             chrome.runtime.sendMessage({msg: 'Enable'});
         }
     }
+    /* Update debug mode according to checkbox state. */
+    var debugcheck = document.getElementById("debugcheck");
+    debugcheck.onclick = function() {
+        chrome.runtime.sendMessage({msg: 'Debug', data: debugcheck.checked});
+    }
+    debugcheck.checked = debug;
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     console.log("POPUP rcv message " + message.msg)
     if (message.msg == "updateUI") {
-        updateUI(message.data.enabled)
+        updateUI(message.data.enabled, message.data.debug)
     }
 });

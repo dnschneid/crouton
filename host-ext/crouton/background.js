@@ -166,33 +166,13 @@ function refreshUI() {
                 console.log("No popup listens to me.")
                 return
             }
-            chrome.runtime.sendMessage({msg: 'updateUI', data: {enabled: enabled_}})
+            chrome.runtime.sendMessage({msg: 'updateUI', data: {enabled: enabled_, debug: debug_}})
         }
     )
     for (var i = 0; i < views.length; views++) {
         var view = views[i];
         /* Make sure page is ready */
         if (view.document.readyState != "loading") {
-            /* Update debug mode according to checkbox state. */
-            var debugcheck = view.document.getElementById("debugcheck");
-            debugcheck.onclick = function() {
-                debug_ = debugcheck.checked;
-                refreshUI();
-                var disps = Object.keys(kiwi_win_);
-                for (var i = 0; i < disps.length; i++) {
-                    var win = kiwi_win_[disps[i]];
-                    if (win.window) {
-                        if (win.isTab) {
-                            chrome.tabs.sendMessage(win.id,
-                                    {func: 'setDebug', param: debug_?1:0});
-                        } else {
-                            win.window.setDebug(debug_?1:0);
-                        }
-                    }
-                }
-            }
-            debugcheck.checked = debug_;
-
             /* Update hidpi mode according to checkbox state. */
             var hidpicheck = view.document.getElementById("hidpicheck");
             if (window.devicePixelRatio > 1) {
@@ -307,6 +287,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (websocket_ == null)
             websocketConnect();
         refreshUI();
+    } else if (message.msg == "Debug") {
+        debug_ = message.data;
+        refreshUI();
+        var disps = Object.keys(kiwi_win_);
+        for (var i = 0; i < disps.length; i++) {
+            var win = kiwi_win_[disps[i]];
+            if (win.window) {
+                if (win.isTab) {
+                    chrome.tabs.sendMessage(win.id,
+                            {func: 'setDebug', param: debug_?1:0});
+                } else {
+                    win.window.setDebug(debug_?1:0);
+                }
+            }
+        }
     }
 });
 
