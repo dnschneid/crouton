@@ -160,39 +160,19 @@ function refreshUI() {
     var views = []
     //FIXME: figure out how to replace getViews with getContexts
     //chrome.extension.getViews({type: "popup"});
-    //chrome.runtime.getContexts({contextTypes: ['POPUP']})
+    chrome.runtime.getContexts({contextTypes: ['POPUP']}).then(
+        (contexts) => {
+            if (contexts.length == 0) {
+                console.log("No popup listens to me.")
+                return
+            }
+            chrome.runtime.sendMessage({msg: 'updateUI', data: {enabled: enabled_}})
+        }
+    )
     for (var i = 0; i < views.length; views++) {
         var view = views[i];
         /* Make sure page is ready */
         if (view.document.readyState != "loading") {
-            /* Update enable/disable link. */
-            var enablelink = view.document.getElementById("enable");
-            if (enabled_) {
-                enablelink.textContent = "Disable";
-                enablelink.onclick = function() {
-                    console.log("Disable click");
-                    enabled_ = false;
-                    /* Update local storage to persist enabled_ boolean */
-                    chrome.storage.local.set({enabled: enabled_});
-                    if (websocket_ != null)
-                        websocket_.close();
-                    else
-                        websocketConnect(); /* Clear timeout and display message */
-                    refreshUI();
-                }
-            } else {
-                enablelink.textContent = "Enable";
-                enablelink.onclick = function() {
-                    console.log("Enable click");
-                    enabled_ = true;
-                    /* Update local storage to persist enabled_ boolean */
-                    chrome.storage.local.set({enabled: enabled_});
-                    if (websocket_ == null)
-                        websocketConnect();
-                    refreshUI();
-                }
-            }
-
             /* Update debug mode according to checkbox state. */
             var debugcheck = view.document.getElementById("debugcheck");
             debugcheck.onclick = function() {
@@ -304,9 +284,29 @@ function refreshUI() {
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    console.log("SERVICE rcv message " + message)
+    console.log("SERVICE rcv message " + message.msg)
     if (message.msg == "showHelp") {
         showHelp();
+    } else if (message.msg == "refreshUI") {
+        refreshUI();
+    } else if (message.msg == "Disable") {
+        console.log("Disable click");
+        enabled_ = false;
+        /* Update local storage to persist enabled_ boolean */
+        chrome.storage.local.set({enabled: enabled_});
+        if (websocket_ != null)
+            websocket_.close();
+        else
+            websocketConnect(); /* Clear timeout and display message */
+        refreshUI();
+    } else if (message.msg == "Enable") {
+        console.log("Enable click");
+        enabled_ = true;
+        /* Update local storage to persist enabled_ boolean */
+        chrome.storage.local.set({enabled: enabled_});
+        if (websocket_ == null)
+            websocketConnect();
+        refreshUI();
     }
 });
 

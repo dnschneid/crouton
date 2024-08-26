@@ -8,15 +8,38 @@ document.addEventListener('DOMContentLoaded', function() {
     /* Update "help" link */
     var helplink = document.getElementById("help");
     helplink.onclick = showHelp;
-    //FIXME: figure out how to send message to service worker
-    console.log("FIXME")
-    //chrome.extension.getBackgroundPage().refreshUI();
+
+    // Refresh the rest of the UI
+    chrome.runtime.sendMessage({msg: 'refreshUI'});
 });
 
 function showHelp() {
     chrome.runtime.sendMessage({msg: 'showHelp'});
 }
 
+function updateUI(enabled) {
+    if (document.readyState == "loading") {
+        console.log("Document still loading")
+        return
+    }
+    /* Update enable/disable link. */
+    var enablelink = document.getElementById("enable");
+    if (enabled) {
+        enablelink.textContent = "Disable";
+        enablelink.onclick = function() {
+            chrome.runtime.sendMessage({msg: 'Disable'});
+        }
+    } else {
+        enablelink.textContent = "Enable";
+        enablelink.onclick = function() {
+            chrome.runtime.sendMessage({msg: 'Enable'});
+        }
+    }
+}
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    console.log("POPUP rcv message " + message)
+    console.log("POPUP rcv message " + message.msg)
+    if (message.msg == "updateUI") {
+        updateUI(message.data.enabled)
+    }
 });
