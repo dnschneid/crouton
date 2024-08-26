@@ -126,13 +126,15 @@ function registerKiwi(displaynum, window) {
 
 /* Close the popup window */
 function closePopup() {
-    var views = []
-    //FIXME: figure out how to replace getViews with getContexts
-    //chrome.extension.getViews({type: "popup"});
-    //chrome.runtime.getContexts({contextTypes: ['POPUP']})
-    for (var i = 0; i < views.length; views++) {
-        views[i].close();
-    }
+    chrome.runtime.getContexts({contextTypes: ['POPUP']}).then(
+        (contexts) => {
+            if (contexts.length == 0) {
+                console.log("No popup listens to me.")
+                return
+            }
+            chrome.runtime.sendMessage({msg: 'close'})
+        }
+    )
 }
 
 /* Update the icon, and refresh the popup page */
@@ -157,9 +159,6 @@ function refreshUI() {
     );
     chrome.action.setBadgeBackgroundColor({color: '#2E822B'});
 
-    var views = []
-    //FIXME: figure out how to replace getViews with getContexts
-    //chrome.extension.getViews({type: "popup"});
     chrome.runtime.getContexts({contextTypes: ['POPUP']}).then(
         (contexts) => {
             if (contexts.length == 0) {
@@ -178,13 +177,6 @@ function refreshUI() {
                 }})
         }
     )
-    for (var i = 0; i < views.length; views++) {
-        var view = views[i];
-        /* Make sure page is ready */
-        if (view.document.readyState != "loading") {
- 
-        }
-    }
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {

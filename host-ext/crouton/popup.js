@@ -122,5 +122,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.msg == "updateUI") {
         updateUI(message.data.enabled, message.data.debug, message.data.hidpi, message.data.status, message.data.windows,
             message.data.showlog, message.data.logger)
+    } else if (message.msg == "close") {
+        window.close()
     }
 });
