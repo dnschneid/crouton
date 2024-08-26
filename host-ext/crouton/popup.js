@@ -5,7 +5,18 @@
 'use strict';
 
 document.addEventListener('DOMContentLoaded', function() {
+    /* Update "help" link */
+    var helplink = document.getElementById("help");
+    helplink.onclick = showHelp;
     //FIXME: figure out how to send message to service worker
     console.log("FIXME")
     //chrome.extension.getBackgroundPage().refreshUI();
+});
+
+function showHelp() {
+    chrome.runtime.sendMessage({msg: 'showHelp'});
+}
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    console.log("POPUP rcv message " + message)
 });

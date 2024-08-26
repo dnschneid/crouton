@@ -70,7 +70,7 @@ function setStatus(status, active) {
 }
 
 function showHelp() {
-    window.open("first.html", '_blank');
+    chrome.tabs.create({url:"first.html", active:true});
 }
 
 function updateAvailable(version) {
@@ -165,9 +165,6 @@ function refreshUI() {
         var view = views[i];
         /* Make sure page is ready */
         if (view.document.readyState != "loading") {
-            /* Update "help" link */
-            var helplink = view.document.getElementById("help");
-            helplink.onclick = showHelp;
             /* Update enable/disable link. */
             var enablelink = view.document.getElementById("enable");
             if (enabled_) {
@@ -305,6 +302,13 @@ function refreshUI() {
         }
     }
 }
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    console.log("SERVICE rcv message " + message)
+    if (message.msg == "showHelp") {
+        showHelp();
+    }
+});
 
 /* Start the extension */
 function clipboardStart() {
