@@ -351,14 +351,14 @@ of changes.  That having been said, here's some suggestions:
     your fork to eat [pie](https://github.com/dnschneid/crouton/labels/pie).
 
 
-## Are there other, non-Contributory ways I can help?
+## Are there other, non-contributory ways I can help?
 
 Yes!
 
 
 ## But how?
 
-There's a way For Everyone to help!
+There's a way for everyone to help!
 
   * Something broken? File a bug! Bonus points if you try to fix it. It helps if
     you provide the output of `croutonversion` (or the output of
