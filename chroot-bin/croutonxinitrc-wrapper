@@ -122,6 +122,8 @@ fi
 
 # Crouton-in-a-tab: Start fbserver and launch display
 if [ "$xmethodtype" = 'xiwi' ]; then
+    # Fix horizontal scroll direction
+    xmodmap -e "pointer = 1 2 3 4 5 7 6"
     # The extension sends evdev key codes: fix the keyboard mapping rules
     setxkbmap -rules evdev
     # Reapply xkb map: This fixes autorepeat mask in "xset q"
