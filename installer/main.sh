@@ -14,6 +14,8 @@ INSTALLERDIR="$SCRIPTDIR/installer"
 HOSTBINDIR="$SCRIPTDIR/host-bin"
 TARGETSDIR="$SCRIPTDIR/targets"
 SRCDIR="$SCRIPTDIR/src"
+AVAILMIN=2000 # in MB
+SIZEMIN=4000  # in MB
 
 ARCH=''
 BOOTSTRAP_RELEASE=''
@@ -374,6 +376,14 @@ addtrap "stty echo 2>/dev/null"
 BIN="$PREFIX/bin"
 CHROOTS="$PREFIX/chroots"
 
+# Check if space requirements have been met.
+# If not, check for dualboot.
+if ! check_space "$SIZEMIN" "$AVAILMIN"; then
+    check_dualboot || true
+    echo "Press Ctrl-C to abort; installation will continue in 5 seconds." 1>&2
+    sleep 5
+fi
+    
 if [ -z "$RESTOREBIN" ]; then
     # Fix NAME if it was not specified.
     # If updating and name/release weren't specified, check previous defaults
