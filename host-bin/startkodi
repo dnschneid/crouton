@@ -14,5 +14,14 @@ By default, it will log into the primary user on the first chroot found.
 
 Options are directly passed to enter-chroot; run enter-chroot to list them."
 
+# Forward ports needed to browse smb shares
+MYIP="$(ip route get 1 | awk -F 'src ' '{ split($2,a," "); print a[1]; exit}')"
+
+if [ -n "$MYIP" ]; then
+    iptables -I INPUT 1 -p udp \
+        --source "$MYIP"/255.255.255.0 \
+        --dport 1025:65535 -j ACCEPT
+fi
+
 exec sh -e "`dirname "\`readlink -f -- "$0"\`"`/enter-chroot" -t kodi "$@" "" \
     exec croutonpowerd -i xinit /usr/bin/kodi --standalone
