@@ -1,102 +1,99 @@
-#!/bin/sh -e
+ #!/bin/sh -e
 # Copyright (c) 2016 The crouton Authors. All rights reserved.
-# Use of this source code is governed by a BSD-style license that can be
-# found in the LICENSE file of the source repository, which has been replicated
-# below for convenience of distribution:
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions are
-# met:
-#
-#    * Redistributions of source code must retain the above copyright
-# notice, this list of conditions and the following disclaimer.
-#    * Redistributions in binary form must reproduce the above
-# copyright notice, this list of conditions and the following disclaimer
-# in the documentation and/or other materials provided with the
-# distribution.
-#    * Neither the name of Google Inc. nor the names of its
-# contributors may be used to endorse or promote products derived from
-# this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-# A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-# OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-# DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-# THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# Use of this source code is governed by a BSD-style license.
 
-# This is a wrapped tarball. This script untars itself to a temporary directory
-# and then runs installer/main.sh with the parameters passed to it.
-# You can pass -x [directory] to extract the contents somewhere.
+# Wrapper script to untar itself, extract contents, and execute installer scripts.
 
 set -e
 
+# Constants
 VERSION='git'
+CROS_MIN_VERS=7262  # Minimum Chromium OS version
+TEMP_DIR_BASE='/tmp'
+BUNDLE_END_MARKER='###'
+TAR_PARAMS=''
 
-# Minimum Chromium OS version is R45 stable
-CROS_MIN_VERS=7262
+usage_extract() {
+    echo "USAGE: ${0##*/} -x [directory]"
+    echo "Extracts the contents of the tarball to the specified directory."
+}
 
-if [ "$1" = '-x' -a "$#" -le 2 ]; then
-    # Extract to the specified directory.
-    SCRIPTDIR="${2:-"${0##*/}.unbundled"}"
-    mkdir -p "$SCRIPTDIR"
-else
-    # Make a temporary directory and auto-remove it when the script ends.
-    SCRIPTDIR='/tmp'
-    # If we're running from a directory in /tmp, make the temporary directory a
-    # subdirectory of it.
-    if [ "${0#/tmp/}" != "$0" ]; then
-        SCRIPTDIR="${0%/*}"
-    fi
-    SCRIPTDIR="`mktemp -d --tmpdir="$SCRIPTDIR" "${0##*/}.XXX"`"
-    TRAP="rm -rf --one-file-system '$SCRIPTDIR';$TRAP"
-    trap "$TRAP" INT HUP 0
-fi
+usage_run_script() {
+    echo "USAGE: ${0##*/} -X DIR/SCRIPT [ARGS]"
+    echo "Runs a script directly from the bundle. Valid DIR/SCRIPT combos:" 1>&2
+    ls "$SCRIPTDIR/chroot-bin"/* "$SCRIPTDIR/host-bin"/* 1>&2
+}
 
-# Extract this file after the ### line
-# TARPARAMS will be set by the Makefile to match the compression method.
-line="`awk '/^###/ { print FNR+1; exit 0; }' "$0"`"
-tail -n "+$line" "$0" | tar -x $TARPARAMS -C "$SCRIPTDIR"
+create_temp_dir() {
+    local base_dir="$1"
+    local prefix="${2:-wrapper}"
+    mktemp -d --tmpdir="$base_dir" "${prefix}.XXX"
+}
 
-# Exit here if we're just extracting
-if [ -z "$TRAP" ]; then
-    exit
-fi
+extract_bundle() {
+    local script_path="$1"
+    local dest_dir="$2"
+    local start_line
 
-# See if we want to just run a script from the bundle
-if [ "$1" = '-X' ]; then
-    script="$SCRIPTDIR/$2"
-    if [ ! -f "$script" ]; then
-        cd "$SCRIPTDIR"
-        echo "USAGE: ${0##*/} -X DIR/SCRIPT [ARGS]
-Runs a script directly from the bundle. Valid DIR/SCRIPT combos:" 1>&2
-        ls chroot-bin/* host-bin/* 1>&2
-        if [ -n "$2" ]; then
-            echo 1>&2
-            echo "Invalid script '$2'" 1>&2
+    start_line=$(awk "/^$BUNDLE_END_MARKER/ { print FNR + 1; exit }" "$script_path")
+    tail -n "+$start_line" "$script_path" | tar -x $TAR_PARAMS -C "$dest_dir"
+}
+
+cleanup() {
+    [ -n "$TEMP_DIR" ] && rm -rf --one-file-system "$TEMP_DIR"
+}
+
+execute_script() {
+    local script_path="$1"
+    shift
+    local options="-e"
+
+    # Pass through shell options if the wrapper script was called with them
+    [ "$(set -o | grep '^xtrace.*on$')" ] && options="$options -x"
+    [ "$(set -o | grep '^verbose.*on$')" ] && options="$options -v"
+
+    sh $options "$script_path" "$@"
+}
+
+main() {
+    # Handle arguments
+    if [ "$1" = '-x' ]; then
+        if [ "$#" -gt 2 ]; then
+            usage_extract
+            exit 1
         fi
-        exit 2
+        DEST_DIR="${2:-${0##*/}.unbundled}"
+        mkdir -p "$DEST_DIR"
+        extract_bundle "$0" "$DEST_DIR"
+        exit 0
     fi
-    shift 2
-    # If this script was called with '-x' or '-v', pass that on
-    SETOPTIONS="-e"
-    if set -o | grep -q '^xtrace.*on$'; then
-        SETOPTIONS="$SETOPTIONS -x"
-    fi
-    if set -o | grep -q '^verbose.*on$'; then
-        SETOPTIONS="$SETOPTIONS -v"
-    fi
-    sh $SETOPTIONS "$script" "$@"
-    exit "$?"
-fi
 
-# Execute the main script inline. It will use SCRIPTDIR to find what it needs.
-. "$SCRIPTDIR/installer/main.sh"
+    if [ "$1" = '-X' ]; then
+        if [ "$#" -lt 2 ]; then
+            usage_run_script
+            exit 1
+        fi
+        TEMP_DIR=$(create_temp_dir "$TEMP_DIR_BASE" "${0##*/}")
+        trap cleanup EXIT
+        extract_bundle "$0" "$TEMP_DIR"
+        SCRIPT_PATH="$TEMP_DIR/$2"
+        if [ ! -f "$SCRIPT_PATH" ]; then
+            usage_run_script
+            exit 2
+        fi
+        shift 2
+        execute_script "$SCRIPT_PATH" "$@"
+        exit $?
+    fi
 
-exit
+    # Default behavior: extract and run `installer/main.sh`
+    TEMP_DIR=$(create_temp_dir "$TEMP_DIR_BASE" "${0##*/}")
+    trap cleanup EXIT
+    extract_bundle "$0" "$TEMP_DIR"
+    . "$TEMP_DIR/installer/main.sh"
+}
+
+main "$@"
+
+exit 0
 ### end of script; tarball follows
