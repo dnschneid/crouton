@@ -1,31 +1,32 @@
-#!/bin/sh -e
+ #!/bin/sh -e
 # Copyright (c) 2016 The crouton Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 # Outputs a version string with the specified prefix.
 
-if [ "$#" != 1 ]; then
-    echo "Usage: ${0##*/} VERSION" 1>&2
+if [ "$#" -ne 1 ]; then
+    echo "Usage: ${0##*/} VERSION" >&2
     exit 1
 fi
 
-source=''
+VERSION_PREFIX="$1"
+GIT_DIR="$(dirname "$0")/../.git"
+SOURCE=""
 
 # Get the branch from git
-git="`dirname "$0"`/../.git"
-if [ -f "$git/HEAD" ]; then
-    source="`cut -d/ -f3 "$git/HEAD"`"
-    if [ -n "$source" ]; then
-        if [ -f "$git/refs/heads/$source" ]; then
-            source="$source:`head -c 8 "$git/refs/heads/$source"`"
+if [ -f "$GIT_DIR/HEAD" ]; then
+    BRANCH_NAME=$(cut -d/ -f3 "$GIT_DIR/HEAD")
+    if [ -n "$BRANCH_NAME" ]; then
+        if [ -f "$GIT_DIR/refs/heads/$BRANCH_NAME" ]; then
+            COMMIT_HASH=$(head -c 8 "$GIT_DIR/refs/heads/$BRANCH_NAME")
+            SOURCE="~$BRANCH_NAME:$COMMIT_HASH"
         else
-            source="${source%"${source#????????}"}"
+            SOURCE="~${BRANCH_NAME%"${BRANCH_NAME#????????}"}"
         fi
-        source="~$source"
     fi
 fi
 
-VERSION="$1-%Y%m%d%H%M%S$source"
+VERSION="$VERSION_PREFIX-%Y%m%d%H%M%S$SOURCE"
 
 exec date "+$VERSION"
