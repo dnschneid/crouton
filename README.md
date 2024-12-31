@@ -1,29 +1,51 @@
 # crouton: Chromium OS Universal Chroot Environment
 
 crouton is a set of scripts that bundle up into an easy-to-use,
-Chromium OS-centric chroot generator. Currently Ubuntu and Debian are
-supported (using debootstrap behind the scenes), but "Chromium OS Debian,
-Ubuntu, and Probably Other Distros Eventually Chroot Environment" doesn't
-acronymize as well (crodupodece is admittedly pretty fun to say, though).
+Chromium OS-centric chroot generator. Ubuntu, Debian, and Kali are supported
+(using debootstrap behind the scenes), but "Chromium OS Debian and Ubuntu (plus
+one distro) EOL'd Chroot Environment" doesn't acronymize as well (crodupodece is
+admittedly pretty fun to say, though).
 
-### crouton is now maintenance-only
+### 🪦 crouton is now end-of-life 🪦
 
-This means that:
- * Only bugfix and release list PRs will be accepted.
- * New distro releases will be added to the list as unsupported.
- * As xenial is EOL, crouton will (at some point) no longer have a default
-   release. You will always have to specify `-r`.
- * Bugs without updates in the past year will be bulk-closed with a "stale" tag.
- * Open PRs will be left open but have the "stale" tag added. If anyone who
-   forks crouton wants to pick up the feature work, they can build right off of
-   those PRs.
+All good things must come to an end, and considering
+ * Chromium OS's introduction of increasingly strict shell safeguards,
+ * the [change in cras's build tools](https://github.com/dnschneid/crouton/issues/4958),
+ * the [removal of manifest v2 extensions](https://github.com/dnschneid/crouton/pull/5094),
+ * the [removal of PNaCl, breaking xiwi](https://github.com/dnschneid/crouton/issues/5130),
+ * oh, and Chromium OS being replaced by Android
+
+there's really not much to gain from continued development. Put another way, the
+proverbial mixed salad is just about out of tasty crunchy bits, and the
+remaining morsels have gone a bit stale. And for some reason someone's about to
+swap all the lettuce out for onion rings? Point is, it's time to stop mixing
+dressings. Unless it's ranch, I guess, since that goes with just about anything.
+But this is crouton, not some Ready-for-Android Native Chroot Host, alas.
+
+Anyway, this means that:
+ * The repo is now locked, and no further changes will be considered.
+ * Eventually someone will want the latest Ubuntu added to the release list. See
+   [this commit](https://github.com/dnschneid/crouton/commit/6d80f57b91c39d10b29fde861aac5a2b5b9b3910)
+   for an example of how to do it on your own copy.
+ * Sometime around July 2025, the GitHub project will be archived, making the
+   issue tracker, discussions, and wiki read-only.
  * For the safety of users and stability of crouton's functionality for those on
-   EOL devices, offers to take over the dnschneid/crouton repo or Chrome
-   extension will be declined, and requests to change link destinations will be
-   rejected. If you would like to continue feature work on crouton, fork it, do
-   a good job of it, and people can choose to use it at their own risk.
+   EOL devices, offers to take over the dnschneid/crouton repo or extension will
+   be declined, and requests to change link destinations will be rejected.
 
-## But first...
+If you have an EOL device, though, crouton is still a great match for you!
+ * Chromium OS version 110 and earlier, everything should work! Breathe new life
+   into your old devices!!
+ * Starting 111, crouton can't compile cras, so audio devices cannot be shared
+   with Chromium OS
+ * Starting 117, sudo in crosh is disabled and you'll need to use VT-2
+ * Starting 133 (139 for enterprise devices), manifest v2 is disabled and you
+   won't be able to run the extension (easy switching, clipboard sync, xiwi)
+ * Also starting 133 (139 for enterprise devices), pnacl is disabled, so even if
+   you somehow got the extension working, xiwi won't function
+ * Beyond that, it's anybody's guess as to what will break
+
+## Moving right along...
 
 :warning: **Steps to install crouton have changed!**  :warning:
 
@@ -311,7 +333,7 @@ have to determine and download the bootstrap files every time.*
     `croutonpowerd -i command and arguments` will automatically stop inhibiting
     power management when the command exits.
   * Have a Pixel or two or 4.352 million? `-t touch` improves touch support.
-  * Want to share some files and/or folders between ChromeOS and your chroot?  
+  * Want to share some files and/or folders between Chromium OS and your chroot?
     Check out the `/etc/crouton/shares` file, or read all about it in the wiki.
   * Want more tips? Check the [wiki](https://github.com/dnschneid/crouton/wiki).
 
