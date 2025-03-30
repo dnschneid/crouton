@@ -13,22 +13,34 @@ CHROOTETC='xbindkeysrc.scm xiwi.conf xorg-dummy.conf xserverrc xserverrc-xiwi xs
 ### Append to prepare.sh:
 XMETHOD="${XMETHOD:-xiwi}"
 
-ltspackages=''
-# On non-ARM precise, install lts-trusty xorg server for compatibility with xorg
-# if kernel version != 3.4 (lts-trusty mesa requires version >=3.6)
-if [ "${ARCH#arm}" = "$ARCH" ] && release -eq precise \
-        && ! uname -r | grep -q "^3.4."; then
-    # We still install xorg later to pull in its dependencies
-    ltspackages='-lts-trusty'
-    install --minimal "xserver-xorg$ltspackages" "libgl1-mesa-glx$ltspackages"
+# Pull in backported Xorg when possible on precise to support newer hardware
+backport=''
+if release -eq precise; then
+    if [ "${ARCH#arm}" = "$ARCH" ]; then
+        backport='-lts-trusty'
+    else
+        # ARM only offers quantal backport at the moment
+        backport='-lts-quantal'
+    fi
+elif release -eq trusty; then
+    backport='-lts-xenial'
+fi
+
+# Avoid issues when jumping backports
+if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' -a -n "$backport" ]; then
+    apt-mark unhold xserver-xorg-video-dummy || true 2>/dev/null
 fi
 
 # Unhold xserver-xorg-video-dummy to make sure deps are pulled in
 if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
-    apt-mark unhold xserver-xorg-video-dummy$ltspackages || true 2>/dev/null
+    apt-mark unhold xserver-xorg-video-dummy$backport || true 2>/dev/null
 fi
 
-install xorg xserver-xorg-video-dummy$ltspackages
+if [ -n "$backport" ]; then
+    install --minimal "xserver-xorg$backport" "xserver-xorg-core$backport" \
+        "libgl1-mesa-glx$backport"
+fi
+install xorg xserver-xorg-video-dummy$backport
 install --minimal i3
 
 # Remove some unsupported options on old versions of i3
@@ -61,7 +73,7 @@ wget $superinsecure -O "$DUMMYBUILDTMP/dummy.tar.gz" \
      "$urlbase/xf86-video-dummy-0.3.8.tar.gz"
 
 install --minimal --asdeps patch gcc libc-dev pkg-config \
-    xserver-xorg-dev$ltspackages x11proto-xf86dga-dev
+    xserver-xorg-dev$backport x11proto-xf86dga-dev
 
 (
     cd "$DUMMYBUILDTMP"
@@ -404,7 +416,7 @@ EOF
 
 if [ "${DISTROAKA:-"$DISTRO"}" = 'debian' ]; then
     # Hold xserver-xorg-video-dummy to make sure the driver does not get erased
-    apt-mark hold xserver-xorg-video-dummy$ltspackages
+    apt-mark hold xserver-xorg-video-dummy$backport
 fi
 
 TIPS="$TIPS"'
