@@ -20,7 +20,6 @@ var LogLevel = Object.freeze({
 });
 
 /* Global variables */
-var clipboardholder_; /* textarea used to hold clipboard content */
 var timeout_ = null; /* Set if a timeout is active */
 var websocket_ = null; /* Active connection */
 
@@ -70,7 +69,7 @@ function setStatus(status, active) {
 }
 
 function showHelp() {
-    window.open("first.html", '_blank');
+    chrome.tabs.create({url:"first.html", active:true});
 }
 
 function updateAvailable(version) {
@@ -126,10 +125,15 @@ function registerKiwi(displaynum, window) {
 
 /* Close the popup window */
 function closePopup() {
-    var views = chrome.extension.getViews({type: "popup"});
-    for (var i = 0; i < views.length; views++) {
-        views[i].close();
-    }
+    chrome.runtime.getContexts({contextTypes: ['POPUP']}).then(
+        (contexts) => {
+            if (contexts.length == 0) {
+                console.log("No popup listens to me.")
+                return
+            }
+            chrome.runtime.sendMessage({msg: 'close'})
+        }
+    )
 }
 
 /* Update the icon, and refresh the popup page */
@@ -144,161 +148,102 @@ function refreshUI() {
     else if (active_)
         icon = "connected";
 
-    chrome.browserAction.setIcon(
+    chrome.action.setIcon(
         {path: {19: icon + '-19.png', 38: icon + '-38.png'}}
     );
-    chrome.browserAction.setTitle({title: 'crouton: ' + icon});
+    chrome.action.setTitle({title: 'crouton: ' + icon});
 
-    chrome.browserAction.setBadgeText(
+    chrome.action.setBadgeText(
         {text: windows_.length > 1 ? '' + (windows_.length-1) : ''}
     );
-    chrome.browserAction.setBadgeBackgroundColor({color: '#2E822B'});
+    chrome.action.setBadgeBackgroundColor({color: '#2E822B'});
 
-    var views = chrome.extension.getViews({type: "popup"});
-    for (var i = 0; i < views.length; views++) {
-        var view = views[i];
-        /* Make sure page is ready */
-        if (view.document.readyState != "loading") {
-            /* Update "help" link */
-            var helplink = view.document.getElementById("help");
-            helplink.onclick = showHelp;
-            /* Update enable/disable link. */
-            var enablelink = view.document.getElementById("enable");
-            if (enabled_) {
-                enablelink.textContent = "Disable";
-                enablelink.onclick = function() {
-                    console.log("Disable click");
-                    enabled_ = false;
-                    /* Update local storage to persist enabled_ boolean */
-                    chrome.storage.local.set({enabled: enabled_});
-                    if (websocket_ != null)
-                        websocket_.close();
-                    else
-                        websocketConnect(); /* Clear timeout and display message */
-                    refreshUI();
-                }
-            } else {
-                enablelink.textContent = "Enable";
-                enablelink.onclick = function() {
-                    console.log("Enable click");
-                    enabled_ = true;
-                    /* Update local storage to persist enabled_ boolean */
-                    chrome.storage.local.set({enabled: enabled_});
-                    if (websocket_ == null)
-                        websocketConnect();
-                    refreshUI();
-                }
+    chrome.runtime.getContexts({contextTypes: ['POPUP']}).then(
+        (contexts) => {
+            if (contexts.length == 0) {
+                console.log("No popup listens to me.")
+                return
             }
+            chrome.runtime.sendMessage({msg: 'updateUI',
+                data: {
+                    enabled: enabled_,
+                    debug: debug_,
+                    hidpi: hidpi_,
+                    status: status_,
+                    windows: windows_,
+                    showlog: showlog_,
+                    logger: logger_
+                }})
+        }
+    )
+}
 
-            /* Update debug mode according to checkbox state. */
-            var debugcheck = view.document.getElementById("debugcheck");
-            debugcheck.onclick = function() {
-                debug_ = debugcheck.checked;
-                refreshUI();
-                var disps = Object.keys(kiwi_win_);
-                for (var i = 0; i < disps.length; i++) {
-                    var win = kiwi_win_[disps[i]];
-                    if (win.window) {
-                        if (win.isTab) {
-                            chrome.tabs.sendMessage(win.id,
-                                    {func: 'setDebug', param: debug_?1:0});
-                        } else {
-                            win.window.setDebug(debug_?1:0);
-                        }
-                    }
-                }
-            }
-            debugcheck.checked = debug_;
-
-            /* Update hidpi mode according to checkbox state. */
-            var hidpicheck = view.document.getElementById("hidpicheck");
-            if (window.devicePixelRatio > 1) {
-                hidpicheck.onclick = function() {
-                    hidpi_ = hidpicheck.checked;
-                    /* Update local storage to persist hidpi_ setting */
-                    chrome.storage.local.set({hidpi: hidpi_});
-                    refreshUI();
-                    var disps = Object.keys(kiwi_win_);
-                    for (var i = 0; i < disps.length; i++) {
-                        var win = kiwi_win_[disps[i]];
-                        if (win.window) {
-                            if (win.isTab) {
-                                chrome.tabs.sendMessage(win.id,
-                                        {func: 'setHiDPI', param: hidpi_?1:0});
-                            } else {
-                                win.window.setHiDPI(hidpi_?1:0);
-                            }
-                        }
-                    }
-                }
-                hidpicheck.disabled = false;
-            } else {
-                hidpicheck.disabled = true;
-            }
-            hidpicheck.checked = hidpi_;
-
-            /* Update status box */
-            view.document.getElementById("info").textContent = status_;
-
-            /* Update window table */
-            /* FIXME: Improve UI */
-            var windowlist = view.document.getElementById("windowlist");
-
-            while (windowlist.rows.length > 0) {
-                windowlist.deleteRow(0);
-            }
-
-            for (var i = 0; i < windows_.length; i++) {
-                var row = windowlist.insertRow(-1);
-                var cell1 = row.insertCell(0);
-                var cell2 = row.insertCell(1);
-                cell1.className = "display";
-                cell1.innerHTML = windows_[i].display;
-                cell2.className = "name";
-                cell2.innerHTML = windows_[i].name;
-                cell2.onclick = (function(i) { return function() {
-                    if (active_) {
-                        websocket_.send("C" + windows_[i].display);
-                        closePopup();
-                    }
-                } })(i);
-            }
-
-            /* Update logger table */
-            var loggertable = view.document.getElementById("logger");
-
-            /* FIXME: only update needed rows */
-            while (loggertable.rows.length > 0) {
-                loggertable.deleteRow(0);
-            }
-
-            /* Only update if "show log" is enabled */
-            var logcheck = view.document.getElementById("logcheck");
-            logcheck.onclick = function() {
-                showlog_ = logcheck.checked;
-                refreshUI();
-            }
-            logcheck.checked = showlog_;
-            if (showlog_) {
-                for (var i = 0; i < logger_.length; i++) {
-                    var value = logger_[i];
-
-                    if (value[0] == LogLevel.DEBUG && !debug_)
-                        continue;
-
-                    var row = loggertable.insertRow(-1);
-                    var cell1 = row.insertCell(0);
-                    var cell2 = row.insertCell(1);
-                    var levelclass = value[0];
-                    cell1.className = "time " + levelclass;
-                    cell2.className = "value " + levelclass;
-                    cell1.innerHTML = value[1];
-                    cell2.innerHTML = value[2];
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    console.log("SERVICE rcv message " + message.msg)
+    if (message.msg == "showHelp") {
+        showHelp();
+    } else if (message.msg == "refreshUI") {
+        refreshUI();
+    } else if (message.msg == "Disable") {
+        console.log("Disable click");
+        enabled_ = false;
+        /* Update local storage to persist enabled_ boolean */
+        chrome.storage.local.set({enabled: enabled_});
+        if (websocket_ != null)
+            websocket_.close();
+        else
+            websocketConnect(); /* Clear timeout and display message */
+        refreshUI();
+    } else if (message.msg == "Enable") {
+        console.log("Enable click");
+        enabled_ = true;
+        /* Update local storage to persist enabled_ boolean */
+        chrome.storage.local.set({enabled: enabled_});
+        if (websocket_ == null)
+            websocketConnect();
+        refreshUI();
+    } else if (message.msg == "Debug") {
+        debug_ = message.data;
+        refreshUI();
+        var disps = Object.keys(kiwi_win_);
+        for (var i = 0; i < disps.length; i++) {
+            var win = kiwi_win_[disps[i]];
+            if (win.window) {
+                if (win.isTab) {
+                    chrome.tabs.sendMessage(win.id,
+                            {func: 'setDebug', param: debug_?1:0});
+                } else {
+                    win.window.setDebug(debug_?1:0);
                 }
             }
         }
+    } else if (message.msg == "HiDPI") {
+        hidpi_ = message.data;
+        /* Update local storage to persist hidpi_ setting */
+        chrome.storage.local.set({hidpi: hidpi_});
+        refreshUI();
+        var disps = Object.keys(kiwi_win_);
+        for (var i = 0; i < disps.length; i++) {
+            var win = kiwi_win_[disps[i]];
+            if (win.window) {
+                if (win.isTab) {
+                    chrome.tabs.sendMessage(win.id,
+                            {func: 'setHiDPI', param: hidpi_?1:0});
+                } else {
+                    win.window.setHiDPI(hidpi_?1:0);
+                }
+            }
+        }
+    } else if (message.msg == "Window") {
+        if (active_) {
+            websocket_.send("C" + message.data);
+            closePopup();
+        }
+    } else if (message.msg == "Logger") {
+        showlog_ = message.data;
+        refreshUI();
     }
-}
+});
 
 /* Start the extension */
 function clipboardStart() {
@@ -315,8 +260,6 @@ function clipboardStart() {
             function(data) { onFocusChanged(data.tabId, true); });
     chrome.tabs.onRemoved.addListener(
             function(id, data) { onRemoved(id, true); });
-
-    clipboardholder_ = document.getElementById("clipboardholder");
 
     /* Notification event handlers */
     chrome.notifications.onClosed.addListener(notificationClosed);
@@ -361,17 +304,12 @@ function websocketOpen() {
     setStatus("Connected: checking version...", false);
 }
 
-function readClipboard() {
-    clipboardholder_.value = "";
-    clipboardholder_.select();
-    document.execCommand("Paste");
-    return clipboardholder_.value;
+function readClipboard(callback) {
+    chrome.runtime.sendMessage({msg: 'readClipboard'}, callback);
 }
 
 function writeClipboard(str) {
-    clipboardholder_.value = str;
-    clipboardholder_.select();
-    document.execCommand("Copy");
+    chrome.runtime.sendMessage({msg: 'writeClipboard', data: str});
 }
 
 /* Received a message from the server */
@@ -404,37 +342,37 @@ function websocketMessage(evt) {
 
     switch(cmd) {
     case 'W': /* Write */
-        var clip = readClipboard();
+        readClipboard((clip) => {
+            dummystr_ = false;
 
-        dummystr_ = false;
-
-        /* Do not erase identical clipboard content */
-        if (clip != payload) {
-             /* We cannot write an empty string: Write DUMMY instead */
-            if (payload == "") {
-                writeClipboard(DUMMY_EMPTYSTRING);
-                dummystr_ = true;
-            } else {
+            /* Do not erase identical clipboard content */
+            if (clip != payload) {
+                /* We cannot write an empty string: Write DUMMY instead */
+                if (payload == "") {
+                    writeClipboard(DUMMY_EMPTYSTRING);
+                    dummystr_ = true;
+                } else {
+                    writeClipboard(payload);
+                }
+            } else if (payload == DUMMY_EMPTYSTRING) {
+                /* Unlikely case where DUMMY string comes from the other side */
                 writeClipboard(payload);
+            } else {
+                printLog("Not erasing content (identical)", LogLevel.DEBUG);
             }
-        } else if (payload == DUMMY_EMPTYSTRING) {
-            /* Unlikely case where DUMMY string comes from the other side */
-            writeClipboard(payload);
-        } else {
-            printLog("Not erasing content (identical)", LogLevel.DEBUG);
-        }
 
-        websocket_.send("WOK");
+            websocket_.send("WOK");
+        })
 
         break;
     case 'R': /* Read */
-        var clip = readClipboard();
-
-        if (clip == DUMMY_EMPTYSTRING && dummystr_) {
-            websocket_.send("R");
-        } else {
-            websocket_.send("R" + clip);
-        }
+        readClipboard((clip) => {
+            if (clip == DUMMY_EMPTYSTRING && dummystr_) {
+                websocket_.send("R");
+            } else {
+                websocket_.send("R" + clip);
+            }
+        });
 
         break;
     case 'U': /* Open an URL */
@@ -775,21 +713,23 @@ chrome.runtime.getPlatformInfo(function(platforminfo) {
             return true;
         }
 
-        /* Start the extension as soon as the background page is loaded */
-        if (document.readyState == 'complete') {
-            clipboardStart();
-        } else {
-            document.addEventListener('DOMContentLoaded', clipboardStart);
-        }
+        chrome.offscreen.createDocument({
+            url: chrome.runtime.getURL('offscreen.html'),
+            reasons: ['CLIPBOARD'],
+            justification: 'offscreen page for clipboard',
+            });
+
+        // FIXME: Previously, we waited the the background page to load to continue.
+        clipboardStart();
 
         chrome.runtime.onUpdateAvailable.addListener(function(details) {
             updateAvailable(details.version);
         });
     } else {
         /* Disable the icon on non-Chromium OS. */
-        chrome.browserAction.setTitle(
+        chrome.action.setTitle(
             {title: 'crouton is not available on this platform'}
         );
-        chrome.browserAction.disable();
+        chrome.action.disable();
     }
 });
