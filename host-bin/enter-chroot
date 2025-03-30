@@ -29,7 +29,7 @@ Options:
     -b          Fork and run the specified command silently in the background.
     -c CHROOTS  Directory the chroots are in. Default: $CHROOTS
     -l          Make the command part of a login. Parameters are passed directly
-                to the chroot command, and a call to su is appended.
+                to the chroot command, and a call to sudo is appended.
     -k KEYFILE  Override the auto-detected encryption key location.
     -n NAME     Name of the chroot to enter. Default: first one found in CHROOTS
     -t TARGET   Only enter the chroot if it contains the specified TARGET.
@@ -47,7 +47,7 @@ chrootcmd() {
     # env may be overridden when running in the background; don't let it fork.
     local ret=0 oldtrap="$TRAP"
     TRAP=''
-    env -i chroot "$CHROOT" su -s '/bin/sh' -c "$*" - root || ret=$?
+    env -i SHELL=/bin/sh chroot "$CHROOT" sudo -u root -s "$*" || ret=$?
     local pid="$!"
     # $pid might not be set if env has not been redefined yet
     if [ -n "$BACKGROUND" ] && [ -n "$pid" ]; then
@@ -742,7 +742,7 @@ else
     fi
 
     if [ $# = 0 -o -n "$LOGIN" ]; then
-        env -i TERM="$TERM" chroot "$CHROOT" "$@" su - "$USERNAME" || ret=$?
+        env -i TERM="$TERM" chroot "$CHROOT" "$@" sudo -i -u "$USERNAME" || ret=$?
     else
         # Escape out the command
         cmd="export SHELL='$CHROOTSHELL';"
@@ -752,8 +752,8 @@ else
         for param in "$@"; do
             cmd="$cmd'`echo -n "$param" | sed "s/'/'\\\\\\''/g"`' "
         done
-        env -i TERM="$TERM" chroot "$CHROOT" \
-            su -s '/bin/sh' -c "$cmd" - "$USERNAME" \
+        env -i TERM="$TERM" SHELL=/bin/sh chroot "$CHROOT" \
+            sudo -s -u "$USERNAME" "$cmd" \
             || ret=$?
     fi
 fi
