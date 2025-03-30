@@ -63,6 +63,14 @@ if tail -n 1 "$log" | grep -q "^Error"; then
     fi
 fi
 
+# ChromiumOS >= 15378.0.0 removed autotools support (https://crrev.com/c/4322563),
+# fetch the last known good Makefile.am. We can still patch it as required.
+lastgoodam="c2ece09f69565afcbcf511b1693f3fe735bde511/cras/src/Makefile.am"
+mkdir -p "$CRASBUILDTMP/cras/src"
+wget "https://chromium.googlesource.com/chromiumos/third_party/adhd/+/${lastgoodam}?format=TEXT" -O- \
+    | base64 -d > "$CRASBUILDTMP/Makefile.am"
+
+
 # Build CRAS ALSA plugin for the given architecture ($1)
 # A blank parameter means we are building for the native architecture.
 build_cras() {
@@ -118,10 +126,19 @@ build_cras() {
         cd "$CRASBUILDTMP"
 
         # Make sure we start fresh
-        rm -rf --one-file-system cras
+        rm -rf --one-file-system cras include
+
+        # Copy over prefetched Makefile.am, it'll get overriden if already present.
+        mkdir -p cras/src
+        cp Makefile.am cras/src/Makefile.am
 
         # -m prevents "time stamp is in the future" spam
         tar -xmf adhd.tar.gz cras/src
+
+        # If include/ exists, extract the content and move it to cras/src/common
+        if tar -xmf adhd.tar.gz include; then
+          mv include/*.h cras/src/common
+        fi
 
         cd cras/src
 
